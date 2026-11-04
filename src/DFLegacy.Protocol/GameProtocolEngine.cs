@@ -2008,7 +2008,8 @@ public static partial class GameProtocolEngine
 
     public static bool TryParseDropItemCommand(
         ReadOnlySpan<byte> body,
-        out GameDropItemCommand command)
+        out GameDropItemCommand command,
+        bool chapterTwo = false)
     {
         command = default;
         const int bodyLength = sizeof(ushort) // command sequence
@@ -2017,7 +2018,15 @@ public static partial class GameProtocolEngine
             + sizeof(byte)                   // item space
             + sizeof(ushort)                 // source slot
             + sizeof(uint);                  // count
-        if (body.Length != bodyLength)
+        if (chapterTwo)
+        {
+            // The ordinary Chapter Two drop path appends a zero byte before AES padding.
+            if (body.Length != sizeof(ushort) + 16 || body[bodyLength..].ContainsAnyExcept((byte)0))
+            {
+                return false;
+            }
+        }
+        else if (body.Length != bodyLength)
         {
             return false;
         }

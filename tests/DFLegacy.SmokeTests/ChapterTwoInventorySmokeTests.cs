@@ -61,6 +61,21 @@ internal static class ChapterTwoInventorySmokeTests
         check(!GameProtocolEngine.TryParseGetItemCommand(pickup, out _, chapterTwo: true),
             "Chapter Two rejects an unverified nonzero pickup tail");
 
+        var drop = Convert.FromHexString("0900FA00FA00000900010000000000000000");
+        check(GameProtocolEngine.TryParseDropItemCommand(drop, out var dropped, chapterTwo: true)
+            && dropped is { X: 250, Y: 250, ItemSpace: 0, Slot: 9, Count: 1 },
+            "Chapter Two accepts an ordinary item drop with its additional byte and AES padding");
+        check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _)
+            && GameProtocolEngine.TryParseDropItemCommand(drop[..13], out _),
+            "ACT1 item drop keeps its exact length");
+        drop[13] = 1;
+        check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _, chapterTwo: true),
+            "Chapter Two rejects the special drop variant until its behavior is confirmed");
+        drop[13] = 0;
+        drop[^1] = 1;
+        check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _, chapterTwo: true),
+            "Chapter Two rejects nonzero drop padding");
+
         var gold = GameProtocolEngine.CreateGoldItemPickup(2, 1, [22u, 0u, 300u, 0u]);
         check(gold.Payload.AsSpan().SequenceEqual(
                 Convert.FromHexString("02000100160000000000000000002C010000000000000000")),

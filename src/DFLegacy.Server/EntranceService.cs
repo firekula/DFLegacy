@@ -13296,7 +13296,8 @@ public sealed class EntranceService(
                                 : (byte)0;
                             if (!GameProtocolEngine.TryParseDropItemCommand(
                                     request.Body,
-                                    out var dropCommand))
+                                    out var dropCommand,
+                                    chapterTwo: chapter2Decoded))
                             {
                                 var error =
                                     GameProtocolEngine.CreateDropItemErrorReply(
