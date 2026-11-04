@@ -6012,6 +6012,17 @@ Check(GameProtocolEngine.CreateEmptyAcceptableQuestList().Payload.SequenceEqual(
 Check(GameProtocolEngine.CreateAcceptableQuestList([1, 1016]).Payload.SequenceEqual(
         new byte[] { 2, 1, 0, 0xF8, 0x03 }),
     "acceptable quest notification uses a u8 count followed by u16 ids");
+Check(GameProtocolEngine.CreateAcceptableQuestList([1, 1016], chapterTwoCharacterLevel: 45).Payload
+        .AsSpan().SequenceEqual(new byte[] { 45, 2, 0, 1, 0, 0xf8, 0x03 })
+    && GameProtocolEngine.CreateAcceptableQuestList([], chapterTwoCharacterLevel: 60).Payload
+        .AsSpan().SequenceEqual(new byte[] { 60, 0, 0 }),
+    "Chapter Two acceptable quests start with the character level and a u16 count");
+var chapterTwoLargeQuestList = GameProtocolEngine.CreateAcceptableQuestList(
+    Enumerable.Range(1, 256).Select(id => (ushort)id).ToArray(), chapterTwoCharacterLevel: 60).Payload;
+Check(chapterTwoLargeQuestList.Length == 3 + 256 * 2
+    && chapterTwoLargeQuestList.AsSpan(0, 3).SequenceEqual(new byte[] { 60, 0, 1 })
+    && chapterTwoLargeQuestList.AsSpan(^2).SequenceEqual(new byte[] { 0, 1 }),
+    "Chapter Two acceptable quests preserve counts above 255");
 Check(GameProtocolEngine.AcceptQuestCommand == 33
     && GameProtocolEngine.GiveupQuestCommand == 34
     && GameProtocolEngine.SetQuestTriggerCommand == 35

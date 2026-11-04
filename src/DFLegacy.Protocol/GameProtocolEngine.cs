@@ -2489,16 +2489,27 @@ public static partial class GameProtocolEngine
             [(byte)userId, (byte)(userId >> 8), state]);
 
     public static GameServerPacket CreateAcceptableQuestList(
-        IReadOnlyList<ushort> questIds)
+        IReadOnlyList<ushort> questIds,
+        byte? chapterTwoCharacterLevel = null)
     {
-        if (questIds.Count > byte.MaxValue)
+        if (questIds.Count > (chapterTwoCharacterLevel.HasValue ? ushort.MaxValue : byte.MaxValue))
         {
             throw new ArgumentOutOfRangeException(nameof(questIds));
         }
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        writer.Write((byte)questIds.Count);
+        if (chapterTwoCharacterLevel is { } level)
+        {
+            // Ver_OB_216 uses the level to filter the available quest categories.
+            writer.Write(level);
+            writer.Write((ushort)questIds.Count);
+        }
+        else
+        {
+            writer.Write((byte)questIds.Count);
+        }
+
         foreach (var questId in questIds)
         {
             writer.Write(questId);

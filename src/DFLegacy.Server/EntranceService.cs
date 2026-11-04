@@ -4602,7 +4602,8 @@ public sealed class EntranceService(
                         currentQuests,
                         completedQuestIds,
                         currentTownId == 1 ? 2 : null,
-                        itemCatalog);
+                        itemCatalog,
+                        chapterTwo: chapter2CheckConnectionAccepted);
 
                 IReadOnlyList<ushort> GetVisibleDungeonIds() =>
                     HiddenDungeonUnlockCatalog.ResolveVisibleDungeonIds(
@@ -4643,8 +4644,11 @@ public sealed class EntranceService(
 
                 async Task SendAcceptableQuestListAsync()
                 {
+                    byte? chapterTwoLevel = chapter2CheckConnectionAccepted
+                        ? (byte)Math.Clamp(activeCharacter?.Level ?? 0, 0, byte.MaxValue)
+                        : null;
                     var acceptable = GameProtocolEngine.CreateAcceptableQuestList(
-                        GetAcceptableQuestIds());
+                        GetAcceptableQuestIds(), chapterTwoLevel);
                     await acceptable.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, acceptable);
@@ -6386,7 +6390,6 @@ public sealed class EntranceService(
                                          warehouseInventory.Values,
                                          warehouseCapacity,
                                          creatureInventory.Values,
-                                         GetAcceptableQuestIds(),
                                          GetDungeonPermissions()))
                             {
                                 await initialPacket.WriteAsync(stream, serverToken);
@@ -6394,6 +6397,7 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, initialPacket);
                             }
 
+                            await SendAcceptableQuestListAsync();
                             await SendPvpRecordAsync();
 
                             // DFLegacy does not issue MAILBOX_OPEN while entering
@@ -16360,12 +16364,9 @@ public sealed class EntranceService(
         IEnumerable<CharacterItemRecord> warehouse,
         ushort warehouseCapacity,
         IEnumerable<CharacterItemRecord> creatureInventory,
-        IReadOnlyList<ushort> acceptableQuestIds,
         IReadOnlyList<GameDungeonPermissionEntry> dungeonPermissions)
     {
-        // Dungeon permissions are u16-counted (u16 id, u8 state) records, and
-        // the acceptable-quest list is u8-counted. The stamina notification is
-        // sent later, after AREA_USERS has created the local town actor.
+        // The stamina notification follows AREA_USERS, which creates the local town actor.
         yield return GameProtocolEngine.CreateDungeonPermissions(dungeonPermissions);
 
         yield return CreateMainInventoryPacket(gold, victoryPoints, inventory);
@@ -16378,7 +16379,6 @@ public sealed class EntranceService(
         yield return GameProtocolEngine.CreateSkillInfo(
             (ushort)Math.Clamp(skillPoints, ushort.MinValue, ushort.MaxValue),
             panelSkills);
-        yield return GameProtocolEngine.CreateAcceptableQuestList(acceptableQuestIds);
     }
 
     internal static IReadOnlyList<(ushort ItemId, uint Count)>

@@ -237,7 +237,8 @@ public sealed class QuestCatalog
         IReadOnlyCollection<CharacterQuestRecord> activeQuests,
         IReadOnlyCollection<ushort> completedQuestIds,
         int? preferredNpcIndex = null,
-        ItemCatalog? itemCatalog = null)
+        ItemCatalog? itemCatalog = null,
+        bool chapterTwo = false)
     {
         var active = activeQuests.Select(quest => quest.QuestId).ToHashSet();
         var completed = completedQuestIds.ToHashSet();
@@ -253,15 +254,16 @@ public sealed class QuestCatalog
             .ThenBy(definition => definition.Order)
             .ToArray();
 
-        if (eligible.Length > byte.MaxValue)
+        var limit = chapterTwo ? ushort.MaxValue : byte.MaxValue;
+        if (eligible.Length > limit)
         {
             _logger.LogWarning(
-                "Truncated acceptable quest list from {Count} to the DFLegacy limit of 255.",
-                eligible.Length);
+                "Truncated acceptable quest list from {Count} to the client limit of {Limit}.",
+                eligible.Length, limit);
         }
 
         return eligible
-            .Take(byte.MaxValue)
+            .Take(limit)
             .Select(definition => definition.QuestId)
             .ToArray();
     }
