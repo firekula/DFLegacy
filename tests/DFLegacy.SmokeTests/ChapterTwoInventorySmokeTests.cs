@@ -68,12 +68,20 @@ internal static class ChapterTwoInventorySmokeTests
         check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _)
             && GameProtocolEngine.TryParseDropItemCommand(drop[..13], out _),
             "ACT1 item drop keeps its exact length");
-        drop[13] = 1;
-        check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _, chapterTwo: true),
-            "Chapter Two rejects the special drop variant until its behavior is confirmed");
-        drop[13] = 0;
-        drop[^1] = 1;
-        check(!GameProtocolEngine.TryParseDropItemCommand(drop, out _, chapterTwo: true),
+        var overweightDrop = Convert.FromHexString("75006E030E01001D00010000000100000000");
+        check(GameProtocolEngine.TryParseDropItemCommand(overweightDrop, out var returned, chapterTwo: true)
+            && returned is { X: 878, Y: 270, ItemSpace: 0, Slot: 29, Count: 1 },
+            "Chapter Two accepts the captured automatic overweight drop");
+        check(!GameProtocolEngine.TryParseDropItemCommand(overweightDrop, out _)
+            && GameProtocolEngine.TryParseDropItemCommand(overweightDrop[..13], out var legacyReturn)
+            && legacyReturn is { X: 878, Y: 270, ItemSpace: 0, Slot: 29, Count: 1 },
+            "ACT1 uses the same drop fields without the overweight flag");
+        overweightDrop[13] = 2;
+        check(!GameProtocolEngine.TryParseDropItemCommand(overweightDrop, out _, chapterTwo: true),
+            "Chapter Two rejects an unknown drop flag");
+        overweightDrop[13] = 1;
+        overweightDrop[^1] = 1;
+        check(!GameProtocolEngine.TryParseDropItemCommand(overweightDrop, out _, chapterTwo: true),
             "Chapter Two rejects nonzero drop padding");
 
         var gold = GameProtocolEngine.CreateGoldItemPickup(2, 1, [22u, 0u, 300u, 0u]);

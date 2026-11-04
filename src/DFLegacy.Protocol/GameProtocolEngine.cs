@@ -2024,8 +2024,11 @@ public static partial class GameProtocolEngine
             + sizeof(uint);                  // count
         if (chapterTwo)
         {
-            // The ordinary Chapter Two drop path appends a zero byte before AES padding.
-            if (body.Length != sizeof(ushort) + 16 || body[bodyLength..].ContainsAnyExcept((byte)0))
+            // The native client appends 0 for a manual drop or 1 for a pickup that exceeds its weight limit.
+            // Both use the same inventory and ground-item transaction.
+            if (body.Length != sizeof(ushort) + 16
+                || body[bodyLength] > 1
+                || body[(bodyLength + 1)..].ContainsAnyExcept((byte)0))
             {
                 return false;
             }
