@@ -765,6 +765,21 @@ public sealed class EntranceService(
                         ? equippedInventory.Values.Where(item => item.Slot is < 11 or > 15)
                         : equippedInventory.Values;
 
+                GameCharacterCombatStats ProjectLocalCombatStats(GameCharacterCombatStats stats)
+                {
+                    if (!chapter2CheckConnectionAccepted)
+                    {
+                        return stats;
+                    }
+
+                    // Ver_OB_216 uses the NOTI2 limit for pickup without adding the worn PVF bonus.
+                    // Its native setter divides the signed wire value by ten.
+                    const uint scale = CharacterInventoryPlanner.CombatStatInventoryLimitScale;
+                    var limit = CharacterInventoryPlanner.CalculateCarriedWeightLimit(
+                        stats.InventoryLimit, equippedInventory.Values, itemCatalog);
+                    return stats with { InventoryLimit = (uint)(Math.Min(limit, int.MaxValue / scale) * scale) };
+                }
+
                 async Task SendCurrentEquipmentStateAsync(
                     GameCharacterCombatStats? validatedStats = null)
                 {
@@ -773,13 +788,13 @@ public sealed class EntranceService(
                         return;
                     }
 
-                    var projectedStats = validatedStats
+                    var baseStats = validatedStats
                         ?? characterStatCatalog.Get(activeCharacter);
                     var equipment = GameProtocolEngine.CreateCurrentCharacterDetails(
                         localUserId,
                         experience: activeCharacter.Experience,
                         learnedSkills: GetCurrentGameSkills(),
-                        combatStats: projectedStats,
+                        combatStats: ProjectLocalCombatStats(baseStats),
                         equippedItems: CreateWornEquipmentSnapshot(
                             GetEquippedItemsForCurrentClient(),
                             creatureInventory),
@@ -789,7 +804,7 @@ public sealed class EntranceService(
                     await equipment.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, equipment);
-                    lastProjectedCombatStats = projectedStats;
+                    lastProjectedCombatStats = baseStats;
                 }
 
                 CharacterRecord AvatarActorSnapshot() => activeCharacter! with
@@ -864,7 +879,7 @@ public sealed class EntranceService(
                             equippedItems: CreateWornEquipmentSnapshot(
                                 equippedInventory.Values,
                                 creatureInventory),
-                            combatStats: characterStatCatalog.Get(activeCharacter),
+                            combatStats: ProjectLocalCombatStats(characterStatCatalog.Get(activeCharacter)),
                             equippedCreatureLevel: GetEquippedCreatureLevel(
                                 creatureInventory),
                             staminaRecoveryPercentage: GetProjectedStaminaRecovery(),
@@ -6358,25 +6373,7 @@ public sealed class EntranceService(
                             LogPacket("TX", runtimeSession, currentCharacter);
 
                             var learnedSkills = GetCurrentGameSkills();
-                            var projectedCombatStats =
-                                characterStatCatalog.Get(activeCharacter);
-                            var currentCharacterDetails =
-                                GameProtocolEngine.CreateCurrentCharacterDetails(
-                                    localUserId,
-                                    experience: activeCharacter.Experience,
-                                    learnedSkills: learnedSkills,
-                                    combatStats: projectedCombatStats,
-                                    equippedItems: CreateWornEquipmentSnapshot(
-                                        GetEquippedItemsForCurrentClient(),
-                                        creatureInventory),
-                                    equippedCreatureLevel: GetEquippedCreatureLevel(
-                                        creatureInventory),
-                                    staminaRecoveryPercentage:
-                                        GetProjectedStaminaRecovery());
-                            await currentCharacterDetails.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, currentCharacterDetails);
-                            lastProjectedCombatStats = projectedCombatStats;
+                            await SendCurrentEquipmentStateAsync();
 
                             foreach (var initialPacket in CreateTownInitializationPackets(
                                          currentSp,
@@ -10902,6 +10899,11 @@ public sealed class EntranceService(
 
                             var replacedWornItem = destinationListType == 3
                                 && displacedItem is not null;
+                            var addedWornWeightBonus = chapter2CheckConnectionAccepted
+                                && destinationListType == 3
+                                && displacedItem is null
+                                && itemCatalog.TryGetDefinition(sourceItem.ItemId, out var wornDefinition)
+                                && wornDefinition.InventoryLimit is not (null or 0);
                             if (replacedWornItem)
                             {
                                 // The drag controller still owns the old worn
@@ -10919,7 +10921,7 @@ public sealed class EntranceService(
                             {
                                 await SendTownAppearanceAsync();
                             }
-                            else if (sourceListType == 3 || replacedWornItem)
+                            else if (sourceListType == 3 || replacedWornItem || addedWornWeightBonus)
                             {
                                 await SendCurrentEquipmentStateAsync();
                             }
