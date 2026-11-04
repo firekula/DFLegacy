@@ -84,6 +84,15 @@ internal static class ChapterTwoInventorySmokeTests
         check(!GameProtocolEngine.TryParseDropItemCommand(overweightDrop, out _, chapterTwo: true),
             "Chapter Two rejects nonzero drop padding");
 
+        var groundDrop = GameProtocolEngine.CreateDropItem(1, 878, 270,
+            new GameDungeonDrop(1, 33301, 1, 35, 1));
+        check(groundDrop.Payload.AsSpan().SequenceEqual(
+                Convert.FromHexString("01006E030E010100158200010000002300")),
+            "ACT1 active drop ends at durability");
+        check(ChapterTwoPacketProjection.Apply(groundDrop).Payload.AsSpan().SequenceEqual(
+                Convert.FromHexString("01006E030E0101001582000100000023000000")),
+            "Chapter Two active drop includes the final item-constructor field");
+
         var gold = GameProtocolEngine.CreateGoldItemPickup(2, 1, [22u, 0u, 300u, 0u]);
         check(gold.Payload.AsSpan().SequenceEqual(
                 Convert.FromHexString("02000100160000000000000000002C010000000000000000")),

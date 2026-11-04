@@ -19,6 +19,12 @@ internal static class ChapterTwoPacketProjection
             return ExpandRecords(packet, 1, payload[0], 21, [0]);
         }
 
+        if (packet.ProtocolId == GameProtocolEngine.DropItemNotification && payload.Length == 17)
+        {
+            // Ver_OB_216 reads a trailing u16 for the item constructor. ACT1 passes zero there.
+            return packet with { Payload = [.. packet.Payload, 0, 0] };
+        }
+
         if (packet.ProtocolId == GameProtocolEngine.GetItemNotification && payload.Length == 4 + 4 * 5)
         {
             // Gold is the 24-byte NOTI39 branch. The ordinary item branch is 12 bytes.
