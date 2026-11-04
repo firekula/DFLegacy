@@ -92,6 +92,27 @@ internal static class PickupRemovalSmokeTests
             new byte[] { 0, 0, 0, 0 }, SendToSolo);
         check(soloCalls == 1 && inboxes.Values.All(inbox => inbox.Count == 0),
             "a direct pickup keeps its existing session notification without showing peer dice results");
+
+        var chapterTwoPeer = Guid.NewGuid();
+        var chapterTwoInbox = new List<GameServerPacket>();
+        instance.AddMember(new DungeonInstanceMember(chapterTwoPeer, 15, 3, "S1C2",
+            _ => throw new InvalidOperationException("Room-scoped peer pickup must use conditional delivery"),
+            SendConditional: (packet, isCurrent) =>
+            {
+                if (isCurrent()) chapterTwoInbox.Add(packet);
+                return ValueTask.CompletedTask;
+            }, IsChapterTwo: true));
+        await service.BroadcastInventoryItemPickupAsync(instance, 413, 7, 7, 12,
+            null, SendToSolo, instance.RoomGeneration);
+        check(soloCalls == 2 && inboxes.Values.All(inbox => inbox.Count == 0)
+            && chapterTwoInbox.Count == 1 && chapterTwoInbox[0].ProtocolId == 39
+            && chapterTwoInbox[0].Payload.SequenceEqual(new byte[] { 0x9D, 1, 7, 0, 0, 0, 0, 0, 7, 0, 12, 0 }),
+            "a direct pickup also reaches Chapter Two observers with the real winner and ground id");
+        await service.BroadcastInventoryItemPickupAsync(instance, 414, 7, 7, 12,
+            null, SendToSolo, instance.RoomGeneration - 1);
+        check(soloCalls == 3 && chapterTwoInbox.Count == 1,
+            "a late direct pickup never removes a ground item from the observer's next room");
+
         soloInbox.Clear();
         await service.BroadcastInventoryItemPickupAsync(solo, 412, 19, 19, 13, null, packet =>
         {

@@ -40,7 +40,8 @@ public static partial class GameProtocolEngine
         return !name.Contains('\0') && name.Trim() == name;
     }
 
-    public static bool TryReadCeraShopPurchase(byte[] body, out GameCeraShopPurchaseRequest request)
+    public static bool TryReadCeraShopPurchase(byte[] body, out GameCeraShopPurchaseRequest request,
+        bool allowChapterTwoPurchasePadding = false)
     {
         request = null!;
         if (body.Length < 4 || body[2] > 1) return false;
@@ -54,7 +55,15 @@ public static partial class GameProtocolEngine
         }
         if (offset >= body.Length) return false;
         var count = body[offset++];
-        if (count is 0 or > 32 || body.Length != offset + count * 7) return false;
+        var logicalLength = offset + count * 7;
+        if (count is 0 or > 32 || logicalLength > body.Length) return false;
+        var padding = body.AsSpan(logicalLength);
+        if (!padding.IsEmpty && (gift || !allowChapterTwoPurchasePadding
+            || (body.Length - sizeof(ushort)) % 16 != 0
+            || padding.Length >= 16 || padding.ContainsAnyExcept((byte)0)))
+        {
+            return false;
+        }
         var products = new GameCeraShopPurchaseItem[count];
         for (var i = 0; i < count; i++, offset += 7)
         {

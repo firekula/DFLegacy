@@ -15,7 +15,8 @@ internal sealed record DungeonInstanceMember(
     Func<GameServerPacket, ValueTask> Send,
     string AccountName = "",
     Guid MentorGoldIncarnation = default,
-    Func<GameServerPacket, Func<bool>, ValueTask>? SendConditional = null);
+    Func<GameServerPacket, Func<bool>, ValueTask>? SendConditional = null,
+    bool IsChapterTwo = false);
 
 /// <summary>
 /// 会话镜像快照：会话在主循环顶部按 <see cref="DungeonInstance.Version"/> 决定要不要刷新自己的

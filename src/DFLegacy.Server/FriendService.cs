@@ -62,18 +62,20 @@ public sealed class FriendService
         ushort areaUserId,
         Guid sessionId,
         Func<GameServerPacket, ValueTask> send,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<CharacterRecord, ushort, GameServerPacket>? createPeerAppearance = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
         ArgumentNullException.ThrowIfNull(send);
-        _channels[characterName] = new Channel(accountName, areaUserId, sessionId, send);
+        var channel = new Channel(accountName, areaUserId, sessionId, send, createPeerAppearance);
+        _channels[characterName] = channel;
 
         // 好友行/“查看信息”/社区菜单都先查本地 user 注册表（FindByUid）：没有 USERINFO
         // 记录时点“查看信息”连 CMD 8 都不会发。登录时把当前在线好友各推一条 mode-0
         // 记录（uid = 对方的区用户 id），**必须先于快照**——快照追加条目时按名字查注册
         // 表填 entry+0x38，记录迟到就只能等 USERINFO 尾部的 RefreshAll 补。
-        await PushOnlineFriendRecordsAsync(accountName, characterName, cancellationToken);
+        await PushOnlineFriendRecordsAsync(accountName, characterName, channel, cancellationToken);
 
         // 快照每个会话只推这一次：客户端收到 NOTI 56 是无条件追加条目（不去重），
         // 同名再推就会多出一行；之后的状态变化一律只走 BUDDY_IN/BUDDY_OUT。
@@ -200,15 +202,16 @@ public sealed class FriendService
         // 落空。登录时的记录推送覆盖不到“添加这一刻”，所以在这里补；离线好友没有可用
         // uid（也还没有需要它的场景），不发——对方的记录会在下次上线播报（记录先于
         // BUDDY_IN）时补上。
-        if (isOnline)
+        if (isOnline && _channels.TryGetValue(characterName, out var recipient))
         {
-            var friendRecord = await CreateMinimalPeerRecordAsync(
+            var friendRecord = await CreatePeerRecordAsync(
                 addedName,
                 addedChannel!,
+                recipient,
                 cancellationToken);
             if (friendRecord is not null)
             {
-                await SendAsync(characterName, friendRecord, cancellationToken);
+                await TrySendToChannelAsync(characterName, recipient, friendRecord, cancellationToken);
             }
         }
     }
@@ -477,10 +480,13 @@ public sealed class FriendService
         // 发送者侧补一条目标的 mode-0 USERINFO：1:1 发送方自己的行由客户端本地追加，
         // 但好友行/“查看信息”的本地 user 注册表仍需要目标记录（没有记录时点“查看信息”
         // 连 CMD 8 都不发）。
-        var peerRecord = await CreateMinimalPeerRecordAsync(peerName, target, cancellationToken);
-        if (peerRecord is not null)
+        if (_channels.TryGetValue(characterName, out var recipient))
         {
-            await SendAsync(characterName, peerRecord, cancellationToken);
+            var peerRecord = await CreatePeerRecordAsync(peerName, target, recipient, cancellationToken);
+            if (peerRecord is not null)
+            {
+                await TrySendToChannelAsync(characterName, recipient, peerRecord, cancellationToken);
+            }
         }
     }
 
@@ -523,9 +529,10 @@ public sealed class FriendService
     /// 账号里查不到这个角色名、或通道没有可用的区用户 id（uid 0 无法构建记录）时返回
     /// null，调用方跳过推送但不影响消息本身。
     /// </remarks>
-    private async Task<GameServerPacket?> CreateMinimalPeerRecordAsync(
+    private async Task<GameServerPacket?> CreatePeerRecordAsync(
         string peerName,
         Channel channel,
+        Channel recipient,
         CancellationToken cancellationToken)
     {
         if (channel.AreaUserId == 0)
@@ -539,6 +546,11 @@ public sealed class FriendService
         if (character is null)
         {
             return null;
+        }
+
+        if (recipient.CreatePeerAppearance is { } createAppearance)
+        {
+            return createAppearance(character, channel.AreaUserId);
         }
 
         return GameProtocolEngine.CreateCurrentCharacterInfo(
@@ -648,6 +660,7 @@ public sealed class FriendService
     private async Task PushOnlineFriendRecordsAsync(
         string accountName,
         string characterName,
+        Channel recipient,
         CancellationToken cancellationToken)
     {
         var friends = await _store.GetFriendsAsync(accountName, cancellationToken);
@@ -658,10 +671,10 @@ public sealed class FriendService
                 continue;
             }
 
-            var record = await CreateMinimalPeerRecordAsync(friend.Name, friendChannel, cancellationToken);
+            var record = await CreatePeerRecordAsync(friend.Name, friendChannel, recipient, cancellationToken);
             if (record is not null)
             {
-                await SendAsync(characterName, record, cancellationToken);
+                await TrySendToChannelAsync(characterName, recipient, record, cancellationToken);
             }
         }
     }
@@ -686,12 +699,13 @@ public sealed class FriendService
                 // 客户端后续按名字刷新 entry+0x38（“查看信息”的菜单门要用）与 uid 反查
                 // 表。“查看信息”从本地 user 注册表取 uid（没有记录时连 CMD 8 都不发），
                 // 悄悄话也要按 uid 反查发送者名字。记录用存档角色的正名构建
-                // （CreateMinimalPeerRecordAsync）。
+                // （CreatePeerRecordAsync）。
                 if (isOnline && _channels.TryGetValue(characterName, out var onlineChannel))
                 {
-                    var friendRecord = await CreateMinimalPeerRecordAsync(
+                    var friendRecord = await CreatePeerRecordAsync(
                         characterName,
                         onlineChannel,
+                        channel,
                         cancellationToken);
                     if (friendRecord is not null)
                     {
@@ -833,5 +847,6 @@ public sealed class FriendService
         string AccountName,
         ushort AreaUserId,
         Guid SessionId,
-        Func<GameServerPacket, ValueTask> Send);
+        Func<GameServerPacket, ValueTask> Send,
+        Func<CharacterRecord, ushort, GameServerPacket>? CreatePeerAppearance);
 }

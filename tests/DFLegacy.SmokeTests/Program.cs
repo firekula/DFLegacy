@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+ChapterTwoInventorySmokeTests.Run(Check);
+if (args.Contains("--chapter-two-inventory"))
+{
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Chapter Two inventory smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--channel-exp-only"))
 {
     DungeonClearExperienceSmokeTests.Run(Check);

@@ -26,9 +26,20 @@ public sealed record GameServerPacket(byte Type, byte ProtocolId, byte[] Payload
 
     public async ValueTask WriteAsync(Stream stream, CancellationToken cancellationToken = default)
     {
+        if (stream is IGameServerPacketSink sink)
+        {
+            await sink.WriteGamePacketAsync(this, cancellationToken);
+            return;
+        }
+
         await stream.WriteAsync(Encode(), cancellationToken);
         await stream.FlushAsync(cancellationToken);
     }
+}
+
+public interface IGameServerPacketSink
+{
+    ValueTask WriteGamePacketAsync(GameServerPacket packet, CancellationToken cancellationToken);
 }
 
 /// <summary>

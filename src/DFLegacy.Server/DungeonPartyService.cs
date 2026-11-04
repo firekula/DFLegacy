@@ -365,7 +365,7 @@ public sealed class DungeonPartyService : BackgroundService
 
     /// <summary>
     /// 原生 NOTI39 消费四槽骰子分，并仅在 winner uid 等于本地 uid 时入背包。
-    /// 骰子结果必须先到全队，再由调用方广播地面移除；直取仍只通知得主会话。
+    /// 骰子结果必须先到全队，再由调用方广播地面移除。第二章旁观端也用此通知移除直取物。
     /// </summary>
     internal async Task BroadcastInventoryItemPickupAsync(
         DungeonInstance instance,
@@ -374,14 +374,32 @@ public sealed class DungeonPartyService : BackgroundService
         ushort winnerUserId,
         ushort destinationSlot,
         IReadOnlyList<byte>? routingScores,
-        Func<GameServerPacket, ValueTask> sendToWinner)
+        Func<GameServerPacket, ValueTask> sendToWinner,
+        long? roomGeneration = null)
     {
         var packet = GameProtocolEngine.CreateInventoryItemPickup(
             groundId, pickerUserId, destinationSlot, routingScores, winnerUserId);
         if (instance.IsParty && routingScores?.Any(score => score != 0) == true)
+        {
             await BroadcastToMembersAsync(instance, packet);
-        else
-            await sendToWinner(packet);
+            return;
+        }
+
+        await sendToWinner(packet);
+        if (!instance.IsParty || roomGeneration is not { } generation) return;
+
+        foreach (var member in instance.Members)
+        {
+            if (instance.RoomGeneration != generation) break;
+            if (!member.IsChapterTwo || member.AreaUserId == winnerUserId
+                || member.SendConditional is not { } sendConditional) continue;
+
+            // Ground ids are room-local. Check again inside the recipient's write gate.
+            await CrossSessionDelivery.SendSafelyAsync(_logger, packet,
+                CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
+                value => sendConditional(value, () => instance.RoomGeneration == generation
+                    && ReferenceEquals(instance.FindMember(member.CharacterId), member)));
+        }
     }
 
     // This client ignores the official SERVER_BROADCAST subtype 5. The

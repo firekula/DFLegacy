@@ -3530,16 +3530,26 @@ public static partial class GameProtocolEngine
         return true;
     }
 
-    public static bool TryParseGetItemCommand(ReadOnlySpan<byte> body, out GameGetItemCommand command)
+    public static bool TryParseGetItemCommand(ReadOnlySpan<byte> body, out GameGetItemCommand command,
+        bool chapterTwo = false)
     {
         command = default;
         // ACT1: sequence:u16, ground:u16, route:u8, client-rarity:u8, token:u16.
-        // The later server reader's extra seed/position fields are not present.
-        if (body.Length != 8) return false;
+        if (chapterTwo)
+        {
+            // The captured Chapter Two AES body has the same six-byte prefix,
+            // eight additional bytes, and four trailing zero bytes.
+            if (body.Length != 18 || body[14..].ContainsAnyExcept((byte)0)) return false;
+        }
+        else if (body.Length != 8)
+        {
+            return false;
+        }
+
         command = new GameGetItemCommand(
             BinaryPrimitives.ReadUInt16LittleEndian(body.Slice(2, 2)),
             body[4] == 1, body[5],
-            BinaryPrimitives.ReadUInt16LittleEndian(body.Slice(6, 2)));
+            chapterTwo ? (ushort)0 : BinaryPrimitives.ReadUInt16LittleEndian(body.Slice(6, 2)));
         return true;
     }
 
@@ -4237,9 +4247,7 @@ public static partial class GameProtocolEngine
             writer.Write((byte)appearanceItems.Length);
             foreach (var item in appearanceItems)
             {
-                writer.Write((byte)item.Slot);
-                writer.Write(item.ItemId);
-                writer.Write(item.State);
+                WriteCompactAppearanceItem(writer, item, includeUseLockDays);
             }
 
             writer.Write((byte)0); // character-list extension state
@@ -4328,9 +4336,7 @@ public static partial class GameProtocolEngine
             // USERINFO mode 0 carries compact appearance entries. Unlike the
             // ten-byte mode-1 inventory object record, this is safe for the
             // locally controlled town actor.
-            writer.Write((byte)item.Slot);
-            writer.Write(item.ItemId);
-            writer.Write(item.State);
+            WriteCompactAppearanceItem(writer, item, includeChapter2ActorFields);
         }
 
         writer.Write((byte)0); // town-entity extension state
@@ -4390,6 +4396,18 @@ public static partial class GameProtocolEngine
             NotificationPacketType,
             UserInfoNotification,
             payload.ToArray());
+    }
+
+    private static void WriteCompactAppearanceItem(BinaryWriter writer, GameInventoryEntry item, bool chapterTwo)
+    {
+        writer.Write((byte)item.Slot);
+        writer.Write(item.ItemId);
+        writer.Write(item.State);
+        if (chapterTwo)
+        {
+            // Modes 0 and 2 share the reader. Zero skips the optional slot value at 0x41ec96.
+            writer.Write(0u);
+        }
     }
 
     public static GameServerPacket CreateCurrentCharacterDetails(

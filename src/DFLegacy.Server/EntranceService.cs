@@ -389,7 +389,16 @@ public sealed class EntranceService(
 
             try
             {
-                using var stream = new SerializedWriteStream(client.GetStream());
+                using var stream = new SerializedWriteStream(client.GetStream(), packet =>
+                {
+                    if (!chapter2CheckConnectionAccepted) return packet;
+                    var projected = ChapterTwoPacketProjection.Apply(packet);
+                    if (!ReferenceEquals(packet, projected))
+                    {
+                        LogPacket("TX-S1C2", runtimeSession, projected);
+                    }
+                    return projected;
+                });
                 async Task SendWarehouseStateAsync()
                 {
                     var warehouseRefresh = CreateWarehousePacket(
@@ -3300,6 +3309,7 @@ public sealed class EntranceService(
                     ushort pickerUserId,
                     Guid pickupId)
                 {
+                    var pickupRoomGeneration = dungeonInstance?.RoomGeneration;
                     // Observe only the original grant path. Committed means storage accepted the write;
                     // broadcasts can still fail later and never change this persistence outcome.
                     var testInstance = options.Debug.TestControl.Enabled && options.Debug.ClientOverlay.Enabled ? dungeonInstance : null;
@@ -3428,7 +3438,7 @@ public sealed class EntranceService(
                             await dungeonPartyService.BroadcastInventoryItemPickupAsync(
                                 dungeonInstance!, groundId, pickerUserId, localUserId,
                                 ushort.MaxValue, routingScores,
-                                SendPickupReplyToRequesterAsync);
+                                SendPickupReplyToRequesterAsync, pickupRoomGeneration);
 
                             var inventoryRefresh = CreateMainInventoryPacket(
                                 currentGold,
@@ -3562,7 +3572,7 @@ public sealed class EntranceService(
                             await dungeonPartyService.BroadcastInventoryItemPickupAsync(
                                 dungeonInstance!, groundId, pickerUserId, localUserId,
                                 creaturePickupPlan.DestinationSlot, routingScores,
-                                SendPickupReplyToRequesterAsync);
+                                SendPickupReplyToRequesterAsync, pickupRoomGeneration);
 
                             foreach (var creatureRefresh in
                                      CreateCreatureInventoryPackets(
@@ -3650,7 +3660,7 @@ public sealed class EntranceService(
                             await dungeonPartyService.BroadcastInventoryItemPickupAsync(
                                 dungeonInstance!, groundId, pickerUserId, localUserId,
                                 avatarPickupPlan.DestinationSlot, routingScores,
-                                SendPickupReplyToRequesterAsync);
+                                SendPickupReplyToRequesterAsync, pickupRoomGeneration);
 
                             var avatarRefresh = CreateAvatarInventoryPacket(
                                 avatarInventory.Values);
@@ -3712,7 +3722,7 @@ public sealed class EntranceService(
                         await dungeonPartyService.BroadcastInventoryItemPickupAsync(
                             dungeonInstance!, groundId, pickerUserId, localUserId,
                             pickupPlan.DestinationSlot, routingScores,
-                            SendPickupReplyToRequesterAsync);
+                            SendPickupReplyToRequesterAsync, pickupRoomGeneration);
 
                         var itemRefresh = CreateMainInventoryPacket(
                             currentGold,
@@ -3953,7 +3963,7 @@ public sealed class EntranceService(
                                 checked((byte)slotIndex),
                                 activeCharacter.Name,
                                 CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
-                                SendConditional: SendConditionalDungeonPacketAsync),
+                                SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: chapter2CheckConnectionAccepted),
                             out var room))
                     {
                         logger.LogWarning(
@@ -6346,7 +6356,12 @@ public sealed class EntranceService(
                                 localUserId,
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
-                                serverToken);
+                                serverToken,
+                                createPeerAppearance: chapter2CheckConnectionAccepted
+                                    ? (peer, uid) => CreateTownAppearancePacket(peer, uid, peer.Equipment ?? [],
+                                        peer.CreatureInventory ?? [], hasBlackDiamond: false,
+                                        hasPrivateStorePermission: false, includeChapter2ActorFields: true)
+                                    : null);
 
                             // External absolute Gold notices are sampled again on this owner's safe point.
                             // Capture this attachment's queue; retired callbacks cannot enqueue into a new actor.
@@ -6503,7 +6518,7 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.SendMessageCommand)
                         {
                             if (activeCharacter is null
-                                || !TryReadSendMessage(request.Body, out var messageRequest))
+                                || !TryReadSendMessage(request.Body, out var messageRequest, chapter2Decoded))
                             {
                                 logger.LogWarning(
                                     "Rejected malformed SEND_MESSAGE request for character {CharacterId}: body={Body}.",
@@ -11751,7 +11766,8 @@ public sealed class EntranceService(
                             }
 
                             if (activeCharacter is null
-                                || !GameProtocolEngine.TryReadCeraShopPurchase(request.Body, out var purchaseRequest))
+                                || !GameProtocolEngine.TryReadCeraShopPurchase(
+                                    request.Body, out var purchaseRequest, chapter2Decoded))
                             {
                                 var error = GameProtocolEngine.CreateCeraShopBuyError(
                                     errorCode: 4);
@@ -13886,7 +13902,7 @@ public sealed class EntranceService(
                                     PartySlot: 0,
                                     activeCharacter.Name,
                                     CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
-                                    SendConditional: SendConditionalDungeonPacketAsync));
+                                    SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: chapter2CheckConnectionAccepted));
                                 dungeonInstance.EnterDetachedRoom(new DungeonRoomDefinition(
                                     GameProtocolEngine.TutorialMapId,
                                     DungeonMapType.Boss,
@@ -14058,7 +14074,7 @@ public sealed class EntranceService(
                                             checked((byte)leaderSlotIndex),
                                             activeCharacter.Name,
                                             CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
-                                            SendConditional: SendConditionalDungeonPacketAsync),
+                                            SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: chapter2CheckConnectionAccepted),
                                         out var liveRoom))
                                 {
                                     logger.LogWarning(
@@ -14131,7 +14147,7 @@ public sealed class EntranceService(
                                     checked((byte)leaderSlotIndex),
                                     activeCharacter.Name,
                                     CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
-                                    SendConditional: SendConditionalDungeonPacketAsync)))
+                                    SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: chapter2CheckConnectionAccepted)))
                             {
                                 logger.LogWarning(
                                     "Party dungeon entry aborted for {Name}: instance {PartyId} has already started town return.",
@@ -14949,10 +14965,15 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.GetItemCommand)
                         {
-                            if (!GameProtocolEngine.TryParseGetItemCommand(request.Body, out var pickupCommand)
+                            if (!GameProtocolEngine.TryParseGetItemCommand(request.Body, out var pickupCommand,
+                                    chapterTwo: chapter2Decoded)
                                 || currentDungeonId == 0
                                 || activeCharacter is null)
                             {
+                                if (chapter2Decoded && activeCharacter is not null)
+                                {
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemSilentRejection());
+                                }
                                 continue;
                             }
 
@@ -14976,6 +14997,11 @@ public sealed class EntranceService(
                                     "Ignored invalid or duplicate pickup of ground item {GroundId} for user {UserId}.",
                                     groundId,
                                     localUserId);
+                                if (chapter2Decoded)
+                                {
+                                    // The Chapter Two error handler clears the local pickup wait state.
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemSilentRejection());
+                                }
                                 continue;
                             }
 
@@ -17901,7 +17927,8 @@ public sealed class EntranceService(
 
     internal static bool TryReadSendMessage(
         byte[] body,
-        out SendMessageRequest request)
+        out SendMessageRequest request,
+        bool chapterTwo = false)
     {
         request = default;
         const int payloadOffset = sizeof(ushort);
@@ -17924,20 +17951,27 @@ public sealed class EntranceService(
             body.AsSpan(
                 payloadOffset + sizeof(byte) + sizeof(ushort) + sizeof(uint),
                 sizeof(uint)));
-        if (messageLength is 0 or > 0xFF)
+        if (messageLength is 0 or > 0xFF || messageLength > body.Length - messageOffset)
         {
             return false;
         }
 
         // 悄悄话（类型 1/7）与 1:1 窗口消息（类型 18）的正文后面还有一段
-        // "对端名字长度 + 对端名字"尾缀，其余类型仍要求正文正好吃掉剩余全部载荷。
+        // "对端名字长度 + 对端名字"尾缀，其余类型以正文长度定位报文边界。
         var expectsTargetName = ExpectsPeerName(messageType);
         var expectedRemainder = expectsTargetName
             ? body.Length - messageOffset - (int)messageLength
             : 0;
         if (!expectsTargetName && messageLength != body.Length - messageOffset)
         {
-            return false;
+            // A captured Ver_OB_216 type 2 dungeon message ends at the next AES block boundary.
+            var tail = body.AsSpan(messageOffset + (int)messageLength);
+            if (!chapterTwo || messageType != (byte)GameMessageType.Type02LightCyan
+                || (body.Length - payloadOffset) % 16 != 0
+                || tail.Length >= 16 || tail.ContainsAnyExcept((byte)0))
+            {
+                return false;
+            }
         }
 
         if (expectsTargetName && (expectedRemainder < sizeof(uint) + 1
