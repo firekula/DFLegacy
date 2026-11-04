@@ -17,6 +17,14 @@ if (args.Contains("--chapter-two-inventory"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--chapter-two-free-revival"))
+{
+    await ChapterTwoFreeRevivalSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Chapter Two free revival smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--channel-exp-only"))
 {
     DungeonClearExperienceSmokeTests.Run(Check);
@@ -347,6 +355,7 @@ await TestCeraSmokeTests.RunAsync(Check);
 await WebPanelsSmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);
+await ChapterTwoFreeRevivalSmokeTests.RunAsync(Check);
 await FriendSmokeTests.RunAsync(Check);
 await TradeSmokeTests.RunAsync(Check);
 await PartySmokeTests.RunAsync(Check);

@@ -14,6 +14,8 @@ public sealed class ServerOptions
     public bool EnableTestCeraTopUp { get; set; } = false;
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
     public bool SkipUnsupportedChapterTwoCashContainers { get; set; }
+    // Loopback Chapter Two lab only. Zero leaves the event disabled.
+    public byte ChapterTwoFreeRevivalCoinAmount { get; set; }
     public string SkillScriptPath { get; set; } = "";
     public string OriginalSkillScriptPath { get; set; } = "";
     public TownSyncOptions TownSync { get; set; } = new();

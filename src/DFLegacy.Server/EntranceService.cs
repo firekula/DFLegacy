@@ -229,6 +229,9 @@ public sealed class EntranceService(
                 && client.Client.RemoteEndPoint is IPEndPoint peer && IPAddress.IsLoopback(peer.Address)
                 && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER") == "1";
             var chapter2CheckConnectionAccepted = false;
+            var freeRevivalCoinAmount = options.ChapterTwoFreeRevivalCoinAmount <= GameProtocolEngine.MaximumFreeRevivalCoinGrant
+                ? options.ChapterTwoFreeRevivalCoinAmount : (byte)0;
+            var freeRevivalCoinStatusDay = 0;
             var accountName = string.Empty;
             var accountUid = AccountUidRules.InvalidUid;
             ChannelLoginIdentity? channelLoginIdentity = null;
@@ -1392,15 +1395,33 @@ public sealed class EntranceService(
                     return true;
                 }
 
+                bool CanAccessFreeRevivalCoinEvent() => freeRevivalCoinAmount != 0
+                    && activeCharacter is not null && townTicket is not null
+                    && currentDungeonId == 0 && !inDungeonSelection;
+
+                async Task SendFreeRevivalCoinEligibilityAsync()
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var eligible = CanAccessFreeRevivalCoinEvent()
+                        && await store.CanClaimFreeRevivalCoinsAsync(accountName, now, serverToken);
+                    await SendTownPacketAsync(GameProtocolEngine.CreateFreeRevivalCoinEligibility(eligible), serverToken);
+                    freeRevivalCoinStatusDay = JsonGameStore.GetFatigueDayKey(now);
+                }
+
                 async Task SendTownFatigueStateAsync()
                 {
                     await RefreshPendingFatigueResetAsync();
                     // AREA_USERS constructs the town HUD. EVENT_INFO then selects
                     // and initializes its normal/premium fatigue-bar resources.
-                    var eventInfo = GameProtocolEngine.CreateEventInfo();
+                    var eventInfo = GameProtocolEngine.CreateEventInfo(chapter2CheckConnectionAccepted && freeRevivalCoinAmount != 0
+                        ? GameProtocolEngine.FreeRevivalCoinEventFlag : 0);
                     await eventInfo.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, eventInfo);
+                    if (chapter2CheckConnectionAccepted)
+                    {
+                        await SendFreeRevivalCoinEligibilityAsync();
+                    }
 
                     var premiumFatigue = HasActivePremiumService(
                             GameProtocolEngine.BlackDiamondServiceType)
@@ -5071,6 +5092,33 @@ public sealed class EntranceService(
                     {
                         logger.LogWarning("Rejected frame with bad CRC32 from {SessionId}", runtimeSession.Id);
                         break;
+                    }
+
+                    if (chapter2CheckConnectionAccepted && request.Type == GameProtocolEngine.CommandPacketType
+                        && request.ProtocolId == GameProtocolEngine.ClaimFreeRevivalCoinCommand)
+                    {
+                        byte granted = 0;
+                        if (activeCharacter is { } claimant && CanAccessFreeRevivalCoinEvent()
+                            && request.Body.Length == sizeof(ushort) && request.DeclaredCrc32 != 0 && request.HasValidCrc32
+                            && await store.ClaimFreeRevivalCoinsAsync(accountName, claimant.Id, freeRevivalCoinAmount,
+                                DateTimeOffset.UtcNow, itemCatalog, serverToken) is { } updated)
+                        {
+                            mainInventory = updated.Inventory!.ToDictionary(item => item.Slot);
+                            activeCharacter = claimant with { Inventory = updated.Inventory };
+                            granted = freeRevivalCoinAmount;
+                        }
+
+                        // The native CMD190 success handler applies the count itself. A separate
+                        // inventory update here could apply the same change twice on the client.
+                        await SendTownPacketAsync(GameProtocolEngine.CreateFreeRevivalCoinReply(granted), serverToken);
+                        await SendFreeRevivalCoinEligibilityAsync();
+                        continue;
+                    }
+
+                    if (chapter2CheckConnectionAccepted && CanAccessFreeRevivalCoinEvent()
+                        && freeRevivalCoinStatusDay != JsonGameStore.GetFatigueDayKey(DateTimeOffset.UtcNow))
+                    {
+                        await SendFreeRevivalCoinEligibilityAsync();
                     }
 
                     if (isPvpChannel && request.Type == GameProtocolEngine.CommandPacketType

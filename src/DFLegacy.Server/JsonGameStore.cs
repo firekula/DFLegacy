@@ -387,6 +387,8 @@ public sealed record AccountRecord(
     public int GiftReceiveYearMonth { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int GiftReceiveCount { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int FreeRevivalCoinClaimDay { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AccountBan? Ban { get; init; }
 }

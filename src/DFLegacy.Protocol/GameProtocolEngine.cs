@@ -354,6 +354,10 @@ public static partial class GameProtocolEngine
     public const byte HatchCreatureCommand = 105;
     public const byte ResponseCreatureCommand = 104;
     public const byte EventInfoNotification = 120;
+    public const uint FreeRevivalCoinEventFlag = 1u << 4;
+    public const byte FreeRevivalCoinEligibilityNotification = 178;
+    public const byte ClaimFreeRevivalCoinCommand = 190;
+    public const byte MaximumFreeRevivalCoinGrant = 126;
     public const byte CreatureMessageNotification = 126;
     public const byte BossDieCheckNotification = 127;
     public const byte CreatureScriptMessageNotification = 131;
@@ -2445,6 +2449,12 @@ public static partial class GameProtocolEngine
             EventInfoNotification,
             payload.ToArray());
     }
+
+    public static GameServerPacket CreateFreeRevivalCoinEligibility(bool eligible) =>
+        new(NotificationPacketType, FreeRevivalCoinEligibilityNotification, [eligible ? (byte)0 : (byte)1]);
+
+    public static GameServerPacket CreateFreeRevivalCoinReply(byte count) =>
+        new(CommandPacketType, ClaimFreeRevivalCoinCommand, [1, count]);
 
     public static GameServerPacket CreateDungeonPermissions(
         IReadOnlyList<GameDungeonPermissionEntry> permissions)
