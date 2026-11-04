@@ -71,7 +71,13 @@ internal static class NewCharacterDefaultsSmokeTests
             && preserved.CreatureInventory is [{ ItemId: 2000, CountOrValue: 1 }],
             "reload preserves all existing funded character possessions and the shared wallet");
         store = reloaded;
-        await Select("ordinary", byUid.Slot);
+        var shanghaiOffset = TimeSpan.FromHours(8);
+        var resetBoundary = new DateTimeOffset(2026, 11, 4, 6, 0, 0, shanghaiOffset);
+        check(JsonGameStore.GetFatigueDayKey(resetBoundary.AddSeconds(-1).ToUniversalTime()) == 20261103
+            && JsonGameStore.GetFatigueDayKey(resetBoundary.ToUniversalTime()) == 20261104,
+            "a UTC host observes the 06:00 Beijing fatigue boundary");
+        await store.SetCharacterUsedFatigueAsync(byUid.Id, 40);
+        await Select("ordinary", byUid.Slot, exerciseFatigueReset: true);
         Empty(check, (await store.GetCharactersAsync("ordinary")).Single(c => c.Id == byUid.Id), "first ordinary selection");
         await Select("testing", manual.Slot);
         Empty(check, (await store.GetCharactersAsync("testing")).Single(c => c.Id == manual.Id), "first manual test selection");
@@ -109,7 +115,7 @@ internal static class NewCharacterDefaultsSmokeTests
         Console.WriteLine($"New-character defaults checks: {checks}");
         Console.WriteLine($"New-character defaults artifacts: {root}");
 
-        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10)
+        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10, bool exerciseFatigueReset = false)
         {
             var services = new ServiceCollection();
             services.AddLogging();
@@ -135,6 +141,35 @@ internal static class NewCharacterDefaultsSmokeTests
             var service = ActivatorUtilities.CreateInstance<EntranceService>(provider);
             await using var connection = await Connection.CreateAsync(service, options);
             await connection.LoginAsync(userName, slot);
+            if (exerciseFatigueReset)
+            {
+                var now = DateTimeOffset.UtcNow.ToOffset(shanghaiOffset);
+                var tomorrow = new DateTimeOffset(now.Date.AddDays(1).AddHours(6), shanghaiOffset);
+                var reset = await store.ResetFatigueForCurrentDayAsync(tomorrow);
+                check(reset.CharacterIds.Contains(byUid.Id), "fatigue reset persists the new day before notifying online players");
+                var sessions = provider.GetRequiredService<CharacterSessionRegistry>();
+                check(sessions.NotifyFatigueReset(byUid.Id), "the online fatigue reset reaches the selected character session");
+                try
+                {
+                    var packet = await connection.ReadAsync(0, GameProtocolEngine.FatigueNotification, TimeSpan.FromSeconds(2));
+                    check(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload) == 0,
+                        "an idle online player receives the refreshed fatigue bar without sending a packet");
+                }
+                catch (TimeoutException)
+                {
+                    check(false, "an idle online player receives the refreshed fatigue bar without sending a packet");
+                }
+                await store.SetCharacterUsedFatigueAsync(byUid.Id, 3);
+                var sameDay = await store.ResetFatigueForCurrentDayAsync(tomorrow.AddMinutes(1));
+                var clockBack = await store.ResetFatigueForCurrentDayAsync(tomorrow.AddSeconds(-1));
+                check(!sameDay.NewFatigueDay && !clockBack.NewFatigueDay
+                    && (await store.GetCharacterAsync(userName, byUid.Id))?.UsedFatigue == 3,
+                    "rechecking or rolling back the clock does not refresh fatigue twice");
+                check(sessions.NotifyFatigueReset(byUid.Id), "delayed fatigue notification still reaches the session");
+                var refreshed = await connection.ReadAsync(0, GameProtocolEngine.FatigueNotification);
+                check(BinaryPrimitives.ReadUInt16LittleEndian(refreshed.Payload) == 3,
+                    "a delayed refresh uses current persisted fatigue instead of clearing new usage");
+            }
             if (expectEmpty)
             {
                 var expectedCount = expectedRevivalCoins == 0 ? 2 : 3;

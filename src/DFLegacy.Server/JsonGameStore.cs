@@ -742,7 +742,7 @@ public sealed partial class JsonGameStore(
                 stateChanged |= MigrateItemInstanceIdsLocked();
                 await SettleAvatarLifetimesAtStartupLockedAsync(cancellationToken);
                 if (ResetFatigueForNewDayLocked(
-                        DateTimeOffset.Now,
+                        DateTimeOffset.UtcNow,
                         out var startupResetCharacterIds))
                 {
                     stateChanged = true;
@@ -766,7 +766,7 @@ public sealed partial class JsonGameStore(
             _nextCharacterNo = 1;
             _nextNormalAccountUid = AccountUidRules.NormalUidStart;
             _nextTestAccountUid = 1;
-            _fatigueDayKey = GetFatigueDayKey(DateTimeOffset.Now);
+            _fatigueDayKey = GetFatigueDayKey(DateTimeOffset.UtcNow);
             if (!options.SeedTestAccount)
             {
                 _accounts = [];
@@ -5859,13 +5859,13 @@ public sealed partial class JsonGameStore(
     }
 
     public async Task<FatigueResetResult> ResetFatigueForCurrentDayAsync(
-        DateTimeOffset localNow,
+        DateTimeOffset now,
         CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (!ResetFatigueForNewDayLocked(localNow, out var characterIds))
+            if (!ResetFatigueForNewDayLocked(now, out var characterIds))
             {
                 return new FatigueResetResult(
                     false,
@@ -5876,9 +5876,9 @@ public sealed partial class JsonGameStore(
 
             await SaveLockedAsync(cancellationToken);
             logger.LogInformation(
-                "Advanced fatigue day to {FatigueDayKey} at local time {LocalTime} and reset {CharacterCount} character(s).",
+                "Advanced fatigue day to {FatigueDayKey} at Beijing time {BeijingTime} and reset {CharacterCount} character(s).",
                 _fatigueDayKey,
-                localNow,
+                now.ToOffset(FatigueResetService.BeijingOffset),
                 characterIds.Length);
             return new FatigueResetResult(
                 true,
@@ -5892,11 +5892,12 @@ public sealed partial class JsonGameStore(
         }
     }
 
-    public static int GetFatigueDayKey(DateTimeOffset localNow)
+    public static int GetFatigueDayKey(DateTimeOffset now)
     {
-        var fatigueDate = localNow.TimeOfDay < TimeSpan.FromHours(6)
-            ? localNow.Date.AddDays(-1)
-            : localNow.Date;
+        var beijingTime = now.ToOffset(FatigueResetService.BeijingOffset);
+        var fatigueDate = beijingTime.TimeOfDay < FatigueResetService.ResetTime
+            ? beijingTime.Date.AddDays(-1)
+            : beijingTime.Date;
         return checked(
             fatigueDate.Year * 10_000
             + fatigueDate.Month * 100
@@ -6489,11 +6490,11 @@ public sealed partial class JsonGameStore(
     }
 
     private bool ResetFatigueForNewDayLocked(
-        DateTimeOffset localNow,
+        DateTimeOffset now,
         out Guid[] characterIds)
     {
-        var fatigueDayKey = GetFatigueDayKey(localNow);
-        if (_fatigueDayKey == fatigueDayKey)
+        var fatigueDayKey = GetFatigueDayKey(now);
+        if (_fatigueDayKey >= fatigueDayKey)
         {
             characterIds = [];
             return false;

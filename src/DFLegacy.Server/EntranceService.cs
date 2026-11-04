@@ -1379,9 +1379,22 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, stamina);
                 }
 
+                async Task<bool> RefreshPendingFatigueResetAsync()
+                {
+                    if (activeCharacter is null || Interlocked.Exchange(ref pendingFatigueReset, 0) == 0)
+                        return false;
+
+                    var character = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                    if (character is null)
+                        return false;
+
+                    activeCharacter = activeCharacter with { UsedFatigue = character.UsedFatigue };
+                    return true;
+                }
+
                 async Task SendTownFatigueStateAsync()
                 {
-                    Interlocked.Exchange(ref pendingFatigueReset, 0);
+                    await RefreshPendingFatigueResetAsync();
                     // AREA_USERS constructs the town HUD. EVENT_INFO then selects
                     // and initializes its normal/premium fatigue-bar resources.
                     var eventInfo = GameProtocolEngine.CreateEventInfo();
@@ -4787,6 +4800,9 @@ public sealed class EntranceService(
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
                         // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
                         var partyMembershipChanged = partyMembershipWake.Capture();
+                        if (await RefreshPendingFatigueResetAsync() && currentDungeonId == 0)
+                            await SendTownFatigueStateAsync();
+
                         var partyMailboxTick = EntranceSessionReadWait.ShouldPollPartyMailbox(
                             isChannelPort,
                             activeCharacter is not null,
@@ -5267,15 +5283,8 @@ public sealed class EntranceService(
                         LogPacket("TX", runtimeSession, ceraNotification);
                     }
 
-                    if (Volatile.Read(ref pendingFatigueReset) != 0
-                        && activeCharacter is not null)
-                    {
-                        activeCharacter = activeCharacter with { UsedFatigue = 0 };
-                        if (currentDungeonId == 0)
-                        {
-                            await SendTownFatigueStateAsync();
-                        }
-                    }
+                    if (await RefreshPendingFatigueResetAsync() && currentDungeonId == 0)
+                        await SendTownFatigueStateAsync();
 
                     if (isChannelPort)
                     {
@@ -5688,9 +5697,7 @@ public sealed class EntranceService(
                                     pendingPremiumUpdates.Enqueue((serviceType, remainSeconds));
                                 },
                                 value => { ceraCashInvalidation.Invalidate(value); partyMembershipWake.Pulse(); },
-                                () => Interlocked.Exchange(
-                                    ref pendingFatigueReset,
-                                    1),
+                                () => { Interlocked.Exchange(ref pendingFatigueReset, 1); partyMembershipWake.Pulse(); },
                                 (messageType, targetAreaUserId, messageBytes) =>
                                     _ = SendTypedMessageNotificationAsync(
                                         messageType,
