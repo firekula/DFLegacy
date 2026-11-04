@@ -64,6 +64,12 @@
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
 | [DEPLOYMENT_MANAGER.md](DEPLOYMENT_MANAGER.md) | 跨平台部署管理器、首次设置、客户端包导出及验证范围。 |
 
+## 本次更新
+
+- 新增七个 ACT1 地区频道。通关结算按所选频道读取 PVF 地区经验比例，启用方法见[地区经验频道](DEPLOYMENT_MANAGER.md#地区经验频道)。
+- 恢复仓库升级按钮。实机点击已打开购买确认框，仓库扩容沿用商城购买流程。
+- 服务端发布至 GHCR。管理后台可生成 x86 和 x64 玩家包。登录器按架构和普通／测试类型从 GitHub Releases 自动更新。见[部署指南](DEPLOYING.md#客户端自动更新)。
+
 ## 一键部署与自动发行
 
 新增 `DFLegacy.Manager`，Windows、Linux、macOS 与 Docker 共用中文 Web 管理页面。本机启动管理器会打开浏览器；管理器与游戏服务分别运行，停止游戏服务后仍可修改配置、查看日志、初始化游戏管理员及导出客户端补丁/登录器。
@@ -72,7 +78,7 @@
 - 首次设置凭据只使用一次，保存在数据目录 `management/setup-token.txt`；双击启动时由本机浏览器自动携带。管理账号与游戏账号分开，发行模板不生成 `test/test`。
 - 服务端配置、存档、日志保存在独立 `data/` 目录。升级先停服、备份数据，将新版本解压到新目录，再复用数据目录；不要直接覆盖正在运行的安装。
 - 各平台和容器都使用同版本预构建的 Windows 客户端资源导出 ZIP，包含空凭据登录器、IJL15、配置和摘要。游戏内充值/黑钻页面保留 460×315 布局，GM 后台和玩家中心继续使用普通浏览器。
-- `.gitea/workflows/release.yaml` 在提交后测试并构建；`main` 成功后发布开发预发布版，`vX.Y.Z` 标签发布正式版和镜像。需要先配置 Windows/Linux Runner 与 Registry，见 [部署说明](DEPLOYING.md)。
+- Gitea 在提交后运行源码测试。服务端 Docker 镜像与双架构客户端更新使用 GitHub 分发，见 [构建与发布](BUILDING.md#源码与产物发布)。
 
 这些是新增部署能力；真实客户端跨机进图、macOS 原生运行和远端 CI 发布的验收状态，见 [部署管理说明](DEPLOYMENT_MANAGER.md)。
 

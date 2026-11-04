@@ -5,11 +5,16 @@ services:
     restart: unless-stopped
     stop_grace_period: 45s
     environment:
+      DFLegacy__EnableTestCeraTopUp: ${ENABLE_TEST_CERA_TOP_UP:-false}
+      DFLEGACY_UPDATE_PUBLIC_URL: ${UPDATE_PUBLIC_URL:-}
       DFLEGACY_MANAGER_ALLOWED_HOSTS: ${MANAGER_ALLOWED_HOSTS:-}
       DFLEGACY_MANAGER_TRUSTED_PROXIES: ${MANAGER_TRUSTED_PROXIES:-}
     ports:
+      - "${UPDATE_BIND:-127.0.0.1}:${UPDATE_PORT:-18083}:18083/tcp"
       - "${MANAGER_BIND:-127.0.0.1}:${MANAGER_PORT:-18080}:18080/tcp"
       - "${GAME_API_BIND:-0.0.0.0}:${GAME_API_PORT:-8081}:8081/tcp"
+      - "${GM_PANEL_BIND:-0.0.0.0}:${GM_PANEL_PORT:-18081}:18081/tcp"
+      - "${PLAYER_PANEL_BIND:-0.0.0.0}:${PLAYER_PANEL_PORT:-18082}:18082/tcp"
       - "${GAME_BIND:-0.0.0.0}:2311:2311/tcp"
       - "${GAME_BIND:-0.0.0.0}:7001:7001/tcp"
       - "${GAME_BIND:-0.0.0.0}:8080:8080/tcp"

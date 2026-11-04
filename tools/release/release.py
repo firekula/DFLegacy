@@ -29,7 +29,7 @@ import uuid
 import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from bundle import read_bundle
+from bundle import _architecture, read_bundle
 
 REPO = Path(__file__).resolve().parents[2]
 RIDS = ("win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")
@@ -41,6 +41,7 @@ UPDATE_ASSET = "DFLegacy-client-update-v2-win-x64.zip"
 UPDATE_TEST_ASSET = "DFLegacy-client-update-v2-test-win-x64.zip"
 TOOLS_ASSET = "DFLegacy-client-tools-win-x64.zip"
 TOOLS_TEST_ASSET = "DFLegacy-client-tools-test-win-x64.zip"
+X86_UPDATE_ASSETS = tuple(name.replace("win-x64", "win-x86") for name in (UPDATE_ASSET, UPDATE_TEST_ASSET))
 PUBLIC_ASSETS = (UPDATE_ASSET, UPDATE_TEST_ASSET, TOOLS_ASSET, TOOLS_TEST_ASSET)
 UPDATE_FILES = ("DFLegacy.Launcher.exe", "DFLegacy.Client.dll")
 MAX_UPDATE_ZIP = 256 * 1024**2
@@ -250,7 +251,7 @@ def verify_assets(root, version=None, commit=None):
     root = Path(root)
     data = check_manifest(root, "manifest.json", version, commit)
     paths = [row["path"] for row in data["files"]]
-    allowed = {"launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/Config.ini", "launcher/launcher.json",
+    allowed = {"launcher/DFLegacy.Launcher.exe", "launcher-x86/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/Config.ini", "launcher/launcher.json",
                "launcher/Assets/Skin/fwtk.html", "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini"}
     if any(p not in allowed for p in paths):
         raise ReleaseError("client asset outside whitelist")
@@ -258,6 +259,8 @@ def verify_assets(root, version=None, commit=None):
         if required not in paths:
             raise ReleaseError("missing client asset: " + required)
     check_app(root / "launcher", "DFLegacy.Launcher", "win-x64", wpf=True)
+    if "launcher-x86/DFLegacy.Launcher.exe" in paths:
+        check_app(root / "launcher-x86", "DFLegacy.Launcher", "win-x86", wpf=True)
     launcher = read_json(root / "launcher/launcher.json")
     client_paths = {"DNF.exe"}
     if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") not in client_paths:
@@ -282,11 +285,16 @@ def copy_tree(source, output):
         shutil.copy2(path, destination)
 
 
-def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None):
+def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None, launcher_x86=None):
     validate_identity(version, commit)
     output = new_output(output)
     launcher, client_patch, config = Path(launcher), Path(client_patch), Path(config)
     check_app(launcher, "DFLegacy.Launcher", "win-x64", wpf=True)
+    if launcher_x86 is not None:
+        launcher_x86 = Path(launcher_x86)
+        if launcher_x86 / "DFLegacy.Launcher.exe" not in files(launcher_x86):
+            raise ReleaseError("missing regular x86 launcher executable")
+        check_app(launcher_x86, "DFLegacy.Launcher", "win-x86", wpf=True)
     for native in (client_patch, config, *((Path(debug),) if debug else ())):
         if not native.is_file() or native.is_symlink():
             raise ReleaseError("missing regular native asset")
@@ -294,6 +302,9 @@ def build_client_assets(launcher, client_patch, config, output, version, commit,
         stage = Path(temp) / "bundle"
         stage.mkdir()
         copy_tree(launcher, stage / "launcher")
+        if launcher_x86 is not None:
+            (stage / "launcher-x86").mkdir()
+            shutil.copy2(launcher_x86 / "DFLegacy.Launcher.exe", stage / "launcher-x86/DFLegacy.Launcher.exe")
         (stage / "patch").mkdir()
         shutil.copy2(client_patch, stage / "patch/DFLegacy.Client.dll")
         shutil.copy2(client_patch, stage / "launcher/DFLegacy.Client.dll")
@@ -346,7 +357,7 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
     content = archive if isinstance(archive, bytes) else read_client_update(archive)
     if not 0 < len(content) <= MAX_UPDATE_ZIP:
         raise ReleaseError("invalid client archive size")
-    if asset_name is not None and asset_name not in PUBLIC_ASSETS:
+    if asset_name is not None and asset_name not in (*PUBLIC_ASSETS, *X86_UPDATE_ASSETS):
         raise ReleaseError("unknown public asset name")
     tools = asset_name in (TOOLS_ASSET, TOOLS_TEST_ASSET)
     manifest_name = "client-package.json" if tools else "update-manifest.json"
@@ -375,7 +386,7 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
             if (version is not None and version != data["version"]) or (commit is not None and commit != data["commit"]):
                 raise ReleaseError("mixed client identity")
             test = data["flavor"] == "test"
-            if asset_name is not None and test != (asset_name in (UPDATE_TEST_ASSET, TOOLS_TEST_ASSET)):
+            if asset_name is not None and test != ("-test-" in asset_name):
                 raise ReleaseError("asset name differs from manifest flavor")
             binaries = {*UPDATE_FILES, *(("debug.dll",) if test else ())}
             expected = binaries | {manifest_name} | ({"SHA256SUMS", "README.txt"} if tools else set())
@@ -394,6 +405,10 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
                 with z.open(row["path"]) as stream:
                     if hashlib.file_digest(stream, "sha256").hexdigest() != row["sha256"]:
                         raise ReleaseError("client file digest differs")
+            if asset_name in X86_UPDATE_ASSETS:
+                launcher = z.read("DFLegacy.Launcher.exe")
+                if not _architecture(launcher, "win-x86"):
+                    raise ReleaseError("x86 package launcher architecture differs")
             if tools:
                 if z.read("README.txt") != migration_instructions(data["version"], data["commit"], data["flavor"]):
                     raise ReleaseError("unexpected migration instructions")
@@ -422,12 +437,13 @@ def migration_instructions(version, commit, flavor):
             "After migration the launcher updates the installed normal/test flavor through schema 2 packages.\n").encode("utf-8")
 
 
-def build_client_update(client_assets, output, version, commit, test_build=False, tools=False):
+def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64"):
     """Package verified same-release binaries without any player configuration."""
     root = Path(client_assets)
     verified = verify_assets(root, version, commit)
     names = (*UPDATE_FILES, *(("debug.dll",) if test_build else ()))
-    sources = {name: root / ("launcher/" if name == "DFLegacy.Launcher.exe" else "patch/") / name for name in names}
+    launcher_dir = "launcher-x86" if architecture == "x86" else "launcher"
+    sources = {name: root / (launcher_dir if name == "DFLegacy.Launcher.exe" else "patch/") / name for name in names}
     anchored = {row["path"]: row["sha256"] for row in verified["files"]}
     if any(path.relative_to(root).as_posix() not in anchored for path in sources.values()):
         raise ReleaseError("missing same-release client binary")
@@ -436,6 +452,8 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     asset = (TOOLS_TEST_ASSET if test_build else TOOLS_ASSET) if tools else (UPDATE_TEST_ASSET if test_build else UPDATE_ASSET)
+    if architecture == "x86":
+        asset = asset.replace("win-x64", "win-x86")
     destination = output / asset
     if destination.exists() or destination.is_symlink():
         raise ReleaseError("client archive already exists")
@@ -464,9 +482,13 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     return destination
 
 
-def build_client_packages(client_assets, output, version, commit):
-    return [build_client_update(client_assets, output, version, commit, test, tools)
-            for tools in (False, True) for test in (False, True)]
+def build_client_packages(client_assets, output, version, commit, updates_only=False):
+    packages = [build_client_update(client_assets, output, version, commit, test, tools)
+                for tools in ((False,) if updates_only else (False, True)) for test in (False, True)]
+    if (Path(client_assets) / "launcher-x86").is_dir():
+        packages.extend(build_client_update(client_assets, output, version, commit, test, architecture="x86")
+                        for test in (False, True))
+    return packages
 
 
 def dotnet_environment():
@@ -530,7 +552,7 @@ def make_archive(root, destination, rid):
                     archive.addfile(info, source)
 
 
-def publish(rid, version, commit, client_assets, output, manager_output=None, server_output=None, channel_output=None, verification="cross-built; native execution not performed"):
+def publish(rid, version, commit, client_assets, output, manager_output=None, server_output=None, channel_output=None, verification="cross-built; native execution not performed", directory_only=False):
     validate_identity(version, commit)
     runtime_files(rid)
     epoch = source_epoch()
@@ -572,11 +594,13 @@ def publish(rid, version, commit, client_assets, output, manager_output=None, se
         write_json(stage / "release-manifest.json", manifest(stage, version, commit, rid=rid, verification=verification))
         verify(stage, version, commit)
         staged_archive = temp / archive.name
-        make_archive(stage, staged_archive, rid)
-        verify(staged_archive, version, commit)
+        if not directory_only:
+            make_archive(stage, staged_archive, rid)
+            verify(staged_archive, version, commit)
         stage.rename(output)
-        staged_archive.rename(archive)
-    return output, archive
+        if not directory_only:
+            staged_archive.rename(archive)
+    return output, None if directory_only else archive
 
 
 def unpack(archive, destination):
@@ -867,6 +891,7 @@ def parser():
     for name in ("launcher-output", "client-patch", "config", "output", "version", "commit"):
         build.add_argument("--" + name, required=True)
     build.add_argument("--debug")
+    build.add_argument("--launcher-x86-output")
     update = sub.add_parser("build-client-update")
     for name in ("client-assets", "output", "version", "commit"):
         update.add_argument("--" + name, required=True)
@@ -875,6 +900,7 @@ def parser():
     all_packages = sub.add_parser("build-client-packages")
     for name in ("client-assets", "output", "version", "commit"):
         all_packages.add_argument("--" + name, required=True)
+    all_packages.add_argument("--updates-only", action="store_true")
     update_check = sub.add_parser("verify-client-update")
     update_check.add_argument("path")
     update_check.add_argument("--version")
@@ -884,6 +910,7 @@ def parser():
         package.add_argument("--" + name, required=True, choices=RIDS if name == "rid" else None)
     for name in ("manager-output", "server-output", "channel-output"):
         package.add_argument("--" + name)
+    package.add_argument("--directory-only", action="store_true")
     package.add_argument("--verification", default="cross-built; native execution not performed")
     check = sub.add_parser("verify")
     check.add_argument("path")
@@ -916,16 +943,17 @@ def main(argv=None):
         if args.command == "test":
             return subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(Path(__file__).parent / "tests"), "-v"], cwd=REPO).returncode
         if args.command == "build-client-assets":
-            print(build_client_assets(args.launcher_output, args.client_patch, args.config, args.output, args.version, args.commit, args.debug))
+            print(build_client_assets(args.launcher_output, args.client_patch, args.config, args.output, args.version, args.commit,
+                                      args.debug, launcher_x86=args.launcher_x86_output))
         elif args.command == "build-client-update":
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":
-            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit)]))
+            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit, args.updates_only)]))
         elif args.command == "verify-client-update":
             print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":
-            _, archive = publish(args.rid, args.version, args.commit, args.client_assets, args.output, args.manager_output, args.server_output, args.channel_output, args.verification)
-            print(archive)
+            _, archive = publish(args.rid, args.version, args.commit, args.client_assets, args.output, args.manager_output, args.server_output, args.channel_output, args.verification, args.directory_only)
+            print(archive or args.output)
         elif args.command == "verify":
             data = (verify_assets if args.client_assets else verify)(Path(args.path), args.version, args.commit)
             print(json.dumps({key: value for key, value in data.items() if key != "files"}, ensure_ascii=False))

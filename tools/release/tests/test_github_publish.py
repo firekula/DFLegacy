@@ -260,6 +260,14 @@ class PublisherTests(unittest.TestCase):
     def publish(self, api, version=VERSION, **kwargs):
         return github.publish(api, version, COMMIT, self.paths, **kwargs)
 
+    def test_updates_only_publishes_both_updater_flavors(self):
+        api = FakeGitHub()
+        outcome = github.publish(api, VERSION, COMMIT, self.paths[:2], updates_only=True)
+        self.assertEqual(outcome['status'], 'published')
+        self.assertEqual(set(outcome['assets']), {path.name for path in self.paths[:2]})
+        self.assertEqual(sum(call[0] == 'UPLOAD' for call in api.calls), 2)
+        self.assertEqual(sum(call[0] == 'VERIFY-PUBLIC' for call in api.calls), 2)
+
     def test_partial_published_release_is_never_complete(self):
         api = FakeGitHub(); self.publish(api)
         api.assets.pop()
@@ -482,21 +490,14 @@ class TransportTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
-    def test_github_windows_job_after_every_existing_gate(self):
+    def test_gitea_workflow_only_runs_source_tests(self):
         text = (release.REPO / '.gitea/workflows/release.yaml').read_text()
-        job = text.split('\n  publish-github:\n')[1]
-        self.assertIn('needs: [windows, test-linux, linux-packages-and-image, publish]', job)
-        self.assertIn('runs-on: dflegacy-windows-x64', job)
-        self.assertIn('shell: pwsh', job)
-        self.assertIn('persist-credentials: false', job)
-        self.assertIn('github_publish.py', job)
-        self.assertNotIn('secrets.GITHUB_TOKEN', job)
-        self.assertNotIn('git push', job)
-        self.assertNotIn('DFLegacy-client-update-win-x64.zip', text)
-        for name in release.PUBLIC_ASSETS: self.assertIn(name, text)
-        self.assertIn('build_client_packages', Path(release.REPO / 'tools/release/ci.py').read_text())
-        self.assertNotIn('incoming/windows/DFLegacy-*.zip', text,
-                         'the update ZIP must not be mistaken for a sixth Gitea platform package')
+        for expected in ('releases: none', 'packages: none', 'persist-credentials: false',
+                         'DFLegacy.SmokeTests', 'gm-management-browser.test.cjs'):
+            self.assertIn(expected, text)
+        for forbidden in ('secrets.', 'upload-artifact', 'github_publish.py', 'docker build',
+                          'ci.py windows', 'ci.py linux'):
+            self.assertNotIn(forbidden, text)
 
 
 if __name__ == '__main__': unittest.main()

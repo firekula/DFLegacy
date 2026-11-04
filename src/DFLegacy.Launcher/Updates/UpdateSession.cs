@@ -1,26 +1,38 @@
 using System.Net.Http;
+using System.Runtime.InteropServices;
 namespace DFLegacy.Launcher.Updates;
 internal sealed class UpdateSession : IUpdateSession, IDisposable
 {
     private readonly HttpClient http;
     private readonly string repository;
     private readonly bool includePrereleases;
+    private readonly bool githubEnabled;
+    private readonly Uri? hostedOrigin;
     private readonly UpdateInstaller installer;
     private readonly string installation;
+    private static string? ArchitectureName => RuntimeInformation.ProcessArchitecture switch
+    {
+        Architecture.X86 => "x86",
+        Architecture.X64 => "x64",
+        _ => null
+    };
     internal UpdateSession(string installation, LauncherOptions options,HttpClient? http=null)
     {
         this.installation=installation;
         repository=options.UpdateRepository; includePrereleases=options.IncludePrereleaseUpdates;
-        GitHubUpdateClient.ValidateRepository(repository);
+        githubEnabled = !options.DisableGitHubUpdates && ArchitectureName is not null;
+        if (!string.IsNullOrWhiteSpace(options.UpdateServiceUrl))
+            hostedOrigin = HostedUpdateClient.ParseOrigin(options.UpdateServiceUrl);
+        else if (githubEnabled)
+            GitHubUpdateClient.ValidateRepository(repository);
         this.http=http??GitHubUpdateClient.CreateHttpClient(); installer=new(installation);
     }
     // Installed-package validation happens inside controller operations so missing legacy metadata becomes
     // a visible migration error instead of preventing the launcher window from opening.
-    private GitHubUpdateClient Client()
+    private ClientPackageManifest ReadManifest()
     {
         UpdateSafety.NoLinks(Path.Combine(installation,UpdateSafety.InstalledManifestName));
-        var manifest=ClientPackageManifest.LoadAndValidate(installation);
-        return new(http,repository,includePrereleases,manifest.Flavor);
+        return ClientPackageManifest.LoadAndValidate(installation);
     }
     public UpdateRecovery? ReadRecovery()=>UpdateTransaction.InspectRecovery(installation);
     public UpdateState? ReadState()=>installer.ReadState();
@@ -28,16 +40,28 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
     public UpdateApplyResult? ReadLastResult()=>installer.ReadLastResult();
     public async Task<UpdateRelease?> CheckAsync(long installed,CancellationToken token)
     {
-        var client=Client();
-        var manifest=ClientPackageManifest.LoadAndValidate(installation);
-        var release=await client.CheckAsync(installed,token).ConfigureAwait(false);
+        var architecture = ArchitectureName;
+        if (architecture is null || hostedOrigin is null && !githubEnabled) return null;
+        var manifest = ReadManifest();
+        var release = hostedOrigin is null
+            ? await new GitHubUpdateClient(http, repository, includePrereleases, manifest.Flavor, architecture).CheckAsync(installed, token).ConfigureAwait(false)
+            : await new HostedUpdateClient(http, hostedOrigin, architecture, manifest.Flavor).CheckAsync(installed, token).ConfigureAwait(false);
         // A fresh tools package has no updater state yet. Its validated version
         // already identifies an identical release without a redundant ZIP download.
         if(release?.Version!=manifest.Version) return release;
         if(!installer.RecordInstalledReleaseIfMatching(release)) throw new IOException("检查期间安装文件已变化，请重新检查更新。");
         return null;
     }
-    public Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string root,IProgress<UpdateProgress> progress,CancellationToken token)=>Client().DownloadAsync(release,root,progress,token);
+    public Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string root,IProgress<UpdateProgress> progress,CancellationToken token)
+    {
+        var architecture = ArchitectureName;
+        if (architecture is null || hostedOrigin is null && !githubEnabled)
+            throw new InvalidOperationException("当前架构未配置更新源。");
+        var flavor = ReadManifest().Flavor;
+        return hostedOrigin is null
+            ? new GitHubUpdateClient(http, repository, includePrereleases, flavor, architecture).DownloadAsync(release, root, progress, token)
+            : new HostedUpdateClient(http, hostedOrigin, architecture, flavor).DownloadAsync(release, root, progress, token);
+    }
     public bool Adopt(PreparedUpdate update)=>installer.RecordCurrentIfMatching(update);
     public Task<UpdateHandoff> PrepareAsync(PreparedUpdate update,CancellationToken token)
     {

@@ -212,7 +212,8 @@ public sealed class EntranceService(
             var remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remote = remoteEndpoint?.ToString() ?? "unknown";
             var isPvpChannel = options.Pvp.Enabled && localPort == options.Pvp.Port;
-            var isChannelPort = localPort == options.Channel.Port || isPvpChannel;
+            var channel = PvpChannelConfiguration.GameplayChannels(options).FirstOrDefault(c => c.Port == localPort);
+            var isChannelPort = channel.Port != 0;
             var runtimeSession = runtime.Add($"{(isChannelPort ? "channel" : "entrance")}:{localPort}", remote);
             if (isChannelPort && remoteEndpoint is not null)
             {
@@ -1357,9 +1358,22 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, stamina);
                 }
 
+                async Task<bool> RefreshPendingFatigueResetAsync()
+                {
+                    if (activeCharacter is null || Interlocked.Exchange(ref pendingFatigueReset, 0) == 0)
+                        return false;
+
+                    var character = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                    if (character is null)
+                        return false;
+
+                    activeCharacter = activeCharacter with { UsedFatigue = character.UsedFatigue };
+                    return true;
+                }
+
                 async Task SendTownFatigueStateAsync()
                 {
-                    Interlocked.Exchange(ref pendingFatigueReset, 0);
+                    await RefreshPendingFatigueResetAsync();
                     // AREA_USERS constructs the town HUD. EVENT_INFO then selects
                     // and initializes its normal/premium fatigue-bar resources.
                     var eventInfo = GameProtocolEngine.CreateEventInfo();
@@ -4578,15 +4592,16 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, acceptable);
                 }
 
-                async Task CompleteTutorialAndReturnAsync(string reason)
+                async Task FinishTutorialAndReturnAsync(string reason, bool skip = false)
                 {
-                    if (activeCharacter is null
-                        || !tutorialDungeonActive
-                        || dungeonInstance?.ClearEnabled != true
-                        || dungeonInstance!.AliveMonsterCount != 0)
+                    if (activeCharacter is not { TutorialStarted: false }
+                        || (skip
+                            ? !tutorialDungeonActive && !inDungeonSelection
+                            : !tutorialDungeonActive || dungeonInstance?.ClearEnabled != true
+                                || dungeonInstance.AliveMonsterCount != 0))
                     {
                         logger.LogWarning(
-                            "Ignored tutorial completion because its room is not cleared for user {UserId}.",
+                            "Ignored tutorial finish request outside its expected state for user {UserId}.",
                             localUserId);
                         return;
                     }
@@ -4653,6 +4668,11 @@ public sealed class EntranceService(
                     var tutorialQuestActivated = !tutorialQuestWasActive
                         && currentQuests.Any(quest =>
                             quest.QuestId == QuestCatalog.TutorialCompletionQuestId);
+                    // During an early exit the ACT1 tutorial dialogue can still own the
+                    // scene. Send the town transition before publishing quest updates.
+                    if (skip)
+                        await ReturnToTownFromDungeonAsync(reason);
+
                     if (tutorialQuestActivated)
                     {
                         var acceptQuest = GameProtocolEngine.CreateAcceptQuestReply(
@@ -4668,15 +4688,16 @@ public sealed class EntranceService(
                         await readyQuest.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
                         LogPacket("TX", runtimeSession, readyQuest);
-                        await SendDungeonPermissionsAsync();
-                        await SendAcceptableQuestListAsync();
                         logger.LogInformation(
                             "Activated tutorial completion quest {QuestId} for character {CharacterId}.",
                             QuestCatalog.TutorialCompletionQuestId,
                             activeCharacter.Id);
                     }
 
-                    await ReturnToTownFromDungeonAsync(reason);
+                    await SendDungeonPermissionsAsync();
+                    await SendAcceptableQuestListAsync();
+                    if (!skip)
+                        await ReturnToTownFromDungeonAsync(reason);
                 }
 
                 if (isChannelPort)
@@ -4757,6 +4778,9 @@ public sealed class EntranceService(
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
                         // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
                         var partyMembershipChanged = partyMembershipWake.Capture();
+                        if (await RefreshPendingFatigueResetAsync() && currentDungeonId == 0)
+                            await SendTownFatigueStateAsync();
+
                         var partyMailboxTick = EntranceSessionReadWait.ShouldPollPartyMailbox(
                             isChannelPort,
                             activeCharacter is not null,
@@ -5228,18 +5252,17 @@ public sealed class EntranceService(
                         LogPacket("TX", runtimeSession, ceraNotification);
                     }
 
-                    if (Volatile.Read(ref pendingFatigueReset) != 0
-                        && activeCharacter is not null)
-                    {
-                        activeCharacter = activeCharacter with { UsedFatigue = 0 };
-                        if (currentDungeonId == 0)
-                        {
-                            await SendTownFatigueStateAsync();
-                        }
-                    }
+                    if (await RefreshPendingFatigueResetAsync() && currentDungeonId == 0)
+                        await SendTownFatigueStateAsync();
 
                     if (isChannelPort)
                     {
+                        // A session left on the roster must not continue using credentials
+                        // that were accepted before a GM applied a ban.
+                        if (activeCharacter is null && accountName.Length != 0
+                            && await store.IsAccountBannedAsync(accountName, serverToken))
+                            break;
+
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.LoginCommand)
                         {
@@ -5643,9 +5666,7 @@ public sealed class EntranceService(
                                     pendingPremiumUpdates.Enqueue((serviceType, remainSeconds));
                                 },
                                 value => { ceraCashInvalidation.Invalidate(value); partyMembershipWake.Pulse(); },
-                                () => Interlocked.Exchange(
-                                    ref pendingFatigueReset,
-                                    1),
+                                () => { Interlocked.Exchange(ref pendingFatigueReset, 1); partyMembershipWake.Pulse(); },
                                 (messageType, targetAreaUserId, messageBytes) =>
                                     _ = SendTypedMessageNotificationAsync(
                                         messageType,
@@ -5684,10 +5705,12 @@ public sealed class EntranceService(
                             // A displaced connection performs its final save before
                             // releasing the character lease. Reload after the claim
                             // so this session cannot start from the pre-kick snapshot.
-                            character = (await store.GetCharactersAsync(accountUid, serverToken))
+                            var claimedCharacter = (await store.GetCharactersAsync(accountUid, serverToken))
                                 .FirstOrDefault(candidate =>
-                                    candidate.CharacterNo == character.CharacterNo)
-                                ?? character;
+                                    candidate.CharacterNo == character.CharacterNo);
+                            if (claimedCharacter is null || await store.IsAccountBannedAsync(accountName, serverToken))
+                                throw new IOException("Character is no longer available for selection.");
+                            character = claimedCharacter;
 
                             // 结算后的交付安装自愈：这个角色可能带着"未安装交付"的守门标记
                             // （被动方在结算登记前后掉线、或在安装前回了选人）。选角路径下面的
@@ -13732,9 +13755,7 @@ public sealed class EntranceService(
                         {
                             if (activeCharacter is { TutorialStarted: false })
                             {
-                                logger.LogInformation(
-                                    "Ignored return from dungeon selection for {CharacterId} until the tutorial is complete.",
-                                    activeCharacter.Id);
+                                await FinishTutorialAndReturnAsync("tutorial-skip-selection", skip: true);
                                 continue;
                             }
 
@@ -15116,7 +15137,7 @@ public sealed class EntranceService(
                                                     MentorBonusRate: await mentorService.GetExperienceBonusRateAsync(
                                                         activeCharacter.Id, runtimeSession.Id, serverToken),
                                                     EventBonusRate: dungeonExperienceCatalog.GetEventBonusRate(DateTimeOffset.UtcNow),
-                                                    ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId)))
+                                                    ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId, channel.Number)))
                                             : GameDungeonClearExperienceBreakdown.Empty;
 
                                     if (activeCharacter is not null
@@ -15337,7 +15358,7 @@ public sealed class EntranceService(
                                 if (dungeonInstance?.ClearEnabled == true
                                     && dungeonInstance!.AliveMonsterCount == 0)
                                 {
-                                    await CompleteTutorialAndReturnAsync(
+                                    await FinishTutorialAndReturnAsync(
                                         "tutorial-score-scroll-fallback");
                                 }
                                 else
@@ -15379,7 +15400,7 @@ public sealed class EntranceService(
                                 && dungeonInstance!.AliveMonsterCount == 0
                                 && GameProtocolEngine.IsTutorialCompletionModule(request.Body))
                             {
-                                await CompleteTutorialAndReturnAsync(
+                                await FinishTutorialAndReturnAsync(
                                     "tutorial-final-module");
                             }
                             continue;
@@ -15560,15 +15581,7 @@ public sealed class EntranceService(
                         {
                             if (activeCharacter is { TutorialStarted: false })
                             {
-                                var tutorialError = GameProtocolEngine.CreateCommandError(
-                                    request,
-                                    errorCode: 4);
-                                await tutorialError.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, tutorialError);
-                                logger.LogInformation(
-                                    "Rejected tutorial give-up for character {CharacterId}.",
-                                    activeCharacter.Id);
+                                await FinishTutorialAndReturnAsync("tutorial-skip-in-dungeon", skip: true);
                                 continue;
                             }
 
@@ -15849,11 +15862,11 @@ public sealed class EntranceService(
                         var gameReply = request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CheckConnectionCommand
                             ? GameProtocolEngine.CreateChannelInfo(
-                                ClientEncoding.GetBytes(isPvpChannel ? $"{options.Pvp.Name} {options.Pvp.ChannelNumber}" : $"{options.Channel.Name} {options.Channel.ChannelNumber}"),
+                                ClientEncoding.GetBytes($"{channel.Name} {channel.Number}"),
                                 channelType: 1,
                                 result: 1,
                                 serverId: 1,
-                                channelNumber: checked((byte)(isPvpChannel ? options.Pvp.ChannelNumber : options.Channel.ChannelNumber)),
+                                channelNumber: checked((byte)channel.Number),
                                 seed: checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                                 [Encoding.ASCII.GetBytes(options.GameplayDatagram.ResolveAdvertisedHost())],
                                 port1: checked((uint)options.GameplayDatagram.PrimaryPort),

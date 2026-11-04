@@ -172,6 +172,14 @@ namespace
         Check(Attach(ft1,f1,d1,window,p::Mode::Sharp),"attach first factory and device");
         Check(Attach(ft2,f2,d2,window,p::Mode::Legacy),"attach independent second factory/device");
         MSG physical{};physical.hwnd=window;physical.message=WM_MOUSEMOVE;physical.wParam=MK_LBUTTON;physical.lParam=MAKELPARAM(400,300);physical.pt={1200,-40};MSG logical{};
+        POINT target{320,240};
+        Check(dfl::window_input_scaling::LogicalToClient(window,target)
+            && dfl::window_input_scaling::ClientToLogical(window,target)
+            && target.x==320 && target.y==240,"auto cursor target round-trips at scaled resolution");
+        POINT corner{639,479};
+        Check(dfl::window_input_scaling::LogicalToClient(window,corner)
+            && dfl::window_input_scaling::ClientToLogical(window,corner)
+            && corner.x==639 && corner.y==479,"auto cursor reaches the last logical pixel");
         Check(dfl::window_input_scaling::Translate(physical,logical)&&LOWORD(logical.lParam)==320&&HIWORD(logical.lParam)==240
             &&logical.wParam==MK_LBUTTON&&logical.pt.x==1200&&logical.pt.y==-40,"physical mouse coordinates map to fixed logical frame without changing capture/buttons/screen point");
         physical.message=WM_LBUTTONDBLCLK;physical.lParam=MAKELPARAM(799,599);

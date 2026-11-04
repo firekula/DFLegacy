@@ -29,7 +29,7 @@ COPY client-assets/ client-assets/
 RUN python3 tools/release/release.py verify client-assets --client-assets --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
     && case "$TARGETARCH" in amd64) rid=linux-x64;; arm64) rid=linux-arm64;; *) exit 2;; esac \
     && python3 tools/release/release.py publish --rid "$rid" --version "$DFLEGACY_RELEASE_VERSION" --commit "$DFLEGACY_RELEASE_COMMIT" \
-       --client-assets client-assets --output /out/DFLegacy \
+       --client-assets client-assets --output /out/DFLegacy --directory-only \
        --verification "Docker cross-build for $TARGETARCH; container execution is validated separately by CI"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble AS runtime
@@ -60,7 +60,7 @@ ENV DFLEGACY_MANAGER_ROOT=/app \
     ASPNETCORE_URLS=
 USER app
 VOLUME ["/app/data"]
-EXPOSE 18080/tcp 8081/tcp 2311/tcp 7001/tcp 8080/tcp 7004/tcp 7005/tcp
+EXPOSE 18080/tcp 18081/tcp 18082/tcp 18083/tcp 7100/tcp 7101/tcp 7102/tcp 7103/tcp 7104/tcp 7105/tcp 8081/tcp 2311/tcp 7001/tcp 8080/tcp 7004/tcp 7005/tcp
 EXPOSE 2311/udp 7002/udp 7003/udp 7005/udp
 # A stopped game is a normal management state. /ready is separate.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

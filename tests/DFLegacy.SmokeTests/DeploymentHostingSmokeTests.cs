@@ -110,6 +110,7 @@ internal static class DeploymentHostingSmokeTests
                 ScriptPvfPath = Path.Combine(root, "missing.pvf"),
                 SkillScriptPath = scripts,
                 Admin = new { Host = "127.0.0.1", Port = port },
+                WebPanels = new { Gm = new { Enabled = false }, Player = new { Enabled = false } },
                 Entrance = new { Enabled = false },
                 CharacterDatagram = new { Enabled = false },
                 GameplayDatagram = new { Enabled = false },
@@ -260,7 +261,7 @@ internal static class DeploymentHostingSmokeTests
         catch (JsonException) { return null; }
     }
 
-    private sealed class Child : IDisposable
+    internal sealed class Child : IDisposable
     {
         public Process Process { get; }
         public Task<string> Output { get; }

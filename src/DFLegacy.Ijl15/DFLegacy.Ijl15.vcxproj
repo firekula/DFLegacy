@@ -110,6 +110,7 @@
     <ClInclude Include="src\relay_send_queue.h" />
     <ClInclude Include="src\ground_item_removal.h" />
     <ClInclude Include="src\inventory_tab.h" />
+    <ClInclude Include="src\warehouse_upgrade_button.h" />
     <ClInclude Include="src\motion_horizon.h" />
     <ClInclude Include="src\party_card_display.h" />
     <ClInclude Include="src\d3d8_scaler.h" />
@@ -160,6 +161,7 @@
     <ClCompile Include="src\dungeon_tooltip.cpp" />
     <ClCompile Include="src\ground_item_removal.cpp" />
     <ClCompile Include="src\inventory_tab.cpp" />
+    <ClCompile Include="src\warehouse_upgrade_button.cpp" />
     <ClCompile Include="src\motion_horizon.cpp" /><ClCompile Include="src\native_loop_probe.cpp" /><ClCompile Include="src\motion_test_probe.cpp" /><ClCompile Include="src\provider_probe.cpp" />
     <ClCompile Include="src\party_card_display.cpp" />
     <ClCompile Include="src\d3d8_scaler.cpp" />

@@ -47,8 +47,9 @@ public sealed partial class JsonGameStore
             {
                 if (request.Slot > 6 || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
                     || !CharacterInventoryLayout.IsMainItemSlot(request.SourceSlot)
-                    || !inventory.TryGetValue(request.SourceSlot, out var item) || item.InstanceId == Guid.Empty
+                    || !inventory.TryGetValue(request.SourceSlot, out var item)
                     || !itemCatalog.TryGetDefinition(item.ItemId, out var def)
+                    || CharacterItemIdentity.RequiresInstanceId(def) && item.InstanceId == Guid.Empty
                     || def.InventoryCategory is not (ItemInventoryCategory.Equipment or ItemInventoryCategory.Material or ItemInventoryCategory.Consumable)
                     || def.Cash is > 0 || !CharacterItemSealing.CanTrade(item, def))
                     return new(DungeonRewardLedgerStatus.Rejected, 17);
@@ -59,7 +60,11 @@ public sealed partial class JsonGameStore
                 total += (long)request.UnitPrice * count;
                 if (total > int.MaxValue) return new(DungeonRewardLedgerStatus.Rejected, 17);
                 var rest = def.IsStackable ? item.CountOrValue - count : 0;
-                var stock = def.IsStackable ? item with { CountOrValue = count, InstanceId = rest > 0 ? Guid.NewGuid() : item.InstanceId } : item;
+                var stock = def.IsStackable ? item with
+                {
+                    CountOrValue = count,
+                    InstanceId = rest > 0 && item.InstanceId != Guid.Empty ? Guid.NewGuid() : item.InstanceId
+                } : item;
                 if (rest == 0) inventory.Remove(request.SourceSlot);
                 else inventory[request.SourceSlot] = item with { CountOrValue = rest };
                 listings.Add(new(request.Slot, request.UnitPrice, request.SourceSlot, item.InstanceId, stock, count, request.AddInfo));
@@ -95,7 +100,11 @@ public sealed partial class JsonGameStore
             var pending = PendingDungeonGold(seller) + PendingStoreGold(seller) + PendingMentorGold(seller);
             if (!StoreCatalog.TryGetGoldLimit(seller.Level, out var sellerLimit) || seller.Gold + pending + gross64 > sellerLimit) return Reject(22);
             if (buyer.Gold < gross64) return Reject(10);
-            var moved = def.IsStackable ? listing.Item with { CountOrValue = quantity, InstanceId = quantity < listing.Quantity ? Guid.NewGuid() : listing.Item.InstanceId } : listing.Item;
+            var moved = def.IsStackable ? listing.Item with
+            {
+                CountOrValue = quantity,
+                InstanceId = quantity < listing.Quantity && listing.Item.InstanceId != Guid.Empty ? Guid.NewGuid() : listing.Item.InstanceId
+            } : listing.Item;
             if (!TryPlaceStorePurchase(buyer, moved, def, out var inventory, out var placed)) return Reject(4);
             var updatedBuyer = buyer with { Gold = checked(buyer.Gold - (int)gross), Inventory = inventory };
             var stock = seller.PrivateStoreStock.Listings.Where(l => l.Slot != slot).ToList();

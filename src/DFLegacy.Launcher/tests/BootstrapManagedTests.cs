@@ -11,6 +11,9 @@ internal static class BootstrapManagedTests
         var mode=args[1]; var nonce=args[2]; var patch=args[3];
         if(mode=="timeout") { await Task.Delay(30000); return 1; }
         if(mode=="eof") return 1;
+        if(mode=="eof-loader") return unchecked((int)0xC0000135);
+        if(mode=="partial") { Console.Write("{\"event\":"); return 1; }
+        if(mode=="native-disconnected") { Console.WriteLine(JsonSerializer.Serialize(new{schemaVersion=1,@event="error",nonce,code="parent_disconnected",message="secret must not be echoed"})); return 1; }
         if(mode=="oversized") { Console.WriteLine(new string('x',8192)); return 1; }
         if(mode=="malformed") { Console.WriteLine("{\"nonce\":\""+nonce+"\",\"event\":\"ready\",\"event\":\"ready\"}"); return 1; }
         if(mode=="error") { Console.WriteLine(JsonSerializer.Serialize(new{schemaVersion=1,@event="error",nonce,code="initialization_failed",message="secret must not be echoed"})); return 1; }
@@ -75,7 +78,7 @@ internal static class BootstrapManagedTests
             try { using var p=await ClientBootstrapLauncher.StartCoreAsync(client,mode,manifest,CancellationToken.None,Path.Combine(native,"Release/DFLegacy.Bootstrap32.exe"),TimeSpan.FromSeconds(15)); check(false,"native initialization failure blocks entry"); }
             catch(InvalidDataException ex) { check(ex.Message.Contains("补丁") && !ex.Message.Contains("secret"),"readable safe bootstrap errors"); }
         }
-        foreach(var mode in new[]{"wrong-path","error","eof","timeout","reuse","exit-failure","extra","oversized","malformed"})
+        foreach(var mode in new[]{"wrong-path","error","eof","eof-loader","partial","native-disconnected","timeout","reuse","exit-failure","extra","oversized","malformed"})
         {
             using var unrelated=StartChild();
             try
@@ -87,8 +90,16 @@ internal static class BootstrapManagedTests
             catch(InvalidDataException ex)
             {
                 check(!ex.Message.Contains("secret"),"protocol never echoes helper explanation/credentials");
-                var expected=mode switch {"wrong-path"=>"module_identity","error"=>"initialization_failed","eof"=>"parent_disconnected","timeout"=>"initialization_timeout","reuse"=>"child_identity","exit-failure" or "extra"=>"handshake_failed",_=>"invalid_protocol"};
+                var expected=mode switch {"wrong-path"=>"module_identity","error"=>"initialization_failed","eof" or "eof-loader"=>"bootstrap_no_reply","native-disconnected"=>"parent_disconnected","timeout"=>"initialization_timeout","reuse"=>"child_identity","exit-failure" or "extra"=>"handshake_failed",_=>"invalid_protocol"};
                 check(Equals(ex.Data["BootstrapCode"],expected),"exact protocol rejection for "+mode+": "+ex.Data["BootstrapCode"]);
+                if (mode is "eof" or "eof-loader")
+                {
+                    var exitCode = mode == "eof" ? 1 : unchecked((int)0xC0000135);
+                    var display = mode == "eof" ? "0x00000001" : "0xC0000135";
+                    check(Equals(ex.Data["BootstrapExitCode"],exitCode) && ex.Message.Contains(display),"silent bootstrap exit includes its exact code: "+mode);
+                }
+                else if (mode == "native-disconnected")
+                    check(!ex.Data.Contains("BootstrapExitCode"),"native disconnect remains a protocol error reply");
             }
             finally { check(!unrelated.HasExited,"malformed/reused PID never kills unrelated process"); if(!unrelated.HasExited) unrelated.Kill(); await unrelated.WaitForExitAsync(); }
         }

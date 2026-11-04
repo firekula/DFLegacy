@@ -6,6 +6,8 @@ namespace DFLegacy.Launcher;
 internal sealed class LauncherOptions
 {
     public string UpdateRepository { get; set; } = "firekula/DFLegacy";
+    public string UpdateServiceUrl { get; set; } = string.Empty;
+    public bool DisableGitHubUpdates { get; set; }
     public bool IncludePrereleaseUpdates { get; set; } = true;
     public string ClientPath { get; set; } = Program.DefaultClientPath;
     public string EntranceHost { get; set; } = "127.0.0.1";

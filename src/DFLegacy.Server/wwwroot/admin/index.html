@@ -21,7 +21,7 @@
         <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
         <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
         <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
-        <button class="nav-item admin-only" type="button" data-view="users">用户角色</button>
+        <button class="nav-item admin-only" type="button" data-view="users">账号管理</button>
         <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
       </nav>
       <div class="sidebar-foot">
@@ -218,8 +218,8 @@
       <section class="view admin-only" data-view-panel="users">
         <div class="surface form-layout">
           <div class="section-heading">
-            <h2>用户角色</h2>
-            <p>提升或降级账号的后台权限；角色变更会立即作废该账号已登录的 token。</p>
+            <h2>账号管理</h2>
+            <p>管理账号权限、账号类型、角色、密码和封禁状态。</p>
           </div>
           <div class="table-scroll">
             <table id="userTable" class="data-table">
@@ -229,6 +229,7 @@
                   <th>角色</th>
                   <th>角色数</th>
                   <th>UID 段</th>
+                  <th>封禁状态</th>
                   <th class="align-right">操作</th>
                 </tr>
               </thead>
@@ -259,14 +260,64 @@
             </table>
           </div>
           <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
-          <div class="form-actions">
-            <a class="secondary-button link-button" href="/admin/player.html">打开玩家页面 player.html</a>
-          </div>
         </div>
       </section>
 
     </main>
   </div>
+
+  <dialog id="gmAccountDialog" class="surface account-dialog" aria-labelledby="gmAccountTitle">
+    <div class="account-dialog-header">
+      <h2 id="gmAccountTitle">管理账号 <span id="gmAccountName"></span></h2>
+      <form method="dialog">
+        <button class="secondary-button small-button" type="submit">关闭</button>
+      </form>
+    </div>
+    <p id="gmActionStatus" class="account-action-status" role="status" aria-live="polite"></p>
+    <section class="account-section">
+      <h3>角色</h3>
+      <p id="managedCharacterHint">仅可删除离线角色。</p>
+      <ul id="managedCharacterList" class="managed-character-list"></ul>
+    </section>
+    <p id="gmProtectedAccount" class="empty-hint hidden">管理员账号受保护。</p>
+    <div id="gmPlayerActions">
+      <form id="gmPasswordForm" class="account-section">
+        <h3>重置密码</h3>
+        <label class="field">
+          <span>新密码（6–128 个字符）</span>
+          <input name="newPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <label class="field">
+          <span>确认新密码</span>
+          <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <button class="secondary-button small-button" type="submit">重置密码</button>
+      </form>
+      <section class="account-section">
+        <h3>封禁与解封</h3>
+        <p id="gmBanStatus"></p>
+        <form id="gmBanForm">
+          <label class="field">
+            <span>封禁期限</span>
+            <select id="gmBanMode" name="mode">
+              <option value="timed">限时封禁</option>
+              <option value="permanent">永久封禁</option>
+            </select>
+          </label>
+          <label id="gmBanHoursField" class="field">
+            <span>封禁时长（小时）</span>
+            <input id="gmBanHours" name="durationHours" type="number" value="24" min="1" max="8760" step="1" required>
+          </label>
+          <label class="field">
+            <span>封禁原因</span>
+            <input name="reason" maxlength="200" required>
+          </label>
+          <button class="secondary-button small-button" type="submit">保存封禁</button>
+          <button id="gmUnban" class="secondary-button small-button" type="button">解除封禁</button>
+        </form>
+      </section>
+    </div>
+  </dialog>
 
   <div id="loginOverlay" class="login-overlay hidden">
     <form id="loginForm" class="surface login-card">

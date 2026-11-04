@@ -6,6 +6,7 @@ const titles = { overview: "运行概览", configuration: "服务配置", client
 let csrf = "", setupMode = false, setupToken = "", savedConfig = null, loggedIn = false, currentView = "overview", busy = false;
 let logAfter = 0, logLines = [], toastTimer;
 let pvfResource = null, serverRunning = false;
+let statusPending = false, logsPending = false, exportPending = false;
 
 function toast(message, error = false) {
   const element = $("#toast"); element.textContent = message; element.classList.toggle("error", error); element.hidden = false;
@@ -13,13 +14,13 @@ function toast(message, error = false) {
 }
 
 async function request(path, options = {}, binary = false) {
-  const response = await fetch(path, { credentials: "same-origin", ...options,
+  const response = await fetch(path, { credentials: "same-origin", signal: AbortSignal.timeout(options.method && options.method !== "GET" ? 120000 : 15000), ...options,
     headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(csrf ? { "X-CSRF-Token": csrf } : {}), ...options.headers } });
   if (response.status === 401 && path !== "/api/login") { loggedIn = false; showAuth(); }
   if (!response.ok) {
     let message = "请求失败（" + response.status + "）";
     try { const data = await response.json(); message = data.error || message; } catch (_) { }
-    throw new Error(message);
+    const error = new Error(message); error.status = response.status; throw error;
   }
   if (binary) return response;
   const body = await response.text(); return body ? JSON.parse(body) : {};
@@ -39,8 +40,10 @@ async function enterApp() {
   const session = await request("/api/session"); csrf = session.csrf; loggedIn = true;
   $("#identityName").textContent = session.userName;
   $("#password").value = ""; $("#setupToken").value = ""; setupToken = "";
+  logAfter = 0; logLines = [];
   $("#authPanel").hidden = true; $("#application").hidden = false;
   await loadConfig(); await refreshStatus();
+  if (sessionStorage.getItem("dflegacy-export-job")) generateClient();
 }
 
 function switchView(view) {
@@ -60,7 +63,7 @@ async function loadConfig() {
     if (input.type === "checkbox") input.checked = value; else input.value = name === "dropRatePercent" ? value / 100 : value;
     input.disabled = false;
   }
-  const mapping = { fallbackRelayEnabled: "FallbackRelay__Enabled", fallbackRelayAdvertisedHost: "FallbackRelay__AdvertisedHost", fallbackRelayTcpPort: "FallbackRelay__TcpPort", fallbackRelayUdpPort: "FallbackRelay__UdpPort", pvpEnabled: "Pvp__Enabled", pvpPort: "Pvp__Port", scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
+  const mapping = { gmPanelPort: "WebPanels__Gm__Port", playerPanelPort: "WebPanels__Player__Port", fallbackRelayEnabled: "FallbackRelay__Enabled", fallbackRelayAdvertisedHost: "FallbackRelay__AdvertisedHost", fallbackRelayTcpPort: "FallbackRelay__TcpPort", fallbackRelayUdpPort: "FallbackRelay__UdpPort", pvpEnabled: "Pvp__Enabled", pvpPort: "Pvp__Port", scriptPvfPath: "ScriptPvfPath", bindHost: "Entrance__Host", adminHost: "Admin__Host", entrancePort: "Entrance__Port", channelPort: "Channel__Port", adminPort: "Admin__Port", characterPort: "CharacterDatagram__Port", gameplayPrimaryPort: "GameplayDatagram__PrimaryPort", gameplaySecondaryPort: "GameplayDatagram__SecondaryPort", channelName: "Channel__Name", maximumUsers: "Channel__MaximumUsers", monsterExperienceMultiplier: "Experience__MonsterMultiplier", clearExperienceMultiplier: "Experience__ClearMultiplier", dropRatePercent: "Drop__RatePercent", dropEconomicRate: "Drop__EconomicRate", additionalEntrancePort: "Entrance__AdditionalPorts__1" };
   for (const [name, key] of Object.entries(mapping)) {
     if ((snapshot.environmentOverrides || []).some(variable => variable.toLowerCase() === ("DFLegacy__" + key).toLowerCase())) {
       const input = fields.namedItem(name); if (!input) continue; input.disabled = true;
@@ -87,6 +90,12 @@ async function refreshPvf() {
 }
 
 async function refreshStatus() {
+  if (!loggedIn || statusPending) return;
+  statusPending = true;
+  try { await refreshStatusCore(); } finally { statusPending = false; }
+}
+
+async function refreshStatusCore() {
   if (!loggedIn) return;
   const status = await request("/api/status");
   const server = status.server, running = server.state === "running", pending = ["starting", "stopping"].includes(server.state);
@@ -103,21 +112,29 @@ async function refreshStatus() {
   $("#summaryApi").textContent = status.accountServiceUrl; $("#summaryGameplay").textContent = status.gameplayAdvertisedHost;
   $("#summaryData").textContent = status.dataDirectory;
   $("#assetNotice").hidden = status.assetsAvailable;
-  $("#exportClient").disabled = busy || !status.assetsAvailable || !status.configured;
+  $("#exportClient").disabled = busy || exportPending || !status.assetsAvailable || !status.configured;
   await refreshPvf();
-  const base = status.accountServiceUrl.replace(/\/+$/, "");
-  $("#gmLink").href = base + "/admin/index.html"; $("#playerLink").href = base + "/admin/player.html";
+  for (const [selector, url] of [["#gmLink", status.gmPanelUrl], ["#playerLink", status.playerPanelUrl]]) {
+    $(selector).hidden = !url;
+    if (url) $(selector).href = url; else $(selector).removeAttribute("href");
+  }
   $("#gameLinksNote").textContent = running ? "使用游戏管理员账号登录 GM 后台。" : "游戏服务当前已停止，这些页面将在启动后可用。";
 }
 
 async function refreshLogs() {
-  if (!loggedIn || currentView !== "logs") return;
-  const lines = await request("/api/logs?after=" + logAfter);
-  if (!lines.length) return;
-  logLines = logLines.concat(lines).slice(-500); logAfter = lines[lines.length - 1].id;
-  const output = $("#logOutput");
-  output.textContent = logLines.map(line => new Date(line.time).toLocaleTimeString() + " [" + line.source + "] " + line.text).join("\n");
-  if ($("#autoScroll").checked) output.scrollTop = output.scrollHeight;
+  if (!loggedIn || currentView !== "logs" || logsPending) return;
+  logsPending = true;
+  try {
+    const lines = await request("/api/logs?after=" + logAfter);
+    $("#logStatus").textContent = "日志已连接 · " + new Date().toLocaleTimeString();
+    if (!lines.length) return;
+    logLines = logLines.concat(lines).slice(-500); logAfter = lines[lines.length - 1].id;
+    const output = $("#logOutput");
+    output.textContent = logLines.map(line => new Date(line.time).toLocaleTimeString() + " [" + line.source + "] " + line.text).join("\n");
+    if ($("#autoScroll").checked) output.scrollTop = output.scrollHeight;
+  } catch (error) {
+    $("#logStatus").textContent = "日志暂时无法读取，将自动重试：" + error.message;
+  } finally { logsPending = false; }
 }
 
 async function withBusy(action) {
@@ -193,15 +210,61 @@ $("#uploadPvf").addEventListener("click", () => withBusy(async () => {
     await refreshPvf(); toast("资源上传成功，已自动选用；请保存其他配置后启动。");
   } finally { progress.hidden = true; }
 }));
-$("#exportClient").addEventListener("click", () => withBusy(async () => {
-  const kind = "client";
-  toast("正在生成客户端包，请稍候…");
-  const response = await request("/api/export/" + kind, { method: "POST", body: JSON.stringify({ testBuild: $("#testBuild").checked }) }, true);
-  const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement("a");
-  const match = /filename="?([^";]+)"?/.exec(response.headers.get("Content-Disposition") || "");
-  link.href = url; link.download = match ? match[1].replace(/[^a-zA-Z0-9_.-]/g, "_") : "dflegacy-" + kind + ".zip";
-  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 60_000); toast("客户端包已生成。");
-}));
+function showExportProgress(progress) {
+  $("#exportProgressPanel").hidden = false;
+  const bar = $("#exportProgress");
+  const labels = { preparing: "1/4 准备", validating: "2/4 资源校验", compressing: "3/4 压缩", finalizing: "4/4 写入配置", ready: "生成完成" };
+  let detail = "";
+  if (progress.totalBytes > 0) {
+    bar.max = progress.totalBytes; bar.value = progress.completedBytes;
+    detail = " · " + Math.floor(progress.completedBytes / progress.totalBytes * 100) + "%（"
+      + (progress.completedBytes / 1048576).toFixed(1) + " / " + (progress.totalBytes / 1048576).toFixed(1) + " MiB）";
+  } else bar.removeAttribute("value");
+  $("#exportProgressText").textContent = (labels[progress.stage] || progress.stage) + detail + " · " + progress.message;
+}
+
+async function generateClient() {
+  if (exportPending) return;
+  exportPending = true; $("#exportClient").disabled = true;
+  $("#exportDownload").hidden = true;
+  showExportProgress({ stage: "preparing", totalBytes: 0, message: "正在连接生成任务…" });
+  try {
+    let id = sessionStorage.getItem("dflegacy-export-job");
+    if (!id) { const job = await post("/api/exports", { testBuild: $("#testBuild").checked }); id = job.id; sessionStorage.setItem("dflegacy-export-job", id); }
+    const deadline = Date.now() + 30 * 60 * 1000;
+    while (loggedIn) {
+      let job;
+      try { job = await request("/api/exports/" + encodeURIComponent(id)); }
+      catch (error) {
+        // Retain the ID for a transient failure, so retry observes the existing
+        // job rather than starting another expensive compression.
+        if (error.status === 404) sessionStorage.removeItem("dflegacy-export-job");
+        throw error;
+      }
+      showExportProgress(job.progress);
+      if (job.state === "failed") { sessionStorage.removeItem("dflegacy-export-job"); throw new Error(job.error); }
+      if (job.state === "ready") {
+        sessionStorage.removeItem("dflegacy-export-job");
+        const link = $("#exportDownload");
+        link.href = "/api/exports/" + encodeURIComponent(id) + "/download";
+        link.hidden = false;
+        $("#exportProgressText").textContent = "生成完成（" + (job.size / 1048576).toFixed(1)
+          + " MiB），已交给浏览器下载。传输进度请查看浏览器下载列表；需要时可点击重新下载。";
+        link.click();
+        return;
+      }
+      if (Date.now() >= deadline) throw new Error("等待较久，任务仍保留。点击生成按钮可继续查看进度。");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } catch (error) {
+    $("#exportProgressText").textContent = "生成进度读取失败：" + error.message + "。可点击生成按钮重试。";
+    toast(error.message, true);
+  } finally {
+    exportPending = false;
+    if (loggedIn) await refreshStatus().catch(error => toast(error.message, true));
+  }
+}
+$("#exportClient").addEventListener("click", generateClient);
 $("#clearLogs").addEventListener("click", () => { logLines = []; $("#logOutput").textContent = "等待新日志…"; });
 
 async function initialize() {

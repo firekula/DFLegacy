@@ -37,11 +37,15 @@ public static class AdminAccessPolicy
 
     private const string AccountsPrefix = "/api/accounts/";
 
-    public static AdminAccessDecision Resolve(string method, string path)
+    public static AdminAccessDecision Resolve(string method, string path, bool enableTestCeraTopUp = false)
     {
         // 路由对末尾斜杠是宽容的（/api/auth/login/ 也会命中登录端点），而本表按文本匹配。
         // 不归一化就会出现"表里判成 Admin、实际是登录接口"这种费解的 fail-closed 偏差。
         var normalized = NormalizePath(path);
+
+        if (enableTestCeraTopUp && IsMethod(method, "POST") &&
+            (IsPath(normalized, "/api/client-pay/test-cera") || IsPath(normalized, "/api/client-pay/test-diamond")))
+            return new AdminAccessDecision(AdminAccess.Public, null);
 
         if (normalized.Length == 0 || normalized == "/")
         {

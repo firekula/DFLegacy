@@ -1,3 +1,5 @@
+> 以下为历史 Runner 运维记录。当前 Gitea 工作流仅使用 Linux Runner 执行源码测试。
+
 # Windows + Docker Linux Gitea Runner
 
 本目录是 Linux Runner 的可复用部署配置。实际凭据、`.runner` 和运行日志保存在仓库外。本次安装位置为 `D:\DFLegacyCI`，安装结果及完整流水线链接见[接入验收记录](../../docs/superpowers/reports/2026-10-30-gitea-runner-deployment-validation.md)。
@@ -75,6 +77,4 @@ Docker Desktop 必须运行；Compose 使用 `restart: unless-stopped`。本次�
 
 ## 发布配置
 
-仓库变量/secret 及门禁见 [Gitea 接入说明](../../.gitea/README.md)。当前实例只有 HTTP，`DFLEGACY_ALLOW_HTTP_API=true` 与 `DFLEGACY_ALLOW_HTTP_REGISTRY=true` 分别启用 API、Registry 的 HTTP 支持；两者独立，默认 TLS 验证。Registry 选项仅作用于本工作流的 Skopeo 命令，不修改任何 Docker 全局配置。迁移到 HTTPS 后应清除两个 HTTP 变量。
-
-主分支开发预发布不更新镜像 `latest`；推送 `vX.Y.Z` 正式标签才执行正式发布路径。macOS/ARM 包交叉构建，无对应机器时不声明实机测试通过。
+当前工作流的接入说明见 [Gitea 源码与测试](../../.gitea/README.md)。

@@ -46,6 +46,7 @@ internal static class LaunchFlow
             else Console.Error.WriteLine(Program.LogWarning);
         }
 
+        await using var pay = await LocalPaymentSite.StartAsync(options.ResolveAccountServiceUrl(), cancellationToken);
         var relay = await Program.StartRelayIfConfiguredAsync(options);
         using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         Task relayTask = Task.CompletedTask;
@@ -64,7 +65,7 @@ internal static class LaunchFlow
                 "0","0","0","0","0","0","0","0"
             ]);
             await ClientProcessLifetime.RunAsync(
-                () => ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken),
+                () => ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),
                 async (client, token) =>
                 {
                     Program.TryRaisePriority(client);
@@ -73,12 +74,11 @@ internal static class LaunchFlow
                         (relay is null ? "." : $"; relay target={relay.TargetAddress}."));
                     await ClientStartupMonitor.ObserveAsync(client, TimeSpan.FromSeconds(5), token);
                     Program.WriteLauncherLog($"Client process {client.Id} remained running through startup observation.");
-                    if (relay is null) return;
                     await client.WaitForExitAsync(token);
                     shutdown.Cancel();
                     await relayTask;
                     Program.WriteLauncherLog($"Client process {client.Id} exited; launcher stopping.");
-                }, handoffOnSuccess: relay is null, cancellationToken);
+                }, handoffOnSuccess: false, cancellationToken);
         }
         finally
         {

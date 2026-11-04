@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
@@ -10,7 +9,8 @@ public sealed class GitHubUpdateClient
     public const string AssetName="DFLegacy-client-update-v2-win-x64.zip";
     public const string TestAssetName="DFLegacy-client-update-v2-test-win-x64.zip";
     private readonly string flavor;
-    private string SelectedAssetName => flavor=="test" ? TestAssetName : AssetName;
+    private readonly string architecture;
+    private string SelectedAssetName => $"DFLegacy-client-update-v2{(flavor == "test" ? "-test" : "")}-win-{architecture}.zip";
     private readonly HttpClient client;
     private readonly string repository;
     private readonly bool includePrereleases;
@@ -18,19 +18,16 @@ public sealed class GitHubUpdateClient
     {
         if(repository!="firekula/DFLegacy") throw new ArgumentException("仅允许配置的公开更新仓库。",nameof(repository));
     }
-    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true, string flavor="normal")
+    public GitHubUpdateClient(HttpClient client, string repository, bool includePrereleases=true, string flavor="normal", string architecture="x64")
     {
         ValidateRepository(repository);
         if(flavor is not ("normal" or "test")) throw new ArgumentException("无效的客户端包类型。",nameof(flavor));
+        if (architecture is not ("x64" or "x86")) throw new ArgumentException("无效的客户端架构。", nameof(architecture));
+        this.architecture = architecture;
         this.flavor=flavor;
         this.client=client; this.repository=repository; this.includePrereleases=includePrereleases;
     }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler { AllowAutoRedirect=false, UseCookies=false, UseDefaultCredentials=false, Credentials=null }) { Timeout=Timeout.InfiniteTimeSpan };
-    private void NoCredentials()
-    {
-        if(client.DefaultRequestHeaders.Any(h=> !h.Key.Equals("User-Agent",StringComparison.OrdinalIgnoreCase) && !h.Key.Equals("Accept",StringComparison.OrdinalIgnoreCase)))
-            throw new InvalidOperationException("公开更新客户端不能携带凭据或自定义请求头。");
-    }
     private void ValidateAsset(Uri url, bool redirect=false)
     {
         if(url.Scheme!="https" || !url.IsDefaultPort || url.UserInfo.Length!=0 || url.Fragment.Length!=0) throw new InvalidDataException("更新下载地址无效。");
@@ -40,7 +37,7 @@ public sealed class GitHubUpdateClient
     }
     private async Task<HttpResponseMessage> Get(Uri uri, bool asset, CancellationToken token)
     {
-        NoCredentials();
+        UpdateDownload.RequireNoCredentials(client);
         for(int hop=0;hop<5;hop++)
         {
             if(asset) ValidateAsset(uri,hop>0);
@@ -71,7 +68,7 @@ public sealed class GitHubUpdateClient
             if(response.StatusCode==HttpStatusCode.NotFound) return null;
             response.EnsureSuccessStatusCode();
             using var body=await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
-            using var buffer=new MemoryStream(); await CopyBounded(body,buffer,4*1024*1024,null,timeout.Token).ConfigureAwait(false);
+            using var buffer=new MemoryStream(); await UpdateDownload.CopyBounded(body,buffer,4*1024*1024,null,timeout.Token).ConfigureAwait(false);
             using var doc=JsonDocument.Parse(buffer.ToArray());
             if(doc.RootElement.ValueKind!=JsonValueKind.Array) throw new InvalidDataException("GitHub 更新响应无效。");
             foreach(var item in doc.RootElement.EnumerateArray())
@@ -94,33 +91,6 @@ public sealed class GitHubUpdateClient
     public async Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string stagingRoot,IProgress<UpdateProgress>? progress=null,CancellationToken cancellationToken=default)
     {
         ValidateAsset(release.DownloadUrl);
-        if(release.Id<=0 || release.Size<=0 || release.Size>UpdateSafety.MaxZip || !UpdateSafety.IsHash(release.Sha256)) throw new InvalidDataException("更新附件信息无效。");
-        UpdateSafety.NoLinks(stagingRoot); Directory.CreateDirectory(stagingRoot);
-        using var rootPin=UpdateSafety.PinDirectory(stagingRoot);
-        var directory=Path.Combine(Path.GetFullPath(stagingRoot),"dflegacy-update-"+Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
-        try
-        {
-            using var pin=UpdateSafety.PinDirectory(directory);
-            using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); timeout.CancelAfter(TimeSpan.FromMinutes(10));
-            using var response=await Get(release.DownloadUrl,true,timeout.Token).ConfigureAwait(false); response.EnsureSuccessStatusCode();
-            if(response.Content.Headers.ContentLength is long length && length!=release.Size) throw new InvalidDataException("更新附件长度不匹配。");
-            var archive=Path.Combine(directory,"package.zip");
-            using(var body=await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false))
-            using(var output=new FileStream(archive,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true))
-            {
-                var clock=Stopwatch.StartNew();
-                var copied=await CopyBounded(body,output,release.Size,n=>progress?.Report(new(n,release.Size,n/Math.Max(clock.Elapsed.TotalSeconds,0.001))),timeout.Token).ConfigureAwait(false);
-                if(copied!=release.Size) throw new InvalidDataException("更新附件未完整下载。");
-            }
-            timeout.Token.ThrowIfCancellationRequested();
-            return UpdatePackage.Extract(release,directory,archive,timeout.Token,flavor);
-        }
-        catch { UpdateArtifacts.DeleteStage(directory); throw; }
-    }
-    private static async Task<long> CopyBounded(Stream input,Stream output,long limit,Action<long>? progress,CancellationToken token)
-    {
-        var bytes=new byte[65536]; long total=0; int count;
-        while((count=await input.ReadAsync(bytes,token).ConfigureAwait(false))>0) { total+=count; if(total>limit) throw new InvalidDataException("更新数据超出大小限制。"); await output.WriteAsync(bytes.AsMemory(0,count),token).ConfigureAwait(false); progress?.Invoke(total); }
-        return total;
+        return await UpdateDownload.FetchAsync(release,stagingRoot,progress,cancellationToken,flavor,(uri,token)=>Get(uri,true,token)).ConfigureAwait(false);
     }
 }

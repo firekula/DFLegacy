@@ -35,11 +35,50 @@ public sealed class PvpOptions
 
 internal static class PvpChannelConfiguration
 {
-    internal static int[] Ports(ServerOptions o) => o.Pvp.Enabled ? [o.Channel.Port, o.Pvp.Port] : [o.Channel.Port];
+    // ACT1 server-group 1 channel IDs, one per PVF dungeon category.
+    private static readonly (int Number, string Name)[] RegionalChannels =
+    [
+        (1, "Elven Guard"), (10, "Grand Flores"), (15, "Sky Castle"),
+        (20, "Behemoth"), (23, "Storm Pass"), (24, "Alfhlyra"), (27, "North Myre")
+    ];
+
+    internal static IEnumerable<(int Number, string Name, int Port)> GameplayChannels(ServerOptions o)
+    {
+        if (o.Channel.RegionalChannelsEnabled)
+        {
+            for (var i = 0; i < RegionalChannels.Length; i++)
+            {
+                var (number, name) = RegionalChannels[i];
+                yield return (number, name, i == 0 ? o.Channel.Port : 7099 + i);
+            }
+        }
+        else yield return (o.Channel.ChannelNumber, o.Channel.Name, o.Channel.Port);
+
+        if (o.Pvp.Enabled) yield return (o.Pvp.ChannelNumber, o.Pvp.Name, o.Pvp.Port);
+    }
+
+    internal static int[] Ports(ServerOptions o) => GameplayChannels(o).Select(channel => channel.Port).ToArray();
+
     internal static EntranceChannel[] Channels(ServerOptions o)
     {
         var host = EntranceService.ResolveChannelDialHost(o);
-        var normal = new EntranceChannel(o.Channel.Name, host, o.Channel.Port, o.Channel.ChannelNumber, o.Channel.MaximumUsers, o.Channel.CurrentUsers);
-        return o.Pvp.Enabled ? [normal, new(o.Pvp.Name, host, o.Pvp.Port, o.Pvp.ChannelNumber, o.Channel.MaximumUsers, o.Channel.CurrentUsers)] : [normal];
+        return GameplayChannels(o).Select(c => new EntranceChannel(c.Name, host, c.Port, c.Number,
+            o.Channel.MaximumUsers, o.Channel.CurrentUsers)).ToArray();
+    }
+
+    internal static void ValidateRegionalChannels(ServerOptions o)
+    {
+        if (!o.Channel.RegionalChannelsEnabled) return;
+        if (o.Processes.Channel.Enabled || o.Channel.ServerNumber != 1)
+            throw new InvalidOperationException("Regional channels require the shared-store single process and ACT1 server group 1.");
+        var reserved = o.Entrance.AdditionalPorts.Append(o.Entrance.Port).Append(o.Admin.Port)
+            .Concat(o.GameProbe.Enabled ? [o.GameProbe.Port] : Array.Empty<int>())
+            .Concat(o.FallbackRelay.Enabled ? [o.FallbackRelay.TcpPort] : Array.Empty<int>())
+            .Concat(o.WebPanels.Gm.Enabled ? [o.WebPanels.Gm.Port] : Array.Empty<int>())
+            .Concat(o.WebPanels.Player.Enabled ? [o.WebPanels.Player.Port] : Array.Empty<int>());
+        var ports = Ports(o);
+        if (ports.Distinct().Count() != ports.Length || ports.Skip(1).Take(6).Intersect(reserved).Any())
+            throw new InvalidOperationException("Regional channel TCP ports 7100–7105 conflict with another listener.");
+        _ = EntranceMetadata.BuildLocalChannels(Channels(o));
     }
 }

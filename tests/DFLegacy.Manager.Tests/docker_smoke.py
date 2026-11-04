@@ -54,7 +54,8 @@ def exercise(image):
         try:
             def start(controlled=False):
                 nonlocal active
-                docker("run", "-d", "--name", identifier, "-p", "127.0.0.1::18080", "--mount", f"type=volume,source={volume},target=/app/data",
+                docker("run", "-d", "--name", identifier, "-p", "127.0.0.1::18080", "-p", "127.0.0.1::18083",
+                       "-e", "DFLEGACY_UPDATE_PUBLIC_URL=https://games.example.test:18443", "--mount", f"type=volume,source={volume},target=/app/data",
                        "--mount", f"type=bind,source={fixture / 'Script.pvf'},target=/pvf/Script.pvf,readonly",
                        *(["-e", "DFLegacy__ScriptPvfPath=/pvf/Script.pvf"] if controlled else []), image)
                 active = True
@@ -172,6 +173,33 @@ def exercise(image):
                               "test export preserves normal Launcher and Client binary identities while adding same-release debug.dll")
                     else:
                         normal_files = identities
+            if "launcher-x86/DFLegacy.Launcher.exe" in asset_files:
+                update_base = "http://" + docker("port", identifier, "18083/tcp").splitlines()[0]
+                for private in ("/", "/health", "/api/setup/status"):
+                    try:
+                        opener.open(update_base + private, timeout=10)
+                    except urllib.error.HTTPError as error:
+                        check(error.code == 404, "update port isolates " + private)
+                    else:
+                        raise AssertionError("private route exposed on update port")
+                job = request("/api/exports", {"testBuild": False})
+                for _ in range(450):
+                    job = request("/api/exports/" + job["id"])
+                    if job["state"] == "ready":
+                        break
+                    if job["state"] == "failed":
+                        raise AssertionError(job["error"])
+                    time.sleep(.2)
+                else:
+                    raise AssertionError("dual-architecture export timed out")
+                for arch in ("x86", "x64"):
+                    route = f"{update_base}/v1/{arch}/normal"
+                    with opener.open(route + "/latest", timeout=10) as response:
+                        update = json.load(response)
+                    with opener.open(f"{route}/{update['sha256']}.zip", timeout=60) as response:
+                        digest = hashlib.file_digest(response, "sha256").hexdigest()
+                    check(update["version"] == release["version"] and digest == update["sha256"],
+                          f"{arch} hosted update matches installed image release and archive")
             request("/api/server/start", {})
             docker("stop", "--time", "40", identifier)
             check(docker("inspect", "--format", "{{.State.ExitCode}}", identifier) == "0", "container SIGTERM gracefully stops Manager and owned game")

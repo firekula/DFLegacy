@@ -17,6 +17,9 @@
     <Compile Remove="tests/**/*.cs" />
     <InternalsVisibleTo Include="DFLegacy.Launcher.Tests" />
     <PackageReference Include="HandyControl" Version="3.5.1" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="../DFLegacy.Server/wwwroot/client/**/*"
+                      LogicalName="ClientPay/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   <!-- 原版 2008 登录器皮肤素材（取自客户端 start\data\ui 与 config\layout\QQLogin.xml 的布局定义），
        以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。

@@ -52,7 +52,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--native", required=True, type=Path)
     parser.add_argument("--launcher", type=Path)
+    parser.add_argument("--launcher-rid", choices=("win-x64", "win-x86"), default="win-x64")
     parser.add_argument("--packages", type=Path)
+    parser.add_argument("--launcher-x86", type=Path)
     args = parser.parse_args()
     notices = {"DETOURS_LICENSE": (REPO/"third_party/detours/LICENSE").read_bytes(),
                "DETOURS_PROVENANCE": (REPO/"third_party/detours/PROVENANCE.md").read_bytes()}
@@ -75,7 +77,7 @@ def main():
                   equal(resource(args.native/leaf, name), expected))
     if args.launcher:
         def managed():
-            assembly = bundle.read_bundle(args.launcher, "win-x64").read("DFLegacy.Launcher.dll")
+            assembly = bundle.read_bundle(args.launcher, args.launcher_rid).read("DFLegacy.Launcher.dll")
             for content in notices.values():
                 assert content in assembly, "managed assembly omits full source notice/provenance"
             assert (args.native/"DFLegacy.Bootstrap32.exe").read_bytes() in assembly, "embedded helper differs from matching native build"
@@ -98,8 +100,11 @@ def main():
         check("singlefile read-only notice CLI with invalid configuration", cli)
     if args.packages:
         def packages():
-            names = {release.UPDATE_ASSET, release.UPDATE_TEST_ASSET, release.TOOLS_ASSET, release.TOOLS_TEST_ASSET}
-            assert {p.name for p in args.packages.glob("DFLegacy-client-*.zip")} == names
+            names = set(release.PUBLIC_ASSETS)
+            found = {p.name for p in args.packages.glob("DFLegacy-client-*.zip")}
+            if args.launcher_x86 or found.intersection(release.X86_UPDATE_ASSETS):
+                names.update(release.X86_UPDATE_ASSETS)
+            assert found == names
             shared = {}
             for name in sorted(names):
                 path = args.packages/name
@@ -109,12 +114,16 @@ def main():
                         if leaf not in archive.namelist():
                             continue
                         body = archive.read(leaf)
-                        assert body == shared.setdefault(leaf, body), f"flavor pairing differs: {leaf}"
-                        expected = args.launcher if leaf == "DFLegacy.Launcher.exe" else args.native/leaf
-                        assert body == expected.read_bytes(), f"archive uses stale {leaf}"
+                        key = (leaf, name.endswith("-win-x86.zip") if leaf == "DFLegacy.Launcher.exe" else None)
+                        assert body == shared.setdefault(key, body), f"flavor pairing differs: {leaf}"
+                        expected = args.native / leaf
+                        if leaf == "DFLegacy.Launcher.exe":
+                            expected = args.launcher_x86 if key[1] else args.launcher
+                        if expected is not None:
+                            assert body == expected.read_bytes(), f"archive uses stale {leaf}"
                     assert manifest["flavor"] == ("test" if "-test-" in name else "normal")
-            print("verified four exact inventories, shared binaries, flavor-only debug.dll")
-        check("four real schema 2 public packages", packages)
+            print("verified exact inventories, shared binaries, flavor-only debug.dll")
+        check("real schema 2 public packages", packages)
     print(f"artifact notice checks: {len(failures)} failures")
     return bool(failures)
 

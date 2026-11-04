@@ -5,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DFLegacy.Manager;
 
+if (args.Contains("--logs-only")) return LogRecoveryTests.Run();
+if (LogRecoveryTests.Run() != 0) return 1;
+
 if (args.Contains("--startup-only")) return await StartupRecoveryTests.RunAsync();
 if (args.Contains("--pvf-only")) return await PvfUploadTests.RunAsync();
 if (await StartupRecoveryTests.RunAsync() != 0) return 1;
@@ -36,12 +39,19 @@ try
         """);
     var config = new ConfigurationStore(paths, new Dictionary<string, string?>());
     var original = config.Read().Saved;
+    Check(original.GmPanelPort == 18081 && original.PlayerPanelPort == 18082, "panels default to dedicated ports");
+    Reject(() => config.Save(original with { GmPanelPort = original.AdminPort }), "panel and API port collisions rejected");
+    Check(ConfigurationStore.PanelUrl("http://[::1]:8081/base", 18082) == "http://[::1]:18082/", "panel link uses its root and preserves IPv6 host");
+    Check(ConfigurationStore.PanelUrl("https://game.example/accounts", 18081) == "http://game.example:18081/", "direct panel listener uses HTTP independently of account proxy TLS");
     Reject(() => config.Save(original with { AdvertisedHost = "dns.example.test" }),
         "default native fallback refuses a DNS advertisement without an explicit IPv4 address");
     Check(Path.IsPathFullyQualified(original.ScriptPvfPath), "PVF resolves independently of current working directory");
     Check(Path.GetDirectoryName(paths.ServerConfig) == Path.Combine(paths.Data, "config"), "user config lives in the selected data directory");
     var edited = original with { BindHost = "0.0.0.0", AdvertisedHost = "game.example.test", FallbackRelayAdvertisedHost = "203.0.113.42", AccountServiceUrl = "https://accounts.example.test", ChannelName = "测试频道", MonsterExperienceMultiplier = 2.5 };
     config.Save(edited);
+    foreach (var loopbackApi in new[] { "http://127.0.0.1:8081", "http://localhost:8081", "http://[::1]:8081" })
+        Reject(() => ConfigurationStore.Validate(edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "", AccountServiceUrl = loopbackApi }),
+            "remote relay player package must not send account requests to player loopback: " + loopbackApi);
     var savedDocument = JsonNode.Parse(File.ReadAllText(paths.ServerConfig))!;
     Check(savedDocument["Keep"]!["Nested"]!.GetValue<int>() == 42 && savedDocument["DFLegacy"]!["UnknownFuture"]!["retain"]!.GetValue<int>() == 123,
         "editing basic fields retains unknown future configuration");
@@ -163,7 +173,13 @@ try
     WriteAssets(commit);
     WriteRelease();
     var exporter = new ClientPackageExporter(paths);
-    var zipPath = await exporter.ExportAsync("client", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" });
+    var exportProgress = new List<ClientExportProgress>();
+    var zipPath = await exporter.ExportAsync("client", edited with { RelayEnabled = true, FallbackRelayAdvertisedHost = "" }, progress: exportProgress.Add);
+    Check(exportProgress.Any(p => p.Stage == "validating") && exportProgress.Any(p => p.Stage == "compressing")
+        && exportProgress.Last().Stage == "ready", "export reports validation, compression and completed stages");
+    Check(exportProgress.Where(p => p.Stage == "compressing").All(p => p.CompletedBytes <= p.TotalBytes)
+        && exportProgress.Any(p => p.Stage == "compressing" && p.CompletedBytes == p.TotalBytes && p.TotalBytes > 0),
+        "compression progress counts actual input bytes through completion");
     using (var archive = ZipFile.OpenRead(zipPath))
     {
         string Read(string name) { using var reader = new StreamReader(archive.GetEntry(name)!.Open()); return reader.ReadToEnd(); }
@@ -193,6 +209,47 @@ try
         Check(archive.GetEntry("client-package.json") is not null, "normal export includes installed schema2 manifest");
         Check(archive.GetEntry("ijl15.dll") is null && archive.GetEntry("debug.dll") is null, "normal export preserves original IJL and excludes debug");
     }
+    var x86Asset = "launcher-x86/DFLegacy.Launcher.exe";
+    Directory.CreateDirectory(Path.Combine(paths.AssetsDirectory, "launcher-x86"));
+    File.WriteAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "x86 launcher fixture");
+    assetFiles.Add(x86Asset, "x86 launcher fixture");
+    WriteAssets(commit);
+    var updateStore = new ClientUpdateStore(paths, "http://games.example.test:18083");
+    var dualPath = await exporter.ExportPairAsync(edited, false, updateStore, default, null);
+    using (var dual = ZipFile.OpenRead(dualPath))
+    {
+        foreach (var architecture in new[] { "x86", "x64" })
+        {
+            using var inner = new ZipArchive(dual.GetEntry($"DFLegacy-client-win-{architecture}.zip")!.Open(), ZipArchiveMode.Read);
+            using var configReader = new StreamReader(inner.GetEntry("launcher.json")!.Open());
+            Check(JsonDocument.Parse(configReader.ReadToEnd()).RootElement.GetProperty("UpdateServiceUrl").GetString() == "http://games.example.test:18083",
+                $"{architecture} installer points to dedicated HTTP port");
+            var current = updateStore.Latest(architecture, "normal")!;
+            var package = updateStore.Package(architecture, "normal", current.Sha256)!;
+            Check(current.Version == "v1.2.3" && current.Size == new FileInfo(package).Length
+                && current.Sha256 == Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(package))), $"{architecture} update metadata matches immutable archive");
+            using var update = ZipFile.OpenRead(package);
+            Check(update.Entries.Select(e => e.FullName).Order().SequenceEqual(new[] { "DFLegacy.Client.dll", "DFLegacy.Launcher.exe", "update-manifest.json" }),
+                $"{architecture} update omits installer configuration");
+        }
+    }
+    var previousUpdate = updateStore.Latest("x86", "normal");
+    File.AppendAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "corrupted");
+    try
+    {
+        await exporter.ExportPairAsync(edited, false, updateStore, default, null);
+        Check(false, "corrupt x86 must reject the complete export");
+    }
+    catch (InvalidDataException)
+    {
+        var reopened = new ClientUpdateStore(paths, "http://games.example.test:18083");
+        Check(reopened.Latest("x86", "normal") == previousUpdate
+            && reopened.Latest("x64", "normal")?.Id == previousUpdate?.Id,
+            "failed second architecture leaves both persisted indexes intact");
+    }
+    File.Delete(Path.Combine(paths.AssetsDirectory, x86Asset));
+    assetFiles.Remove(x86Asset);
+    WriteAssets(commit);
     var testZip = await exporter.ExportAsync("client", edited, testBuild: true);
     using (var archive = ZipFile.OpenRead(testZip))
     {
@@ -220,6 +277,24 @@ try
         Check(installed.Flavor == flavor && installed.Commit == commit, "actual launcher parser validates Manager " + flavor + " export");
     }
     var pvpDocument = config.ReadServerDocument();
+    var jobLog = new ManagerLog(paths);
+    var jobs = new ClientExportJobs(exporter, jobLog);
+    var startedJob = jobs.Start(edited);
+    var jobDeadline = DateTime.UtcNow.AddSeconds(15);
+    while (jobs.Read(startedJob.Id)!.State == "running" && DateTime.UtcNow < jobDeadline) await Task.Delay(10);
+    Check(jobs.Read(startedJob.Id) is { State: "ready", Size: > 0 } && File.Exists(jobs.Download(startedJob.Id)),
+        "background export publishes a completed, downloadable archive");
+    Check(jobs.Download("../server.json") is null && jobs.Read("unknown") is null,
+        "download identifiers cannot select arbitrary paths");
+    Check(jobLog.Read(0).Any(line => line.Source == "export" && line.Text.Contains("生成完成")),
+        "background generation writes lifecycle events into runtime logs");
+    using var canceledJob = new CancellationTokenSource();
+    canceledJob.Cancel();
+    var canceled = jobs.Start(edited, canceledJob.Token);
+    jobDeadline = DateTime.UtcNow.AddSeconds(15);
+    while (jobs.Read(canceled.Id)!.State == "running" && DateTime.UtcNow < jobDeadline) await Task.Delay(10);
+    Check(jobs.Read(canceled.Id) is { State: "failed", Error: not null } && jobs.Download(canceled.Id) is null,
+        "host cancellation reports failure without exposing a partial download");
     pvpDocument["DFLegacy"]!["Pvp"] = new JsonObject { ["Enabled"] = true, ["Port"] = 9051 };
     File.WriteAllText(paths.ServerConfig, pvpDocument.ToJsonString());
     var pvpZip = await exporter.ExportAsync("launcher", config.Read().Effective);

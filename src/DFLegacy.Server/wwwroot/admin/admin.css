@@ -731,3 +731,63 @@ body.guest-mode .player-only {
     flex: 1 1 auto;
   }
 }
+
+/* ---------- GM 账号管理 ---------- */
+
+.account-dialog {
+  width: min(540px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  padding: 22px;
+  overflow: auto;
+  color: var(--ink);
+}
+
+.account-dialog::backdrop {
+  background: rgb(20 40 35 / 48%);
+}
+
+.account-dialog-header,
+.managed-character-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.account-dialog-header h2,
+.account-dialog-header form,
+.account-section h3 {
+  margin: 0;
+}
+
+.account-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.account-section .field {
+  margin: 10px 0;
+}
+
+.managed-character-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.managed-character-list li + li {
+  margin-top: 8px;
+}
+
+.account-action-status {
+  color: var(--green);
+}
+
+.account-action-status.error {
+  color: #7f2626;
+}
+
+.account-action-status:empty {
+  display: none;
+}

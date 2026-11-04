@@ -5,14 +5,15 @@ public sealed class FatigueResetService(
     CharacterSessionRegistry characterSessions,
     ILogger<FatigueResetService> logger) : BackgroundService
 {
-    private static readonly TimeSpan ResetTime = TimeSpan.FromHours(6);
+    internal static readonly TimeSpan BeijingOffset = TimeSpan.FromHours(8);
+    internal static readonly TimeSpan ResetTime = TimeSpan.FromHours(6);
     private static readonly TimeSpan MaximumClockCheckDelay = TimeSpan.FromMinutes(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var now = DateTimeOffset.Now;
+            var now = DateTimeOffset.UtcNow;
             var result = await store.ResetFatigueForCurrentDayAsync(
                 now,
                 stoppingToken);
@@ -29,20 +30,17 @@ public sealed class FatigueResetService(
                     result.ResetCharacterCount);
             }
 
-            await Task.Delay(GetNextCheckDelay(DateTimeOffset.Now), stoppingToken);
+            await Task.Delay(GetNextCheckDelay(DateTimeOffset.UtcNow), stoppingToken);
         }
     }
 
     private static TimeSpan GetNextCheckDelay(DateTimeOffset now)
     {
+        now = now.ToOffset(BeijingOffset);
         var nextResetDate = now.TimeOfDay < ResetTime
             ? now.Date
             : now.Date.AddDays(1);
-        var nextLocalTime = nextResetDate + ResetTime;
-        var nextOffset = TimeZoneInfo.Local.GetUtcOffset(nextLocalTime);
-        var nextReset = new DateTimeOffset(
-            DateTime.SpecifyKind(nextLocalTime, DateTimeKind.Unspecified),
-            nextOffset);
+        var nextReset = new DateTimeOffset(nextResetDate + ResetTime, BeijingOffset);
         var delay = nextReset - now;
         if (delay <= TimeSpan.Zero)
         {

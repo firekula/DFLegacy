@@ -33,7 +33,7 @@ const viewCopy = {
   direct: ["单人通知", "向指定在线角色发送弹框或消息"],
   broadcast: ["广播通知", "向全部在线角色发送弹框或消息"],
   dungeon: ["副本权限", "设置角色可进入的 DGN 难度"],
-  users: ["用户角色", "提升或降级账号的 8081 后台权限"],
+  users: ["账号管理", "管理角色、密码、封禁和账号权限"],
   characters: ["我的角色", "账号名下的角色列表"]
 };
 
@@ -217,6 +217,11 @@ function showToast(message, error = false) {
   toast.textContent = message;
   toast.classList.toggle("error", error);
   toast.classList.add("visible");
+  if ($("#gmAccountDialog")?.open) {
+    const status = $("#gmActionStatus");
+    status.textContent = message;
+    status.classList.toggle("error", error);
+  }
   clearTimeout(state.toastTimer);
   state.toastTimer = setTimeout(() => toast.classList.remove("visible"), 3200);
 }
@@ -263,6 +268,8 @@ const jobLabel = job => JOB_NAMES[job] || `职业 ${job}`;
 function applyIdentity() {
   const admin = isAdmin();
   const guest = !auth.token;
+  const accountDialog = $("#gmAccountDialog");
+  if ((!admin || guest) && accountDialog?.open) accountDialog.close();
   document.body.classList.toggle("player-mode", !admin && !guest);
   document.body.classList.toggle("guest-mode", guest);
   $("#identityRole").textContent = guest
@@ -376,6 +383,7 @@ function renderUsers() {
     uidCell.textContent =
       `UID ${account.accountUid} · ${KIND_NAMES[account.kind] ?? `类型 ${account.kind}`}`;
     row.append(uidCell);
+    row.append(cell(accountBanLabel(account.ban)));
 
     const actionCell = document.createElement("td");
     actionCell.className = "align-right";
@@ -391,12 +399,164 @@ function renderUsers() {
     }
     button.addEventListener("click", () => setUserRole(account.userName, target));
     actionCell.append(button);
+    const kindButton = document.createElement("button");
+    kindButton.type = "button";
+    kindButton.className = "secondary-button small-button";
+    const nextKind = Number(account.kind) === 1 ? "Normal" : "Test";
+    kindButton.textContent = nextKind === "Test" ? "设为测试账号" : "设为普通账号";
+    kindButton.addEventListener("click", () => setUserKind(account.userName, nextKind));
+    actionCell.append(kindButton);
+    const manageButton = document.createElement("button");
+    manageButton.type = "button";
+    manageButton.className = "secondary-button small-button";
+    manageButton.textContent = "管理账号";
+    manageButton.addEventListener("click", () => openManagedAccount(account));
+    actionCell.append(manageButton);
     row.append(actionCell);
 
     body.append(row);
   });
   $("#userEmpty").classList.toggle("hidden", state.users.length > 0);
   $("#userTable").classList.toggle("hidden", state.users.length === 0);
+}
+
+function accountBanLabel(ban) {
+  if (!ban) return "未封禁";
+  return ban.expiresAt ? `封禁至 ${new Date(ban.expiresAt).toLocaleString("zh-CN")}` : "永久封禁";
+}
+
+function updateManagedBan(account) {
+  $("#gmBanStatus").textContent = account.ban
+    ? `${accountBanLabel(account.ban)}。原因：${account.ban.reason}`
+    : "未封禁";
+  $("#gmUnban").disabled = !account.ban;
+}
+
+function renderManagedCharacters(userName, protectedAccount = false) {
+  const characters = state.characters.filter(character =>
+    character.userName.toLowerCase() === userName.toLowerCase());
+  const list = $("#managedCharacterList");
+  list.replaceChildren();
+  $("#managedCharacterHint").textContent = characters.length ? "仅可删除离线角色。" : "该账号没有角色。";
+  for (const character of characters) {
+    const row = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = `${character.name} · Lv.${character.level} · ${character.online ? "在线" : "离线"}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary-button small-button";
+    button.textContent = "删除角色";
+    button.disabled = protectedAccount || character.online !== false;
+    button.addEventListener("click", async () => {
+      if (!window.confirm(`永久删除账号 ${userName} 的角色 ${character.name}？此操作无法撤销。`)) return;
+      button.disabled = true;
+      try {
+        await api(`/api/admin/characters/${encodeURIComponent(character.id)}`, { method: "DELETE" }, false);
+        state.characters = state.characters.filter(row => row.id !== character.id);
+        renderCharacters();
+        const dialog = $("#gmAccountDialog");
+        if (dialog.open && dialog.dataset.userName === userName) {
+          renderManagedCharacters(userName, protectedAccount);
+        }
+        showToast(`已删除角色 ${character.name}`);
+        await refreshUsers();
+      } catch (error) {
+        showToast(errorMessage(error), true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+    row.append(label, button);
+    list.append(row);
+  }
+}
+
+async function openManagedAccount(account) {
+  const dialog = $("#gmAccountDialog");
+  const protectedAccount = Number(account.role) === ROLE_ADMIN;
+  dialog.dataset.userName = account.userName;
+  $("#gmAccountName").textContent = account.userName;
+  $("#gmActionStatus").textContent = "";
+  $("#managedCharacterHint").textContent = "正在读取角色状态…";
+  $("#managedCharacterList").replaceChildren();
+  $("#gmPlayerActions").classList.toggle("hidden", protectedAccount);
+  $("#gmProtectedAccount").classList.toggle("hidden", !protectedAccount);
+  $("#gmPasswordForm").reset();
+  $("#gmBanForm").reset();
+  updateBanDuration();
+  updateManagedBan(account);
+  dialog.showModal();
+  try {
+    state.characters = await api("/api/admin/characters", {}, false);
+    if (dialog.open && dialog.dataset.userName === account.userName) {
+      renderManagedCharacters(account.userName, protectedAccount);
+    }
+  } catch (error) {
+    if (dialog.open && dialog.dataset.userName === account.userName) {
+      $("#managedCharacterHint").textContent = "无法读取角色状态。请重新打开账号管理。";
+      showToast(errorMessage(error), true);
+    }
+  }
+}
+
+function updateBanDuration() {
+  const permanent = $("#gmBanMode").value === "permanent";
+  $("#gmBanHoursField").classList.toggle("hidden", permanent);
+  $("#gmBanHours").disabled = permanent;
+}
+
+function bindAccountManagement() {
+  const dialog = $("#gmAccountDialog");
+  const passwordForm = $("#gmPasswordForm");
+  passwordForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const userName = dialog.dataset.userName;
+    runForm(passwordForm, async data => {
+      const newPassword = data.get("newPassword");
+      if (newPassword !== data.get("confirmPassword")) throw new Error("两次输入的密码不一致。");
+      passwordForm.reset();
+      await api(`/api/admin/users/${encodeURIComponent(userName)}/password`, {
+        method: "PUT", body: JSON.stringify({ newPassword })
+      }, false);
+      return { message: `已重置 ${userName} 的密码` };
+    });
+  });
+  dialog.addEventListener("close", () => passwordForm.reset());
+  $("#gmBanMode").addEventListener("change", updateBanDuration);
+  const banForm = $("#gmBanForm");
+  banForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const userName = dialog.dataset.userName;
+    runForm(banForm, async data => {
+      const durationHours = data.get("mode") === "permanent" ? null : Number(data.get("durationHours"));
+      if (durationHours !== null && (!Number.isInteger(durationHours) || durationHours < 1 || durationHours > 8760)) {
+        throw new Error("封禁时长必须为 1–8760 个整小时。");
+      }
+      const reason = String(data.get("reason")).trim();
+      if (!reason) throw new Error("请输入封禁原因。");
+      const duration = durationHours === null ? "永久封禁" : `封禁 ${durationHours} 小时`;
+      if (!window.confirm(`确认对 ${userName} 执行${duration}？`)) return { message: "已取消封禁操作" };
+      await api(`/api/admin/users/${encodeURIComponent(userName)}/ban`, {
+        method: "PUT", body: JSON.stringify({ durationHours, reason })
+      }, false);
+      await refreshUsers();
+      return { message: `已对 ${userName} 执行${duration}` };
+    });
+  });
+  $("#gmUnban").addEventListener("click", async event => {
+    const userName = dialog.dataset.userName;
+    if (!window.confirm(`确认解除账号 ${userName} 的封禁？`)) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api(`/api/admin/users/${encodeURIComponent(userName)}/ban`, { method: "DELETE" }, false);
+      await refreshUsers();
+      showToast(`已解除 ${userName} 的封禁`);
+    } catch (error) {
+      button.disabled = false;
+      showToast(errorMessage(error), true);
+    }
+  });
 }
 
 function setServerState(mode, text) {
@@ -415,6 +575,9 @@ async function refreshUsers() {
     const users = await api("/api/admin/users");
     state.users = Array.isArray(users) ? users : [];
     renderUsers();
+    const dialog = $("#gmAccountDialog");
+    const account = dialog?.open && state.users.find(user => user.userName === dialog.dataset.userName);
+    if (account) updateManagedBan(account);
   } catch (error) {
     showToast(errorMessage(error), true);
   }
@@ -437,6 +600,18 @@ async function setUserRole(userName, role) {
   } catch (error) {
     showToast(errorMessage(error), true);
   }
+}
+
+async function setUserKind(userName, kind) {
+  const label = kind === "Test" ? "测试账号" : "普通账号";
+  if (!window.confirm(`确认将 ${userName} 改为${label}？请先退出所有游戏连接；账号权限、余额和物品保持不变。`)) return;
+  try {
+    await api(`/api/admin/users/${encodeURIComponent(userName)}/kind`, {
+      method: "PUT", body: JSON.stringify({ kind })
+    });
+    showToast(`${userName} 已设为${label}，请重新登录。`);
+    await refreshUsers();
+  } catch (error) { showToast(errorMessage(error), true); }
 }
 
 // 玩家与管理员都能读自己的角色列表，用它同时完成 token 校验。
@@ -725,6 +900,7 @@ function initialize() {
   });
   $("#itemResults").addEventListener("change", selectItem);
   bindForms();
+  bindAccountManagement();
   updateAttachmentFields();
   applyIdentity();
   if (!auth.token) {

@@ -19,8 +19,15 @@ public sealed record DeploymentConfig
     public string GameplayAdvertisedHost { get; init; } = "127.0.0.1";
     public int EntrancePort { get; init; } = 2311;
     public int ChannelPort { get; init; } = 7001;
+    public bool RegionalChannelsEnabled { get; init; }
     public int AdditionalEntrancePort { get; init; } = 8080;
     public int AdminPort { get; init; } = 8081;
+    public string GmPanelHost { get; init; } = "0.0.0.0";
+    public int GmPanelPort { get; init; } = 18081;
+    public bool GmPanelEnabled { get; init; } = true;
+    public string PlayerPanelHost { get; init; } = "0.0.0.0";
+    public int PlayerPanelPort { get; init; } = 18082;
+    public bool PlayerPanelEnabled { get; init; } = true;
     public int CharacterPort { get; init; } = 2311;
     public int GameplayPrimaryPort { get; init; } = 7002;
     public int GameplaySecondaryPort { get; init; } = 7003;
@@ -43,9 +50,13 @@ public sealed record DeploymentConfig
 
     public int[] ForwardedTcpPorts() => new[] { EntrancePort, ChannelPort, AdditionalEntrancePort }
         .Concat(FallbackRelayEnabled ? new[] { FallbackRelayTcpPort } : [])
-        .Concat(PvpEnabled ? new[] { PvpPort } : []).ToArray();
+        .Concat(PvpEnabled ? new[] { PvpPort } : [])
+        .Concat(RegionalChannelsEnabled ? Enumerable.Range(7100, 6) : []).ToArray();
     public int[] ForwardedUdpPorts() => new[] { CharacterPort, GameplayPrimaryPort, GameplaySecondaryPort }
         .Concat(FallbackRelayEnabled ? new[] { FallbackRelayUdpPort } : []).ToArray();
+    public IEnumerable<(string Host, int Port)> PanelListeners() =>
+        (GmPanelEnabled ? new[] { (GmPanelHost, GmPanelPort) } : [])
+        .Concat(PlayerPanelEnabled ? new[] { (PlayerPanelHost, PlayerPanelPort) } : []);
 }
 
 public sealed record ConfigurationSnapshot(DeploymentConfig Saved, DeploymentConfig Effective, string[] EnvironmentOverrides, bool Configured);

@@ -52,6 +52,8 @@ add_library(ijl15 SHARED
     src/ground_item_removal.h
     src/inventory_tab.cpp
     src/inventory_tab.h
+    src/warehouse_upgrade_button.cpp
+    src/warehouse_upgrade_button.h
     src/motion_horizon.cpp
     src/motion_horizon.h
     src/native_loop_probe.cpp
@@ -108,7 +110,10 @@ add_library(ijl15 SHARED
     src/summon_owner_death.cpp
     src/summon_owner_death.h
     src/window_scaling.cpp
-    src/window_scaling.h)
+    src/window_scaling.h
+    src/payment_window_scaling.cpp
+    src/payment_window_scaling.h
+    src/payment_window_layout.h)
 
 target_compile_definitions(ijl15 PRIVATE
     IJL15_EXPORTS
@@ -166,6 +171,9 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(payment_window_layout_tests tests/payment_window_layout_tests.cpp)
+    target_compile_options(payment_window_layout_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    add_test(NAME payment_window_layout COMMAND payment_window_layout_tests)
     add_library(debug_loading_fixture SHARED ../DFLegacy.Client/tests/debug_loading_fixture.cpp)
     add_executable(debug_loading_tests ../DFLegacy.Client/tests/debug_loading_tests.cpp
         src/ijl15_config.cpp src/presentation_scaling.cpp ../DFLegacy.Client/client_paths.cpp)
@@ -181,6 +189,12 @@ if(BUILD_TESTING)
     target_link_options(inventory_tab_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
     add_test(NAME inventory_tab_preservation COMMAND inventory_tab_tests)
     add_test(NAME inventory_tab_original_control COMMAND inventory_tab_tests --original-control)
+    add_executable(warehouse_upgrade_button_tests tests/warehouse_upgrade_button_tests.cpp src/warehouse_upgrade_button.cpp src/memory_patch.cpp)
+    target_include_directories(warehouse_upgrade_button_tests PRIVATE src)
+    target_compile_options(warehouse_upgrade_button_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_options(warehouse_upgrade_button_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    add_test(NAME warehouse_upgrade_button COMMAND warehouse_upgrade_button_tests)
+    add_test(NAME warehouse_upgrade_original_control COMMAND warehouse_upgrade_button_tests --original-control)
 endif()
 add_executable(client_bootstrap ../DFLegacy.Client/bootstrap_main.cpp)
 set_target_properties(client_bootstrap PROPERTIES OUTPUT_NAME "DFLegacy.Bootstrap32")

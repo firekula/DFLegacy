@@ -21,6 +21,12 @@ public sealed class ConfigurationStore
         [nameof(DeploymentConfig.EntrancePort)] = "Entrance:Port",
         [nameof(DeploymentConfig.ChannelPort)] = "Channel:Port",
         [nameof(DeploymentConfig.AdminPort)] = "Admin:Port",
+        [nameof(DeploymentConfig.GmPanelHost)] = "WebPanels:Gm:Host",
+        [nameof(DeploymentConfig.GmPanelPort)] = "WebPanels:Gm:Port",
+        [nameof(DeploymentConfig.GmPanelEnabled)] = "WebPanels:Gm:Enabled",
+        [nameof(DeploymentConfig.PlayerPanelHost)] = "WebPanels:Player:Host",
+        [nameof(DeploymentConfig.PlayerPanelPort)] = "WebPanels:Player:Port",
+        [nameof(DeploymentConfig.PlayerPanelEnabled)] = "WebPanels:Player:Enabled",
         [nameof(DeploymentConfig.CharacterPort)] = "CharacterDatagram:Port",
         [nameof(DeploymentConfig.GameplayPrimaryPort)] = "GameplayDatagram:PrimaryPort",
         [nameof(DeploymentConfig.GameplaySecondaryPort)] = "GameplayDatagram:SecondaryPort",
@@ -29,6 +35,7 @@ public sealed class ConfigurationStore
         [nameof(DeploymentConfig.FallbackRelayTcpPort)] = "FallbackRelay:TcpPort",
         [nameof(DeploymentConfig.FallbackRelayUdpPort)] = "FallbackRelay:UdpPort",
         [nameof(DeploymentConfig.PvpEnabled)] = "Pvp:Enabled",
+        [nameof(DeploymentConfig.RegionalChannelsEnabled)] = "Channel:RegionalChannelsEnabled",
         [nameof(DeploymentConfig.PvpPort)] = "Pvp:Port",
         [nameof(DeploymentConfig.ChannelName)] = "Channel:Name",
         [nameof(DeploymentConfig.MaximumUsers)] = "Channel:MaximumUsers",
@@ -177,7 +184,8 @@ public sealed class ConfigurationStore
         if (string.IsNullOrWhiteSpace(config.ScriptPvfPath) || config.ScriptPvfPath.Length > 4096) throw new ArgumentException("请指定 Script.pvf 路径。");
         if (!IPAddress.TryParse(config.BindHost, out _) || !IPAddress.TryParse(config.AdminHost, out _)) throw new ArgumentException("监听地址必须为 IP 地址，不能使用域名。");
         ValidateDestination(config.AdvertisedHost);
-        var tcp = config.ForwardedTcpPorts().Append(config.AdminPort).ToArray();
+        if (config.PanelListeners().Any(listener => !IPAddress.TryParse(listener.Host, out _))) throw new ArgumentException("面板监听地址必须为 IP 地址。");
+        var tcp = config.ForwardedTcpPorts().Append(config.AdminPort).Concat(config.PanelListeners().Select(listener => listener.Port)).ToArray();
         var udp = config.ForwardedUdpPorts();
         if (tcp.Concat(udp).Any(port => port is < 1 or > 65535)) throw new ArgumentException("端口必须为 1–65535。");
         if (tcp.Distinct().Count() != tcp.Length || udp.Distinct().Count() != udp.Length) throw new ArgumentException("同类 TCP 或 UDP 监听端口不能重复。");
@@ -204,10 +212,15 @@ public sealed class ConfigurationStore
         if (config.AccountServiceUrl.Length > 1000 || config.AccountServiceUrl.Any(character => character < 33 || character > 126 || character is '%' or '\\' or '"' or '?' or '#' or '@'))
             throw new ArgumentException("客户端网页基址须为最多 1000 字节的 ASCII HTTP(S) 地址，不能包含百分号、空白、凭据或查询参数。");
         ValidateDestination(api.Host.Trim('[', ']'));
+        if (config.RelayEnabled && api.IsLoopback)
+            throw new ArgumentException("启用玩家本机中继时，玩家账号服务 URL 不能指向 127.0.0.1、localhost 或 ::1。注册请求直接连接账号服务，请填写玩家可访问的服务器域名或 IP（例如 http://服务器地址:8081）。");
         if (config.RelayPreference is not ("ipv4" or "ipv6")) throw new ArgumentException("Relay 地址族必须为 ipv4 或 ipv6。");
         if (config.RelayEnabled && (config.AdvertisedHost.Equals("localhost", StringComparison.OrdinalIgnoreCase)
             || IPAddress.TryParse(config.AdvertisedHost, out var address) && IPAddress.IsLoopback(address))) throw new ArgumentException("Relay 的服务器地址不能是本机回环地址。");
     }
+
+    public static string PanelUrl(string accountServiceUrl, int port) => new UriBuilder(accountServiceUrl)
+        { Scheme = "http", Port = port, Path = "/", Query = "", Fragment = "" }.Uri.AbsoluteUri;
 
     public static void ValidateDestination(string host)
     {
@@ -220,11 +233,23 @@ public sealed class ConfigurationStore
         else if (Uri.CheckHostName(host) != UriHostNameType.Dns || host.Contains(':')) throw new ArgumentException("玩家连接地址格式错误。");
     }
 
-    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings)
+    public static DeploymentConfig ReadSavedClientConfiguration(string directory)
+    {
+        var section = ParseFile(Path.Combine(directory, "server.json"))["DFLegacy"] as JsonObject
+            ?? throw new InvalidDataException("配置缺少 DFLegacy 节。");
+        var settings = JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(Path.Combine(directory, "manager.json")), Json)
+            ?? throw new InvalidDataException("管理器配置为空。");
+        return ReadConfig(section, settings, "Script.pvf");
+    }
+
+    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings) =>
+        ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf"));
+
+    private static DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings, string defaultPvf)
     {
         var values = JsonSerializer.SerializeToNode(new DeploymentConfig
         {
-            ScriptPvfPath = Path.Combine(_paths.Root, "resources", "Script.pvf"), AdvertisedHost = settings.AdvertisedHost,
+            ScriptPvfPath = defaultPvf, AdvertisedHost = settings.AdvertisedHost,
             AccountServiceUrl = settings.AccountServiceUrl, RelayEnabled = settings.RelayEnabled, RelayPreference = settings.RelayPreference, Autostart = settings.Autostart
         })!.AsObject();
         foreach (var (field, path) in Fields) { var value = Get(node, path); if (value is not null) values[field] = value.DeepClone(); }

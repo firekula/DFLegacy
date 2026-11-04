@@ -103,6 +103,7 @@ public sealed class ServerSupervisor : IAsyncDisposable
             using (var pvf = File.OpenRead(pvfPath)) if (pvf.Length == 0) throw new InvalidOperationException("Script.pvf 文件为空。");
             foreach (var port in settings.ForwardedTcpPorts()) ProbePort(settings.BindHost, port, SocketType.Stream);
             ProbePort(settings.AdminHost, settings.AdminPort, SocketType.Stream);
+            foreach (var listener in settings.PanelListeners()) ProbePort(listener.Host, listener.Port, SocketType.Stream);
             foreach (var port in settings.ForwardedUdpPorts()) ProbePort(settings.BindHost, port, SocketType.Dgram);
             var start = CreateStartInfo();
             _controlSecret = Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));

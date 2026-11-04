@@ -26,6 +26,11 @@ public static class ManagerApplication
             log.AddSecret(identity.SetupToken);
             var supervisor = new ServerSupervisor(paths, config, log);
             var exporter = new ClientPackageExporter(paths);
+            var publicUpdateUrl = Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_PUBLIC_URL");
+            var updates = string.IsNullOrWhiteSpace(publicUpdateUrl) ? null : new ClientUpdateStore(paths, publicUpdateUrl);
+            if (updates is not null && options.Port == ClientUpdateStore.Port)
+                throw new ArgumentException("管理端口不能与更新端口相同。");
+            var exportJobs = new ClientExportJobs(exporter, log, updates);
             var builder = WebApplication.CreateBuilder(new WebApplicationOptions
             {
                 Args = [], ContentRootPath = AppContext.BaseDirectory, WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
@@ -37,6 +42,7 @@ public static class ManagerApplication
             builder.WebHost.ConfigureKestrel(server =>
             {
                 server.Listen(options.Listen, options.Port);
+                if (updates is not null) server.Listen(options.Listen, ClientUpdateStore.Port);
                 server.Limits.MaxRequestBodySize = 64 * 1024;
             });
             var keyDirectory = Directory.CreateDirectory(Path.Combine(paths.Management, "keys"));
@@ -60,6 +66,9 @@ public static class ManagerApplication
             var forwarded = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto };
             foreach (var address in (Environment.GetEnvironmentVariable("DFLEGACY_MANAGER_TRUSTED_PROXIES") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 forwarded.KnownProxies.Add(IPAddress.Parse(address));
+            if (updates is not null)
+                app.MapWhen(context => context.Connection.LocalPort == ClientUpdateStore.Port,
+                    updateApp => updateApp.Run(context => updates.Serve(context).ExecuteAsync(context)));
             app.UseForwardedHeaders(forwarded);
             app.Use(async (context, next) =>
             {
@@ -137,9 +146,17 @@ public static class ManagerApplication
                 var configuration = config.Read();
                 return new { server = supervisor.Snapshot, configuration.Configured, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
                     accountServiceUrl = configuration.Effective.AccountServiceUrl, entranceHost = configuration.Effective.AdvertisedHost,
+                    gmPanelUrl = configuration.Effective.GmPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.GmPanelPort) : null,
+                    playerPanelUrl = configuration.Effective.PlayerPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.PlayerPanelPort) : null,
                     entrancePort = configuration.Effective.EntrancePort, gameplayAdvertisedHost = configuration.Effective.GameplayAdvertisedHost };
             });
             api.MapGet("/logs", (long? after) => log.Read(after ?? 0));
+            api.MapPost("/exports", async (HttpContext context, IHostApplicationLifetime lifetime) =>
+                Results.Json(exportJobs.Start(config.Read().Effective, lifetime.ApplicationStopping,
+                    await ReadClientExportRequest(context)), statusCode: 202));
+            api.MapGet("/exports/{id}", (string id) => exportJobs.Read(id) is { } job ? Results.Ok(job) : Results.NotFound());
+            api.MapGet("/exports/{id}/download", (string id) => exportJobs.Download(id) is { } path
+                ? Results.File(path, "application/zip", Path.GetFileName(path), enableRangeProcessing: true) : Results.NotFound());
             api.MapPost("/server/start", async (CancellationToken token) => Results.Ok(await supervisor.StartAsync(token)));
             api.MapPost("/server/stop", async (CancellationToken token) => Results.Ok(await supervisor.StopAsync(token)));
             api.MapPost("/server/restart", async (CancellationToken token) => Results.Ok(await supervisor.RestartAsync(token)));
@@ -170,6 +187,7 @@ public static class ManagerApplication
             var browserUrl = new UriBuilder("http", browserHost.ToString(), options.Port).Uri.ToString();
             app.Lifetime.ApplicationStarted.Register(() =>
             {
+                log.Write("manager", "部署管理器已启动；运行日志可用，游戏服务状态请查看运行概览。");
                 Console.WriteLine("DFLegacy 部署管理：" + browserUrl);
                 if (!identity.IsConfigured) Console.WriteLine("首次设置凭据保存在：" + paths.SetupTokenFile + "（只在初始化时使用）");
                 if (!options.NoBrowser && (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")) || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"))))
@@ -183,6 +201,25 @@ public static class ManagerApplication
         }
         catch (Exception exception) when (exception is ArgumentException or IOException or InvalidDataException or InvalidOperationException or UnauthorizedAccessException)
         { Console.Error.WriteLine("无法启动部署管理器：" + exception.Message); return 2; }
+    }
+
+    private static async Task<bool> ReadClientExportRequest(HttpContext context)
+    {
+        if (context.Request.ContentLength == 0) return false;
+        try
+        {
+            using var request = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: context.RequestAborted);
+            if (request.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("testBuild 必须是 JSON bool。");
+            bool seen = false, testBuild = false;
+            foreach (var property in request.RootElement.EnumerateObject())
+            {
+                if (property.Name != "testBuild" || seen || property.Value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                    throw new ArgumentException("testBuild 必须是唯一的 JSON bool。");
+                seen = true; testBuild = property.Value.GetBoolean();
+            }
+            return testBuild;
+        }
+        catch (JsonException) { throw new ArgumentException("testBuild 请求 JSON 无效。"); }
     }
 
     private static async Task SignIn(HttpContext context, string name)

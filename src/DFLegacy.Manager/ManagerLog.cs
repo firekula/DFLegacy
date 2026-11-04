@@ -10,8 +10,24 @@ public sealed class ManagerLog
     private readonly object _gate = new();
     private readonly Queue<LogLine> _lines = new();
     private readonly HashSet<string> _secrets = new();
-    private long _id;
-    public ManagerLog(ManagerPaths paths) => _paths = paths;
+    // Keep JSON IDs exactly representable by browser Numbers, including after restart.
+    private long _id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000;
+    public ManagerLog(ManagerPaths paths)
+    {
+        _paths = paths;
+        // Restore the bounded tail, including the previous rotation when needed.
+        try
+        {
+            var files = new[] { Path.Combine(paths.Logs, "manager.log.1"), Path.Combine(paths.Logs, "manager.log") };
+            foreach (var text in files.Where(File.Exists).SelectMany(File.ReadLines).TakeLast(500))
+            {
+                var match = Regex.Match(text, @"^(\S+) \[([^\]]+)\] (.*)$");
+                if (match.Success && DateTimeOffset.TryParse(match.Groups[1].Value, out var time))
+                    _lines.Enqueue(new LogLine(++_id, time, match.Groups[2].Value, match.Groups[3].Value));
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+    }
     public void AddSecret(string value) { if (value.Length > 0) lock (_gate) _secrets.Add(value); }
     public void Write(string source, string? text)
     {
@@ -37,5 +53,13 @@ public sealed class ManagerLog
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { /* Keep the in-memory log available when the log directory becomes unwritable. */ }
         }
     }
-    public LogLine[] Read(long after = 0) { lock (_gate) return _lines.Where(line => line.Id > after).ToArray(); }
+    public LogLine[] Read(long after = 0)
+    {
+        lock (_gate) return _lines.Where(line => line.Id > after).Select(line =>
+        {
+            var text = line.Text;
+            foreach (var secret in _secrets) text = text.Replace(secret, "[hidden]", StringComparison.Ordinal);
+            return line with { Text = text };
+        }).ToArray();
+    }
 }

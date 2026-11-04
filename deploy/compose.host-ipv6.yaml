@@ -10,6 +10,7 @@ services:
     entrypoint: ["/app/DFLegacy.Manager", "--root", "/app", "--data-dir", "/app/data", "--listen", "127.0.0.1", "--port", "18080", "--no-browser"]
     environment:
       DFLegacy__ScriptPvfPath: /pvf/Script.pvf
+      DFLEGACY_UPDATE_PUBLIC_URL: ${UPDATE_PUBLIC_URL:-}
       DFLEGACY_MANAGER_ALLOWED_HOSTS: ${MANAGER_ALLOWED_HOSTS:-}
       DFLEGACY_MANAGER_TRUSTED_PROXIES: ${MANAGER_TRUSTED_PROXIES:-}
       DFLegacy__Entrance__Host: "::"

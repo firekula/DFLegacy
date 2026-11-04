@@ -26,7 +26,7 @@ def fixture(path, names=None, compressed=False, rid="win-x64"):
     contents = names or {"Fixture.dll": b"assembly", "Fixture.deps.json": b'{"runtimeTarget":{"name":"net10.0/win-x64"}}', "Fixture.runtimeconfig.json": b'{}'}
     data = bytearray(4096)
     if rid.startswith("win"):
-        data[:2] = b"MZ"; struct.pack_into("<I", data, 0x3c, 128); data[128:132] = b"PE\0\0"; struct.pack_into("<H", data, 132, 0x8664)
+        data[:2] = b"MZ"; struct.pack_into("<I", data, 0x3c, 128); data[128:132] = b"PE\0\0"; struct.pack_into("<H", data, 132, 0x14c if rid == "win-x86" else 0x8664)
     elif rid.startswith("linux"):
         data[:6] = b"\x7fELF\x02\x01"; struct.pack_into("<H", data, 18, 62 if rid.endswith("x64") else 183)
     else:
@@ -48,6 +48,15 @@ def fixture(path, names=None, compressed=False, rid="win-x64"):
 class Bundles(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup); self.path = Path(self.tmp.name) / "Fixture.exe"
+
+    def test_win_x86_bundle_requires_x86_pe_machine(self):
+        fixture(self.path, rid="win-x86")
+        self.assertEqual(bundle.read_bundle(self.path, "win-x86").read("Fixture.dll"), b"assembly")
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            bundle.read_bundle(self.path, "win-x64")
+        fixture(self.path, rid="win-x64")
+        with self.assertRaisesRegex(ValueError, "architecture"):
+            bundle.read_bundle(self.path, "win-x86")
 
     def test_reads_actual_manifest_format_and_raw_deflate_entries(self):
         for compressed in (False, True):
