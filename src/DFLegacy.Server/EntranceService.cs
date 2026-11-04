@@ -223,6 +223,12 @@ public sealed class EntranceService(
             }
             var protocolSession = new EntranceSessionState();
             var gameClientCipher = isChannelPort ? new GameClientCipherState() : null;
+            var chapter2Probe = isChannelPort
+                && (localPort == 47001 || (options.Channel.RegionalChannelsEnabled && localPort is >= 7100 and <= 7105))
+                && client.Client.LocalEndPoint is IPEndPoint local && IPAddress.IsLoopback(local.Address)
+                && client.Client.RemoteEndPoint is IPEndPoint peer && IPAddress.IsLoopback(peer.Address)
+                && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER") == "1";
+            var chapter2CheckConnectionAccepted = false;
             var accountName = string.Empty;
             var accountUid = AccountUidRules.InvalidUid;
             ChannelLoginIdentity? channelLoginIdentity = null;
@@ -741,6 +747,12 @@ public sealed class EntranceService(
                 /// </summary>
                 ushort GetWeaknessPercent() => WeaknessPercent(GetProjectedStaminaRecovery());
 
+                IEnumerable<CharacterItemRecord> GetEquippedItemsForCurrentClient() =>
+                    chapter2CheckConnectionAccepted
+                        && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_NO_AVATAR") == "1"
+                        ? equippedInventory.Values.Where(item => item.Slot is < 11 or > 15)
+                        : equippedInventory.Values;
+
                 async Task SendCurrentEquipmentStateAsync(
                     GameCharacterCombatStats? validatedStats = null)
                 {
@@ -757,7 +769,7 @@ public sealed class EntranceService(
                         learnedSkills: GetCurrentGameSkills(),
                         combatStats: projectedStats,
                         equippedItems: CreateWornEquipmentSnapshot(
-                            equippedInventory.Values,
+                            GetEquippedItemsForCurrentClient(),
                             creatureInventory),
                         equippedCreatureLevel: GetEquippedCreatureLevel(
                             creatureInventory),
@@ -1060,7 +1072,7 @@ public sealed class EntranceService(
                         creatureInventory.Values,
                         HasActivePremiumService(
                             GameProtocolEngine.BlackDiamondServiceType),
-                        HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType));
+                        HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType), chapter2CheckConnectionAccepted);
 
                 // 与上面那条**成对**的"补模型"包（NOTI 2 mode 1）：客户端只有 mode 1/3 的详情
                 // 解析器（0x41A764）会建 `CNUser+0x110` 模型对象（0x417AB0 取不到 →
@@ -4999,9 +5011,18 @@ public sealed class EntranceService(
                         break;
                     }
 
+                    var chapter2Decoded = false;
                     if (isChannelPort)
                     {
-                        if (!gameClientCipher!.TryDecode(request, out var decodedRequest))
+                        var decodedRequest = request;
+                        chapter2Decoded = chapter2Probe
+                            && TryDecodeChapter2Command(request, chapter2CheckConnectionAccepted, out decodedRequest);
+                        if (chapter2Decoded && request.ProtocolId == GameProtocolEngine.CheckConnectionCommand)
+                        {
+                            chapter2CheckConnectionAccepted = true;
+                        }
+
+                        if (!chapter2Decoded && !gameClientCipher!.TryDecode(request, out decodedRequest))
                         {
                             LogPacket("RX-ENC", runtimeSession, request);
                             logger.LogWarning(
@@ -5013,7 +5034,7 @@ public sealed class EntranceService(
                         request = decodedRequest;
                         logger.LogDebug(
                             "Accepted channel payload with {CandidateCount} compatible rolling-seed candidate(s).",
-                            gameClientCipher.CandidateCount);
+                            gameClientCipher!.CandidateCount);
                     }
 
                     runtime.CountPacket(runtimeSession);
@@ -5340,7 +5361,7 @@ public sealed class EntranceService(
                                 request.Body,
                                 FindOnlineCharacterByAreaUserId,
                                 CreateRequestedCharacterDetailAsync,
-                                () => CreateUserInfoAsync(accountUid, serverToken));
+                                () => CreateUserInfoAsync(accountUid, serverToken, chapter2CheckConnectionAccepted));
                             if (userInfo is null)
                             {
                                 // uid 为 0（好友离线时条目里就是 0）或没有在线角色持有它：
@@ -6265,7 +6286,7 @@ public sealed class EntranceService(
                                 equippedInventory.Values,
                                 creatureInventory.Values,
                                 blackDiamondActive,
-                                HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType));
+                                HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType), chapter2CheckConnectionAccepted);
                             await currentCharacter.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, currentCharacter);
@@ -6280,7 +6301,7 @@ public sealed class EntranceService(
                                     learnedSkills: learnedSkills,
                                     combatStats: projectedCombatStats,
                                     equippedItems: CreateWornEquipmentSnapshot(
-                                        equippedInventory.Values,
+                                        GetEquippedItemsForCurrentClient(),
                                         creatureInventory),
                                     equippedCreatureLevel: GetEquippedCreatureLevel(
                                         creatureInventory),
@@ -6618,7 +6639,7 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.AddFriendCommand)
                         {
                             if (activeCharacter is null
-                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName))
+                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName, chapter2Decoded))
                             {
                                 logger.LogWarning(
                                     "Rejected malformed ADD_FRIEND for character {CharacterId}.",
@@ -6638,7 +6659,7 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.RemoveFriendCommand)
                         {
                             if (activeCharacter is null
-                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName))
+                                || !GameProtocolEngine.TryReadFriendName(request.Body, out var friendName, chapter2Decoded))
                             {
                                 logger.LogWarning(
                                     "Rejected malformed REMOVE_FRIEND for character {CharacterId}.",
@@ -15812,7 +15833,7 @@ public sealed class EntranceService(
 
                             if (deleted)
                             {
-                                var userInfo = await CreateUserInfoAsync(accountUid, serverToken);
+                                var userInfo = await CreateUserInfoAsync(accountUid, serverToken, chapter2CheckConnectionAccepted);
                                 await userInfo.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, userInfo);
@@ -15843,7 +15864,7 @@ public sealed class EntranceService(
 
                             if (created)
                             {
-                                var userInfo = await CreateUserInfoAsync(accountUid, serverToken);
+                                var userInfo = await CreateUserInfoAsync(accountUid, serverToken, chapter2CheckConnectionAccepted);
                                 await userInfo.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, userInfo);
@@ -15863,7 +15884,8 @@ public sealed class EntranceService(
                                 seed: checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
                                 [Encoding.ASCII.GetBytes(options.GameplayDatagram.ResolveAdvertisedHost())],
                                 port1: checked((uint)options.GameplayDatagram.PrimaryPort),
-                                port2: checked((uint)options.GameplayDatagram.SecondaryPort))
+                                port2: checked((uint)options.GameplayDatagram.SecondaryPort),
+                                chapter2Prefix: chapter2CheckConnectionAccepted ? 15u : null)
                             : request.Type == GameProtocolEngine.CommandPacketType && request.ProtocolId == GameProtocolEngine.LoginCommand
                                 && channelLoginIdentity is not null
                                 ? ChannelLoginAuthentication.CreateReply(options, gameplayDatagram, channelLoginIdentity, isPvpChannel, fallbackRelay)
@@ -16169,7 +16191,8 @@ public sealed class EntranceService(
         }
     }
 
-    private async Task<GameServerPacket> CreateUserInfoAsync(uint accountUid, CancellationToken cancellationToken)
+    private async Task<GameServerPacket> CreateUserInfoAsync(uint accountUid, CancellationToken cancellationToken,
+        bool includeUseLockDays = false)
     {
         var characters = await store.GetCharactersAsync(accountUid, cancellationToken);
         var summaries = characters
@@ -16195,7 +16218,7 @@ public sealed class EntranceService(
                 (byte)Math.Clamp(character.AwakeningType, byte.MinValue, byte.MaxValue),
                 pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints)))
             .ToArray();
-        return GameProtocolEngine.CreateUserInfo(summaries);
+        return GameProtocolEngine.CreateUserInfo(summaries, includeUseLockDays);
     }
 
     private static int ToIncreaseStatusWireAmount(IncreaseStatusEffect effect) =>
@@ -16694,7 +16717,8 @@ public sealed class EntranceService(
         IEnumerable<CharacterItemRecord> equipment,
         IEnumerable<CharacterItemRecord> creatureInventory,
         bool hasBlackDiamond,
-        bool hasPrivateStorePermission)
+        bool hasPrivateStorePermission,
+        bool includeChapter2ActorFields)
     {
         var equipmentSnapshot = equipment.ToArray();
 
@@ -16735,7 +16759,7 @@ public sealed class EntranceService(
                 .ToArray(),
             CreateEquippedCreatureAppearance(creatureInventory),
             hasBlackDiamond,
-            hasPrivateStorePermission);
+            hasPrivateStorePermission, includeChapter2ActorFields);
     }
 
     private GameCreatureAppearanceEntry? CreateEquippedCreatureAppearance(
@@ -17115,6 +17139,47 @@ public sealed class EntranceService(
             && CharacterCreatureInventoryLayout.IsCompatibleSlot(definition, slot),
         _ => false
     };
+
+    private static bool TryDecodeChapter2Command(PacketFrame request, bool acceptedCheckConnection,
+        out PacketFrame decoded)
+    {
+        decoded = request;
+        var encryptedLength = request.Body.Length - sizeof(ushort);
+        if (request.Type != GameProtocolEngine.CommandPacketType || request.DeclaredCrc32 == 0
+            || encryptedLength < 16 || encryptedLength > 1024 || encryptedLength % 16 != 0)
+        {
+            return false;
+        }
+
+        byte[] key;
+        if (request.ProtocolId == GameProtocolEngine.CheckConnectionCommand && encryptedLength == 16)
+        {
+            key = new byte[16];
+            "dfls-local"u8.CopyTo(key);
+        }
+        else if (acceptedCheckConnection)
+        {
+            key = Convert.FromHexString("46494A4946474546444A44404A424758");
+        }
+        else
+        {
+            return false;
+        }
+
+        using var aes = System.Security.Cryptography.Aes.Create();
+        aes.Key = key;
+        var body = new byte[request.Body.Length];
+        request.Body.AsSpan(0, sizeof(ushort)).CopyTo(body);
+        aes.DecryptEcb(request.Body.AsSpan(sizeof(ushort)), body.AsSpan(sizeof(ushort)),
+            System.Security.Cryptography.PaddingMode.None);
+        if (Crc32.Compute(body) != request.DeclaredCrc32)
+        {
+            return false;
+        }
+
+        decoded = request with { Body = body };
+        return true;
+    }
 
     private static bool IsCreatureMoveSlotValid(
         byte listType,

@@ -13,6 +13,7 @@ public sealed class ServerOptions
     public bool SeedTestAccount { get; set; } = true;
     public bool EnableTestCeraTopUp { get; set; } = false;
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
+    public bool SkipUnsupportedChapterTwoCashContainers { get; set; }
     public string SkillScriptPath { get; set; } = "";
     public string OriginalSkillScriptPath { get; set; } = "";
     public TownSyncOptions TownSync { get; set; } = new();

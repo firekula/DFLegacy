@@ -35,6 +35,60 @@ try
     if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-helper-tests")) { await UpdateHelperTests.Run(root,Check); Console.WriteLine($"Update helper tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-recovery-tests")) { await UpdateRecoveryTests.Run(root,Check); Console.WriteLine($"Update recovery tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if (args.Contains("--bootstrap-preflight"))
+    {
+        CheckBootstrapPreflight();
+        Console.WriteLine($"Bootstrap preflight: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
+
+    void CheckBootstrapPreflight()
+    {
+        byte[] BootstrapFixture(bool packed, bool chapterTwo = false)
+        {
+            var image = new byte[0x1000];
+            void U16(int offset, ushort value) => BinaryPrimitives.WriteUInt16LittleEndian(image.AsSpan(offset), value);
+            void U32(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(image.AsSpan(offset), value);
+            U16(0, 0x5a4d); U32(60, 0x80); U32(0x80, 0x4550);
+            U16(0x84, 0x14c); U16(0x86, 3); U16(0x94, 0xe0); U16(0x96, 0x102);
+            var optional = 0x98; U16(optional, 0x10b);
+            U32(optional + 16, chapterTwo ? 0xcf817bU : packed ? 0xa8d17bU : 0x51e6fdU);
+            U32(optional + 28, 0x400000); U32(optional + 32, 0x1000);
+            U32(optional + 36, 0x200); U32(optional + 56, 0xb39000); U32(optional + 60, 0x400);
+            U32(optional + 92, 16);
+            void Section(int index, string name, uint size, uint address, uint rawSize, uint raw)
+            {
+                var s = optional + 0xe0 + 40 * index;
+                Encoding.ASCII.GetBytes(name).CopyTo(image, s);
+                U32(s + 8, size); U32(s + 12, address); U32(s + 16, rawSize); U32(s + 20, raw);
+                U32(s + 36, 0x60000020);
+            }
+            Section(0, "nsn\0t", chapterTwo ? 0x6e8496U : 0x5967e6U, 0x1000, chapterTwo ? 0x2ec7f5U : packed ? 0x400U : 0x596800U, 0x400);
+            Section(1, "nsn", 0xa6000, chapterTwo ? 0xcf8000U : 0xa8d000U, 0x400, 0x800);
+            Section(2, ".vmp0", 0x426c, 0xb33000, 0x400, 0xc00);
+            return image;
+        }
+        var packedPath = Path.Combine(root, "renamed-packed.exe");
+        File.WriteAllBytes(packedPath, BootstrapFixture(true));
+        try { ClientBootstrapInspector.ValidateForLaunch(packedPath); Check(false, "known packed bootstrap is rejected before creating a child"); }
+        catch (InvalidDataException ex) { Check(ex.Message.Contains("加壳"), "packed-client error explains required compatible bootstrap"); }
+        var rebuiltPath = Path.Combine(root, "renamed-rebuilt.exe");
+        File.WriteAllBytes(rebuiltPath, BootstrapFixture(false));
+        ClientBootstrapInspector.ValidateForLaunch(rebuiltPath);
+
+        var chapterTwoPath = Path.Combine(root, "renamed-chapter-two.exe");
+        File.WriteAllBytes(chapterTwoPath, BootstrapFixture(true, chapterTwo: true));
+        try
+        {
+            ClientBootstrapInspector.ValidateForLaunch(chapterTwoPath);
+            Check(false, "packed Chapter Two is rejected before applying the ACT1 patch");
+        }
+        catch (InvalidDataException ex)
+        {
+            Check(ex.Message.Contains("第二章") && ex.Message.Contains("ACT1"), "error names Chapter Two and ACT1");
+        }
+    }
+
     if(args.Length==0 || args.Contains("--standalone-tests")) await StandaloneTests.Run(root, Check);
     if (args.Contains("--standalone-tests")) { Console.WriteLine($"Standalone tests: {failures} failures"); return failures == 0 ? 0 : 1; }
     if (args.Contains("--login-input-tests"))
@@ -68,37 +122,8 @@ try
     RenderDiagnosticTests.Run(root, Check);
     ClassicUiTests.Run(Check);
     LocalServerSelectionTests.Run(root, Check);
-    byte[] BootstrapFixture(bool packed)
-    {
-        var image = new byte[0x1000];
-        void U16(int offset, ushort value) => BinaryPrimitives.WriteUInt16LittleEndian(image.AsSpan(offset), value);
-        void U32(int offset, uint value) => BinaryPrimitives.WriteUInt32LittleEndian(image.AsSpan(offset), value);
-        U16(0, 0x5a4d); U32(60, 0x80); U32(0x80, 0x4550);
-        U16(0x84, 0x14c); U16(0x86, 3); U16(0x94, 0xe0); U16(0x96, 0x102);
-        var optional = 0x98; U16(optional, 0x10b);
-        U32(optional + 16, packed ? 0xa8d17bU : 0x51e6fdU);
-        U32(optional + 28, 0x400000); U32(optional + 32, 0x1000);
-        U32(optional + 36, 0x200); U32(optional + 56, 0xb39000); U32(optional + 60, 0x400);
-        U32(optional + 92, 16);
-        void Section(int index, string name, uint size, uint address, uint rawSize, uint raw)
-        {
-            var s = optional + 0xe0 + 40 * index;
-            Encoding.ASCII.GetBytes(name).CopyTo(image, s);
-            U32(s + 8, size); U32(s + 12, address); U32(s + 16, rawSize); U32(s + 20, raw);
-            U32(s + 36, 0x60000020);
-        }
-        Section(0, "nsn\0t", 0x5967e6, 0x1000, packed ? 0x400U : 0x596800U, 0x400);
-        Section(1, "nsn", 0xa6000, 0xa8d000, 0x400, 0x800);
-        Section(2, ".vmp0", 0x426c, 0xb33000, 0x400, 0xc00);
-        return image;
-    }
-    var packedPath = Path.Combine(root, "renamed-packed.exe");
-    File.WriteAllBytes(packedPath, BootstrapFixture(true));
-    try { ClientBootstrapInspector.ValidateForLaunch(packedPath); Check(false, "known packed bootstrap is rejected before creating a child"); }
-    catch (InvalidDataException ex) { Check(ex.Message.Contains("加壳"), "packed-client error explains required compatible bootstrap"); }
-    var rebuiltPath = Path.Combine(root, "renamed-rebuilt.exe");
-    File.WriteAllBytes(rebuiltPath, BootstrapFixture(false));
-    ClientBootstrapInspector.ValidateForLaunch(rebuiltPath);
+
+    CheckBootstrapPreflight();
 
     Process StartFixture(string mode)
     {

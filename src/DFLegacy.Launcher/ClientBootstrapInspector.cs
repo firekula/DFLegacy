@@ -15,6 +15,17 @@ internal static class ClientBootstrapInspector
         if (headers.CoffHeader.Machine != Machine.I386)
             throw new InvalidDataException("请选择与补丁匹配的 32 位 ACT1 客户端 DNF.exe。");
 
+        // The Chapter Two archive has a separate packed layout. The ACT1
+        // client patch cannot initialize this image.
+        if (pe.AddressOfEntryPoint == 0xcf817b
+            && headers.SectionHeaders.Any(s => s.Name.StartsWith("nsn", StringComparison.Ordinal)
+                && s.VirtualAddress == 0xcf8000)
+            && headers.SectionHeaders.Any(s => s.Name == ".vmp0"))
+        {
+            throw new InvalidDataException(
+                "此 DNF.exe 是第二章加壳客户端。当前 ACT1 补丁不支持此镜像，启动已停止。");
+        }
+
         // This observed legacy bootstrap reads unmapped padding in modern
         // kernel32 before IJL15 is loaded. Recognize its actual layout, not a
         // file version, filename, or hash allowlist of locally rebuilt clients.

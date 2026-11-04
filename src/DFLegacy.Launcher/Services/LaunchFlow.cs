@@ -20,9 +20,9 @@ internal static class LaunchFlow
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
         Program.LogClientPath = clientPath;
+        ClientBootstrapInspector.ValidateForLaunch(clientPath);
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
         var manifest = ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
-        ClientBootstrapInspector.ValidateForLaunch(clientPath);
         Program.ValidateScriptPvf(clientPath);
         await Program.EnsureD3D9AvailableAsync(options);
         cancellationToken.ThrowIfCancellationRequested();

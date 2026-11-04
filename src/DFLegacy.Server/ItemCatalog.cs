@@ -274,13 +274,16 @@ public sealed class ItemCatalog
     private readonly ScriptFileSystem _scripts;
     private readonly ILogger<ItemCatalog> _logger;
     private readonly Lazy<CatalogState> _state;
+    private readonly bool _skipUnsupportedChapterTwoCashContainers;
 
     public ItemCatalog(
         ScriptFileSystem scripts,
-        ILogger<ItemCatalog> logger)
+        ILogger<ItemCatalog> logger,
+        ServerOptions? options = null)
     {
         _scripts = scripts;
         _logger = logger;
+        _skipUnsupportedChapterTwoCashContainers = options?.SkipUnsupportedChapterTwoCashContainers == true;
         _state = new Lazy<CatalogState>(
             Load,
             LazyThreadSafetyMode.ExecutionAndPublication);
@@ -481,6 +484,11 @@ public sealed class ItemCatalog
 
     private CatalogState Load()
     {
+        if (_skipUnsupportedChapterTwoCashContainers)
+        {
+            _logger.LogWarning("Chapter Two lab profile excludes Cera booster and package items.");
+        }
+
         var definitions = new Dictionary<ushort, ItemDefinition>();
         var missingScripts = 0;
         LoadList(
@@ -643,6 +651,12 @@ public sealed class ItemCatalog
                     ? EquipmentTypePattern
                     : StackableTypePattern,
                 text);
+            if (_skipUnsupportedChapterTwoCashContainers
+                && typeTag is "cera booster" or "cera package")
+            {
+                continue;
+            }
+
             definitions.Add(
                 itemId,
                 new ItemDefinition(

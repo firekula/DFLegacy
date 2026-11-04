@@ -2994,8 +2994,8 @@ public static partial class GameProtocolEngine
     }
 
     /// <summary>解析 ADD_FRIEND/REMOVE_FRIEND 的载荷（Body 从序列号起算）。</summary>
-    public static bool TryReadFriendName(byte[] body, out byte[] nameBytes) =>
-        TryReadLengthPrefixedName(body, out nameBytes);
+    public static bool TryReadFriendName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false) =>
+        TryReadLengthPrefixedName(body, out nameBytes, allowChapter2Padding);
 
     /// <summary>
     /// 解析 CMD 128/129（黑名单增删）的载荷（Body 从序列号起算）：u32 名字长度 + 名字。
@@ -3004,7 +3004,7 @@ public static partial class GameProtocolEngine
     public static bool TryReadBlacklistName(byte[] body, out byte[] nameBytes) =>
         TryReadLengthPrefixedName(body, out nameBytes);
 
-    private static bool TryReadLengthPrefixedName(byte[] body, out byte[] nameBytes)
+    private static bool TryReadLengthPrefixedName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false)
     {
         ArgumentNullException.ThrowIfNull(body);
         const int payloadOffset = sizeof(ushort);
@@ -3017,7 +3017,16 @@ public static partial class GameProtocolEngine
         var nameLength = BinaryPrimitives.ReadUInt32LittleEndian(
             body.AsSpan(payloadOffset, sizeof(uint)));
         if (nameLength is 0 or > FriendListNameFieldLength
-            || nameLength != body.Length - payloadOffset - sizeof(uint))
+            || nameLength > body.Length - payloadOffset - sizeof(uint))
+        {
+            return false;
+        }
+
+        var nameEnd = payloadOffset + sizeof(uint) + (int)nameLength;
+        var padding = body.AsSpan(nameEnd);
+        if (!padding.IsEmpty && (!allowChapter2Padding
+            || (body.Length - payloadOffset) % 16 != 0 || padding.Length >= 16
+            || padding.ContainsAnyExcept((byte)0)))
         {
             return false;
         }
@@ -4181,7 +4190,8 @@ public static partial class GameProtocolEngine
         return CreateUserInfo([]);
     }
 
-    public static GameServerPacket CreateUserInfo(IReadOnlyList<GameCharacterSummary> characters)
+    public static GameServerPacket CreateUserInfo(IReadOnlyList<GameCharacterSummary> characters,
+        bool includeUseLockDays = false)
     {
         if (characters.Count > ushort.MaxValue)
         {
@@ -4238,6 +4248,10 @@ public static partial class GameProtocolEngine
             writer.Write((byte)0); // character-list state
             writer.Write((byte)0); // character-list option
             writer.Write((byte)1); // visible/selectable character card
+            if (includeUseLockDays)
+            {
+                writer.Write(0u);
+            }
         }
 
         return new GameServerPacket(
@@ -4252,7 +4266,8 @@ public static partial class GameProtocolEngine
         IReadOnlyCollection<GameInventoryEntry>? equippedItems = null,
         GameCreatureAppearanceEntry? equippedCreature = null,
         bool hasBlackDiamond = false,
-        bool hasPrivateStorePermission = false)
+        bool hasPrivateStorePermission = false,
+        bool includeChapter2ActorFields = false)
     {
         if (userId == 0)
         {
@@ -4348,10 +4363,28 @@ public static partial class GameProtocolEngine
         // Enabling them for a title makes the client construct a guild object.
         writer.Write((byte)0);
         WriteLengthPrefixedBytes(writer, []); // guild name
-        writer.Write((byte)1);   // active entity
-        writer.Write(0u);        // actor state A
-        writer.Write(0u);        // actor state B
-        writer.Write(0u);        // actor state C
+        if (includeChapter2ActorFields)
+        {
+            // Native mode 0 reads this layout after the guild name.
+            writer.Write(0u);
+            writer.Write((byte)1);
+            writer.Write((byte)0);
+            writer.Write(0u);
+            writer.Write((byte)1);   // actor state applied by the mode-0 handler
+            writer.Write(0u);
+            writer.Write(0u);
+            writer.Write(0u);
+            writer.Write((byte)0);
+            writer.Write((ushort)0);
+            writer.Write((byte)0);
+        }
+        else
+        {
+            writer.Write((byte)1);   // active entity
+            writer.Write(0u);        // actor state A
+            writer.Write(0u);        // actor state B
+            writer.Write(0u);        // actor state C
+        }
 
         return new GameServerPacket(
             NotificationPacketType,
@@ -4676,7 +4709,8 @@ public static partial class GameProtocolEngine
         uint seed,
         IReadOnlyList<byte[]> hosts,
         uint port1,
-        uint port2)
+        uint port2,
+        uint? chapter2Prefix = null)
     {
         if (displayName.Length >= 0x40)
         {
@@ -4687,6 +4721,10 @@ public static partial class GameProtocolEngine
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
+        if (chapter2Prefix is { } prefix)
+        {
+            writer.Write(prefix);
+        }
         WriteLengthPrefixedBytes(writer, displayName.ToArray());
         writer.Write(channelType);
         writer.Write(result);
