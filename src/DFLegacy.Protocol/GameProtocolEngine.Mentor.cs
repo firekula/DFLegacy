@@ -86,13 +86,21 @@ public static partial class GameProtocolEngine
         });
     }
 
-    public static bool TryReadMentorName(byte[] body, out byte[] name) => TryReadLengthPrefixedName(body, out name);
+    public static bool TryReadMentorName(byte[] body, out byte[] name, bool allowChapter2Padding = false) =>
+        TryReadLengthPrefixedName(body, out name, allowChapter2Padding);
 
-    public static bool TryReadMentorReply(byte[] body, out byte reply)
+    public static bool TryReadMentorReply(byte[] body, out byte reply, bool allowChapter2Padding = false)
     {
+        const int bodyLength = sizeof(ushort) + sizeof(byte);
         reply = 0;
-        if (body.Length != 3 || body[2] is not (1 or 2)) return false;
-        reply = body[2];
+        if (body.Length != bodyLength && (!allowChapter2Padding || body.Length != sizeof(ushort) + 16
+                || body.AsSpan(bodyLength).ContainsAnyExcept((byte)0)))
+        {
+            return false;
+        }
+
+        if (body[sizeof(ushort)] is not (1 or 2)) return false;
+        reply = body[sizeof(ushort)];
         return true;
     }
 }

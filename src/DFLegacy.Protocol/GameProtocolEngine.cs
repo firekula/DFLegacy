@@ -3010,8 +3010,8 @@ public static partial class GameProtocolEngine
     /// 解析 CMD 128/129（黑名单增删）的载荷（Body 从序列号起算）：u32 名字长度 + 名字。
     /// 与好友命令同形，但名字在客户端是**大小写敏感**匹配的（见 FriendService 的说明）。
     /// </summary>
-    public static bool TryReadBlacklistName(byte[] body, out byte[] nameBytes) =>
-        TryReadLengthPrefixedName(body, out nameBytes);
+    public static bool TryReadBlacklistName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false) =>
+        TryReadLengthPrefixedName(body, out nameBytes, allowChapter2Padding);
 
     private static bool TryReadLengthPrefixedName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false)
     {

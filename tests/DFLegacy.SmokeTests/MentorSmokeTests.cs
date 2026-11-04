@@ -54,6 +54,23 @@ internal static class MentorSmokeTests
                 && !GameProtocolEngine.TryReadMentorReply([1, 0, 3], out _)
                 && !GameProtocolEngine.TryReadMentorReply([1, 0, 1, 0], out _),
             "the ACT1 response parser permits only the exact accept/reject byte");
+        var paddedName = new byte[18];
+        paddedName[2] = 1;
+        paddedName[6] = 65;
+        check(GameProtocolEngine.TryReadMentorName(paddedName, out var chapterTwoName, allowChapter2Padding: true)
+                && chapterTwoName.SequenceEqual(new byte[] { 65 })
+                && !GameProtocolEngine.TryReadMentorName(paddedName, out _),
+            "Chapter Two mentor names can have an AES zero tail while ACT1 names remain exact");
+        var paddedReply = new byte[18];
+        paddedReply[2] = 2;
+        check(GameProtocolEngine.TryReadMentorReply(paddedReply, out var chapterTwoReply, allowChapter2Padding: true)
+                && chapterTwoReply == 2
+                && !GameProtocolEngine.TryReadMentorReply(paddedReply, out _)
+                && !GameProtocolEngine.TryReadMentorReply(paddedReply[..17], out _, allowChapter2Padding: true),
+            "Chapter Two mentor responses allow the one AES block containing accept or reject");
+        paddedReply[^1] = 1;
+        check(!GameProtocolEngine.TryReadMentorReply(paddedReply, out _, allowChapter2Padding: true),
+            "Chapter Two mentor responses reject a nonzero AES tail");
         check(new[] { 17, 18, 19, 20, 29, 30, 60 }.Select(MentorRules.Capacity)
                 .SequenceEqual(new[] { 0, 5, 5, 8, 8, 10, 10 }),
             "mentor capacity follows the verified official minimum and ten-level bands");

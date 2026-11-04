@@ -5549,7 +5549,8 @@ public sealed class EntranceService(
                             // immediately after the command acknowledgement.
                             var userInfo = await CreateUserInfoAsync(
                                 accountUid,
-                                serverToken);
+                                serverToken,
+                                chapter2CheckConnectionAccepted);
                             await userInfo.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, userInfo);
@@ -6508,10 +6509,10 @@ public sealed class EntranceService(
                             if (request.ProtocolId == GameProtocolEngine.MentorListCommand && request.Body.Length == 2)
                                 await mentorService.SendListAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                             else if (request.ProtocolId == GameProtocolEngine.ReplyMentorCommand
-                                && GameProtocolEngine.TryReadMentorReply(request.Body, out var mentorReply))
+                                && GameProtocolEngine.TryReadMentorReply(request.Body, out var mentorReply, chapter2Decoded))
                                 await mentorService.ReplyAsync(activeCharacter.Id, runtimeSession.Id, mentorReply, serverToken);
                             else if (request.ProtocolId is GameProtocolEngine.RequestMentorCommand or GameProtocolEngine.RemoveMentorCommand
-                                && GameProtocolEngine.TryReadMentorName(request.Body, out var mentorName))
+                                && GameProtocolEngine.TryReadMentorName(request.Body, out var mentorName, chapter2Decoded))
                             {
                                 var peerName = ClientEncoding.GetString(mentorName);
                                 if (request.ProtocolId == GameProtocolEngine.RequestMentorCommand)
@@ -6707,7 +6708,8 @@ public sealed class EntranceService(
                             if (activeCharacter is null
                                 || !GameProtocolEngine.TryReadBlacklistName(
                                     request.Body,
-                                    out var blacklistName))
+                                    out var blacklistName,
+                                    chapter2Decoded))
                             {
                                 logger.LogWarning(
                                     "Rejected malformed REGISTER_TO_BLACKLIST for character {CharacterId}.",
@@ -6730,7 +6732,8 @@ public sealed class EntranceService(
                             if (activeCharacter is null
                                 || !GameProtocolEngine.TryReadBlacklistName(
                                     request.Body,
-                                    out var removedBlacklistName))
+                                    out var removedBlacklistName,
+                                    chapter2Decoded))
                             {
                                 logger.LogWarning(
                                     "Rejected malformed DELETE_TO_BLACKLIST for character {CharacterId}.",
@@ -16226,7 +16229,7 @@ public sealed class EntranceService(
     }
 
     private async Task<GameServerPacket> CreateUserInfoAsync(uint accountUid, CancellationToken cancellationToken,
-        bool includeUseLockDays = false)
+        bool includeUseLockDays)
     {
         var characters = await store.GetCharactersAsync(accountUid, cancellationToken);
         var summaries = characters

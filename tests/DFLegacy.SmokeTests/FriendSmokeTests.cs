@@ -635,13 +635,18 @@ internal static class FriendSmokeTests
         check(!GameProtocolEngine.TryReadFriendName(padded, out _)
             && !GameProtocolEngine.TryReadBlacklistName(padded, out _),
             "the legacy friend and blacklist formats still reject trailing bytes");
+        check(GameProtocolEngine.TryReadBlacklistName(padded, out var blacklistName, allowChapter2Padding: true)
+            && blacklistName.SequenceEqual(nameBytes),
+            "Chapter Two blacklist commands accept AES padding on a length-prefixed name");
         var extraBlock = new byte[padded.Length + 16];
         padded.CopyTo(extraBlock, 0);
-        check(!GameProtocolEngine.TryReadFriendName(extraBlock, out _, allowChapter2Padding: true),
-            "Chapter Two friend commands reject an unnecessary AES block");
+        check(!GameProtocolEngine.TryReadFriendName(extraBlock, out _, allowChapter2Padding: true)
+            && !GameProtocolEngine.TryReadBlacklistName(extraBlock, out _, allowChapter2Padding: true),
+            "Chapter Two social name commands reject an unnecessary AES block");
         padded[^1] = 1;
-        check(!GameProtocolEngine.TryReadFriendName(padded, out _, allowChapter2Padding: true),
-            "Chapter Two friend commands reject nonzero padding");
+        check(!GameProtocolEngine.TryReadFriendName(padded, out _, allowChapter2Padding: true)
+            && !GameProtocolEngine.TryReadBlacklistName(padded, out _, allowChapter2Padding: true),
+            "Chapter Two social name commands reject nonzero padding");
 
         check(!GameProtocolEngine.TryReadFriendName(body[..5], out _),
             "a truncated friend command is rejected");
