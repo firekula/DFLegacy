@@ -102,6 +102,12 @@ Docker 镜像和客户端的发布流程见 [BUILDING.md](BUILDING.md)。
 
 在现有 Compose 服务的 `environment` 增加 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，在 `ports` 增加 `"7100-7105:7100-7105/tcp"`，并放行对应 TCP 端口。host 网络部署直接放行宿主端口。本机中继玩家需在 `Relay.TcpPorts` 保留已有值并加入这六个端口，或使用管理器重新导出的配置。地区及经验比例见[管理器指南](DEPLOYMENT_MANAGER.md#地区经验频道)。
 
+### 升级到 v0.1.4
+
+将 Compose 同目录的 `DFLEGACY_IMAGE` 改为 `ghcr.io/firekula/dflegacy:v0.1.4`，保留原数据卷，再执行 `podman compose pull dflegacy` 和 `podman compose up -d dflegacy`。GitHub 客户端更新使用原有的 HTTPS 下载入口。曾启用自托管更新的部署按下节切换更新源。
+
+服务端在启动时检查北京时间 06:00 的疲劳日期。旧镜像使用 UTC 时可能将刷新延迟到北京时间 14:00，新镜像会补刷尚未刷新的日期。当天已经刷新过的角色保留已有疲劳用量。
+
 ## 客户端自动更新
 
 GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和测试版。管理后台默认生成指向 GitHub 的安装包，游戏连接地址仍由后台的部署配置决定。服务端镜像从 GHCR 拉取。

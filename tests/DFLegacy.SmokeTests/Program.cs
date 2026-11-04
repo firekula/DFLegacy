@@ -4682,7 +4682,7 @@ try
         "item 7518 rejects the exact 126-fatigue boundary without consuming or mutating state");
     var sameFatigueDay = await identityStore.ResetFatigueForCurrentDayAsync(
         DateTimeOffset.Now);
-    var nowForReset = DateTimeOffset.Now;
+    var nowForReset = DateTimeOffset.UtcNow.ToOffset(FatigueResetService.BeijingOffset);
     var nextResetDate = nowForReset.TimeOfDay < TimeSpan.FromHours(6)
         ? nowForReset.Date
         : nowForReset.Date.AddDays(1);
