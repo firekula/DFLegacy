@@ -5286,6 +5286,25 @@ try
           == JsonGameStore.PresetCharacterExperience,
         "existing preset character refreshes to the correct cumulative experience");
 
+    var equippedPresetAvatar = stalePreset.AvatarInventory!.First() with { Slot = 1 };
+    var remainingPresetAvatars = stalePreset.AvatarInventory!
+        .Where(item => item.InstanceId != equippedPresetAvatar.InstanceId)
+        .ToList();
+    var updatedPreset = await reloadedPresetRefreshStore.SaveCharacterItemSpacesAsync(
+        "test", stalePreset.Id, stalePreset.Gold,
+        stalePreset.Inventory ?? [], [preservedAccessory, equippedPresetAvatar],
+        stalePreset.Warehouse ?? [], avatarInventory: remainingPresetAvatars);
+    Check(updatedPreset is not null, "the preset avatar equip is saved before the restart");
+
+    var restartedPresetStore = new JsonGameStore(
+        presetRefreshOptions,
+        NullLogger<JsonGameStore>.Instance);
+    await restartedPresetStore.InitializeAsync();
+    var restartedPreset = (await restartedPresetStore.GetCharactersAsync("test"))[1];
+    Check(restartedPreset.Equipment?.Contains(equippedPresetAvatar) == true
+        && restartedPreset.AvatarInventory?.SequenceEqual(remainingPresetAvatars) == true,
+        "an equipped preset avatar stays equipped without a duplicate after restart");
+
     var persistedQuestDropInventory = (storedCharacter.Inventory ?? [])
         .Where(item => item.Slot != CharacterInventoryLayout.QuestSlotStart)
         .Append(new CharacterItemRecord(

@@ -822,24 +822,22 @@ public sealed partial class JsonGameStore(
             .ToList();
     }
 
-    private static bool NeedsPresetAvatarItems(
-        IEnumerable<CharacterItemRecord>? existing)
-    {
-        var itemIds = (existing ?? [])
+    private static HashSet<ushort> GetOwnedPresetAvatarItemIds(
+        IEnumerable<CharacterItemRecord> items) =>
+        items
             .Where(item => item.ItemId != 0 && item.CountOrValue != 0)
             .Select(item => item.ItemId)
             .ToHashSet();
-        return PresetAvatarItemIds.Any(itemId => !itemIds.Contains(itemId));
-    }
 
     private static List<CharacterItemRecord> CreatePresetAvatarInventory(
-        IEnumerable<CharacterItemRecord>? existing = null)
+        IEnumerable<CharacterItemRecord>? existing = null,
+        IEnumerable<CharacterItemRecord>? equipped = null)
     {
         var items = (existing ?? [])
             .Where(item => item.ItemId != 0 && item.CountOrValue != 0)
             .OrderBy(item => item.Slot)
             .ToList();
-        var itemIds = items.Select(item => item.ItemId).ToHashSet();
+        var itemIds = GetOwnedPresetAvatarItemIds(items.Concat(equipped ?? []));
         var occupiedSlots = items
             .Where(item => item.Slot < 105)
             .Select(item => item.Slot)
@@ -1406,11 +1404,17 @@ public sealed partial class JsonGameStore(
             {
                 var character = account.Characters[index];
                 if (!character.IsPreset
-                    || character.Level is not (55 or CharacterExperienceCatalog.MaximumLevel)
-                    || character.Level == CharacterExperienceCatalog.MaximumLevel
-                        && character.Experience == PresetCharacterExperience
-                        && !NeedsPresetAvatarItems(character.AvatarInventory)
-                        && !NeedsPresetCreatureItems(character.CreatureInventory))
+                    || character.Level is not (55 or CharacterExperienceCatalog.MaximumLevel))
+                {
+                    continue;
+                }
+
+                var ownedAvatarItemIds = GetOwnedPresetAvatarItemIds(
+                    (character.AvatarInventory ?? []).Concat(character.Equipment ?? []));
+                if (character.Level == CharacterExperienceCatalog.MaximumLevel
+                    && character.Experience == PresetCharacterExperience
+                    && PresetAvatarItemIds.All(ownedAvatarItemIds.Contains)
+                    && !NeedsPresetCreatureItems(character.CreatureInventory))
                 {
                     continue;
                 }
@@ -1419,7 +1423,7 @@ public sealed partial class JsonGameStore(
                 {
                     Level = CharacterExperienceCatalog.MaximumLevel,
                     Experience = PresetCharacterExperience,
-                    AvatarInventory = CreatePresetAvatarInventory(character.AvatarInventory),
+                    AvatarInventory = CreatePresetAvatarInventory(character.AvatarInventory, character.Equipment),
                     CreatureInventory = CreatePresetCreatureInventory(character.CreatureInventory)
                 };
                 changed = true;
