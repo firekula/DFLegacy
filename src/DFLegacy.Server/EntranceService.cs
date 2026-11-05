@@ -15078,7 +15078,16 @@ public sealed class EntranceService(
                                 NoteTestPickupRejection(groundItem, decision is { Outcome: LootPickupOutcome.PickupInProgress }
                                     ? "pickup-in-progress" : "not-available");
                                 if (decision is { Outcome: LootPickupOutcome.PickupInProgress })
+                                {
                                     await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemError(21));
+                                }
+                                else if (chapter2Decoded)
+                                {
+                                    logger.LogDebug(
+                                        "Ground item {GroundId} became unavailable before pickup reservation for user {UserId}.",
+                                        groundId, localUserId);
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGetItemSilentRejection());
+                                }
                                 continue;
                             }
                             if (decision.Outcome == LootPickupOutcome.NoEligibleRecipient)
