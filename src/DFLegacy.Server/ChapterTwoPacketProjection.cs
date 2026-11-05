@@ -19,9 +19,11 @@ internal static class ChapterTwoPacketProjection
             return ExpandRecords(packet, 1, payload[0], 21, [0]);
         }
 
-        if (packet.ProtocolId == GameProtocolEngine.DropItemNotification && payload.Length == 17)
+        if ((packet.ProtocolId == GameProtocolEngine.DropItemNotification && payload.Length == 17)
+            || (packet.ProtocolId == GameProtocolEngine.ChangeItemTradeItemNotification && payload.Length == 11))
         {
-            // Ver_OB_216 reads a trailing u16 for the item constructor. ACT1 passes zero there.
+            // The ground and trade item readers pass an extra value to the Chapter Two constructor.
+            // Chapter One supplies zero for the same constructor argument.
             return packet with { Payload = [.. packet.Payload, 0, 0] };
         }
 

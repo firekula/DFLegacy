@@ -93,6 +93,19 @@ internal static class ChapterTwoInventorySmokeTests
                 Convert.FromHexString("01006E030E0101001582000100000023000000")),
             "Chapter Two active drop includes the final item-constructor field");
 
+        var tradeOffer = GameProtocolEngine.CreateChangeItemTradeItem(
+            new GameItemTradeEntry(3, 18000, 1, 0, 35));
+        var projectedTradeOffer = ChapterTwoPacketProjection.Apply(tradeOffer);
+        check(tradeOffer.Payload.AsSpan().SequenceEqual(Convert.FromHexString("0300504601000000002300"))
+            && projectedTradeOffer.Payload.AsSpan().SequenceEqual(Convert.FromHexString("03005046010000000023000000"))
+            && ReferenceEquals(projectedTradeOffer, ChapterTwoPacketProjection.Apply(projectedTradeOffer)),
+            "Chapter Two trade offers append the default item field once and preserve the ACT1 offer");
+        var clearTradeOffer = GameProtocolEngine.CreateChangeItemTradeItem(
+            new GameItemTradeEntry(3, ushort.MaxValue, 0, 0, 0));
+        check(ChapterTwoPacketProjection.Apply(clearTradeOffer).Payload.AsSpan().SequenceEqual(
+                Convert.FromHexString("0300FFFF000000000000000000")),
+            "Chapter Two trade-slot clearing consumes the same extra field as an item offer");
+
         var gold = GameProtocolEngine.CreateGoldItemPickup(2, 1, [22u, 0u, 300u, 0u]);
         check(gold.Payload.AsSpan().SequenceEqual(
                 Convert.FromHexString("02000100160000000000000000002C010000000000000000")),
