@@ -5127,9 +5127,14 @@ public sealed class EntranceService(
                             granted = freeRevivalCoinAmount;
                         }
 
-                        // The native CMD190 success handler applies the count itself. A separate
-                        // inventory update here could apply the same change twice on the client.
                         await SendTownPacketAsync(GameProtocolEngine.CreateFreeRevivalCoinReply(granted), serverToken);
+                        if (granted != 0)
+                        {
+                            // Refresh the saved total after the native reply's local increment.
+                            await SendTownPacketAsync(CreateMainInventoryPacket(
+                                currentGold, currentVictoryPoints, mainInventory.Values), serverToken);
+                        }
+
                         await SendFreeRevivalCoinEligibilityAsync();
                         continue;
                     }
