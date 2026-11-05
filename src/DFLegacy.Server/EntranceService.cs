@@ -6418,7 +6418,9 @@ public sealed class EntranceService(
                                     ? (peer, uid) => CreateTownAppearancePacket(peer, uid, peer.Equipment ?? [],
                                         peer.CreatureInventory ?? [], hasBlackDiamond: false,
                                         hasPrivateStorePermission: false, includeChapter2ActorFields: true)
-                                    : null);
+                                    : null,
+                                channelNumber: channel.Number,
+                                chapterTwo: chapter2CheckConnectionAccepted);
 
                             // External absolute Gold notices are sampled again on this owner's safe point.
                             // Capture this attachment's queue; retired callbacks cannot enqueue into a new actor.

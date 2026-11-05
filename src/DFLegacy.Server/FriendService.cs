@@ -63,12 +63,14 @@ public sealed class FriendService
         Guid sessionId,
         Func<GameServerPacket, ValueTask> send,
         CancellationToken cancellationToken = default,
-        Func<CharacterRecord, ushort, GameServerPacket>? createPeerAppearance = null)
+        Func<CharacterRecord, ushort, GameServerPacket>? createPeerAppearance = null,
+        int channelNumber = 0,
+        bool chapterTwo = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
         ArgumentNullException.ThrowIfNull(send);
-        var channel = new Channel(accountName, areaUserId, sessionId, send, createPeerAppearance);
+        var channel = new Channel(accountName, areaUserId, sessionId, send, createPeerAppearance, channelNumber, chapterTwo);
         _channels[characterName] = channel;
 
         // 好友行/“查看信息”/社区菜单都先查本地 user 注册表（FindByUid）：没有 USERINFO
@@ -171,38 +173,39 @@ public sealed class FriendService
         var addedName = friendName.Trim();
         var addedNameBytes = ClientEncoding.GetBytes(addedName);
         var isOnline = _channels.TryGetValue(addedName, out var addedChannel);
+        if (!_channels.TryGetValue(characterName, out var recipient))
+        {
+            return;
+        }
+
         // 尾部 A/B/C = 等级/职业系/打包成长（与 NOTI 56 记录同源同序）：取存档投影，
         // 新加的离线好友也立刻显示真实 Lv./职业，不再停在 Lv.0 鬼剑士。
         var addedProfile = await GetFriendProfileAsync(addedName, cancellationToken);
-        await SendAsync(
-            characterName,
+        await recipient.Send(
             GameProtocolEngine.CreateAddFriendResult(
                 addedNameBytes,
                 isOnline ? addedChannel!.AreaUserId : (ushort)0,
                 addedProfile.Level,
                 addedProfile.Job,
                 addedProfile.GrowType,
-                addedProfile.AwakeningType),
-            cancellationToken);
+                addedProfile.AwakeningType));
 
         // id 63 追加出来的条目停在构造默认状态，若好友此刻已在线，点开列表会看到一条
         // "刚加的在线好友显示离线"。紧接着补一条状态更新：BUDDY_IN/BUDDY_OUT 在客户端
         // 是按名字就地改状态（只写首个同名条目，0x4FFDC0）且**不会追加**，正好落在刚
-        // 追加的那一行上；在线发 BUDDY_IN(0)，离线发 BUDDY_OUT(-1) 把默认值钉死。
+        // 追加的那一行上；在线和离线各发相应的状态更新。
         // 只发给执行添加的会话：这条新行只存在于他的列表里，别的会话收到也无处可改。
-        await SendAsync(
-            characterName,
+        await recipient.Send(
             isOnline
-                ? GameProtocolEngine.CreateBuddyIn(state: 0, addedNameBytes)
-                : GameProtocolEngine.CreateBuddyOut(addedNameBytes),
-            cancellationToken);
+                ? GameProtocolEngine.CreateBuddyIn(recipient.GetOnlineFriendState(addedChannel), addedNameBytes)
+                : GameProtocolEngine.CreateBuddyOut(addedNameBytes));
 
         // 最后给添加者补一条在线好友的 mode-0 USERINFO 记录：条目与状态都有了，但添加者
         // 客户端的本地 user 注册表里还没有这个 uid，“查看信息”的 FindByUid 门会静默
         // 落空。登录时的记录推送覆盖不到“添加这一刻”，所以在这里补；离线好友没有可用
         // uid（也还没有需要它的场景），不发——对方的记录会在下次上线播报（记录先于
         // BUDDY_IN）时补上。
-        if (isOnline && _channels.TryGetValue(characterName, out var recipient))
+        if (isOnline)
         {
             var friendRecord = await CreatePeerRecordAsync(
                 addedName,
@@ -695,24 +698,6 @@ public sealed class FriendService
                     continue;
                 }
 
-                // 好友上线时先推他的 mode-0 USERINFO 记录，再播报 BUDDY_IN：记录先到，
-                // 客户端后续按名字刷新 entry+0x38（“查看信息”的菜单门要用）与 uid 反查
-                // 表。“查看信息”从本地 user 注册表取 uid（没有记录时连 CMD 8 都不发），
-                // 悄悄话也要按 uid 反查发送者名字。记录用存档角色的正名构建
-                // （CreatePeerRecordAsync）。
-                if (isOnline && _channels.TryGetValue(characterName, out var onlineChannel))
-                {
-                    var friendRecord = await CreatePeerRecordAsync(
-                        characterName,
-                        onlineChannel,
-                        channel,
-                        cancellationToken);
-                    if (friendRecord is not null)
-                    {
-                        await TrySendToChannelAsync(ownerCharacterName, channel, friendRecord, cancellationToken);
-                    }
-                }
-
                 // 状态变化只发 BUDDY_IN/BUDDY_OUT。客户端收到 NOTI 56 快照是无条件追加
                 // 条目（不去重，按名字更新状态只更新首个命中），状态变化时重推快照会让
                 // 每次好友重登都在观察者列表里多出一行同名好友；ec67261 的线上重推正是
@@ -723,11 +708,23 @@ public sealed class FriendService
                 var storedNameBytes = ClientEncoding.GetBytes(storedName);
                 if (isOnline)
                 {
-                    // 上线只有一条 BUDDY_IN（flag=0，正常显示）。
+                    if (!_channels.TryGetValue(characterName, out var onlineChannel))
+                    {
+                        continue;
+                    }
+
+                    // 好友资料先到，客户端才能按名字和区用户编号找到在线角色。
+                    var friendRecord = await CreatePeerRecordAsync(
+                        characterName, onlineChannel, channel, cancellationToken);
+                    if (friendRecord is not null)
+                    {
+                        await TrySendToChannelAsync(ownerCharacterName, channel, friendRecord, cancellationToken);
+                    }
+
                     await TrySendToChannelAsync(
                         ownerCharacterName,
                         channel,
-                        GameProtocolEngine.CreateBuddyIn(state: 0, storedNameBytes),
+                        GameProtocolEngine.CreateBuddyIn(channel.GetOnlineFriendState(onlineChannel), storedNameBytes),
                         cancellationToken);
                     continue;
                 }
@@ -848,5 +845,11 @@ public sealed class FriendService
         ushort AreaUserId,
         Guid SessionId,
         Func<GameServerPacket, ValueTask> Send,
-        Func<CharacterRecord, ushort, GameServerPacket>? CreatePeerAppearance);
+        Func<CharacterRecord, ushort, GameServerPacket>? CreatePeerAppearance,
+        int Number,
+        bool ChapterTwo)
+    {
+        public byte GetOnlineFriendState(Channel friend) =>
+            ChapterTwo && friend.Number is > 0 and < byte.MaxValue ? (byte)friend.Number : (byte)0;
+    }
 }

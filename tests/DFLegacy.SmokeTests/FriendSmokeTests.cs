@@ -1018,7 +1018,8 @@ internal static class FriendSmokeTests
             var bravoSession = Guid.NewGuid();
             var aliceBeforeBravoLogin = alicePackets.Count;
             await service.AttachChannelAsync(
-                "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None);
+                "bobby", "布拉沃", areaUserId: 1, bravoSession, Record(bravoPackets), CancellationToken.None,
+                channelNumber: 10, chapterTwo: true);
             check(alicePackets.Any(packet => packet.ProtocolId == GameProtocolEngine.BuddyInNotification),
                 "a friend coming online notifies the accounts whose friend list holds that name");
             var bravoLoginTail = alicePackets.Skip(aliceBeforeBravoLogin).ToArray();
@@ -1030,6 +1031,7 @@ internal static class FriendSmokeTests
                     && ReadUserInfoRecordUid(bravoOnlineRecord) == 1
                     && UserInfoRecordNameEquals(bravoOnlineRecord, "布拉沃")
                     && bravoLoginTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
+                    && bravoLoginTail[1].Payload[0] == 0
                     && bravoLoginTail[1].Payload[^1] == 0
                     && BuddyNameExactly(bravoLoginTail[1], "布拉沃"),
                 "a friend coming online pushes his mode-0 USERINFO record first, then exactly one flag-0 BUDDY_IN");
@@ -1578,9 +1580,12 @@ internal static class FriendSmokeTests
                 "the add-state fixture creates its three characters");
             var ivanPackets = new List<GameServerPacket>();
             await service.AttachChannelAsync(
-                "ivan", "伊万", areaUserId: 0, Guid.NewGuid(), Record(ivanPackets), CancellationToken.None);
+                "ivan", "伊万", areaUserId: 0, Guid.NewGuid(), Record(ivanPackets), CancellationToken.None,
+                channelNumber: 1, chapterTwo: true);
+            var judySession = Guid.NewGuid();
             await service.AttachChannelAsync(
-                "judy", "朱迪", areaUserId: 21, Guid.NewGuid(), Record(new List<GameServerPacket>()), CancellationToken.None);
+                "judy", "朱迪", areaUserId: 21, judySession, Record(new List<GameServerPacket>()), CancellationToken.None,
+                channelNumber: 27);
 
             var ivanBeforeOnlineAdd = ivanPackets.Count;
             await service.AddFriendAsync("ivan", "伊万", "朱迪", CancellationToken.None);
@@ -1595,10 +1600,10 @@ internal static class FriendSmokeTests
                         growType: (byte)Math.Clamp(judyFixture.Character.GrowType, 0, 15),
                         awakeningType: (byte)Math.Clamp(judyFixture.Character.AwakeningType, 0, 7))
                     && onlineAddTail[1].ProtocolId == GameProtocolEngine.BuddyInNotification
-                    && onlineAddTail[1].Payload[0] == 0
+                    && onlineAddTail[1].Payload[0] == 27
                     && onlineAddTail[1].Payload[^1] == 0
                     && BuddyNameExactly(onlineAddTail[1], "朱迪"),
-                "adding an online friend sends the id-63 append carrying his level and uid, then a flag-0 BUDDY_IN");
+                "Chapter Two sees the online friend's actual channel after adding them");
             check(onlineAddTail.Length == 3
                     && onlineAddTail[2].ProtocolId == GameProtocolEngine.UserInfoNotification
                     && onlineAddTail[2].Payload[0] == 0
@@ -1608,6 +1613,20 @@ internal static class FriendSmokeTests
             check(onlineAddTail.All(packet =>
                         packet.ProtocolId != GameProtocolEngine.BuddyConnListNotification),
                 "the online-friend add still sends no snapshot");
+
+            await service.DetachChannelAsync("朱迪", judySession, CancellationToken.None);
+            var ivanBeforeReconnect = ivanPackets.Count;
+            await service.AttachChannelAsync(
+                "judy", "朱迪", areaUserId: 22, Guid.NewGuid(), Record(new List<GameServerPacket>()), CancellationToken.None,
+                channelNumber: 10, chapterTwo: true);
+            var chapterTwoReconnect = ivanPackets.Skip(ivanBeforeReconnect).ToArray();
+            check(chapterTwoReconnect.Length == 2
+                    && chapterTwoReconnect[0].ProtocolId == GameProtocolEngine.UserInfoNotification
+                    && ReadUserInfoRecordUid(chapterTwoReconnect[0]) == 22
+                    && chapterTwoReconnect[1].ProtocolId == GameProtocolEngine.BuddyInNotification
+                    && chapterTwoReconnect[1].Payload[0] == 10
+                    && BuddyNameExactly(chapterTwoReconnect[1], "朱迪"),
+                "Chapter Two sees the new channel after a friend's reconnect without duplicating the roster");
 
             var ivanBeforeOfflineAdd = ivanPackets.Count;
             await service.AddFriendAsync("ivan", "伊万", "肯特", CancellationToken.None);
