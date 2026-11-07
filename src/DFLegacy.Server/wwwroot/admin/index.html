@@ -112,6 +112,11 @@
             <button id="mailSubmit" class="primary-button" type="submit">发送邮件</button>
           </div>
         </form>
+        <section id="mailBatchPending" class="surface form-layout hidden" aria-live="polite">
+          <p>当前批次：<code id="mailPendingId"></code></p>
+          <p>响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
+          <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+        </section>
         <section id="mailBatchPreview" class="surface form-layout hidden" aria-live="polite">
           <h2>确认全服邮件</h2>
           <p id="mailBatchPreviewText"></p>
@@ -144,6 +149,7 @@
             <select class="character-select" name="characterId" required></select>
           </label>
           <p id="victoryBalance" aria-live="polite">当前胜点：—</p>
+          <p id="victoryOperation" aria-live="polite"></p>
           <label class="field">
             <span>发放数量</span>
             <input name="amount" type="number" min="1" max="4294967295" step="1" value="100" required>

@@ -205,7 +205,10 @@ async function api(path, options = {}, retry = true) {
     throw new Error(message);
   }
   if (!response.ok) {
-    throw new Error(errorText(body) || `${response.status} ${response.statusText}`);
+    const error = new Error(errorText(body) || `${response.status} ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
   return body;
 }

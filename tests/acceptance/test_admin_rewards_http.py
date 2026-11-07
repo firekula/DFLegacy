@@ -214,6 +214,71 @@ def main():
                 page.locator("#mailSubmit").click()
                 expect(page.locator("#toast")).to_contain_text("邮件")
                 check(not errors, "single-recipient form remains usable without browser script errors")
+                lost = []
+                def lose_committed_response(route):
+                    response = route.fetch()
+                    assert response.status == 200, "fault injection must occur after successful server commit"
+                    lost.append(json.loads(route.request.post_data or "{}"))
+                    route.abort("failed")
+                recovery_failures = []
+                page.locator('[data-view="victory"]').click()
+                page.locator('#victoryForm [name="characterId"]').select_option(first_id)
+                page.locator('#victoryForm [name="amount"]').fill("7")
+                page.route("**/api/admin/characters/*/victory-points", lose_committed_response, times=1)
+                page.locator('#victoryForm button[type="submit"]').click()
+                expect(page.locator('#victoryForm button[type="submit"]')).to_be_enabled()
+                page.reload()
+                expect(page.locator("#loginOverlay")).to_be_hidden()
+                page.locator('[data-view="victory"]').click()
+                try:
+                    expect(page.locator('#victoryForm [name="amount"]')).to_have_value("7", timeout=3000)
+                    expect(page.locator('#victoryOperation')).to_contain_text(lost[0]["operationId"])
+                    page.locator('#victoryForm button[type="submit"]').click()
+                    expect(page.locator("#victoryBalance")).to_contain_text("141")
+                    check(True, "lost committed VP response survives reload and original-ID retry grants once")
+                except AssertionError as error:
+                    recovery_failures.append("VP recovery: " + str(error))
+                page.locator('[data-view="mail"]').click()
+                if page.locator('#mailBatchNew').is_visible():
+                    page.locator('#mailBatchNew').click()
+                page.locator('#mailScope').select_option('all')
+                page.locator('#mailForm [name="text"]').fill('UI lost response')
+                page.locator('#mailSubmit').click()
+                expect(page.locator('#mailBatchPreview')).to_be_visible()
+                sent_ids = []
+                def lose_mail_response(route):
+                    sent_ids.append(route.request.url.split('/')[-2])
+                    lose_committed_response(route)
+                page.route('**/api/admin/mail/broadcast/*/send', lose_mail_response, times=1)
+                page.locator('#mailBatchConfirm').click()
+                expect(page.locator('#mailBatchConfirm')).to_be_enabled()
+                page.reload()
+                expect(page.locator('#loginOverlay')).to_be_hidden()
+                page.locator('[data-view="mail"]').click()
+                try:
+                    expect(page.locator('#mailBatchRecover')).to_be_visible(timeout=3000)
+                    page.locator('#mailBatchRecover').click()
+                    expect(page.locator('#mailBatchId')).to_have_text(sent_ids[0])
+                    expect(page.locator('#mailBatchSummary')).to_contain_text('发送成功 2，失败 1')
+                    check(True, 'lost committed broadcast response survives reload and retrieves original receipt')
+                except AssertionError as error:
+                    recovery_failures.append('Mail recovery: ' + str(error))
+                current = json.loads(state_path.read_text(encoding='utf-8-sig'))
+                chars = {c['Id']: c for a in current['Accounts'] for c in a['Characters']}
+                check(chars[first_id]['VictoryPoints'] == 141, 'uncertain VP retry does not double grant')
+                check(all(sum(m['Text']=='UI lost response' for m in chars[i]['Mailbox'])==1 for i in (first_id,second_id)),
+                      'uncertain mail retry does not duplicate committed deliveries')
+                assert not recovery_failures, '\n'.join(recovery_failures)
+                page.locator('[data-view="victory"]').click()
+                page.locator('#victoryForm [name="characterId"]').select_option(first_id)
+                page.locator('#victoryForm [name="amount"]').fill('4294967295')
+                page.locator('#victoryForm button[type="submit"]').click()
+                expect(page.locator('#toast')).to_contain_text('超过上限')
+                expect(page.locator('#victoryOperation')).to_have_text('')
+                page.locator('#victoryForm [name="amount"]').fill('1')
+                page.locator('#victoryForm button[type="submit"]').click()
+                expect(page.locator('#victoryBalance')).to_contain_text('142')
+                check(True, 'explicit rejected overflow permits a corrected new grant')
                 browser.close()
     print("ARTIFACTS " + str(root), flush=True)
 

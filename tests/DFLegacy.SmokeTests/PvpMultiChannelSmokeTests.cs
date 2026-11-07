@@ -19,6 +19,44 @@ internal static class PvpMultiChannelSmokeTests
         }
         await PvpIndividualSmokeTests.MultiChannelIsolation(check);
         await Admission(check);
+        await DisplacedAdmission(check);
+    }
+
+    internal static async Task DisplacedAdmission(Action<bool, string> check)
+    {
+        using var f = new AdminRewardStoreSmokeTests.Fixture();
+        f.Options.Pvp.Enabled = true;
+        Directory.CreateDirectory(Path.Combine(f.Root, "etc"));
+        File.WriteAllText(Path.Combine(f.Root, "etc/pvp_ref.etc"), "[pvp experience max grade]\n30\n[pvp experience]\n"
+            + string.Join('\n', Enumerable.Range(1,30).Select(i => $"{i} {i*1000}")) + "\n[/pvp experience]");
+        var store=f.Open(); await store.InitializeAsync();
+        await store.CreateAccountAsync(new("racecheck", "password", OicqCode:"123456"));
+        var current=(await store.CreateCharacterAsync("racecheck",new("RaceCheck"))).Character!;
+        var other=(await store.CreateCharacterAsync("racecheck",new("RaceOther"))).Character!;
+        var root=JsonNode.Parse(await File.ReadAllTextAsync(f.Options.DataPath))!;
+        foreach(var c in root["Accounts"]![0]!["Characters"]!.AsArray()) { c!["PvpPoints"]=19000; c["PvpGrade"]=20; }
+        await File.WriteAllTextAsync(f.Options.DataPath,root.ToJsonString()); await store.InitializeAsync();
+        await using var services=NewCharacterDefaultsSmokeTests.CreateSessionServices(f.Options,store,f.Items);
+        var sessions=services.GetRequiredService<CharacterSessionRegistry>();
+        var rating=services.GetRequiredService<PvpExperienceCatalog>();
+        CharacterSessionLease? old=null; Task? settlement=null;
+        old=await sessions.ClaimAsync(current.CharacterNo,current.Id,Guid.NewGuid(),()=>
+        {
+            settlement=Task.Run(async()=>
+            {
+                try { await store.CommitPvpMatchAsync(new(Guid.NewGuid(),
+                    [new(current.Id,20,true,null,null),new(other.Id,20,false,new ushort[11],new uint[8])],other.Id,false),rating); }
+                finally { sessions.Release(old); }
+            });
+        },CancellationToken.None);
+        var service=ActivatorUtilities.CreateInstance<EntranceService>(services);
+        await using var connection=await NewCharacterDefaultsSmokeTests.Connection.CreateAsync(service,f.Options,7111);
+        await connection.LoginAsync("racecheck",0,expectSelection:false);
+        if(settlement is not null) await settlement;
+        check((await store.GetCharacterAsync("racecheck",current.Id))!.PvpGrade==19,"displaced active match settles a real rank20 to19 forfeit during claim");
+        check(connection.SelectReply!.Payload[0]==0,"post-claim canonical rank blocks an advanced-channel boundary bypass");
+        // A rejected lease must not leave the character owned by a dead selection.
+        check(!sessions.NotifyVictoryPointsChanged(current.Id),"rejected post-claim selection releases its newly acquired lease");
     }
 
     private static async Task Admission(Action<bool, string> check)

@@ -5741,6 +5741,19 @@ public sealed class EntranceService(
                             if (claimedCharacter is null || await store.IsAccountBannedAsync(accountName, serverToken))
                                 throw new IOException("Character is no longer available for selection.");
                             character = claimedCharacter;
+                            // Displacing an existing PvP connection can settle a
+                            // forfeit before releasing its lease and lower its rank.
+                            if (pvpProfile is not null && !pvpProfile.Allows(
+                                pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints), pvpExperienceCatalog.MaximumGrade))
+                            {
+                                characterSessions.Release(activeCharacterLease);
+                                activeCharacterLease = null;
+                                var rankError = GameProtocolEngine.CreateCommandError(request, errorCode: 2);
+                                await rankError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, rankError);
+                                continue;
+                            }
 
                             // 结算后的交付安装自愈：这个角色可能带着"未安装交付"的守门标记
                             // （被动方在结算登记前后掉线、或在安装前回了选人）。选角路径下面的

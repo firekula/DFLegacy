@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--pvp-admission-race"))
+{
+    await PvpMultiChannelSmokeTests.DisplacedAdmission(Check);
+    foreach(var failure in failures) Console.Error.WriteLine("FAIL: "+failure);
+    Console.WriteLine($"PvP admission race: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Length == 0 || args.Contains("--pvp-multichannel"))
 {
     await PvpMultiChannelSmokeTests.RunAsync(Check);
