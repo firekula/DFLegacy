@@ -1,6 +1,6 @@
 namespace DFLegacy.Launcher.Updates;
 internal enum UpdatePhase { Idle, Checking, Downloading, Ready, Installing, Current, Cancelled, Error }
-internal sealed record UpdateViewState(UpdatePhase Phase, string Message, string Version = "", UpdateProgress? Progress = null, bool IsRecovery=false, string AssetName="");
+internal sealed record UpdateViewState(UpdatePhase Phase, string Message, string Version = "", UpdateProgress? Progress = null, bool IsRecovery=false, string AssetName="", bool ReplacesScriptPvf=false);
 internal interface IUpdateSession
 {
     UpdateRecovery? ReadRecovery()=>null;
@@ -40,9 +40,9 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             operation=Task.Run(()=>CheckCore(token)); return operation;
         }
     }
-    private void Set(UpdatePhase phase,string message,string version="",UpdateProgress? progress=null,bool isRecovery=false,string assetName="")
+    private void Set(UpdatePhase phase,string message,string version="",UpdateProgress? progress=null,bool isRecovery=false,string assetName="",bool replacesScriptPvf=false)
     {
-        lock(gate) { if(disposed) return; State=new(phase,message,version,progress,isRecovery,assetName); Changed?.Invoke(State); }
+        lock(gate) { if(disposed) return; State=new(phase,message,version,progress,isRecovery,assetName,replacesScriptPvf); Changed?.Invoke(State); }
     }
     private void Cleanup() { prepared=null; recovery=null; artifacts?.Dispose(); artifacts=null; }
     private async Task CheckCore(CancellationToken token)
@@ -71,7 +71,7 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             token.ThrowIfCancellationRequested(); artifacts.Track(prepared);
             if(session.Adopt(prepared)) { Cleanup(); InstalledVersion=release.Version; Set(UpdatePhase.Current,"文件已是最新版本，无需重新安装。",release.Version); return; }
             token.ThrowIfCancellationRequested();
-            Set(UpdatePhase.Ready,"下载及校验完成。点击“重启安装”确认；也可返回登录稍后更新。",release.Version);
+            Set(UpdatePhase.Ready,"下载及校验完成。点击“重启安装”确认；也可返回登录稍后更新。",release.Version,replacesScriptPvf:prepared.Manifest.HasScriptPvf);
         }
         catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消更新，可重试或返回登录。"); }
         catch(Exception ex) { Cleanup(); Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+ex.Message); }
@@ -87,7 +87,8 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             {
                 try
                 {
-                    Set(UpdatePhase.Installing,recovery!=null?"正在准备安全恢复助手…":"正在准备安全安装助手…",recovery?.Version??prepared!.Release.Version,isRecovery:recovery!=null);
+                    Set(UpdatePhase.Installing,recovery!=null?"正在准备安全恢复助手…":"正在准备安全安装助手…",recovery?.Version??prepared!.Release.Version,
+                        isRecovery:recovery!=null,replacesScriptPvf:prepared?.Manifest.HasScriptPvf==true);
                     artifacts??=UpdateArtifacts.Create(installation);
                     var handoff=recovery!=null?await session.PrepareRecoveryAsync(recovery,token).ConfigureAwait(false):await session.PrepareAsync(prepared!,token).ConfigureAwait(false); artifacts.TrackHelper(handoff);
                     var helper=await session.StartAsync(handoff,token).ConfigureAwait(false);

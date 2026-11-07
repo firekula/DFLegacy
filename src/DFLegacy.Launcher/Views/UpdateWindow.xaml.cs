@@ -51,12 +51,15 @@ public partial class UpdateWindow : Window
     private async void OnRetry(object sender,RoutedEventArgs e)=>await controller.CheckAsync();
     private async void OnInstall(object sender,RoutedEventArgs e)
     {
-        if(controller.State.Phase!=UpdatePhase.Ready) return;
-        await controller.InstallAsync(ConfirmRestart(this,controller.State.IsRecovery));
+        var state=controller.State;
+        if(state.Phase!=UpdatePhase.Ready) return;
+        await controller.InstallAsync(ConfirmRestart(this,state.IsRecovery,state.ReplacesScriptPvf));
     }
-    internal static bool ConfirmRestart(Window owner,bool recovery=false)
+    internal static bool ConfirmRestart(Window owner,bool recovery=false,bool replacesScriptPvf=false)
     {
-        var dialog=new ClassicMessageWindow(recovery?"恢复上次未完成的更新。\n确认退出登录器、恢复原版本并重新启动？":"更新已下载并校验完成。\n确认退出登录器、安装并重新启动？",confirmRestart:true) { Owner=owner };
+        var message=recovery?"恢复上次未完成的更新。\n确认退出登录器、恢复原版本并重新启动？":"更新已下载并校验完成。\n确认退出登录器、安装并重新启动？";
+        if(replacesScriptPvf) message="将替换 Script.pvf，并备份已有文件。\n"+message;
+        var dialog=new ClassicMessageWindow(message,confirmRestart:true) { Owner=owner };
         dialog.ShowDialog(); return dialog.Accepted;
     }
     private void OnBack(object sender,RoutedEventArgs e)=>Close();

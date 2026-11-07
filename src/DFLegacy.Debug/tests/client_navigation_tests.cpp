@@ -75,6 +75,14 @@ namespace
             U(0x200014,0x210000);U(0x200018,0x210004);U(0x210000,0x220000);U(0x220000,0x230000);U(0x230004,hit);
             Put<std::int32_t>(0x220008,50);Put<std::int32_t>(0x22000C,60);U(0x220010,0x240000);U(0x240014,10);U(0x240018,20);
         }
+        void QuestMarkerOnCanvas()
+        {
+            U(0x530014,0x210000);U(0x530018,0x210004);U(0x210000,0x260000);
+            U(0x260000,0xA84758);U(0xA8475C,0x882E40);
+            Put<std::int32_t>(0x260008,60);Put<std::int32_t>(0x26000C,50);
+            U(0x260010,0x250100);U(0x26001C,0x250000);U(0x250024,60);U(0x250028,60);
+            Put<unsigned char>(0x260041,1);
+        }
         void Row(std::uint32_t hash,std::uint32_t allocation,const Rect& rect,std::int32_t town=1,std::int32_t area=0)
         {
             const auto head=allocation,node=allocation+0x100,record=allocation+0x200,rectangle=allocation+0x300;
@@ -154,6 +162,28 @@ namespace
         m.Canvas();m.Marker();m.U(0x530014,0x210000);m.U(0x530018,0x210004);m.Put<std::int32_t>(0x220008,60);m.Put<std::int32_t>(0x22000C,45);
         denied("NPC marker rejects right goal");
         m.Marker(0xDEADBEEF);denied("unknown marker layout rejects right goal");
+        m.Canvas();m.QuestMarkerOnCanvas();
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10)
+            &&goal.town==1&&goal.area==0&&goal.x==400&&goal.y==350&&goal.mapX==60&&goal.mapY==45,
+            "right release over a quest icon projects the ground directly under the cursor");
+        std::int32_t leftX=0,leftY=0;
+        Check(!ReadCanvasTarget(m.Reader(),s,0x510000,leftX,leftY),"legacy left reader still excludes the quest icon");
+        m.U(0xB55188,778);denied("quest icon does not bypass the root capture check");m.U(0xB55188,777);
+        m.U(0x26001C,0);denied("quest icon with unreadable sprite is rejected");m.U(0x26001C,0x250000);
+        m.Marker(0x882E40);m.QuestMarkerOnCanvas();m.U(0x260000,0x230000);
+        denied("quest hit code without the verified quest vtable remains opaque");
+        m.Marker();m.QuestMarkerOnCanvas();m.U(0x530018,0x210008);m.U(0x210004,0x220000);
+        m.U(0x220000,0xA70BD0);m.U(0xA70BD4,0x882B40);m.Put<std::int32_t>(0x220008,60);
+        m.U(0x240014,15);m.U(0x240018,15);m.U(0x220028,0x260000);m.U(0x26003C,0);
+        denied("quest overlay does not bypass an unrelated NPC");
+        m.U(0x26003C,0x220000);
+        Check(ReadRouteCanvasTarget(m.Reader(),s,0x510000,goal,0x10)
+            &&goal.town==1&&goal.area==0&&goal.x==400&&goal.y==350,
+            "right release also projects ground where the visible quest icon overlaps its owning NPC");
+        m.Put<unsigned char>(0x260041,0);denied("hidden quest icon does not bypass its owning NPC");
+        m.Put<unsigned char>(0x260041,1);m.U(0x210000,0);denied("quest icon absent from the current plane does not bypass its owning NPC");
+        m.U(0x210000,0x260000);m.Put<std::int32_t>(0xCFD1F0,77);
+        denied("NPC outside its quest icon bounds still rejects a right goal");
         m.Canvas();m.Put<std::int32_t>(0xCFD1EC,INT32_MAX);m.Put<std::int32_t>(0xBEEFC4,-1);m.Put<std::int32_t>(0x530004,1);denied("mouse translation overflow rejected");
         m.Canvas();m.mutateAt=0x51000C;m.mutateTo=0x530100;m.mutateOnRead=2;m.matchingReads=0;denied("plane replacement during read rejected");
         m.mutateAt=0;m.Canvas();m.mutateAt=0xB55188;m.mutateTo=778;m.mutateOnRead=2;m.matchingReads=0;denied("right capture replacement during read rejected");

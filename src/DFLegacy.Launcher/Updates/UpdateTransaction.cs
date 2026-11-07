@@ -1,7 +1,9 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 namespace DFLegacy.Launcher.Updates;
 
-internal sealed record UpdateReceipt(string TransactionId, UpdateState? PreviousState, UpdateState NewState, UpdateFile[] Originals, UpdateManifest Manifest);
+internal sealed record UpdateReceipt(string TransactionId, UpdateState? PreviousState, UpdateState NewState, UpdateFile[] Originals, UpdateManifest Manifest,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool OriginalScriptPvfMissing = false);
 internal static class UpdateTransaction
 {
     internal static bool Matches(string path,UpdateFile file)
@@ -12,6 +14,7 @@ internal static class UpdateTransaction
     internal static void ValidateStage(PreparedUpdate update)
     {
         UpdateSafety.ValidateManifest(update.Manifest);
+        UpdateSafety.ValidatePackageFormat(update.Release,update.Manifest);
         if(update.Release.Id<=0 || update.Manifest.Version!=update.Release.Version) throw new InvalidDataException("更新版本无效。");
         UpdateSafety.NoLinks(update.Directory);
         var manifestPath=Path.Combine(update.Directory,"update-manifest.json"); UpdateSafety.NoLinks(manifestPath);
@@ -32,7 +35,7 @@ internal static class UpdateTransaction
         }
         finally { if(File.Exists(temporary)) File.Delete(temporary); }
     }
-    private static void ReplaceFrom(string source,string target)
+    private static void ReplaceFrom(string source,string target,bool overwrite=true)
     {
         UpdateSafety.NoLinks(source); UpdateSafety.NoLinks(target);
         var temporary=target+"."+Guid.NewGuid().ToString("N")+".tmp";
@@ -40,12 +43,16 @@ internal static class UpdateTransaction
         {
             using(var input=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.Read))
             using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { input.CopyTo(output); output.Flush(true); }
-            File.Move(temporary,target,true);
+            File.Move(temporary,target,overwrite);
         }
         finally { if(File.Exists(temporary)) File.Delete(temporary); }
     }
     private static void Restore(string target,string backup,UpdateReceipt receipt)
     {
+        var pvf=Path.Combine(target,ClientPackageManifest.ScriptPvfName);
+        var removePvf=receipt.OriginalScriptPvfMissing && UpdateSafety.ScriptPvfExists(pvf);
+        if(removePvf && !Matches(pvf,receipt.Manifest.Files.Single(file=>file.Path==ClientPackageManifest.ScriptPvfName)))
+            throw new InvalidDataException("Script.pvf 已改变；已保留恢复资料。");
         foreach(var original in receipt.Originals)
         {
             var saved=Path.Combine(backup,original.Path);
@@ -56,6 +63,7 @@ internal static class UpdateTransaction
             var destination=Path.Combine(target,original.Path);
             if(!Matches(destination,original)) ReplaceFrom(Path.Combine(backup,original.Path),destination);
         }
+        if(removePvf) File.Delete(pvf);
         if(receipt.Originals.Any(original=>!Matches(Path.Combine(target,original.Path),original))) throw new IOException("恢复后校验失败；已保留恢复资料。");
         UpdateSafety.ValidateInstalled(target,receipt.Manifest);
         var state=Path.Combine(target,".dflegacy","state.json");
@@ -76,7 +84,7 @@ internal static class UpdateTransaction
         var (receipt,digest)=ReadReceipt(target);
         var backup=Path.Combine(target,".dflegacy-backups",receipt.TransactionId);
         using var backupPin=UpdateSafety.PinDirectory(backup);
-        var installed=UpdateSafety.ValidateInstalled(backup,receipt.Manifest);
+        var installed=UpdateSafety.ValidateBackup(target,backup,receipt.Manifest);
         return new(receipt.TransactionId,digest,installed.Version,receipt.Originals.Single(f=>f.Path=="DFLegacy.Launcher.exe"),receipt.Manifest.Files.Single(f=>f.Path=="DFLegacy.Launcher.exe"));
     }
     internal static void ValidateRecovery(string target,UpdateRecovery recovery,string? executableHash=null)
@@ -91,12 +99,17 @@ internal static class UpdateTransaction
         var bytes=File.ReadAllBytes(pending);
         var receipt=UpdateSafety.ReadJson<UpdateReceipt>(bytes);
         UpdateSafety.ValidateManifest(receipt.Manifest);
-        var names=UpdateSafety.TransactionNames(receipt.Manifest).ToArray();
-        if(!Guid.TryParseExact(receipt.TransactionId,"N",out _) || receipt.Originals is null || receipt.Originals.Length!=names.Length || receipt.Originals.Any(f=>f is null || f.Size<=0 || f.Size>UpdateSafety.MaxExpanded || !ClientPackageManifest.Hex(f.Sha256,64)) || receipt.Originals.Select(f=>f.Path).Order().SequenceEqual(names.Order())==false)
+        var names=UpdateSafety.TransactionNames(receipt.Manifest,receipt.OriginalScriptPvfMissing).ToArray();
+        if(!Guid.TryParseExact(receipt.TransactionId,"N",out _) || receipt.OriginalScriptPvfMissing && !receipt.Manifest.HasScriptPvf
+            || receipt.Originals is null || receipt.Originals.Length!=names.Length
+            || receipt.Originals.Any(f=>f is null || f.Size<(f.Path==ClientPackageManifest.ScriptPvfName ? 0 : 1) || f.Size>UpdateSafety.MaxExpanded || !ClientPackageManifest.Hex(f.Sha256,64))
+            || !receipt.Originals.Select(f=>f.Path).Order(StringComparer.Ordinal).SequenceEqual(names.Order(StringComparer.Ordinal)))
             throw new InvalidDataException("恢复记录路径无效。");
         var backup=Path.Combine(target,".dflegacy-backups",receipt.TransactionId);
         using var pin=UpdateSafety.PinDirectory(backup);
-        UpdateSafety.ValidateInstalled(backup,receipt.Manifest);
+        if(receipt.OriginalScriptPvfMissing && UpdateSafety.ScriptPvfExists(Path.Combine(backup,ClientPackageManifest.ScriptPvfName)))
+            throw new InvalidDataException("恢复记录与 Script.pvf 备份不匹配。");
+        UpdateSafety.ValidateBackup(target,backup,receipt.Manifest);
         if(receipt.Originals.Any(original=>!Matches(Path.Combine(backup,original.Path),original))) throw new InvalidDataException("备份校验失败；已保留恢复资料。");
         return (receipt,Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
     }
@@ -163,7 +176,9 @@ internal static class UpdateTransaction
                 foreach(var file in update.Manifest.Files) held.Add(new FileStream(Path.Combine(update.Directory,file.Path),FileMode.Open,FileAccess.Read,FileShare.Read));
                 held.Add(new FileStream(Path.Combine(update.Directory,"update-manifest.json"),FileMode.Open,FileAccess.Read,FileShare.Read));
                 ValidateStage(update);
-                foreach(var name in UpdateSafety.TransactionNames(update.Manifest))
+                var originalPvfMissing=update.Manifest.HasScriptPvf && !UpdateSafety.ScriptPvfExists(Path.Combine(target,ClientPackageManifest.ScriptPvfName));
+                var originalNames=UpdateSafety.TransactionNames(update.Manifest,originalPvfMissing).ToArray();
+                foreach(var name in originalNames)
                 {
                     var path=Path.Combine(target,name); UpdateSafety.NoLinks(path);
                     // Detect the game's usual read-only sharing without terminating any process.
@@ -174,28 +189,31 @@ internal static class UpdateTransaction
                 var id=Guid.NewGuid().ToString("N"); backup=Path.Combine(backupRoot,id); Directory.CreateDirectory(backup);
                 using var backupPin=UpdateSafety.PinDirectory(backup);
                 var originals=new List<UpdateFile>();
-                var originalCount=UpdateSafety.TransactionNames(update.Manifest).Count();
-                foreach(var name in UpdateSafety.TransactionNames(update.Manifest))
+                foreach(var name in originalNames)
                 {
-                    var path=Path.Combine(target,name); var original=new UpdateFile(name,UpdateSafety.Hash(path),new FileInfo(path).Length);
+                    var path=Path.Combine(target,name);
+                    var length=new FileInfo(path).Length;
+                    if(length>UpdateSafety.MaxExpanded) throw new IOException("原文件超出备份大小限制。");
+                    var original=new UpdateFile(name,UpdateSafety.Hash(path),length);
                     // Backup data must reach disk before either durable recovery record.
                     using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
                     using(var output=new FileStream(Path.Combine(backup,name),FileMode.CreateNew,FileAccess.Write,FileShare.None))
                     { input.CopyTo(output); output.Flush(true); }
                     if(!Matches(Path.Combine(backup,name),original)) throw new IOException("更新备份未通过校验。");
                     originals.Add(original);
-                    UpdateInstallProgress.Report(progress,.88+.06*originals.Count/originalCount,"正在备份原版本…");
+                    UpdateInstallProgress.Report(progress,.88+.06*originals.Count/originalNames.Length,"正在备份原版本…");
                 }
                 // Reject a mixed original snapshot before the recovery journal can authorize writes.
-                UpdateSafety.ValidateInstalled(backup,update.Manifest);
-                receipt=new(id,previous,new(update.Release.Id,update.Manifest.Version,update.Manifest.Files),originals.ToArray(),update.Manifest);
+                UpdateSafety.ValidateBackup(target,backup,update.Manifest);
+                receipt=new(id,previous,new(update.Release.Id,update.Manifest.Version,update.Manifest.Files),originals.ToArray(),update.Manifest,originalPvfMissing);
                 WriteJson(Path.Combine(backup,"receipt.json"),receipt); WriteJson(Path.Combine(stateDirectory,"pending.json"),receipt);
                 try
                 {
                     var replaced=0;
                     foreach(var file in update.Manifest.Files)
                     {
-                        ReplaceFrom(Path.Combine(update.Directory,file.Path),Path.Combine(target,file.Path));
+                        ReplaceFrom(Path.Combine(update.Directory,file.Path),Path.Combine(target,file.Path),
+                            overwrite:!originalPvfMissing || file.Path!=ClientPackageManifest.ScriptPvfName);
                         UpdateInstallProgress.Report(progress,.94+.04*++replaced/update.Manifest.Files.Length,"正在安装更新文件…");
                     }
                     WriteJson(Path.Combine(target,UpdateSafety.InstalledManifestName),update.Manifest);

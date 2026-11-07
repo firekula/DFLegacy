@@ -47,10 +47,13 @@ internal static class PrivateStoreSmokeTests
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(Convert.FromHexString("0100010000000000"), out _, out _), "display rejects extra puppet fields, truncation, oversized lengths and NUL titles");
         await CheckDomainAsync(check);
         await CheckIdentitylessMaterialAsync(check);
+        await CheckFullDisplayAsync(check);
+        await CheckMergedDisplayAsync(check);
         await CheckRecoveryAsync(check);
         await CheckRacesAndCapacityAsync(check);
         await CheckRejectionsAsync(check);
         await CheckServiceAsync(check);
+        await CheckStoreVisibilityAcrossAreasAsync(check);
         await CheckLifecycleAsync(check);
         await CheckReviewRegressionsAsync(check);
         var licensedAppearance = GameProtocolEngine.CreateCurrentCharacterInfo(new(0, [65], 3, 2, 45), 1,
@@ -143,6 +146,111 @@ internal static class PrivateStoreSmokeTests
             "closing returns only unsold material to its original identityless stack");
     }
 
+    private static async Task CheckFullDisplayAsync(Action<bool, string> check)
+    {
+        // CMD90 uses sequence, length-prefixed title, count, and 13 bytes per occupied native slot.
+        var rows = Enumerable.Range(0, 15).Select(slot => new PrivateStoreDisplayRequest(
+            (ushort)slot, 101, 0, (ushort)(73 + slot), 2)).ToArray();
+        byte[] DisplayRequest(int count)
+        {
+            using var body = new MemoryStream();
+            using var writer = new BinaryWriter(body);
+            writer.Write((ushort)1);
+            writer.Write(1u);
+            writer.Write((byte)'A');
+            writer.Write((byte)count);
+            foreach (var row in rows.Take(count))
+            {
+                writer.Write(row.Slot);
+                writer.Write(row.UnitPrice);
+                writer.Write(row.SourceKind);
+                writer.Write(row.SourceSlot);
+                writer.Write(row.AddInfo);
+            }
+            return body.ToArray();
+        }
+
+        check(GameProtocolEngine.TryReadPrivateStoreDisplay(DisplayRequest(8), out _, out var eightRows)
+            && eightRows.SequenceEqual(rows[..8]), "the eighth occupied slot does not make native CMD90 invalid");
+        var fullStore = rows[..14];
+        check(GameProtocolEngine.TryReadPrivateStoreDisplay(DisplayRequest(14), out var title, out var goods)
+            && title.SequenceEqual(new byte[] { (byte)'A' }) && goods.SequenceEqual(fullStore), "a full 14-slot CMD90 decodes all occupied native slots");
+        check(!GameProtocolEngine.TryReadPrivateStoreDisplay(DisplayRequest(15), out _, out _), "CMD90 rejects more than 14 rows");
+
+        await using var f = await StoreFixture.CreateAsync();
+        await f.Store.SaveCharacterInventoryAsync("alice", f.A.Id, 1000,
+            fullStore.Select(row => new CharacterItemRecord(row.SourceSlot, TradeFixtures.PotionItemId, 3)), []);
+        var token = Guid.NewGuid();
+        f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
+        var displayed = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, fullStore);
+        check(displayed.Status == DungeonRewardLedgerStatus.Committed
+            && displayed.Character?.PrivateStoreStock?.Listings.Select(x => x.Slot).SequenceEqual(fullStore.Select(x => x.Slot)) == true
+            && displayed.Character?.Inventory?.Count(x => x.Slot is >= 73 and <= 86 && x.CountOrValue == 1) == 14,
+            "14 distinct identityless material stacks escrow the requested quantities atomically");
+        var sale = await f.Store.BuyPrivateStoreAsync(f.B.Id, f.A.Id, token, 13, 1);
+        check(sale.Status == DungeonRewardLedgerStatus.Committed && sale.Item is { CountOrValue: 1 },
+            "a buyer can purchase material from the last native store slot");
+        var closed = await f.Store.ClosePrivateStoreAsync(f.A.Id, token, false);
+        check(closed.Status == DungeonRewardLedgerStatus.Committed && closed.Character?.PrivateStoreStock is null
+            && closed.Character?.Inventory?.Count(x => x.Slot is >= 73 and <= 85 && x.CountOrValue == 3) == 13
+            && closed.Character?.Inventory?.SingleOrDefault(x => x.Slot == 86)?.CountOrValue == 2,
+            "closing a full store returns only unsold material to each source slot");
+    }
+
+    private static async Task CheckMergedDisplayAsync(Action<bool, string> check)
+    {
+        await using var f = await StoreFixture.CreateAsync(identitylessMaterial: true);
+        const ushort itemId = TradeFixtures.PotionItemId;
+        CharacterItemRecord[] stock = [new(73, itemId, 100), new(74, itemId, 20), new(75, itemId, 10, State: 1)];
+        await f.Store.SaveCharacterInventoryAsync("alice", f.A.Id, 1000, stock, []);
+        var token = Guid.NewGuid();
+        f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
+
+        var reserved = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token,
+            [new(0, 1, 0, 73, 101), new(1, 1, 0, 74, 20)]);
+        var incompatible = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 1, 0, 73, 121)]);
+        check(reserved.Error == 17 && incompatible.Error == 17 && (await f.ReadA()).Inventory!.SequenceEqual(stock),
+            "merged listing cannot borrow from another listing or a different item state");
+
+        var separatePrices = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token,
+            [new(0, 1, 0, 73, 101), new(1, 2, 0, 74, 19)]);
+        check(separatePrices.Status == DungeonRewardLedgerStatus.Committed,
+            "only unreserved units from another listing's anchor can be borrowed");
+        if (separatePrices.Status == DungeonRewardLedgerStatus.Committed)
+        {
+            var returned = await f.Store.ClosePrivateStoreAsync(f.A.Id, token, false);
+            check(returned.Character?.Inventory?.SequenceEqual(stock) == true,
+                "closing two listings which share a source returns the exact original stacks");
+        }
+
+        var opened = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 1, 0, 73, 101)]);
+        check(opened.Status == DungeonRewardLedgerStatus.Committed
+            && opened.Character!.PrivateStoreStock!.Listings.Single().Quantity == 101
+            && opened.Character.Inventory!.SequenceEqual(new[] { stock[1] with { CountOrValue = 19 }, stock[2] }),
+            "native merged listing withdraws 100 from the anchor and 1 from a compatible stack");
+        if (opened.Status != DungeonRewardLedgerStatus.Committed) return;
+
+        var recovered = f.Reload();
+        await recovered.InitializeAsync();
+        var restored = (await recovered.GetCharactersAsync("alice"))[0];
+        check(restored.PrivateStoreStock is null && restored.Inventory!.SequenceEqual(stock),
+            "startup recovery restores every source stack without exceeding its cap");
+        f.Store = recovered;
+        token = Guid.NewGuid();
+        f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
+        var reopened = await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [new(0, 1, 0, 73, 101)]);
+        check(reopened.Status == DungeonRewardLedgerStatus.Committed, "recovered stacks can be listed again");
+
+        var sale = await f.Store.BuyPrivateStoreAsync(f.B.Id, f.A.Id, token, 0, 101);
+        check(sale.Status == DungeonRewardLedgerStatus.Committed && sale.SoldQuantity == 101 && sale.Buyer!.Gold == 899
+            && sale.Buyer.Inventory!.Where(i => i.ItemId == itemId).Select(i => i.CountOrValue).Order().SequenceEqual(new uint[] { 1, 100 }),
+            "buying the whole merged listing charges once and delivers two capped stacks");
+        var closed = await f.Store.ClosePrivateStoreAsync(f.A.Id, token, false);
+        check(closed.Status == DungeonRewardLedgerStatus.Committed && closed.Character!.PrivateStoreStock is null
+            && closed.Character.Inventory!.SequenceEqual(new[] { stock[1] with { CountOrValue = 19 }, stock[2] }),
+            "closing after the merged sale returns no sold items");
+    }
+
     private static async Task CheckLifecycleAsync(Action<bool, string> check)
     {
         await using var f = await StoreFixture.CreateAsync();
@@ -175,6 +283,21 @@ internal static class PrivateStoreSmokeTests
     private static async Task CheckReviewRegressionsAsync(Action<bool, string> check)
     {
         check(!EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.DeleteItemCommand), "preparing/open store dispatch blocks CMD18 before any actor inventory mutation");
+        check(EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand)
+            && EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxStateCommand),
+            "store owners can open the mailbox and dispatch the native message read acknowledgement");
+        check(!EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxSendCommand)
+            && !EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxExtractItemCommand),
+            "store owners cannot send mail or claim attachments through the mailbox");
+        await using (var f = await StoreFixture.CreateAsync())
+        {
+            var mail = (await f.Store.SendCharacterMailAsync(f.A.Id, new("GM", "Letter"))).Mail!;
+            check(await f.Store.SetCharacterMailStateAsync(f.A.Id, mail.Id, 2, inboxReadOnly: true)
+                && await f.Store.SetCharacterMailStateAsync(f.A.Id, mail.Id, 3)
+                && !await f.Store.SetCharacterMailStateAsync(f.A.Id, mail.Id, 2, inboxReadOnly: true)
+                && (await f.Store.GetCharacterMailsAsync(f.A.Id)).Single().State == 3,
+                "vending read receipts can mark inbox letters read and cannot move archived letters");
+        }
         foreach (var social in new byte[] { 63, 64, 128, 129, 130 })
             check(EntranceService.PrivateStoreOwnerCommandAllowed(social), $"preparing/open store dispatch preserves social command{social}");
         foreach (var secondStack in new[] { false, true })
@@ -338,7 +461,7 @@ internal static class PrivateStoreSmokeTests
         await using (var f = await StoreFixture.CreateAsync())
         {
             var token = Guid.NewGuid(); f.Store.Commerce.TryAcquire(CommerceActivity.Store, token, f.A.Id);
-            foreach (var bad in new PrivateStoreDisplayRequest[] { new(7, 1, 0, 73, 1), new(0, 0, 0, 73, 1), new(0, uint.MaxValue, 0, 73, 1),
+            foreach (var bad in new PrivateStoreDisplayRequest[] { new(14, 1, 0, 73, 1), new(0, 0, 0, 73, 1), new(0, uint.MaxValue, 0, 73, 1),
                 new(0, 1, 1, 73, 1), new(0, 1, 0, 73, 0), new(0, 1, 0, 73, 11), new(0, 1, 0, 9, 0), new(0, 1_000_000_000, 0, 73, 5) })
                 check((await f.Store.DisplayPrivateStoreAsync(f.A.Id, token, [bad])).Error == 17
                     && (await f.ReadA()).PrivateStoreStock is null, "invalid listing quantity/price/source/gear quality has no partial withdrawal");
@@ -382,6 +505,51 @@ internal static class PrivateStoreSmokeTests
                 "startup preserves a conflicting restored inventory and returns unsold stock in durable mail");
         }
     }
+    private static async Task CheckStoreVisibilityAcrossAreasAsync(Action<bool, string> check)
+    {
+        await using var f = await StoreFixture.CreateAsync();
+        var town = new TownSessionDirectory(f.Options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+        var party = new PartyService(f.Store, town, TimeProvider.System, NullLogger<PartyService>.Instance);
+        using var service = new PrivateStoreService(f.Store, f.Items, f.Catalog, town, party, NullLogger<PrivateStoreService>.Instance);
+        var sellerSession = Guid.NewGuid();
+        var buyerSession = Guid.NewGuid();
+        var packets = new System.Collections.Concurrent.ConcurrentQueue<GameServerPacket>();
+        ValueTask Send(GameServerPacket packet) { packets.Enqueue(packet); return ValueTask.CompletedTask; }
+        Task<TownMemberTicket?> MoveBuyer(byte area) => town.EnterAsync(new(1, area, 2, f.B.Id, f.B.CharacterNo,
+            [66], "Buyer", null, 1200, 250, 0, (_, _) => ValueTask.CompletedTask), default);
+
+        await f.Store.GrantPremiumServiceToAccountAsync("alice", 8, 1);
+        await town.EnterAsync(new(1, 0, 1, f.A.Id, f.A.CharacterNo, [65], "Seller", null, 1000, 250, 0,
+            (_, _) => ValueTask.CompletedTask), default);
+        await MoveBuyer(2);
+        await service.AttachChannelAsync("alice", f.A.Id, 1, sellerSession, _ => ValueTask.CompletedTask);
+        await service.AttachChannelAsync("bobby", f.B.Id, 2, buyerSession, Send);
+        await service.CreateAsync(f.A.Id, sellerSession, new(1, 0, 1000, 250));
+        await service.DisplayAsync(f.A.Id, sellerSession, [65], [new(0, 1, 0, 73, 1)]);
+        check(packets.IsEmpty, "unseen store is not advertised to another area");
+        await MoveBuyer(0);
+        await service.SendAreaStoresAsync(f.B.Id, buyerSession);
+        check(packets.Any(p => p is { Type: 0, ProtocolId: 84 }), "buyer learns the open store through the area snapshot");
+        await MoveBuyer(2);
+        await service.CloseAsync(f.A.Id, sellerSession);
+        check(packets.Any(p => p is { Type: 0, ProtocolId: 79 } && p.Payload.SequenceEqual(new byte[] { 1, 0 })),
+            "closing explicitly removes the cached store from a previously notified connection in another area");
+
+        await MoveBuyer(0);
+        packets.Clear();
+        await service.CreateAsync(f.A.Id, sellerSession, new(1, 0, 1000, 250));
+        await service.ClearAreaStoresAsync(f.B.Id, buyerSession);
+        await service.DisplayAsync(f.A.Id, sellerSession, [65], [new(0, 1, 0, 73, 1)]);
+        check(packets.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 78, 79 }),
+            "leaving clears the old area before any late display announcement can reinstall it");
+        await MoveBuyer(2);
+        await MoveBuyer(0);
+        await service.SendAreaStoresAsync(f.B.Id, buyerSession);
+        await service.CloseAsync(f.A.Id, sellerSession);
+        check(packets.Select(p => p.ProtocolId).SequenceEqual(new byte[] { 78, 79, 84, 79 }),
+            "returning restores an active store snapshot and receives its later removal");
+    }
+
     private static async Task CheckServiceAsync(Action<bool, string> check)
     {
         await using var f = await StoreFixture.CreateAsync();

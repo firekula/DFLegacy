@@ -1,5 +1,7 @@
 # DFLegacy
 
+第一章 v0.1.6 更新了阿尔伯特偷学、天空之城邀请函掉落、任务文字和周末双倍疲劳，修复仓库、背包、邮件、摆摊及组队黑钻翻牌。已安装的 x86 和 x64 客户端可通过登录器更新 `Script.pvf`。现有 v0.1.4 客户端先安装 v0.1.5 兼容更新，重启后继续安装 v0.1.6。见[更新日志](CHANGELOG.md)和[升级步骤](DEPLOYING.md#客户端自动更新)。
+
 2026-10-30增量：[修复N地图副本门前区域无法右键寻路](knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md)。控制器支持入口城镇区域作为最终目标，传送门及借道保护保持；单客户端新增场景与620项／569子测试通过。新DLL已加载至当前手测客户端，正常存档保持。
 
 当前源码／部署／剩余项总入口：[2026-10-30交接](HANDOFF-2026-10-30.md)。各阶段报告保留当时构建归属；源码归档与日常部署分别记录。
@@ -37,7 +39,7 @@
 
 项目从 `Script.pvf` 读取客户端配置数据，并将用户数据在本地持久化。
 
-项目不包含客户端、官方服务端文件或 PVF，相关资源的权利归原权利人所有，请自行确保使用资源的合法性。
+源码仓库不包含原版游戏客户端、官方服务端文件或 PVF。v0.1.6 的 V3 客户端更新附件包含经修改的 `Script.pvf`。相关资源的权利归原权利人所有。
 
 本项目用于个人学习、研究及技术交流使用，任何项目副本均与本项目作者无关。
 
@@ -62,13 +64,15 @@
 | [城镇地图与状态接口验收](knowledge/decisions/2026-10-29-debug-town-navigation-verification.md) | N 地图同区点击移动、debug 目的地、结构化状态与双端原图。 |
 | [测试 CLI 与四人掉落验收](knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md) | 仅测试环境的定位、指定敌人死亡、掉落隔离与权威结果查询，四端矩阵及7张原图。 |
 | [ADMIN_API.md](ADMIN_API.md) | 后台管理 HTTP 接口参考。 |
+| [PARTY_NETWORK_DIAGNOSTICS.md](PARTY_NETWORK_DIAGNOSTICS.md) | 组队黑钻翻牌修复、联机诊断开关、故障模拟与双方日志采集。 |
 | [DEPLOYMENT_MANAGER.md](DEPLOYMENT_MANAGER.md) | 跨平台部署管理器、首次设置、客户端包导出及验证范围。 |
 
 ## 本次更新
 
-- 新增七个 ACT1 地区频道。通关结算按所选频道读取 PVF 地区经验比例，启用方法见[地区经验频道](DEPLOYMENT_MANAGER.md#地区经验频道)。
-- 恢复仓库升级按钮。实机点击已打开购买确认框，仓库扩容沿用商城购买流程。
-- 服务端发布至 GHCR。管理后台可生成 x86 和 x64 玩家包。登录器按架构和普通／测试类型从 GitHub Releases 自动更新。见[部署指南](DEPLOYING.md#客户端自动更新)。
+- 阿尔伯特新增 10 项女魔法师和圣职者偷学技能。服务端按 PVF 的偷学等级差和 SP 倍率校验。
+- 背包和仓库整理会合并同种同属性的堆叠，溢出继续占用下一格，快捷栏保留。修复仓库换格、背包与仓库交换数量、大附件邮件领取和摆摊状态同步。
+- 北京时间周六 06:00 至周一 06:00，普通角色与黑钻角色的疲劳上限分别为 312 和 376。组队结算会同步其他队员的黑钻翻牌状态。
+- 服务端镜像通过 GHCR 分发。GitHub V3 自动更新包按 x86／x64 和普通／测试类型分发，并校验和备份 `Script.pvf`。服务端也需要在部署管理页选用同一份 PVF。见[部署指南](DEPLOYING.md#客户端自动更新)。
 
 ## 一键部署与自动发行
 
@@ -309,6 +313,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `Experience.MonsterMultiplier` | 逐只怪物经验倍率，默认 `1.0`。 |
 | `Experience.ClearMultiplier` | 通关基础经验及评分奖励倍率，默认 `1.0`。 |
 | `EnablePacketTracing` | 协议包跟踪开关，用于排查客户端交互问题。 |
+| `EnableConnectionDiagnostics` | 默认关闭；记录限量的回退中继丢弃原因、发送阻塞和频道断开摘要，不记录包正文。Compose 使用 `DFLegacy__EnableConnectionDiagnostics`。 |
 
 默认 TCP 端口为 `2311`、`7001`、`8080`、`7005`，管理 HTTP 为 `8081`；默认 UDP 端口为 `2311`、`7002`、`7003`、`7005`。更改网络配置时，应同步检查启动器与频道地址。监听地址与下发地址的区别、IP 地址族（IPv6）支持现状见 [DEPLOYING.md](DEPLOYING.md#6-网络配置)。
 

@@ -300,6 +300,12 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         return true;
     }
 
+    internal void NotifyDailyFatigueReset()
+    {
+        foreach (var lease in _activeCharacters.Values)
+            lease.NotifyFatigueReset();
+    }
+
     public bool NotifyWeaknessRecovery(Guid characterId, byte recovery)
     {
         if (_activeCharacters.TryGetValue(

@@ -108,6 +108,10 @@
       "MonsterMultiplier": 1.0,
       "ClearMultiplier": 1.0
     },
+    "Fatigue": {
+      "//WeekendDoubleEnabled": "北京时间周六 06:00 至周一 06:00，普通与黑钻疲劳上限翻倍。",
+      "WeekendDoubleEnabled": true
+    },
     "Dungeon": {
       "//DoorGraceSeconds": "门口集结的宽限窗口（秒）：0 = 关闭（退回\"第一个上报 CMD 48 的人立刻推进\"）。真机证据（server-party28.log）表明 2008 客户端组队时只有一方会每房上报 CMD 48（7 次换房全是同一会话、另一会话 0 次），所以\"全员到齐\"永远不成立：此前立刻推进会把握不住节奏的队友拽进下一房（疑似客户端硬崩诱因）。窗口内全员到齐即推进；到点仍有人没报就照旧强制推进（门不会打不开）。扫描每秒一轮，实际生效 = 窗口 + 最多 1 秒。",
       "DoorGraceSeconds": 2

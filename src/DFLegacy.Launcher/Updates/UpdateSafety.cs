@@ -9,10 +9,23 @@ internal static class UpdateSafety
     internal const long MaxZip = 256L * 1024 * 1024;
     internal const long MaxExpanded = 512L * 1024 * 1024;
     internal const string InstalledManifestName = "client-package.json";
-    internal static IEnumerable<string> TransactionNames(UpdateManifest manifest) => manifest.Files.Select(f=>f.Path).Append(InstalledManifestName);
+    internal static IEnumerable<string> TransactionNames(UpdateManifest manifest, bool originalScriptPvfMissing=false)
+        => manifest.Files.Select(f=>f.Path)
+            .Where(name=>!originalScriptPvfMissing || name!=ClientPackageManifest.ScriptPvfName)
+            .Append(InstalledManifestName);
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = false };
     internal static bool IsHash(string? value) => value is { Length: 64 } && value.All(Uri.IsHexDigit);
     internal static string Hash(string file) { using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete); return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant(); }
+    internal static bool ScriptPvfExists(string path)
+    {
+        NoLinks(path);
+        FileAttributes attributes;
+        try { attributes=File.GetAttributes(path); }
+        catch(FileNotFoundException) { return false; }
+        if((attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint))!=0)
+            throw new InvalidDataException("Script.pvf 必须是普通文件。");
+        return true;
+    }
     internal static void NoLinks(string path)
     {
         for (string? current = Path.GetFullPath(path); current != null; current = Path.GetDirectoryName(current))
@@ -44,20 +57,40 @@ internal static class UpdateSafety
     {
         _ = ReadManifest(JsonSerializer.SerializeToUtf8Bytes(manifest,Json));
     }
+    internal static bool RequiresScriptPvf(UpdateRelease release)
+    {
+        var url=release.DownloadUrl;
+        return url.IsAbsoluteUri && url.Scheme=="https" && url.Host=="github.com"
+            && url.AbsolutePath.StartsWith("/firekula/DFLegacy/releases/download/",StringComparison.Ordinal)
+            && url.Segments[^1] is "DFLegacy-client-update-v3-win-x64.zip" or "DFLegacy-client-update-v3-win-x86.zip"
+                or "DFLegacy-client-update-v3-test-win-x64.zip" or "DFLegacy-client-update-v3-test-win-x86.zip";
+    }
+    internal static void ValidatePackageFormat(UpdateRelease release, UpdateManifest manifest)
+    {
+        if(RequiresScriptPvf(release)!=manifest.HasScriptPvf)
+            throw new InvalidDataException("更新附件版本与 Script.pvf 清单不匹配。");
+    }
     internal static UpdateManifest ReadManifest(byte[] bytes)
     {
         var parsed=ClientPackageManifest.Parse(bytes,string.Empty);
         if(parsed.Files.Any(f=>f.Size>MaxExpanded) || parsed.Files.Sum(f=>f.Size)>MaxExpanded) throw new InvalidDataException("更新解压大小超出限制。");
         return new(2,parsed.Version,parsed.Commit,parsed.Files.Select(f=>new UpdateFile(f.Path,f.Sha256,f.Size)).ToArray(),parsed.Flavor);
     }
-    internal static ClientPackageManifest ValidateInstalled(string target, UpdateManifest update)
+    internal static ClientPackageManifest ValidateInstalled(string target, UpdateManifest update, string? unchangedScriptPvfPath=null)
     {
         NoLinks(Path.Combine(target,InstalledManifestName));
         foreach(var name in update.Files.Select(f=>f.Path)) NoLinks(Path.Combine(target,name));
-        var installed=ClientPackageManifest.LoadAndValidate(target);
-        if(installed.Flavor!=update.Flavor) throw new InvalidDataException("更新包类型与已安装客户端不同，请使用同类型的 V2 更新包。");
+        var installed=ClientPackageManifest.LoadAndValidate(target,unchangedScriptPvfPath);
+        if(installed.Flavor!=update.Flavor)
+            throw new InvalidDataException(update.HasScriptPvf
+                ? "更新包类型与已安装客户端不同，请使用同类型的 V3 更新包。"
+                : "更新包类型与已安装客户端不同，请使用同类型的 V2 更新包。");
         return installed;
     }
+    internal static ClientPackageManifest ValidateBackup(string target, string backup, UpdateManifest update)
+        // A V2 transaction never copies or changes Script.pvf. An older installed
+        // manifest from V3 can still validate its unchanged bytes in place.
+        => ValidateInstalled(backup,update,update.HasScriptPvf ? null : Path.Combine(target,ClientPackageManifest.ScriptPvfName));
     internal static T ReadJson<T>(byte[] bytes)
     {
         using var doc = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 16 });

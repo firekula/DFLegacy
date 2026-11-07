@@ -1050,23 +1050,25 @@ app.MapPut("/api/characters/{characterId:guid}/fatigue", async (
     Guid characterId,
     SetCharacterFatigueRequest request,
     JsonGameStore store,
+    CharacterSessionRegistry characterSessions,
     CancellationToken token) =>
 {
-    if (request.UsedFatigue > GameProtocolEngine.BlackDiamondMaximumFatigue)
+    try
     {
-        return Results.BadRequest(new
-        {
-            error = $"Used fatigue must be between 0 and {GameProtocolEngine.BlackDiamondMaximumFatigue}."
-        });
-    }
+        var character = await store.SetCharacterUsedFatigueAsync(
+            characterId,
+            request.UsedFatigue,
+            token);
+        if (character is null)
+            return Results.NotFound();
 
-    var character = await store.SetCharacterUsedFatigueAsync(
-        characterId,
-        request.UsedFatigue,
-        token);
-    return character is null
-        ? Results.NotFound()
-        : Results.Ok(character);
+        characterSessions.NotifyFatigueReset(characterId);
+        return Results.Ok(character);
+    }
+    catch (ArgumentOutOfRangeException exception) when (exception.ParamName == "usedFatigue")
+    {
+        return Results.BadRequest(new { error = exception.Message });
+    }
 });
 
 app.MapGet("/api/characters/{characterId:guid}/mail", async (

@@ -33,6 +33,7 @@ try
     if(args.Contains("--registration-ui-tests")) { ClassicUiTests.Run(Check,registrationOnly:true); Console.WriteLine($"Registration UI tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--bootstrap-first-only")) { await BootstrapManagedTests.Run(root,Check,initialOnly:true); return failures==0?0:1; }
     if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-v3-tests")) { await UpdateV3Tests.Run(root,Check); Console.WriteLine($"Update V3 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-helper-tests")) { await UpdateHelperTests.Run(root,Check); Console.WriteLine($"Update helper tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-recovery-tests")) { await UpdateRecoveryTests.Run(root,Check); Console.WriteLine($"Update recovery tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Length==0 || args.Contains("--standalone-tests")) await StandaloneTests.Run(root, Check);
@@ -59,6 +60,7 @@ try
     if (args.Contains("--update-ui-tests")) { ClassicUiTests.Run(Check); return failures == 0 ? 0 : 1; }
     await UpdateTransportTests.Run(root, Check);
     await UpdateV2Tests.Run(root, Check);
+    await UpdateV3Tests.Run(root, Check);
     await UpdateRecoveryTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);

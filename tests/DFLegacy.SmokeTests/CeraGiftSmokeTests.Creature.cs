@@ -154,7 +154,7 @@ internal static partial class CeraGiftSmokeTests
         out Dictionary<ushort,CharacterItemRecord> creatures, out byte? list, out ushort? slot)
     {
         object?[] args = [ (target.Inventory??[]).ToDictionary(i=>i.Slot), (target.AvatarInventory??[]).ToDictionary(i=>i.Slot),
-            (target.CreatureInventory??[]).ToDictionary(i=>i.Slot), attachment, items, uint.MaxValue, null, null, null, null, null ];
+            (target.CreatureInventory??[]).ToDictionary(i=>i.Slot), attachment, items, uint.MaxValue, null, null, null, null, null, null ];
         var ok=(bool)typeof(EntranceService).GetMethod("TryPlanMailAttachment",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,args)!;
         main=(Dictionary<ushort,CharacterItemRecord>)args[6]!;
         avatar=(Dictionary<ushort,CharacterItemRecord>)args[7]!;

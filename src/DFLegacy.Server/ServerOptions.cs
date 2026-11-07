@@ -22,10 +22,13 @@ public sealed class ServerOptions
     public FallbackRelayOptions FallbackRelay { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
+    public FatigueOptions Fatigue { get; set; } = new();
     public DungeonOptions Dungeon { get; set; } = new();
     public int MaximumPacketLength { get; set; } = 4 * 1024 * 1024;
     public bool RejectBadCrc32 { get; set; } = false;
     public bool EnablePacketTracing { get; set; } = false;
+    // Bounded connection/relay summaries, without credentials or packet bodies.
+    public bool EnableConnectionDiagnostics { get; set; } = false;
     public int HexDumpLimit { get; set; } = 64;
 }
 
@@ -54,6 +57,12 @@ public sealed class DropOptions
     public double RatePercent { get; set; } = 100;
     public double EconomicRate { get; set; } = 1;
     public bool ForceDrops { get; set; }
+}
+
+public sealed class FatigueOptions
+{
+    // 双倍疲劳跟随每天北京时间 06:00 的刷新，周六 06:00 起至周一 06:00 止。
+    public bool WeekendDoubleEnabled { get; set; } = true;
 }
 
 public sealed class ExperienceOptions

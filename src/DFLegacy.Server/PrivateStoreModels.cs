@@ -1,7 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace DFLegacy.Server;
 
+public sealed record PrivateStoreSourcePart(ushort Slot, uint Quantity);
 public sealed record PrivateStoreListing(ushort Slot, uint UnitPrice, ushort SourceSlot, Guid SourceInstanceId,
-    CharacterItemRecord Item, uint Quantity, uint AddInfo);
+    CharacterItemRecord Item, uint Quantity, uint AddInfo,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<PrivateStoreSourcePart>? SourceParts = null);
 public sealed record PrivateStoreStock(Guid StoreId, List<PrivateStoreListing> Listings);
 public sealed record PrivateStoreGoldCredit(Guid SaleId, uint Amount);
 internal sealed record PrivateStoreMutationResult(DungeonRewardLedgerStatus Status, byte Error = 0, CharacterRecord? Character = null);

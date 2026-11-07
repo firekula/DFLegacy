@@ -24,6 +24,105 @@ class UpdatePackageTests(unittest.TestCase):
     # Reuse only the fixture setup, not the generic release test cases.
     setUp = fixtures.Bundles.setUp
     assets = fixtures.Bundles.assets
+
+    def build_pvf_packages(self):
+        x86 = fixtures.app(self.root / 'launcher-input-x86', 'DFLegacy.Launcher', 'win-x86')
+        assets = self.assets(x86)
+        pvf = fixtures.write(self.root, 'Script-export.pvf', b'PVF export fixture')
+        packages = release.build_client_packages(assets, self.root / 'v3', VERSION, COMMIT,
+                                                 updates_only=True, script_pvf=pvf)
+        return packages, pvf
+
+    def test_v3_packages_include_the_exact_pvf_in_both_flavors_and_architectures(self):
+        packages, pvf = self.build_pvf_packages()
+        self.assertEqual({p.name for p in packages}, {
+            'DFLegacy-client-update-v3-win-x64.zip', 'DFLegacy-client-update-v3-test-win-x64.zip',
+            'DFLegacy-client-update-v3-win-x86.zip', 'DFLegacy-client-update-v3-test-win-x86.zip'})
+        for package in packages:
+            test = '-test-' in package.name
+            manifest = release.verify_client_package(package, VERSION, COMMIT, package.name)
+            self.assertEqual((manifest['schemaVersion'], manifest['flavor']), (2, 'test' if test else 'normal'))
+            binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'Script.pvf'}
+            if test:
+                binaries.add('debug.dll')
+            self.assertEqual({row['path'] for row in manifest['files']}, binaries)
+            row = next(row for row in manifest['files'] if row['path'] == 'Script.pvf')
+            self.assertEqual(row['sha256'], hashlib.sha256(pvf.read_bytes()).hexdigest())
+            self.assertEqual(row['size'], pvf.stat().st_size)
+            with zipfile.ZipFile(package) as z:
+                self.assertEqual(set(z.namelist()), binaries | {'update-manifest.json'})
+                self.assertEqual(z.read('Script.pvf'), pvf.read_bytes())
+
+    def test_v3_verification_requires_exact_root_manifest_entry_and_bytes(self):
+        packages, _ = self.build_pvf_packages()
+        package = packages[0]
+        with zipfile.ZipFile(package) as z:
+            original = {name: z.read(name) for name in z.namelist()}
+        for mutation in ('missing', 'wrong-case', 'nested', 'extra', 'tampered'):
+            with self.subTest(mutation=mutation):
+                files = dict(original)
+                manifest = json.loads(files['update-manifest.json'])
+                row = next(row for row in manifest['files'] if row['path'] == 'Script.pvf')
+                if mutation == 'missing':
+                    del files['Script.pvf']
+                    manifest['files'].remove(row)
+                if mutation in ('wrong-case', 'nested'):
+                    row['path'] = 'script.pvf' if mutation == 'wrong-case' else 'data/Script.pvf'
+                    files[row['path']] = files.pop('Script.pvf')
+                if mutation == 'extra':
+                    files['extra.pvf'] = b'extra'
+                if mutation == 'tampered':
+                    files['Script.pvf'] = b'!' * len(files['Script.pvf'])
+                files['update-manifest.json'] = json.dumps(manifest).encode()
+                with zipfile.ZipFile(package, 'w') as z:
+                    for name, content in files.items():
+                        z.writestr(name, content)
+                with self.assertRaises(release.ReleaseError):
+                    release.verify_client_update(package, VERSION, COMMIT)
+        with self.assertRaises(release.ReleaseError):
+            release.verify_client_package(packages[1], VERSION, COMMIT, 'DFLegacy-client-update-v2-test-win-x64.zip')
+
+    def test_script_pvf_requires_updates_only_and_a_complete_architecture_set(self):
+        assets = self.assets()
+        pvf = fixtures.write(self.root, 'Script-export.pvf')
+        with self.assertRaisesRegex(release.ReleaseError, 'updates-only'):
+            release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT, script_pvf=pvf)
+        with self.assertRaisesRegex(release.ReleaseError, 'x86'):
+            release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT,
+                                          updates_only=True, script_pvf=pvf)
+        self.assertEqual(list((self.root / 'out').glob('*.zip')), [])
+
+    def test_updates_only_publishes_complete_v3_set_and_rejects_incomplete_sets(self):
+        packages, _ = self.build_pvf_packages()
+        api = FakeGitHub()
+        for paths in (packages[:-1], [*packages, packages[0]]):
+            with self.assertRaises(release.ReleaseError):
+                github.publish(api, VERSION, COMMIT, paths, updates_only=True)
+            self.assertEqual(api.calls, [])
+        result = github.publish(api, VERSION, COMMIT, packages, updates_only=True)
+        self.assertEqual(result['status'], 'published')
+        self.assertEqual(api.contents, {path.name: path.read_bytes() for path in packages})
+
+    def test_updates_only_rejects_individually_valid_packages_with_mismatched_pvfs(self):
+        packages, _ = self.build_pvf_packages()
+        package = packages[0]
+        with zipfile.ZipFile(package) as z:
+            files = {name: z.read(name) for name in z.namelist()}
+        files['Script.pvf'] = b'V' * len(files['Script.pvf'])
+        manifest = json.loads(files['update-manifest.json'])
+        row = next(row for row in manifest['files'] if row['path'] == 'Script.pvf')
+        row['sha256'] = hashlib.sha256(files['Script.pvf']).hexdigest()
+        row['size'] = len(files['Script.pvf'])
+        files['update-manifest.json'] = json.dumps(manifest).encode()
+        with zipfile.ZipFile(package, 'w') as z:
+            for name, content in files.items():
+                z.writestr(name, content)
+        release.verify_client_package(package, VERSION, COMMIT, package.name)
+        api = FakeGitHub()
+        with self.assertRaises(release.ReleaseError):
+            github.publish(api, VERSION, COMMIT, packages, updates_only=True)
+        self.assertEqual(api.calls, [])
+
     def test_exact_root_whitelist_digests_and_reproducible_archive(self):
         assets = self.assets()
         archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
@@ -185,16 +284,21 @@ class UpdatePackageTests(unittest.TestCase):
         with self.assertRaises(release.ReleaseError): github.publish(api, VERSION, COMMIT, packages)
         self.assertEqual(api.calls, [])
 
-    def test_real_client_parser_accepts_all_four_produced_archives(self):
-        assets = self.assets()
+    def test_real_client_parsers_accept_all_produced_archives(self):
+        x86 = fixtures.app(self.root / 'launcher-input-x86', 'DFLegacy.Launcher', 'win-x86')
+        assets = self.assets(x86)
         packages = release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT)
+        pvf = fixtures.write(self.root, 'Script-export.pvf', b'PVF export fixture')
+        packages += release.build_client_packages(assets, self.root / 'out', VERSION, COMMIT,
+                                                  updates_only=True, script_pvf=pvf)
         project = Path(__file__).parent / 'package-probe/PackageProbe.csproj'
         result = subprocess.run(['dotnet', 'run', '--project', str(project), '-c', 'Release',
                                  '--artifacts-path', str(self.root / 'probe-build'), '--', VERSION, COMMIT, *map(str, packages)],
-                                capture_output=True, text=True, env=release.dotnet_environment())
+                                capture_output=True, encoding='utf-8', env=release.dotnet_environment())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(result.stdout.count('actual UpdatePackage parser accepted'), 2)
-        self.assertEqual(result.stdout.count('actual ClientPackageManifest parser accepted'), 2)
+        for package in packages:
+            parser = 'ClientPackageManifest' if '-tools-' in package.name else 'UpdatePackage'
+            self.assertIn(f'actual {parser} parser accepted {package.name}', result.stdout)
 
 
 class FakeGitHub:
@@ -410,12 +514,15 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(kwargs['env']['GCM_INTERACTIVE'], 'Never')
             self.assertIn('credential.interactive=never', args[0])
 
-    def test_transport_whitelists_exactly_the_four_public_names(self):
+    def test_transport_whitelists_only_recognized_client_asset_names(self):
         api = github.GitHub('secret')
-        for name in release.PUBLIC_ASSETS:
+        for name in (*release.PUBLIC_ASSETS, *release.X86_UPDATE_ASSETS,
+                     'DFLegacy-client-update-v3-win-x64.zip', 'DFLegacy-client-update-v3-test-win-x64.zip',
+                     'DFLegacy-client-update-v3-win-x86.zip', 'DFLegacy-client-update-v3-test-win-x86.zip'):
             api._validate_api('https://uploads.github.com/repos/firekula/DFLegacy/releases/1/assets?name=' + name)
             api._validate_download('https://github.com/firekula/DFLegacy/releases/download/v1.2.3/' + name)
-        for name in ('DFLegacy-client-update-win-x64.zip', 'private.zip', '../' + release.UPDATE_ASSET):
+        for name in ('DFLegacy-client-update-win-x64.zip', 'DFLegacy-client-update-v3-win-arm64.zip',
+                     'private.zip', '../' + release.UPDATE_ASSET):
             with self.assertRaises(release.ReleaseError): api._validate_api('https://uploads.github.com/repos/firekula/DFLegacy/releases/1/assets?name=' + name)
             with self.assertRaises(release.ReleaseError): api._validate_download('https://github.com/firekula/DFLegacy/releases/download/v1.2.3/' + name)
 

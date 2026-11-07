@@ -13,6 +13,7 @@
     "Pvp": { "Enabled": false, "Port": 7004 },
     "GameProbe": { "Enabled": false, "Host": "127.0.0.1", "Port": 17001 },
     "Experience": { "MonsterMultiplier": 1.0, "ClearMultiplier": 1.0 },
+    "Fatigue": { "WeekendDoubleEnabled": true },
     "EnablePacketTracing": false
   }
 }

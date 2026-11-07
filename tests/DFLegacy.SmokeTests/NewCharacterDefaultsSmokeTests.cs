@@ -112,35 +112,106 @@ internal static class NewCharacterDefaultsSmokeTests
             "legacy missing-Gold records retain their historical deserialization default");
         check((await afterSelection.GetAccountAsync("ordinary"))!.Cash == 23400,
             "selection and reload preserve existing account Cash");
+
+        var saturday = new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(shanghaiOffset).Date.AddDays(2).AddHours(6), shanghaiOffset);
+        while (saturday.DayOfWeek != DayOfWeek.Saturday)
+            saturday = saturday.AddDays(1);
+        await store.ResetFatigueForCurrentDayAsync(saturday.AddSeconds(-1).ToUniversalTime());
+        await Select("ordinary", byUid.Slot, expectedRevivalCoins: 0, expectedFatigue: (156, 0),
+            exerciseWeekend: saturday);
+        await store.ResetFatigueForCurrentDayAsync(saturday.AddDays(7).ToUniversalTime());
+        await store.GrantPremiumServiceToAccountAsync("testing", GameProtocolEngine.BlackDiamondServiceType, 30);
+        store = Open();
+        await store.InitializeAsync();
+        await Select("testing", manual.Slot, expectedRevivalCoins: 0, expectedFatigue: (376, 64));
+
+        await store.SetCharacterUsedFatigueAsync(manual.Id, 375);
+        var lastRoom = await store.ConsumeDungeonRoomFatigueAsync(manual.Id);
+        var exhausted = await store.ConsumeDungeonRoomFatigueAsync(manual.Id);
+        check(lastRoom is { Consumed: true, UsedFatigue: 376, Limits: { Maximum: 376, Premium: 64 } }
+            && exhausted is { Consumed: false, UsedFatigue: 376 }
+            && !DungeonFatigueRules.CanEnterNewDungeon(exhausted.UsedFatigue, exhausted.Limits.Maximum),
+            "weekend Black Diamond can spend the last point and exhausts at 376");
+        check(await RejectFatigueOverrideAsync(377), "GM rejects used fatigue above the weekend bound of 376");
+
+        await store.SaveCharacterInventoryAsync("testing", manual.Id, manual.Gold,
+            [new(40, 7518, 1)], []);
+        await store.SetCharacterUsedFatigueAsync(manual.Id, 250);
+        var atThreshold = await store.UseFatigueRecoveryItemAsync("testing", manual.Id, 40, 7518, null, 126, 30);
+        await store.SetCharacterUsedFatigueAsync(manual.Id, 251);
+        var belowThreshold = await store.UseFatigueRecoveryItemAsync("testing", manual.Id, 40, 7518, null, 126, 30);
+        check(atThreshold is { Failure: FatigueRecoveryItemUseFailure.FatigueNotLowEnough, RemainingItemCount: 1 }
+            && belowThreshold is { Success: true, UsedFatigue: 221, RemainingItemCount: 0, Limits.Maximum: 376 },
+            "on weekends fatigue medicine still restores 30 and requires fewer than 126 points remaining");
+        options.Fatigue.WeekendDoubleEnabled = false;
+        check(store.GetFatigueLimits(hasBlackDiamond: true) is { Maximum: 188, Premium: 32 },
+            "the event switch disables weekend fatigue doubling");
+        options.Fatigue.WeekendDoubleEnabled = true;
+        await store.ResetFatigueForCurrentDayAsync(saturday.AddDays(9).ToUniversalTime());
+        check(await RejectFatigueOverrideAsync(189), "GM rejects used fatigue above the weekday bound of 188");
+
+        await store.SetCharacterUsedFatigueAsync(manual.Id, 8);
+        var temporaryState = options.DataPath + ".tmp";
+        Directory.CreateDirectory(temporaryState);
+        var nextSaturday = saturday.AddDays(14).ToUniversalTime();
+        var saveFailed = false;
+        try { await store.ResetFatigueForCurrentDayAsync(nextSaturday); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { saveFailed = true; }
+        finally { Directory.Delete(temporaryState); }
+        check(saveFailed && store.GetFatigueLimits(hasBlackDiamond: true).Maximum == 188
+            && (await store.GetCharacterAsync("testing", manual.Id))?.UsedFatigue == 8,
+            "a failed reset save keeps the previous day's cap and used fatigue");
+        var retriedReset = await store.ResetFatigueForCurrentDayAsync(nextSaturday);
+        check(retriedReset.NewFatigueDay && store.GetFatigueLimits(hasBlackDiamond: true).Maximum == 376
+            && (await store.GetCharacterAsync("testing", manual.Id))?.UsedFatigue == 0,
+            "retrying the reset publishes the weekend cap and cleared usage together");
+
         Console.WriteLine($"New-character defaults checks: {checks}");
         Console.WriteLine($"New-character defaults artifacts: {root}");
 
-        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10, bool exerciseFatigueReset = false)
+        async Task<bool> RejectFatigueOverrideAsync(ushort usedFatigue)
         {
-            var services = new ServiceCollection();
-            services.AddLogging();
-            services.AddSingleton(options);
-            services.AddSingleton(store);
-            services.AddSingleton(items);
-            services.AddSingleton(TimeProvider.System);
-            services.AddSingleton(new AreaUserIdPool(16));
-            Type[] types = [typeof(ScriptFileSystem), typeof(RuntimeState), typeof(CharacterSessionRegistry),
-                typeof(FriendService), typeof(MentorService), typeof(PvpMapCatalog), typeof(PvpService),
-                typeof(PrivateStoreCatalog), typeof(PrivateStoreService), typeof(ItemTradeService), typeof(PartyService),
-                typeof(DungeonInstanceRegistry), typeof(DungeonPartyService), typeof(TownSessionDirectory),
-                typeof(SkillCatalog), typeof(QuestCatalog), typeof(CharacterExperienceCatalog), typeof(DungeonExperienceCatalog),
-                typeof(PvpExperienceCatalog), typeof(CharacterSpCatalog), typeof(CharacterStatCatalog),
-                typeof(CreatureExperienceCatalog), typeof(StaminaRecoveryCatalog), typeof(CompoundCatalog),
-                typeof(AvatarCompoundCatalog), typeof(EquipmentReinforcementCatalog), typeof(ResealCatalog), typeof(DisjointCatalog),
-                typeof(CeraShopCatalog), typeof(PremiumBenefitCatalog), typeof(DungeonCatalog), typeof(WorldMapCatalog),
-                typeof(WorldDropCatalog), typeof(GoldDropCatalog), typeof(MonsterDropCatalog), typeof(MonsterChampionDropCatalog),
-                typeof(DungeonDropGenerator), typeof(HellDropCatalog), typeof(ObjectDropCatalog), typeof(ObjectDropGenerator),
-                typeof(ClearRewardCatalog), typeof(ClearRewardGenerator), typeof(GameplayDatagramService)];
-            foreach (var type in types) services.AddSingleton(type);
-            await using var provider = services.BuildServiceProvider();
+            try { await store.SetCharacterUsedFatigueAsync(manual.Id, usedFatigue); }
+            catch (ArgumentOutOfRangeException exception) when (exception.ParamName == nameof(usedFatigue)) { return true; }
+            return false;
+        }
+
+        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10,
+            bool exerciseFatigueReset = false, (ushort Maximum, ushort Premium)? expectedFatigue = null,
+            DateTimeOffset? exerciseWeekend = null)
+        {
+            await using var provider = CreateSessionServices(options, store, items);
             var service = ActivatorUtilities.CreateInstance<EntranceService>(provider);
             await using var connection = await Connection.CreateAsync(service, options);
             await connection.LoginAsync(userName, slot);
+            if (expectedFatigue is { } limits)
+            {
+                check(BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply!.Payload.AsSpan(7)) == 0
+                    && BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(9)) == limits.Maximum
+                    && BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(11)) == limits.Premium,
+                    $"{userName} selection sends fatigue maximum {limits.Maximum} and premium {limits.Premium}");
+            }
+            if (exerciseWeekend is { } start)
+            {
+                var sessions = provider.GetRequiredService<CharacterSessionRegistry>();
+                using var resetService = new FatigueResetService(store, sessions, NullLogger<FatigueResetService>.Instance);
+                foreach (var (boundary, maximum) in new (DateTimeOffset, ushort)[]
+                    { (start, 312), (start.AddDays(1), 312), (start.AddDays(2), 156) })
+                {
+                    if (boundary.DayOfWeek == DayOfWeek.Monday)
+                    {
+                        var beforeMonday = await store.ResetFatigueForCurrentDayAsync(boundary.AddSeconds(-1).ToUniversalTime());
+                        check(!beforeMonday.NewFatigueDay && store.GetFatigueLimits(hasBlackDiamond: false).Maximum == 312,
+                            "weekend fatigue remains doubled until Monday 06:00 Beijing time");
+                    }
+                    await resetService.ResetCurrentDayAsync(boundary.ToUniversalTime());
+                    var packet = await connection.ReadAsync(0, GameProtocolEngine.FatigueNotification);
+                    check(BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload) == 0
+                        && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(2)) == maximum
+                        && BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload.AsSpan(4)) == 0,
+                        $"online character with zero used fatigue receives maximum {maximum} at {boundary:ddd HH:mm}");
+                }
+            }
             if (exerciseFatigueReset)
             {
                 var now = DateTimeOffset.UtcNow.ToOffset(shanghaiOffset);
@@ -185,6 +256,32 @@ internal static class NewCharacterDefaultsSmokeTests
         }
     }
 
+    internal static ServiceProvider CreateSessionServices(
+        ServerOptions options, JsonGameStore store, ItemCatalog items)
+    {
+    var services = new ServiceCollection();
+    services.AddLogging();
+    services.AddSingleton(options);
+    services.AddSingleton(store);
+    services.AddSingleton(items);
+    services.AddSingleton(TimeProvider.System);
+    services.AddSingleton(new AreaUserIdPool(16));
+    Type[] types = [typeof(ScriptFileSystem), typeof(RuntimeState), typeof(CharacterSessionRegistry),
+        typeof(FriendService), typeof(MentorService), typeof(PvpMapCatalog), typeof(PvpService),
+        typeof(PrivateStoreCatalog), typeof(PrivateStoreService), typeof(ItemTradeService), typeof(PartyService),
+        typeof(DungeonInstanceRegistry), typeof(DungeonPartyService), typeof(TownSessionDirectory),
+        typeof(SkillCatalog), typeof(QuestCatalog), typeof(CharacterExperienceCatalog), typeof(DungeonExperienceCatalog),
+        typeof(PvpExperienceCatalog), typeof(CharacterSpCatalog), typeof(CharacterStatCatalog),
+        typeof(CreatureExperienceCatalog), typeof(StaminaRecoveryCatalog), typeof(CompoundCatalog),
+        typeof(AvatarCompoundCatalog), typeof(EquipmentReinforcementCatalog), typeof(ResealCatalog), typeof(DisjointCatalog),
+        typeof(CeraShopCatalog), typeof(PremiumBenefitCatalog), typeof(DungeonCatalog), typeof(WorldMapCatalog),
+        typeof(WorldDropCatalog), typeof(GoldDropCatalog), typeof(MonsterDropCatalog), typeof(MonsterChampionDropCatalog),
+        typeof(DungeonDropGenerator), typeof(HellDropCatalog), typeof(ObjectDropCatalog), typeof(ObjectDropGenerator),
+        typeof(ClearRewardCatalog), typeof(ClearRewardGenerator), typeof(GameplayDatagramService)];
+    foreach (var type in types) services.AddSingleton(type);
+    return services.BuildServiceProvider();
+    }
+
     private static void Empty(Action<bool, string> check, CharacterRecord c, string boundary, bool allowNullInventory = false) =>
         check(c.Gold == 0 && (allowNullInventory
             ? c.Inventory is null or { Count: 0 }
@@ -193,7 +290,7 @@ internal static class NewCharacterDefaultsSmokeTests
             boundary + " has zero gold, " + (allowNullInventory ? "no refill" : "ten revival coins")
                 + " and no other main, equipment/title, warehouse, avatar or creature gifts");
 
-    private sealed class Connection : IAsyncDisposable
+    internal sealed class Connection : IAsyncDisposable
     {
         private readonly TcpClient _peer;
         private readonly EntranceService _service;
@@ -202,6 +299,7 @@ internal static class NewCharacterDefaultsSmokeTests
         private readonly Task _session;
         private readonly Task _pump;
         internal GameServerPacket? MainList;
+        internal GameServerPacket? SelectReply;
         private uint _seed = 0x4321;
         private ushort _sequence;
 
@@ -241,7 +339,8 @@ internal static class NewCharacterDefaultsSmokeTests
             return frame.Encode();
         }
         internal async Task SendAsync(byte[] bytes) => await _peer.GetStream().WriteAsync(bytes, _stop.Token);
-        internal async Task<GameServerPacket> ReadAsync(byte? type, byte id, TimeSpan? timeout = null)
+        internal async Task<GameServerPacket> ReadAsync(byte? type, byte id, TimeSpan? timeout = null,
+            Action<GameServerPacket>? observe = null)
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token);
             deadline.CancelAfter(timeout ?? TimeSpan.FromSeconds(5));
@@ -249,7 +348,10 @@ internal static class NewCharacterDefaultsSmokeTests
             {
                 while (await _packets.Reader.WaitToReadAsync(deadline.Token))
                     while (_packets.Reader.TryRead(out var packet))
+                    {
+                        observe?.Invoke(packet);
                         if (packet.ProtocolId == id && (type is null || packet.Type == type)) return packet;
+                    }
                 throw new EndOfStreamException($"channel ended before type={type} id={id}");
             }
             catch (Exception error) when (error is ChannelClosedException or EndOfStreamException)
@@ -275,6 +377,7 @@ internal static class NewCharacterDefaultsSmokeTests
             var login = await ReadAsync(1, 1);
             if (login.Payload.Length == 0 || login.Payload[0] != 1) throw new InvalidOperationException("fixture channel authentication rejected");
             await SendAsync(Command(4, slot));
+            SelectReply = await ReadAsync(GameProtocolEngine.CommandPacketType, GameProtocolEngine.SelectCharacterCommand);
             do { MainList = await ReadAsync(0, 13); } while (MainList.Payload[0] != 0);
             await ReadAsync(0, 19);
             // Direct CHECK_CONNECTION stays plaintext and does not advance the
