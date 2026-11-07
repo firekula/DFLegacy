@@ -128,7 +128,7 @@ public sealed class ConfigurationStore
                 var ports = actualPorts.Select(port => port!.GetValue<int>()).ToArray();
                 var exclusive = new[] { effectiveConfig.EntrancePort, effectiveConfig.AdminPort }
                     .Concat(effectiveConfig.FallbackRelayEnabled ? new[] { effectiveConfig.FallbackRelayTcpPort } : [])
-                    .Concat(effectiveConfig.PvpEnabled ? new[] { effectiveConfig.PvpPort } : []);
+                    .Concat(effectiveConfig.PvpEnabled ? new[] { effectiveConfig.PvpPort }.Concat(DFLegacy.Protocol.Act1PvpPorts.Additional) : []);
                 if (ports.Any(port => port is < 1 or > 65535) || ports.Distinct().Count() != ports.Length || ports.Intersect(exclusive).Any())
                     throw new ArgumentException("附加 TCP 端口无效、重复或与其他监听端口冲突。");
             }

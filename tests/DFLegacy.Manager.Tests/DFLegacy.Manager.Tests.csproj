@@ -7,6 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../src/DFLegacy.Launcher/ClientPackageManifest.cs" Link="ClientPackageManifest.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/Updates/UpdateSafety.cs" Link="UpdateSafety.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/Updates/UpdateModels.cs" Link="UpdateModels.cs" />
     <Compile Include="../../src/DFLegacy.Launcher/Models/LauncherOptions.cs" Link="LauncherOptions.cs" />
     <ProjectReference Include="../../src/DFLegacy.Manager/DFLegacy.Manager.csproj" />
     <ProjectReference Include="../../src/DFLegacy.Server/DFLegacy.Server.csproj" />

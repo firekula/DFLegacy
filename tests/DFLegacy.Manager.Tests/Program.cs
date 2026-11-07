@@ -82,6 +82,9 @@ try
     Reject(() => config.Save(edited with { FallbackRelayTcpPort = edited.EntrancePort }), "fallback TCP collision is rejected before starting");
     Reject(() => config.Save(edited with { FallbackRelayUdpPort = edited.CharacterPort }), "fallback UDP collision is rejected before starting");
     Reject(() => config.Save(edited with { PvpEnabled = true, PvpPort = edited.ChannelPort }), "PvP TCP collision is rejected before starting");
+    Check((edited with { PvpEnabled = true }).ForwardedTcpPorts().Intersect(new[] { 7004,7110,7111,7112 }).Count() == 4,
+        "generated manager and offline client ports cover four PvP channels");
+    Reject(() => config.Save(edited with { PvpEnabled = true, GmPanelPort = 7110 }), "new PvP ports cannot collide with GM panel");
     Reject(() => config.Save(edited with { RelayEnabled = true }), "local client relay cannot receive a remote fallback IPv4 advertisement");
     var fallbackOverride = new ConfigurationStore(new ManagerPaths(Path.Combine(scratch, "fallback environment")),
         new Dictionary<string, string?> { ["DFLegacy__FallbackRelay__AdvertisedHost"] = "203.0.113.9" });
@@ -215,14 +218,17 @@ try
     assetFiles.Add(x86Asset, "x86 launcher fixture");
     WriteAssets(commit);
     var updateStore = new ClientUpdateStore(paths, "http://games.example.test:18083");
-    var dualPath = await exporter.ExportPairAsync(edited, false, updateStore, default, null);
+    var dualPath = await exporter.ExportPairAsync(edited with { PvpEnabled = true }, false, updateStore, default, null);
     using (var dual = ZipFile.OpenRead(dualPath))
     {
         foreach (var architecture in new[] { "x86", "x64" })
         {
             using var inner = new ZipArchive(dual.GetEntry($"DFLegacy-client-win-{architecture}.zip")!.Open(), ZipArchiveMode.Read);
             using var configReader = new StreamReader(inner.GetEntry("launcher.json")!.Open());
-            Check(JsonDocument.Parse(configReader.ReadToEnd()).RootElement.GetProperty("UpdateServiceUrl").GetString() == "http://games.example.test:18083",
+            var dualConfig = JsonDocument.Parse(configReader.ReadToEnd()).RootElement;
+            Check(dualConfig.GetProperty("Relay").GetProperty("TcpPorts").GetString()!.Split(',')
+                .Intersect(new[] { "7004","7110","7111","7112" }).Count() == 4, $"{architecture} generated configuration includes all four PvP channels");
+            Check(dualConfig.GetProperty("UpdateServiceUrl").GetString() == "http://games.example.test:18083",
                 $"{architecture} installer points to dedicated HTTP port");
             var current = updateStore.Latest(architecture, "normal")!;
             var package = updateStore.Package(architecture, "normal", current.Sha256)!;

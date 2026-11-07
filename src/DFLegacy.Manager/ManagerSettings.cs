@@ -50,7 +50,7 @@ public sealed record DeploymentConfig
 
     public int[] ForwardedTcpPorts() => new[] { EntrancePort, ChannelPort, AdditionalEntrancePort }
         .Concat(FallbackRelayEnabled ? new[] { FallbackRelayTcpPort } : [])
-        .Concat(PvpEnabled ? new[] { PvpPort } : [])
+        .Concat(PvpEnabled ? new[] { PvpPort }.Concat(DFLegacy.Protocol.Act1PvpPorts.Additional) : [])
         .Concat(RegionalChannelsEnabled ? Enumerable.Range(7100, 6) : []).ToArray();
     public int[] ForwardedUdpPorts() => new[] { CharacterPort, GameplayPrimaryPort, GameplaySecondaryPort }
         .Concat(FallbackRelayEnabled ? new[] { FallbackRelayUdpPort } : []).ToArray();
