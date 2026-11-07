@@ -245,7 +245,10 @@ namespace dfl::town_route
                     while (!name.empty() && name.back() == '\0') name.pop_back(); name = Normalize(std::move(name), "invalid_pvf");
                     if (!identifiers.insert(identifier).second || !entries.emplace(std::move(name), Entry{offset, size, crc}).second) Bad("invalid_pvf");
                 }
-                if (tree.size() - cursor > 3 || std::any_of(tree.begin() + static_cast<std::ptrdiff_t>(cursor), tree.end(), [](unsigned char b) { return b != 0; })) Bad("invalid_pvf");
+                // ACT1/editor archives use eight-byte directory alignment;
+                // keep four-byte encrypted-word archives and reject extra data.
+                const std::size_t maximumPadding = tree.size() % 8 == 0 ? 7 : 3;
+                if (tree.size() - cursor > maximumPadding || std::any_of(tree.begin() + static_cast<std::ptrdiff_t>(cursor), tree.end(), [](unsigned char b) { return b != 0; })) Bad("invalid_pvf");
             }
             std::string Text(const std::string& path) const
             {

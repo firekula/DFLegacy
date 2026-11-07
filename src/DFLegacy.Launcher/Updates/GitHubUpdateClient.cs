@@ -10,7 +10,7 @@ public sealed class GitHubUpdateClient
     public const string TestAssetName="DFLegacy-client-update-v2-test-win-x64.zip";
     private readonly string flavor;
     private readonly string architecture;
-    private string SelectedAssetName => $"DFLegacy-client-update-v2{(flavor == "test" ? "-test" : "")}-win-{architecture}.zip";
+    private string AssetNameFor(int format) => $"DFLegacy-client-update-v{format}{(flavor == "test" ? "-test" : "")}-win-{architecture}.zip";
     private readonly HttpClient client;
     private readonly string repository;
     private readonly bool includePrereleases;
@@ -28,28 +28,28 @@ public sealed class GitHubUpdateClient
         this.client=client; this.repository=repository; this.includePrereleases=includePrereleases;
     }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler { AllowAutoRedirect=false, UseCookies=false, UseDefaultCredentials=false, Credentials=null }) { Timeout=Timeout.InfiniteTimeSpan };
-    private void ValidateAsset(Uri url, bool redirect=false)
+    private void ValidateAsset(Uri url, string name, bool redirect=false)
     {
         if(url.Scheme!="https" || !url.IsDefaultPort || url.UserInfo.Length!=0 || url.Fragment.Length!=0) throw new InvalidDataException("更新下载地址无效。");
-        if(url.Host=="github.com" && url.AbsolutePath.StartsWith("/"+repository+"/releases/download/",StringComparison.Ordinal) && url.AbsolutePath.EndsWith("/"+SelectedAssetName,StringComparison.Ordinal)) return;
+        if(url.Host=="github.com" && url.AbsolutePath.StartsWith("/"+repository+"/releases/download/",StringComparison.Ordinal) && url.AbsolutePath.EndsWith("/"+name,StringComparison.Ordinal)) return;
         if(redirect && (url.Host=="release-assets.githubusercontent.com" || url.Host=="objects.githubusercontent.com")) return;
         throw new InvalidDataException("更新下载域名不受信任。");
     }
-    private async Task<HttpResponseMessage> Get(Uri uri, bool asset, CancellationToken token)
+    private async Task<HttpResponseMessage> Get(Uri uri, string? assetName, CancellationToken token)
     {
         UpdateDownload.RequireNoCredentials(client);
         for(int hop=0;hop<5;hop++)
         {
-            if(asset) ValidateAsset(uri,hop>0);
+            if(assetName!=null) ValidateAsset(uri,assetName,hop>0);
             using var request=new HttpRequestMessage(HttpMethod.Get,uri);
             request.Headers.UserAgent.ParseAdd("DFLegacy-Updater/1.0");
-            request.Headers.Accept.ParseAdd(asset ? "application/octet-stream" : "application/vnd.github+json");
+            request.Headers.Accept.ParseAdd(assetName!=null ? "application/octet-stream" : "application/vnd.github+json");
             var response=await client.SendAsync(request,HttpCompletionOption.ResponseHeadersRead,token).ConfigureAwait(false);
             if(response.RequestMessage?.RequestUri is { } actual && actual!=uri) { response.Dispose(); throw new InvalidDataException("更新客户端必须禁用自动重定向。"); }
             if((int)response.StatusCode is >=300 and <400)
             {
                 var next=response.Headers.Location; response.Dispose();
-                if(!asset || next==null) throw new InvalidDataException("不支持的更新重定向。");
+                if(assetName==null || next==null) throw new InvalidDataException("不支持的更新重定向。");
                 uri=next.IsAbsoluteUri?next:new Uri(uri,next); continue;
             }
             return response;
@@ -60,11 +60,12 @@ public sealed class GitHubUpdateClient
     {
         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); timeout.CancelAfter(TimeSpan.FromSeconds(5));
         var found=new List<UpdateRelease>();
+        var v3=AssetNameFor(3); var v2=AssetNameFor(2);
         // Never follow arbitrary Link URLs. A full final page cannot prove that
         // the search is complete (a stable release may follow many previews).
         for(int page=1;page<=3;page++)
         {
-            using var response=await Get(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}"),false,timeout.Token).ConfigureAwait(false);
+            using var response=await Get(new Uri($"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}"),null,timeout.Token).ConfigureAwait(false);
             if(response.StatusCode==HttpStatusCode.NotFound) return null;
             response.EnsureSuccessStatusCode();
             using var body=await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
@@ -75,12 +76,19 @@ public sealed class GitHubUpdateClient
             {
                 if(item.GetProperty("draft").GetBoolean() || (!includePrereleases && item.GetProperty("prerelease").GetBoolean())) continue;
                 var id=item.GetProperty("id").GetInt64(); if(id<=installedReleaseId) continue;
-                var assets=item.GetProperty("assets").EnumerateArray().Where(a=>a.GetProperty("name").GetString()==SelectedAssetName).ToArray();
+                var attachments=item.GetProperty("assets").EnumerateArray();
+                var name=v3;
+                var assets=attachments.Where(a=>a.GetProperty("name").GetString()==v3).ToArray();
+                if(assets.Length==0)
+                {
+                    name=v2;
+                    assets=attachments.Where(a=>a.GetProperty("name").GetString()==v2).ToArray();
+                }
                 if(assets.Length!=1) continue;
                 var asset=assets[0]; var digest=asset.TryGetProperty("digest",out var d)?d.GetString():null;
                 if(digest==null || !digest.StartsWith("sha256:",StringComparison.Ordinal) || !UpdateSafety.IsHash(digest[7..])) continue;
                 var size=asset.GetProperty("size").GetInt64(); if(size<=0 || size>UpdateSafety.MaxZip) continue;
-                var uri=new Uri(asset.GetProperty("browser_download_url").GetString()!); ValidateAsset(uri);
+                var uri=new Uri(asset.GetProperty("browser_download_url").GetString()!); ValidateAsset(uri,name);
                 found.Add(new(id,item.GetProperty("tag_name").GetString()!,item.GetProperty("published_at").GetDateTimeOffset(),item.GetProperty("prerelease").GetBoolean(),uri,size,digest[7..]));
             }
             if(doc.RootElement.GetArrayLength()<100) break;
@@ -90,7 +98,9 @@ public sealed class GitHubUpdateClient
     }
     public async Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string stagingRoot,IProgress<UpdateProgress>? progress=null,CancellationToken cancellationToken=default)
     {
-        ValidateAsset(release.DownloadUrl);
-        return await UpdateDownload.FetchAsync(release,stagingRoot,progress,cancellationToken,flavor,(uri,token)=>Get(uri,true,token)).ConfigureAwait(false);
+        var name=release.DownloadUrl.Segments[^1];
+        if(name!=AssetNameFor(3) && name!=AssetNameFor(2)) throw new InvalidDataException("更新附件名称无效。");
+        ValidateAsset(release.DownloadUrl,name);
+        return await UpdateDownload.FetchAsync(release,stagingRoot,progress,cancellationToken,flavor,(uri,token)=>Get(uri,name,token)).ConfigureAwait(false);
     }
 }

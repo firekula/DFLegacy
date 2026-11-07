@@ -28,6 +28,7 @@ internal static class SkillSlotPersistenceSmokeTests
         await Case("null save and retained session", NullAsync);
         await Case("real rename failure rollback", RenameFailureAsync);
         await Case("post-commit logger failure", LoggerAsync);
+        await Case("steal skill SP cost", StealSkillCostAsync);
 
         async Task Case(string name, Func<Action<bool, string>, Task> run)
         {
@@ -196,6 +197,40 @@ internal static class SkillSlotPersistenceSmokeTests
         await fixture.CheckStateAsync(check, expected, "post-commit logger failure stays committed after reopen");
     }
 
+    private static async Task StealSkillCostAsync(Action<bool, string> check)
+    {
+        foreach (var (growType, level, sp, charged, error) in new[]
+        {
+            (2, 23, 60, 0, 18),
+            (2, 24, 59, 0, 2),
+            (2, 24, 60, 60, 0),
+            (1, 20, 60, 30, 0)
+        })
+        {
+            await using var fixture = await Fixture.CreateAsync(growType: growType, level: level, sp: sp);
+            var wire = await fixture.ConnectAsync();
+            await wire.SendAsync(wire.Command(GameProtocolEngine.BuySkillCommand, 4));
+            var reply = (await wire.ReadAsync(1, GameProtocolEngine.BuySkillCommand)).Payload;
+            var saved = (await fixture.Store.GetCharactersAsync("u09x"))[0];
+            if (error != 0)
+            {
+                check(reply.SequenceEqual(new byte[] { 0, (byte)error }) && saved.Sp == sp
+                    && saved.Skills!.All(s => s.SkillId != 4),
+                    $"steal skill is refused at character level {level} with {sp} SP without altering the save");
+                continue;
+            }
+
+            check(reply.Length == 6 && reply[0] == 1 && reply[4] == 4 && reply[5] == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(reply.AsSpan(1)) == sp - charged
+                && saved.Sp == sp - charged && saved.Skills!.Any(s => s.SkillId == 4 && s.Level == 1),
+                $"buy-skill ACK and save charge exactly {charged} SP for grow type {growType}");
+            await fixture.ReopenAsync();
+            var relog = await fixture.ConnectAsync();
+            check(relog.LoginSp == sp - charged && relog.LoginSkills.Any(s => s.SkillId == 4 && s.Level == 1),
+                "buy-skill SP and learned level survive a store reload");
+        }
+    }
+
     private static bool Success(GameServerPacket packet, byte source, byte destination) =>
         packet.Payload.SequenceEqual(new byte[] { 1, source, destination });
     private static bool Error(GameServerPacket packet) => packet.Payload.Length >= 2 && packet.Payload[0] == 0;
@@ -211,7 +246,8 @@ internal static class SkillSlotPersistenceSmokeTests
         private ServiceProvider? _provider;
         private Connection? _connection;
 
-        internal static async Task<Fixture> CreateAsync(ILogger<JsonGameStore>? logger = null)
+        internal static async Task<Fixture> CreateAsync(
+            ILogger<JsonGameStore>? logger = null, int growType = 0, int level = 60, int sp = 123)
         {
             var repository = new DirectoryInfo(AppContext.BaseDirectory);
             while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "DFLegacy.Emulator.slnx")))
@@ -221,10 +257,14 @@ internal static class SkillSlotPersistenceSmokeTests
             Directory.CreateDirectory(Path.Combine(root, "skill", "Swordman"));
             await File.WriteAllTextAsync(Path.Combine(root, "skill", "skilllist.lst"), "0 `SwordmanSkill.lst`\n");
             await File.WriteAllTextAsync(Path.Combine(root, "skill", "SwordmanSkill.lst"),
-                "1 `Swordman/A.skl`\n2 `Swordman/P.skl`\n3 `Swordman/C.skl`\n");
+                "1 `Swordman/A.skl`\n2 `Swordman/P.skl`\n3 `Swordman/C.skl`\n4 `Swordman/Steal.skl`\n");
             foreach (var (name, kind, group) in new[] { ("A", "active", 0), ("P", "passive", 1), ("C", "active", 4) })
                 await File.WriteAllTextAsync(Path.Combine(root, "skill", "Swordman", name + ".skl"),
                     $"[type] `[{kind}]`\n[skill class] {group}\n[maximum level] 10\n[required level] 1\n");
+            await File.WriteAllTextAsync(Path.Combine(root, "skill", "Swordman", "Steal.skl"),
+                "[type] `[active]`\n[skill class] 0\n[maximum level] 10\n[required level] 20\n"
+                + "[growtype maximum level] 0 10 5 5 5\n[skill fitness growtype]\n1\n[/skill fitness growtype]\n"
+                + "[purchase cost]\n30\n[/purchase cost]\n[steel learning skill]\n1\n50\n200\n4\n");
             var fixture = new Fixture { Root = root, Options = new ServerOptions
                 { DataPath = Path.Combine(root, "state.json"), ScriptPvfPath = "", SkillScriptPath = root } };
             try
@@ -234,10 +274,10 @@ internal static class SkillSlotPersistenceSmokeTests
                 fixture.Store = fixture.OpenStore(logger);
                 await fixture.Store.InitializeAsync();
                 await fixture.Store.CreateAccountAsync(new CreateAccountRequest("u09x", "password", OicqCode: "123456"));
-                var created = await fixture.Store.CreateCharacterAsync("u09x", new CreateCharacterRequest("SkillProbe", Job: 0, GrowType: 0, Level: 60));
+                var created = await fixture.Store.CreateCharacterAsync("u09x", new CreateCharacterRequest("SkillProbe", Job: 0, GrowType: growType, Level: level));
                 var character = created.Character ?? throw new InvalidOperationException("cannot create skill fixture character");
                 var replaced = await fixture.Store.ReplaceAllCharactersAsync("u09x", [character with
-                    { TutorialStarted = true, Sp = 123, Skills = Initial.ToList(), Inventory = [], Equipment = [],
+                    { TutorialStarted = true, Sp = sp, Skills = Initial.ToList(), Inventory = [], Equipment = [],
                         Warehouse = [], AvatarInventory = [], CreatureInventory = [] }]);
                 if (!replaced.Replaced) throw new InvalidOperationException("cannot seed skill fixture roster");
                 return fixture;

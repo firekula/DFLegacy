@@ -14,6 +14,7 @@ internal static class PartyCardSettlementFlowSmokeTests
 {
     public static async Task RunAsync(Action<bool, string> check)
     {
+        await PartyPremiumCardSmokeTests.RunAsync(check);
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-card-flow-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try

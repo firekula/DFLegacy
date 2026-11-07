@@ -14,6 +14,8 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
     {
         internal readonly Queue<GameServerPacket> Outbox = new();
         internal readonly SemaphoreSlim Delivery = new(1, 1);
+        internal readonly HashSet<ushort> KnownStoreOwners = [];
+        internal bool AreaStoresEnabled = true;
         internal bool Retired;
         internal Guid StoreToken;
     }
@@ -105,10 +107,14 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         await gate.WaitAsync(ct); try { await action(); } finally { gate.Release(); }
     }
     private void Kick(Channel c) { if (c.Kick is { } kick) _kicks.Enqueue(kick); }
-    private void Area(List<Delivery> deliveries, Shop shop, GameServerPacket packet)
+    private void AdvertiseToArea(List<Delivery> deliveries, Shop shop, GameServerPacket packet)
     {
         foreach (var c in _channels.Values)
-            if (c.Id != shop.Owner.Id && town.SharesPublicArea(c.Id, shop.Owner.Id)) deliveries.Add(new(c, packet));
+        {
+            if (c.Retired || !c.AreaStoresEnabled || c.Id == shop.Owner.Id || !town.SharesPublicArea(c.Id, shop.Owner.Id)) continue;
+            c.KnownStoreOwners.Add(shop.Owner.Uid);
+            deliveries.Add(new(c, packet));
+        }
     }
     private void ExitViewer(Guid id)
     { if (_viewing.Remove(id, out var shop)) shop.Viewers.Remove(id); }
@@ -119,7 +125,9 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             if (_channels.TryGetValue(id, out var c)) deliveries.Add(new(c, GameProtocolEngine.CreatePrivateStoreForceClose()));
             ExitViewer(id);
         }
-        Area(deliveries, shop, GameProtocolEngine.CreatePrivateStoreRemoved(shop.Owner.Uid));
+        var removed = GameProtocolEngine.CreatePrivateStoreRemoved(shop.Owner.Uid);
+        foreach (var c in _channels.Values)
+            if (c.KnownStoreOwners.Remove(shop.Owner.Uid)) deliveries.Add(new(c, removed));
         _shops.Remove(shop.Owner.Id);
         if (release) store.Commerce.Release(shop.Token, shop.Owner.Id);
     }
@@ -188,7 +196,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             if (store.IsTradeDeliveryPending(id)) { store.Commerce.Release(shop.Token, id); Reject(20); return; }
             c.StoreToken = shop.Token; ExitViewer(id); _shops[id] = shop; created = true;
             d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(88)));
-            Area(d, shop, GameProtocolEngine.CreatePrivateStoreCreated(c.Uid, position));
+            AdvertiseToArea(d, shop, GameProtocolEngine.CreatePrivateStoreCreated(c.Uid, position));
             logger.LogInformation("Private store {Store} created by {Owner} at {Town}/{Area} {X},{Y}.", shop.Token, c.Name, position.Town, position.Area, position.X, position.Y);
         }, ct, id);
         if (created) await parties.TryLeavePartySilentlyAsync(id, ct);
@@ -210,7 +218,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             if (result.Status != DungeonRewardLedgerStatus.Committed) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, result.Error))); return; }
             installed = result.Character!; shop.Open = true; shop.Title = title.ToArray();
             d.Add(new(c, EntranceService.CreateMainInventoryRefresh(installed.Gold, installed.VictoryPoints, installed.Inventory ?? [], items)));
-            Area(d, shop, GameProtocolEngine.CreatePrivateStoreDisplayed(c.Uid, shop.Title));
+            AdvertiseToArea(d, shop, GameProtocolEngine.CreatePrivateStoreDisplayed(c.Uid, shop.Title));
             d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90)));
             logger.LogInformation("Private store {Store} opened with {Count} listings.", shop.Token, goods.Count);
         }, ct, id); return installed;
@@ -225,6 +233,7 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         var owner = await store.GetCharacterAsync(shop.Owner.Account, shop.Owner.Id, ct);
         if (owner?.PrivateStoreStock?.StoreId != shop.Token) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreEnterFailure())); return; }
         ExitViewer(id); _viewing[id] = shop; shop.Viewers.Add(id);
+        c.KnownStoreOwners.Add(shop.Owner.Uid);
         d.Add(new(c, GameProtocolEngine.CreatePrivateStoreEnterReply(shop.Owner.Uid, Rows(owner))));
     }, ct, id);
     public Task ExitAsync(Guid id, Guid session, CancellationToken ct = default) => RunAsync(d =>
@@ -290,11 +299,24 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         await RunAsync(async d => { if (Current(id, session) is { } c) installed = await CloseCoreAsync(d, c, force, reply, ct); }, ct, id);
         return installed;
     }
+    public Task ClearAreaStoresAsync(Guid id, Guid session, CancellationToken ct = default) => RunAsync(d =>
+    {
+        var c = Current(id, session); if (c is null) return Task.CompletedTask;
+        // An empty NOTI84 does not clear the ACT1 client's remembered stores.
+        // Stop advertisements until the next area's actors have been installed.
+        c.AreaStoresEnabled = false;
+        foreach (var uid in c.KnownStoreOwners) d.Add(new(c, GameProtocolEngine.CreatePrivateStoreRemoved(uid)));
+        c.KnownStoreOwners.Clear();
+        return Task.CompletedTask;
+    }, ct, id);
+
     public Task SendAreaStoresAsync(Guid id, Guid session, CancellationToken ct = default) => RunAsync(d =>
     {
         var c = Current(id, session); if (c is null) return Task.CompletedTask;
+        c.AreaStoresEnabled = true;
         var summaries = _shops.Values.Where(s => s.Owner.Id != id && town.SharesPublicArea(s.Owner.Id, id))
             .Select(s => new PrivateStoreSummary(s.Owner.Uid, s.Title, s.Open, s.Position)).ToArray();
+        foreach (var summary in summaries) c.KnownStoreOwners.Add(summary.OwnerUid);
         foreach (var batch in summaries.Chunk(255)) d.Add(new(c, GameProtocolEngine.CreatePrivateStoreList(batch)));
         return Task.CompletedTask;
     }, ct, id);

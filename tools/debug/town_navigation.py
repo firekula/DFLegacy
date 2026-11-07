@@ -345,7 +345,10 @@ class _Pvf:
                 raise NavigationCatalogError("invalid_pvf", "duplicate directory path or identifier")
             identifiers.add(identifier)
             self.entries[virtual_path] = offset, size, key
-        if len(tree) - cursor > 3 or any(tree[cursor:]):
+        # ACT1/editor archives align the directory to eight bytes; four-byte
+        # encrypted-word archives remain supported. Only zero fill is padding.
+        maximum_padding = 7 if len(tree) % 8 == 0 else 3
+        if len(tree) - cursor > maximum_padding or any(tree[cursor:]):
             raise NavigationCatalogError("invalid_pvf", "unexpected tree trailing bytes")
 
     def text(self, virtual_path: str) -> str:

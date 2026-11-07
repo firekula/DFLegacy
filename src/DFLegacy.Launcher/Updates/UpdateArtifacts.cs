@@ -9,7 +9,7 @@ namespace DFLegacy.Launcher.Updates;
 internal sealed class UpdateArtifacts : IDisposable
 {
     private sealed record Receipt(string Owner, string? Helper = null, int ProcessId = 0, long StartTicks = 0);
-    private static readonly string[] StageFiles=["package.zip","update-manifest.json","DFLegacy.Launcher.exe","DFLegacy.Client.dll","debug.dll"];
+    private static readonly string[] StageFiles=["package.zip","update-manifest.json","DFLegacy.Launcher.exe","DFLegacy.Client.dll","debug.dll",ClientPackageManifest.ScriptPvfName];
     private readonly string owner;
     private FileStream? lease;
     private Receipt receipt;

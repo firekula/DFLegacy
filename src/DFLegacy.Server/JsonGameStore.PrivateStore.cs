@@ -38,14 +38,16 @@ public sealed partial class JsonGameStore
             if (c is null) return new(DungeonRewardLedgerStatus.Rejected, 58);
             if (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is not null)
                 return new(DungeonRewardLedgerStatus.Rejected, 57);
-            if (itemCatalog is null || requests.Count is < 1 or > 7 || requests.Select(r => r.Slot).Distinct().Count() != requests.Count
+            if (itemCatalog is null || requests.Count is < 1 or > GameProtocolEngine.PrivateStoreMaximumListings
+                || requests.Select(r => r.Slot).Distinct().Count() != requests.Count
                 || requests.Select(r => r.SourceSlot).Distinct().Count() != requests.Count || _pendingTradeDeliveries.ContainsKey(owner))
                 return new(DungeonRewardLedgerStatus.Rejected, 17);
             var inventory = (c.Inventory ?? []).ToDictionary(i => i.Slot);
+            var sourceReservations = requests.ToDictionary(r => r.SourceSlot, r => r.AddInfo);
             var listings = new List<PrivateStoreListing>(); long total = 0;
             foreach (var request in requests)
             {
-                if (request.Slot > 6 || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
+                if (request.Slot >= GameProtocolEngine.PrivateStoreMaximumListings || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
                     || !CharacterInventoryLayout.IsMainItemSlot(request.SourceSlot)
                     || !inventory.TryGetValue(request.SourceSlot, out var item)
                     || !itemCatalog.TryGetDefinition(item.ItemId, out var def)
@@ -55,11 +57,13 @@ public sealed partial class JsonGameStore
                     return new(DungeonRewardLedgerStatus.Rejected, 17);
                 var wire = CharacterItemWireProjection.Project(item, itemCatalog);
                 var count = def.IsStackable ? request.AddInfo : 1;
-                if (count == 0 || def.IsStackable && count > item.CountOrValue || !def.IsStackable && request.AddInfo != wire.AddInfo)
+                if (count == 0 || !def.IsStackable && request.AddInfo != wire.AddInfo)
                     return new(DungeonRewardLedgerStatus.Rejected, 17);
                 total += (long)request.UnitPrice * count;
                 if (total > int.MaxValue) return new(DungeonRewardLedgerStatus.Rejected, 17);
-                var rest = def.IsStackable ? item.CountOrValue - count : 0;
+                List<PrivateStoreSourcePart>? sourceParts = null;
+                var anchorQuantity = Math.Min(item.CountOrValue, count);
+                var rest = def.IsStackable ? item.CountOrValue - anchorQuantity : 0;
                 var stock = def.IsStackable ? item with
                 {
                     CountOrValue = count,
@@ -67,7 +71,31 @@ public sealed partial class JsonGameStore
                 } : item;
                 if (rest == 0) inventory.Remove(request.SourceSlot);
                 else inventory[request.SourceSlot] = item with { CountOrValue = rest };
-                listings.Add(new(request.Slot, request.UnitPrice, request.SourceSlot, item.InstanceId, stock, count, request.AddInfo));
+                sourceReservations.Remove(request.SourceSlot);
+                if (def.IsStackable && count > anchorQuantity)
+                {
+                    // ACT1 may merge compatible stacks into one listing and send only the anchor slot.
+                    if (anchorQuantity == 0 || item.InstanceId != Guid.Empty) return new(DungeonRewardLedgerStatus.Rejected, 17);
+                    sourceParts = [new(request.SourceSlot, anchorQuantity)];
+                    var remaining = count - anchorQuantity;
+                    var candidates = inventory.Values.Where(candidate =>
+                            CharacterInventoryLayout.IsCompatibleSlot(def, candidate.Slot)
+                            && candidate.CountOrValue > sourceReservations.GetValueOrDefault(candidate.Slot)
+                            && candidate == (item with { Slot = candidate.Slot, CountOrValue = candidate.CountOrValue }))
+                        .OrderBy(candidate => candidate.Slot).ToArray();
+                    foreach (var candidate in candidates)
+                    {
+                        var available = candidate.CountOrValue - sourceReservations.GetValueOrDefault(candidate.Slot);
+                        var taken = Math.Min(remaining, available);
+                        sourceParts.Add(new(candidate.Slot, taken));
+                        if (taken == candidate.CountOrValue) inventory.Remove(candidate.Slot);
+                        else inventory[candidate.Slot] = candidate with { CountOrValue = candidate.CountOrValue - taken };
+                        remaining -= taken;
+                        if (remaining == 0) break;
+                    }
+                    if (remaining != 0) return new(DungeonRewardLedgerStatus.Rejected, 17);
+                }
+                listings.Add(new(request.Slot, request.UnitPrice, request.SourceSlot, item.InstanceId, stock, count, request.AddInfo, sourceParts));
             }
             var updated = c with { Inventory = inventory.Values.OrderBy(i => i.Slot).ToList(), PrivateStoreStock = new(token, listings) };
             var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updated);
@@ -105,7 +133,7 @@ public sealed partial class JsonGameStore
                 CountOrValue = quantity,
                 InstanceId = quantity < listing.Quantity && listing.Item.InstanceId != Guid.Empty ? Guid.NewGuid() : listing.Item.InstanceId
             } : listing.Item;
-            if (!TryPlaceStorePurchase(buyer, moved, def, out var inventory, out var placed)) return Reject(4);
+            if (!TryPlaceStorePurchase(buyer, moved, def, listing.SourceParts is not null, out var inventory, out var placed)) return Reject(4);
             var updatedBuyer = buyer with { Gold = checked(buyer.Gold - (int)gross), Inventory = inventory };
             var stock = seller.PrivateStoreStock.Listings.Where(l => l.Slot != slot).ToList();
             if (quantity < listing.Quantity) stock.Add(listing with { Quantity = listing.Quantity - quantity, AddInfo = listing.AddInfo - quantity,
@@ -122,13 +150,14 @@ public sealed partial class JsonGameStore
         finally { _gate.Release(); }
     }
 
-    private bool TryPlaceStorePurchase(CharacterRecord buyer, CharacterItemRecord moved, ItemDefinition def,
+    private bool TryPlaceStorePurchase(CharacterRecord buyer, CharacterItemRecord moved, ItemDefinition def, bool mergedListing,
         out List<CharacterItemRecord> items, out CharacterItemRecord placed)
     {
         items = []; placed = null!;
         if (itemCatalog is null || statCatalog is null || !CharacterInventoryLayout.TryGetCategoryRange(def.InventoryCategory, out var start, out var end)) return false;
         var inventory = (buyer.Inventory ?? []).ToDictionary(i => i.Slot);
         if (def.MaximumHavingCount is > 0 && inventory.Values.Where(i => i.ItemId == def.Id).Sum(i => (long)i.CountOrValue) + (def.IsStackable ? moved.CountOrValue : 1) > def.MaximumHavingCount) return false;
+        var weightLimit = CharacterInventoryPlanner.CalculateCarriedWeightLimit(statCatalog.Get(buyer).InventoryLimit, buyer.Equipment ?? [], itemCatalog);
         var category = Enumerable.Range(start, end - start).Select(i => (ushort)i).ToArray();
         var quick = Enumerable.Range(CharacterInventoryLayout.QuickSlotStart, CharacterInventoryLayout.QuickSlotEnd - CharacterInventoryLayout.QuickSlotStart).Select(i => (ushort)i).ToArray();
         ushort? destination = null;
@@ -145,13 +174,23 @@ public sealed partial class JsonGameStore
         {
             var empty = def.IsStackable && def.InventoryCategory == ItemInventoryCategory.Consumable ? quick.Concat(category) : category.Concat(quick);
             foreach (var s in empty) if (!inventory.ContainsKey(s)) { destination = s; break; }
-            if (def.IsStackable && moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def)) return false;
         }
-        if (destination is null) return false;
+        if (destination is null || def.IsStackable && moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def))
+        {
+            if (!mergedListing) return false;
+            var attachment = new CharacterMailAttachmentRecord(moved.ItemId, moved.CountOrValue, moved.State, moved.Durability, moved.SealState);
+            if (!CharacterInventoryPlanner.TryPlace(inventory, attachment, itemCatalog, (uint)Math.Min(weightLimit, uint.MaxValue), out var plan, out _)
+                || CharacterInventoryPlanner.CalculateCarriedWeight(plan.Inventory.Values, buyer.Equipment ?? [], buyer.CreatureInventory ?? [], itemCatalog) > weightLimit)
+                return false;
+            var first = plan.Inventory[plan.DestinationSlot];
+            // CMD85 acknowledges one slot. The entrance session then refreshes the full inventory.
+            placed = first with { CountOrValue = first.CountOrValue - (inventory.GetValueOrDefault(first.Slot)?.CountOrValue ?? 0) };
+            items = plan.Inventory.Values.OrderBy(i => i.Slot).ToList();
+            return true;
+        }
         placed = moved with { Slot = destination.Value };
         inventory[destination.Value] = inventory.TryGetValue(destination.Value, out var existing)
             ? existing with { CountOrValue = existing.CountOrValue + moved.CountOrValue } : placed;
-        var weightLimit = CharacterInventoryPlanner.CalculateCarriedWeightLimit(statCatalog.Get(buyer).InventoryLimit, buyer.Equipment ?? [], itemCatalog);
         if (CharacterInventoryPlanner.CalculateCarriedWeight(inventory.Values, buyer.Equipment ?? [], buyer.CreatureInventory ?? [], itemCatalog) > weightLimit) return false;
         items = inventory.Values.OrderBy(i => i.Slot).ToList(); return true;
     }
@@ -165,19 +204,27 @@ public sealed partial class JsonGameStore
         var mails = new List<CreateCharacterMailRequest>();
         foreach (var listing in c.PrivateStoreStock?.Listings ?? [])
         {
-            if (!inventory.TryGetValue(listing.SourceSlot, out var existing))
-                inventory[listing.SourceSlot] = listing.Item with { Slot = listing.SourceSlot };
-            else if (existing.InstanceId == listing.SourceInstanceId && CanStackStoreItems(existing, listing.Item)
-                && itemCatalog?.TryGetDefinition(existing.ItemId, out var def) == true && def.IsStackable
-                && (long)existing.CountOrValue + listing.Quantity <= CharacterInventoryPlanner.GetStackLimit(def))
-                inventory[listing.SourceSlot] = existing with { CountOrValue = existing.CountOrValue + listing.Quantity };
-            else
+            var remaining = listing.Quantity;
+            foreach (var part in listing.SourceParts ?? [new(listing.SourceSlot, remaining)])
             {
-                if (!force) return false;
-                var i = listing.Item;
-                mails.Add(new("个人商店", "离场收摊时返还的物品。", Attachment: new(i.ItemId, i.CountOrValue, i.State, i.Durability, i.SealState,
-                    i.AvatarRemainingSeconds, i.AvatarAbilityIndex, i.EquipmentQualitySeed, i.InstanceId, i.AvatarExpiresAtUnixSeconds)));
+                var count = Math.Min(remaining, part.Quantity);
+                var item = listing.Item with { Slot = part.Slot, CountOrValue = listing.SourceParts is null ? listing.Item.CountOrValue : count };
+                if (!inventory.TryGetValue(part.Slot, out var existing))
+                    inventory[part.Slot] = item;
+                else if (existing.InstanceId == listing.SourceInstanceId && CanStackStoreItems(existing, item)
+                    && itemCatalog?.TryGetDefinition(existing.ItemId, out var def) == true && def.IsStackable
+                    && (long)existing.CountOrValue + count <= CharacterInventoryPlanner.GetStackLimit(def))
+                    inventory[part.Slot] = existing with { CountOrValue = existing.CountOrValue + count };
+                else
+                {
+                    if (!force) return false;
+                    mails.Add(new("个人商店", "离场收摊时返还的物品。", Attachment: new(item.ItemId, item.CountOrValue, item.State, item.Durability, item.SealState,
+                        item.AvatarRemainingSeconds, item.AvatarAbilityIndex, item.EquipmentQualitySeed, item.InstanceId, item.AvatarExpiresAtUnixSeconds)));
+                }
+                remaining -= count;
+                if (remaining == 0) break;
             }
+            if (remaining != 0) return false;
         }
         if (!TryAppendGeneratedMailsLocked(c, mails, out var mailbox, out _, out _)) return false;
         updated = c with { Inventory = inventory.Values.OrderBy(i => i.Slot).ToList(), PrivateStoreStock = null,

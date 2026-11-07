@@ -3,7 +3,10 @@ namespace DFLegacy.Launcher.Updates;
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record UpdateFile(string Path, string Sha256, long Size);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
-public sealed record UpdateManifest(int SchemaVersion, string Version, string Commit, UpdateFile[] Files, string Flavor);
+public sealed record UpdateManifest(int SchemaVersion, string Version, string Commit, UpdateFile[] Files, string Flavor)
+{
+    internal bool HasScriptPvf => Files.Any(file => file.Path == ClientPackageManifest.ScriptPvfName);
+}
 public sealed record UpdateRelease(long Id, string Version, DateTimeOffset PublishedAt, bool Prerelease, Uri DownloadUrl, long Size, string Sha256);
 public sealed record UpdateProgress(long BytesReceived, long TotalBytes, double BytesPerSecond);
 internal sealed record UpdateInstallProgress(double Fraction,string Message)

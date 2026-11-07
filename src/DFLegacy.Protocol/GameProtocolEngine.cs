@@ -1830,6 +1830,13 @@ public static partial class GameProtocolEngine
             MoveItemSpaceCommand,
             [0, errorCode, sourceListType, destinationListType]);
 
+    // ACT1 CMD 19's zero-code branch releases the pending move in both lists
+    // without an alert. The caller supplies both authoritative item snapshots.
+    public static GameServerPacket CreateMoveItemSpaceSnapshotReply(
+        byte sourceListType,
+        byte destinationListType) =>
+        CreateMoveItemSpaceFailure(0, sourceListType, destinationListType);
+
     public static GameServerPacket CreateSortItemReply(byte itemSpace) =>
         new(CommandPacketType, SortItemCommand, [1, itemSpace]);
 
@@ -3894,12 +3901,16 @@ public static partial class GameProtocolEngine
         bool premiumCardEnabled = false,
         ushort? premiumItemId = null,
         byte localPartyIndex = 0,
-        GameDungeonClearExperienceBreakdown? experience = null)
+        GameDungeonClearExperienceBreakdown? experience = null,
+        IReadOnlyList<GamePremiumCardReward>? partyPremiumRewards = null)
     {
         if (localPartyIndex >= ClearRewardCardColumnCount)
         {
             throw new ArgumentOutOfRangeException(nameof(localPartyIndex));
         }
+
+        if (partyPremiumRewards is not null && partyPremiumRewards.Count != ClearRewardCardColumnCount)
+            throw new ArgumentException("Party premium rewards must contain four slots.", nameof(partyPremiumRewards));
 
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
@@ -3957,8 +3968,9 @@ public static partial class GameProtocolEngine
         {
             WriteEquipmentRewardPreview(
                 writer,
-                premiumCardEnabled && partyIndex == localPartyIndex,
-                premiumItemId);
+                partyPremiumRewards?[partyIndex].Enabled
+                    ?? (premiumCardEnabled && partyIndex == localPartyIndex),
+                partyPremiumRewards is null ? premiumItemId : partyPremiumRewards[partyIndex].ItemId);
         }
 
         return new GameServerPacket(
@@ -3995,6 +4007,22 @@ public static partial class GameProtocolEngine
             CommandPacketType,
             CardSelectRightStateCommand,
             payload.ToArray());
+    }
+
+    public static GameServerPacket CreateCardSelectRightState(IReadOnlyList<ushort> partyRights)
+    {
+        if (partyRights.Count != ClearRewardCardColumnCount)
+            throw new ArgumentException("Party card rights must contain four slots.", nameof(partyRights));
+        using var payload = new MemoryStream();
+        using var writer = new BinaryWriter(payload);
+        writer.Write((byte)1);
+        foreach (var right in partyRights)
+        {
+            if (right is not (0 or 1 or ushort.MaxValue))
+                throw new ArgumentException("Invalid party card right.", nameof(partyRights));
+            writer.Write(right);
+        }
+        return new(CommandPacketType, CardSelectRightStateCommand, payload.ToArray());
     }
 
     public static GameServerPacket CreateSelectCardReply(

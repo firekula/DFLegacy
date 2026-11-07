@@ -13,25 +13,23 @@ public sealed class FatigueResetService(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var now = DateTimeOffset.UtcNow;
-            var result = await store.ResetFatigueForCurrentDayAsync(
-                now,
-                stoppingToken);
-            if (result.NewFatigueDay)
-            {
-                foreach (var characterId in result.CharacterIds)
-                {
-                    characterSessions.NotifyFatigueReset(characterId);
-                }
-
-                logger.LogInformation(
-                    "Daily 06:00 fatigue reset completed for day {FatigueDayKey}; reset {CharacterCount} character(s).",
-                    result.FatigueDayKey,
-                    result.ResetCharacterCount);
-            }
-
+            await ResetCurrentDayAsync(DateTimeOffset.UtcNow, stoppingToken);
             await Task.Delay(GetNextCheckDelay(DateTimeOffset.UtcNow), stoppingToken);
         }
+    }
+
+    internal async Task ResetCurrentDayAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var result = await store.ResetFatigueForCurrentDayAsync(now, cancellationToken);
+        if (!result.NewFatigueDay)
+            return;
+
+        // The capacity can change at reset even for characters with zero usage.
+        characterSessions.NotifyDailyFatigueReset();
+        logger.LogInformation(
+            "Daily 06:00 fatigue reset completed for day {FatigueDayKey}; reset {CharacterCount} character(s).",
+            result.FatigueDayKey,
+            result.ResetCharacterCount);
     }
 
     private static TimeSpan GetNextCheckDelay(DateTimeOffset now)

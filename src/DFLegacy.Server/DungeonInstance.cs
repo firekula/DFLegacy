@@ -417,6 +417,7 @@ internal sealed partial class DungeonInstance(
     {
         _partyContentGeneration = _partyCards.Begin(_members);
         _partyCardContent.Clear();
+        _partyClearRewards.Clear();
         _partySettlementSlots.Clear();
         foreach (var member in _members) _partySettlementSlots[member.CharacterId] = member.PartySlot;
         _partyPublishedOwners.Clear();
@@ -800,6 +801,7 @@ internal sealed partial class DungeonInstance(
             RestorePartyWipeAfterReservationLocked(now ?? DateTimeOffset.UtcNow);
             _partyCards.RemoveMember(characterId);
             _partyCardAgents.Remove(characterId);
+            _partyClearRewards.Remove(characterId);
             _settlementReturnDeadlines.Remove(characterId);
             _announcedSettlementCountdowns.Remove(characterId);
             Version++;

@@ -17,6 +17,7 @@ internal static class UpdatePackage
         if(manifestEntry.Length is <=0 or >16384) throw new InvalidDataException("更新清单过大。");
         using var memory=new MemoryStream(); CopyEntry(manifestEntry,memory,cancellationToken);
         var manifest=UpdateSafety.ReadManifest(memory.ToArray());
+        UpdateSafety.ValidatePackageFormat(release,manifest);
         if(manifest.Version!=release.Version || expectedFlavor!=null && manifest.Flavor!=expectedFlavor) throw new InvalidDataException("更新版本或类型不匹配。");
         var expected = new HashSet<string>(manifest.Files.Select(f=>f.Path).Append("update-manifest.json"),StringComparer.Ordinal);
         long total=0;

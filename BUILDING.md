@@ -143,7 +143,9 @@ Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Windows、Linux �
 
 在干净的发布检出中，使用 `python tools/release/ci.py windows --client-only --version <版本> --commit <提交>` 构建并测试 Windows 客户端资源。使用生成的 `client-assets` 从同一提交构建 Linux amd64/arm64 OCI 镜像，按上文命令推送到 `ghcr.io/firekula/dflegacy`。
 
-传给 `python tools/release/github_publish.py --updates-only --version <版本> --commit <提交>` 四个 `--archive` 参数，分别指向 `DFLegacy-client-update-v2[-test]-win-{x64,x86}.zip`。发布器校验普通／测试类型、程序摘要和共同补丁，完整上传后公开并匿名回读。玩家使用管理后台生成的对应架构安装包接入游戏。
+发布含 PVF 的客户端更新时，运行 `python tools/release/release.py build-client-packages --updates-only --script-pvf <Script.pvf 路径> --client-assets client-assets --output artifacts --version <版本> --commit <提交>`，生成四个 `DFLegacy-client-update-v3[-test]-win-{x64,x86}.zip`。兼容更新构建省略 `--script-pvf`，使用较早的独立版本号生成 V2 ZIP。
+
+传给 `python tools/release/github_publish.py --updates-only --version <版本> --commit <提交>` 四个 `--archive` 参数，分别指向同一版本的四个更新 ZIP。发布器校验架构、普通／测试类型、程序摘要及共同 PVF 内容，完整上传后公开并匿名回读。兼容更新先于 V3 更新发布。
 
 
 ## Windows 离线客户端打包器

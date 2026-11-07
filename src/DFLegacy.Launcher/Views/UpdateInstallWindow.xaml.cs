@@ -23,6 +23,7 @@ public partial class UpdateInstallWindow : Window
         InstallStatus.Text=state.Phase switch
         {
             UpdatePhase.Downloading=>$"正在下载更新… {fraction:P0}",
+            UpdatePhase.Ready or UpdatePhase.Installing when state.ReplacesScriptPvf=>"将替换 Script.pvf，并备份已有文件…",
             UpdatePhase.Ready=>state.IsRecovery?"发现未完成的更新，等待确认恢复…":"下载校验完成，正在准备安装…",
             UpdatePhase.Installing=>state.IsRecovery?"正在准备安全恢复助手…":"正在准备更新助手…",
             _=>state.Message

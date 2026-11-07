@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using DFLegacy.Launcher.Updates;
 
 namespace DFLegacy.Launcher;
 
@@ -10,15 +11,17 @@ internal sealed record ClientPackageFile(string Path, long Size, string Sha256);
 
 internal sealed class ClientPackageManifest
 {
+    internal const string ScriptPvfName = "Script.pvf";
     internal string DirectoryPath { get; }
     internal string Version { get; }
     internal string Commit { get; }
     internal string Flavor { get; }
     internal IReadOnlyList<ClientPackageFile> Files { get; }
+    internal bool HasScriptPvf => Files.Any(file => file.Path == ScriptPvfName);
     private ClientPackageManifest(string directory, string version, string commit, string flavor, List<ClientPackageFile> files)
     { DirectoryPath = directory; Version = version; Commit = commit; Flavor = flavor; Files = new ReadOnlyCollection<ClientPackageFile>(files); }
 
-    internal static ClientPackageManifest LoadAndValidate(string directory)
+    internal static ClientPackageManifest LoadAndValidate(string directory, string? unchangedScriptPvfPath = null)
     {
         try
         {
@@ -27,7 +30,7 @@ internal sealed class ClientPackageManifest
             if (source.Length is <= 0 or > 16384) throw new InvalidDataException();
             var bytes = new byte[(int)source.Length]; source.ReadExactly(bytes);
             var manifest = Parse(bytes,directory);
-            manifest.ValidateFiles();
+            manifest.ValidateFiles(unchangedScriptPvfPath);
             return manifest;
         }
         catch(Exception ex) when(ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -51,6 +54,7 @@ internal sealed class ClientPackageManifest
             var files = new List<ClientPackageFile>();
             var expected = new HashSet<string>(["DFLegacy.Launcher.exe","DFLegacy.Client.dll"],StringComparer.Ordinal);
             if(flavor=="test") expected.Add("debug.dll");
+            expected.Add(ScriptPvfName);
             foreach(var entry in root.GetProperty("files").EnumerateArray())
             {
                 ExactKeys(entry,"path","size","sha256");
@@ -59,17 +63,24 @@ internal sealed class ClientPackageManifest
                 if(name is null || !expected.Remove(name) || size <= 0 || !Hex(hash,64)) throw new InvalidDataException();
                 files.Add(new(name,size,hash));
             }
+            expected.Remove(ScriptPvfName);
             if(expected.Count!=0) throw new InvalidDataException();
             return new(directory,version,commit,flavor,files);
         }
         catch(Exception ex) when(ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or DecoderFallbackException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException or ArgumentException)
         { throw new InvalidDataException("客户端安装清单或文件校验失败。请将同一版本的完整普通包或测试包解压到客户端目录，不要混用文件。",ex); }
     }
-    internal void ValidateFiles()
+    internal void ValidateFiles(string? unchangedScriptPvfPath = null)
     {
         foreach(var entry in Files)
         {
-            using var file = new FileStream(Path.Combine(DirectoryPath,entry.Path),FileMode.Open,FileAccess.Read,FileShare.Read);
+            var path = Path.Combine(DirectoryPath, entry.Path);
+            if(entry.Path==ScriptPvfName)
+            {
+                path = unchangedScriptPvfPath ?? path;
+                UpdateSafety.NoLinks(path);
+            }
+            using var file = new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
             if(file.Length!=entry.Size || Convert.ToHexStringLower(SHA256.HashData(file))!=entry.Sha256) throw new InvalidDataException("客户端安装清单或文件校验失败。");
         }
     }

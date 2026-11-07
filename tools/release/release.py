@@ -42,8 +42,11 @@ UPDATE_TEST_ASSET = "DFLegacy-client-update-v2-test-win-x64.zip"
 TOOLS_ASSET = "DFLegacy-client-tools-win-x64.zip"
 TOOLS_TEST_ASSET = "DFLegacy-client-tools-test-win-x64.zip"
 X86_UPDATE_ASSETS = tuple(name.replace("win-x64", "win-x86") for name in (UPDATE_ASSET, UPDATE_TEST_ASSET))
+V3_UPDATE_ASSETS = tuple(f"DFLegacy-client-update-v3{flavor}-win-{architecture}.zip"
+                         for architecture in ("x64", "x86") for flavor in ("", "-test"))
 PUBLIC_ASSETS = (UPDATE_ASSET, UPDATE_TEST_ASSET, TOOLS_ASSET, TOOLS_TEST_ASSET)
 UPDATE_FILES = ("DFLegacy.Launcher.exe", "DFLegacy.Client.dll")
+SCRIPT_PVF = "Script.pvf"
 MAX_UPDATE_ZIP = 256 * 1024**2
 MAX_UPDATE_EXPANDED = 512 * 1024**2
 
@@ -354,10 +357,14 @@ def read_client_update(archive):
 
 def verify_client_package(archive, version=None, commit=None, asset_name=None):
     """Validate a bounded immutable public update/tools ZIP and its exact flavor."""
+    if asset_name is None and not isinstance(archive, bytes):
+        name = Path(archive).name
+        if name in (UPDATE_ASSET, UPDATE_TEST_ASSET, *X86_UPDATE_ASSETS, *V3_UPDATE_ASSETS):
+            asset_name = name
     content = archive if isinstance(archive, bytes) else read_client_update(archive)
     if not 0 < len(content) <= MAX_UPDATE_ZIP:
         raise ReleaseError("invalid client archive size")
-    if asset_name is not None and asset_name not in (*PUBLIC_ASSETS, *X86_UPDATE_ASSETS):
+    if asset_name is not None and asset_name not in (*PUBLIC_ASSETS, *X86_UPDATE_ASSETS, *V3_UPDATE_ASSETS):
         raise ReleaseError("unknown public asset name")
     tools = asset_name in (TOOLS_ASSET, TOOLS_TEST_ASSET)
     manifest_name = "client-package.json" if tools else "update-manifest.json"
@@ -389,6 +396,8 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
             if asset_name is not None and test != ("-test-" in asset_name):
                 raise ReleaseError("asset name differs from manifest flavor")
             binaries = {*UPDATE_FILES, *(("debug.dll",) if test else ())}
+            if asset_name in V3_UPDATE_ASSETS or (asset_name is None and SCRIPT_PVF in z.namelist()):
+                binaries.add(SCRIPT_PVF)
             expected = binaries | {manifest_name} | ({"SHA256SUMS", "README.txt"} if tools else set())
             if len(entries) != len(expected) or {e.filename for e in entries} != expected:
                 raise ReleaseError("client archive inventory differs")
@@ -405,10 +414,11 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
                 with z.open(row["path"]) as stream:
                     if hashlib.file_digest(stream, "sha256").hexdigest() != row["sha256"]:
                         raise ReleaseError("client file digest differs")
-            if asset_name in X86_UPDATE_ASSETS:
+            if asset_name in (*X86_UPDATE_ASSETS, *V3_UPDATE_ASSETS):
+                architecture = "x86" if asset_name.endswith("win-x86.zip") else "x64"
                 launcher = z.read("DFLegacy.Launcher.exe")
-                if not _architecture(launcher, "win-x86"):
-                    raise ReleaseError("x86 package launcher architecture differs")
+                if len(launcher) < 64 or not _architecture(launcher, "win-" + architecture):
+                    raise ReleaseError(f"{architecture} package launcher architecture differs")
             if tools:
                 if z.read("README.txt") != migration_instructions(data["version"], data["commit"], data["flavor"]):
                     raise ReleaseError("unexpected migration instructions")
@@ -437,7 +447,7 @@ def migration_instructions(version, commit, flavor):
             "After migration the launcher updates the installed normal/test flavor through schema 2 packages.\n").encode("utf-8")
 
 
-def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64"):
+def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64", *, pvf_snapshot=None):
     """Package verified same-release binaries without any player configuration."""
     root = Path(client_assets)
     verified = verify_assets(root, version, commit)
@@ -449,9 +459,17 @@ def build_client_update(client_assets, output, version, commit, test_build=False
         raise ReleaseError("missing same-release client binary")
     data = {"schemaVersion": 2, "version": version, "commit": commit, "flavor": "test" if test_build else "normal",
             "files": [{"path": name, "sha256": anchored[path.relative_to(root).as_posix()], "size": path.stat().st_size} for name, path in sources.items()]}
+    if pvf_snapshot is not None:
+        if tools:
+            raise ReleaseError("Script.pvf is only allowed in V3 update packages")
+        path, sha256, size = pvf_snapshot
+        sources[SCRIPT_PVF] = path
+        data["files"].append({"path": SCRIPT_PVF, "sha256": sha256, "size": size})
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     asset = (TOOLS_TEST_ASSET if test_build else TOOLS_ASSET) if tools else (UPDATE_TEST_ASSET if test_build else UPDATE_ASSET)
+    if pvf_snapshot is not None:
+        asset = asset.replace("update-v2", "update-v3")
     if architecture == "x86":
         asset = asset.replace("win-x64", "win-x86")
     destination = output / asset
@@ -466,7 +484,7 @@ def build_client_update(client_assets, output, version, commit, test_build=False
             hashes = {row["path"]: row["sha256"] for row in data["files"]} | {name: hashlib.sha256(value).hexdigest() for name, value in metadata.items()}
             metadata["SHA256SUMS"] = "".join(hashes[name] + "  " + name + "\n" for name in sorted(hashes)).encode()
         with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-            for name in (*names, *metadata):
+            for name in (*sources, *metadata):
                 info = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
                 info.create_system = 3
                 info.external_attr = (stat.S_IFREG | 0o644) << 16
@@ -482,7 +500,29 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     return destination
 
 
-def build_client_packages(client_assets, output, version, commit, updates_only=False):
+def build_client_packages(client_assets, output, version, commit, updates_only=False, script_pvf=None):
+    if script_pvf is not None:
+        if not updates_only:
+            raise ReleaseError("--script-pvf requires --updates-only")
+        if not (Path(client_assets) / "launcher-x86").is_dir():
+            raise ReleaseError("V3 update packages require an x86 launcher")
+        script_pvf = Path(script_pvf)
+        if script_pvf.is_symlink() or not script_pvf.is_file() or not 0 < script_pvf.stat().st_size < MAX_UPDATE_EXPANDED:
+            raise ReleaseError("--script-pvf must be a regular nonempty file within the package limit")
+        output = Path(output)
+        output.mkdir(parents=True, exist_ok=True)
+        for name in V3_UPDATE_ASSETS:
+            if (output / name).exists() or (output / name).is_symlink():
+                raise ReleaseError("client archive already exists")
+        with tempfile.TemporaryDirectory(prefix="dflegacy-client-v3-", dir=output) as temporary:
+            stage = Path(temporary)
+            snapshot = stage / SCRIPT_PVF
+            shutil.copyfile(script_pvf, snapshot)
+            pvf_snapshot = snapshot, digest(snapshot), snapshot.stat().st_size
+            packages = [build_client_update(client_assets, stage, version, commit, test,
+                                            architecture=architecture, pvf_snapshot=pvf_snapshot)
+                        for architecture in ("x64", "x86") for test in (False, True)]
+            return [package.rename(output / package.name) for package in packages]
     packages = [build_client_update(client_assets, output, version, commit, test, tools)
                 for tools in ((False,) if updates_only else (False, True)) for test in (False, True)]
     if (Path(client_assets) / "launcher-x86").is_dir():
@@ -901,6 +941,7 @@ def parser():
     for name in ("client-assets", "output", "version", "commit"):
         all_packages.add_argument("--" + name, required=True)
     all_packages.add_argument("--updates-only", action="store_true")
+    all_packages.add_argument("--script-pvf", help="opt in to the four V3 updates containing this PVF export; requires --updates-only and both launcher architectures")
     update_check = sub.add_parser("verify-client-update")
     update_check.add_argument("path")
     update_check.add_argument("--version")
@@ -948,7 +989,8 @@ def main(argv=None):
         elif args.command == "build-client-update":
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":
-            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit, args.updates_only)]))
+            print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit,
+                                                                   updates_only=args.updates_only, script_pvf=args.script_pvf)]))
         elif args.command == "verify-client-update":
             print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":

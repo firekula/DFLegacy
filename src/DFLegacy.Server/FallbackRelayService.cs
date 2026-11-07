@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -11,7 +12,7 @@ public sealed record FallbackRelayStatus(bool Enabled, bool Listening, int Conne
     int RegisteredConnections, long TcpFramesForwarded, long UdpFramesForwarded, long DroppedFrames);
 
 /// <summary>ACT1 native transport. The game session owns identity and party/PvP scope.</summary>
-public sealed class FallbackRelayService(ServerOptions options, GameplayDatagramService contexts,
+public sealed partial class FallbackRelayService(ServerOptions options, GameplayDatagramService contexts,
     ILogger<FallbackRelayService> logger, ListenerReadiness? readiness = null) : BackgroundService
 {
     private const int MaximumConnections = 1000;
@@ -71,7 +72,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         finally
         {
             CloseListeners();
-            foreach (var connection in _connections.Values) connection.Close();
+            foreach (var connection in _connections.Values) connection.Close("server-stop");
             await Task.WhenAll(_connections.Values.Select(c => c.Completion));
         }
     }
@@ -89,7 +90,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         while (true)
         {
             var client = await _tcp!.AcceptTcpClientAsync(token);
-            if (_connections.Count >= MaximumConnections) { client.Dispose(); Drop(); continue; }
+            if (_connections.Count >= MaximumConnections) { client.Dispose(); Drop("connection-limit"); continue; }
             client.NoDelay = true;
             var connection = new RelayConnection(client, token);
             _connections[connection.Id] = connection;
@@ -110,41 +111,55 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
             }
             if (first is null || !NativeFallbackRelayProtocol.TryReadHeader(first, out var registration)
                 || registration.Opcode != 0 || registration.Length != NativeFallbackRelayProtocol.HeaderLength
-                || registration.SenderAccountUid != registration.RecipientAccountUid) { Drop(); return; }
+                || registration.SenderAccountUid != registration.RecipientAccountUid)
+            { Drop("invalid-registration"); connection.Close("invalid-registration"); return; }
             var address = ((IPEndPoint)connection.Client.Client.RemoteEndPoint!).Address;
             var admission = contexts.FindRelayAdmission(registration.SenderAccountUid, address);
-            if (admission is null) { Drop(); return; }
+            if (admission is null) { Drop("unknown-account"); connection.Close("unknown-account"); return; }
             RelayConnection? previous;
             lock (_gate)
             {
-                if (!contexts.IsCurrentRelayAdmission(admission)) { Drop(); return; }
+                if (!contexts.IsCurrentRelayAdmission(admission)) { Drop("retired-admission"); return; }
                 connection.Admission = admission;
                 _registered.TryGetValue(admission.Id, out previous);
                 _registered[admission.Id] = connection;
             }
-            previous?.Close();
+            previous?.Close("replaced");
             logger.LogInformation("Native fallback registered account {AccountUid} game {SessionId} relay {ConnectionId}",
                 admission.AccountUid, admission.SessionId, connection.Id);
             writer = WriteAsync(connection);
             while (await NativeFallbackRelayProtocol.ReadTcpFrameAsync(connection.Stream, connection.Token) is { } frame)
             {
+                Interlocked.Increment(ref connection.ReceivedFrames);
                 if (!NativeFallbackRelayProtocol.TryReadHeader(frame, out var header) || header.Opcode != 1
-                    || header.SenderAccountUid != admission.AccountUid || !IsActive(connection)) { Drop(); break; }
+                    || header.SenderAccountUid != admission.AccountUid || !IsActive(connection))
+                { Drop("invalid-tcp-identity"); connection.Close("invalid-tcp-identity"); break; }
                 if (!TryCreateDelivery(frame, admission, connection, false, out var target, out var delivery))
-                { Drop(); continue; }
-                try { await target!.Outbound.Writer.WriteAsync(delivery!, connection.Token); }
-                catch (ChannelClosedException) { Drop(); }
+                { Drop("route-unavailable"); continue; }
+                try
+                {
+                    Volatile.Write(ref connection.QueueTarget, target!.Admission!.AccountUid);
+                    Interlocked.Exchange(ref connection.QueueWaitSince, Stopwatch.GetTimestamp());
+                    await target.Outbound.Writer.WriteAsync(delivery!, connection.Token);
+                }
+                catch (ChannelClosedException) { Drop("target-closed"); }
+                finally { Interlocked.Exchange(ref connection.QueueWaitSince, 0); }
             }
         }
         catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException
-            or ObjectDisposedException) { }
+            or ObjectDisposedException)
+        {
+            connection.Close(TransportCloseReason(connection, ex, "read-error"));
+            LogTransportError(connection, "read", ex);
+        }
         catch (Exception ex)
         {
+            connection.Close(ex is InvalidDataException ? "invalid-tcp-frame" : "unexpected-error");
             logger.LogError(ex, "Native fallback connection {ConnectionId} failed", connection.Id);
         }
         finally
         {
-            connection.Close();
+            connection.Close("peer-eof");
             lock (_gate)
             {
                 if (connection.Admission is { } admission
@@ -152,6 +167,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
                     _registered.Remove(admission.Id);
             }
             await writer;
+            LogClosed(connection);
             _connections.TryRemove(connection.Id, out _);
             connection.Dispose();
         }
@@ -163,10 +179,12 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         {
             var packet = await _udp!.ReceiveAsync(token);
             if (!NativeFallbackRelayProtocol.TryReadHeader(packet.Buffer, out var header)
-                || header.Length != packet.Buffer.Length || header.Opcode != 0) { Drop(); continue; }
+                || header.Length != packet.Buffer.Length || header.Opcode != 0) { Drop("malformed-udp"); continue; }
             var admission = contexts.FindRelayAdmission(header.SenderAccountUid, packet.RemoteEndPoint.Address);
-            if (admission is null || !TryCreateDelivery(packet.Buffer, admission, null, true,
-                    out var target, out var delivery) || !target!.Outbound.Writer.TryWrite(delivery!)) Drop();
+            if (admission is null) { Drop("unknown-udp-account"); continue; }
+            if (!TryCreateDelivery(packet.Buffer, admission, null, true, out var target, out var delivery))
+            { Drop("udp-route-unavailable"); continue; }
+            if (!target!.Outbound.Writer.TryWrite(delivery!)) Drop("udp-target-queue-full");
         }
     }
 
@@ -189,9 +207,12 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
             await foreach (var delivery in connection.Outbound.Reader.ReadAllAsync(connection.Token))
             {
                 if (!IsActive(connection) || (delivery.Source is { } source && !IsActive(source))
-                    || !contexts.IsCurrentRelayRoute(delivery.Route)) { Drop(); continue; }
+                    || !contexts.IsCurrentRelayRoute(delivery.Route)) { Drop("stale-route"); continue; }
                 // Use the recipient lifetime token: cancelling a sender must not leave half a TCP frame.
-                await connection.Stream.WriteAsync(delivery.Frame, connection.Token);
+                Interlocked.Exchange(ref connection.WriteSince, Stopwatch.GetTimestamp());
+                try { await connection.Stream.WriteAsync(delivery.Frame, connection.Token); }
+                finally { Interlocked.Exchange(ref connection.WriteSince, 0); }
+                Interlocked.Increment(ref connection.SentFrames);
                 if (delivery.Udp) Interlocked.Increment(ref _udpForwarded);
                 else Interlocked.Increment(ref _tcpForwarded);
                 if (logger.IsEnabled(LogLevel.Debug))
@@ -202,7 +223,8 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
             }
         }
         catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException
-            or ObjectDisposedException) { connection.Close(); }
+            or ObjectDisposedException)
+        { LogTransportError(connection, "write", ex); connection.Close(TransportCloseReason(connection, ex, "write-error")); }
     }
 
     private bool IsActive(RelayConnection connection)
@@ -219,10 +241,11 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(token))
             foreach (var connection in _connections.Values)
-                if (connection.Admission is not null && !IsActive(connection)) connection.Close();
+            {
+                if (connection.Admission is not null && !IsActive(connection)) connection.Close("game-session-retired");
+                else ReportStall(connection);
+            }
     }
-
-    private void Drop() => Interlocked.Increment(ref _dropped);
 
     private void CloseListeners()
     {
@@ -236,7 +259,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
     {
         _shutdown.Cancel();
         CloseListeners();
-        foreach (var connection in _connections.Values) connection.Close();
+        foreach (var connection in _connections.Values) connection.Close("server-stop");
         await base.StopAsync(cancellationToken);
     }
 
@@ -245,7 +268,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         _shutdown.Cancel();
         CloseListeners();
-        foreach (var connection in _connections.Values) connection.Close();
+        foreach (var connection in _connections.Values) connection.Close("server-stop");
         base.Dispose();
         _shutdown.Dispose();
     }
@@ -256,6 +279,7 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
     {
         private readonly CancellationTokenSource _lifetime;
         private int _closed;
+        private string? _closeReason;
         internal RelayConnection(TcpClient client, CancellationToken token)
         {
             Client = client; Stream = client.GetStream();
@@ -268,10 +292,14 @@ public sealed class FallbackRelayService(ServerOptions options, GameplayDatagram
         internal RelayAccountAdmission? Admission { get; set; }
         internal Task Completion { get; set; } = Task.CompletedTask;
         internal bool IsClosed => Volatile.Read(ref _closed) != 0;
+        internal string CloseReason => Volatile.Read(ref _closeReason) ?? "unknown";
+        internal long ReceivedFrames, SentFrames, QueueWaitSince, WriteSince, LastStallLog;
+        internal uint QueueTarget;
         internal Channel<Delivery> Outbound { get; } = Channel.CreateBounded<Delivery>(new BoundedChannelOptions(32)
             { SingleReader = true, FullMode = BoundedChannelFullMode.Wait });
-        internal void Close()
+        internal void Close(string reason)
         {
+            Interlocked.CompareExchange(ref _closeReason, reason, null);
             if (Interlocked.Exchange(ref _closed, 1) != 0) return;
             Outbound.Writer.TryComplete();
             _lifetime.Cancel(); Client.Dispose();

@@ -102,17 +102,21 @@ Docker 镜像和客户端的发布流程见 [BUILDING.md](BUILDING.md)。
 
 在现有 Compose 服务的 `environment` 增加 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，在 `ports` 增加 `"7100-7105:7100-7105/tcp"`，并放行对应 TCP 端口。host 网络部署直接放行宿主端口。本机中继玩家需在 `Relay.TcpPorts` 保留已有值并加入这六个端口，或使用管理器重新导出的配置。地区及经验比例见[管理器指南](DEPLOYMENT_MANAGER.md#地区经验频道)。
 
-### 升级到 v0.1.4
+### 升级到 v0.1.6
 
-将 Compose 同目录的 `DFLEGACY_IMAGE` 改为 `ghcr.io/firekula/dflegacy:v0.1.4`，保留原数据卷，再执行 `podman compose pull dflegacy` 和 `podman compose up -d dflegacy`。GitHub 客户端更新使用原有的 HTTPS 下载入口。曾启用自托管更新的部署按下节切换更新源。
+在部署管理页停止游戏并备份原数据卷。将 Compose 同目录的 `DFLEGACY_IMAGE` 改为 `ghcr.io/firekula/dflegacy:v0.1.6`，再执行 `podman compose pull dflegacy` 和 `podman compose up -d dflegacy`。继续使用原数据卷。
 
-服务端在启动时检查北京时间 06:00 的疲劳日期。旧镜像使用 UTC 时可能将刷新延迟到北京时间 14:00，新镜像会补刷尚未刷新的日期。当天已经刷新过的角色保留已有疲劳用量。
+在部署管理页上传本次的 `Script.pvf`，确认已选用后启动游戏。使用只读宿主 PVF 挂载的部署更新挂载文件后重建容器。可以从任一 v0.1.6 V3 客户端更新 ZIP 提取同一份 PVF。该文件的 SHA-256 为 `09e5eefdee0777378a967704eb14c175383eef89ca0f4e27e00dd3409af728cb`。
+
+服务端在启动时按北京时间 06:00 检查疲劳日期，补刷尚未刷新的日期。周末活动在周六 06:00 开始，周一 06:00 结束。
 
 ## 客户端自动更新
 
 GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和测试版。管理后台默认生成指向 GitHub 的安装包，游戏连接地址仍由后台的部署配置决定。服务端镜像从 GHCR 拉取。
 
-从 18083 迁移时，从 Compose 移除 `DFLEGACY_UPDATE_PUBLIC_URL`（标准模板清空 `UPDATE_PUBLIC_URL`），并移除自定义的 18083 端口映射。更新镜像后，玩家覆盖一次后台导出的同架构、同类型内层 ZIP。保留账号和现有连接设置时，在原 `launcher.json` 中把 `UpdateServiceUrl` 设为空字符串、`DisableGitHubUpdates` 设为 `false`。已经使用 GitHub 更新的 x64 玩家可直接自动更新。客户端需要访问 GitHub 的 HTTPS API 和下载地址。
+v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动后，新登录器会获取 v0.1.6 的 V3 更新包，其中包含 `Script.pvf`。安装前校验 ZIP 和文件摘要，旧 PVF 随原程序文件备份至 `.dflegacy-backups`。x86 和 x64 都沿用各自的普通版或测试版，现有玩家通过登录器更新即可。
+
+从 18083 迁移时，从 Compose 移除 `DFLEGACY_UPDATE_PUBLIC_URL`（标准模板清空 `UPDATE_PUBLIC_URL`），并移除自定义的 18083 端口映射。更新镜像后，玩家覆盖一次后台导出的同架构、同类型内层 ZIP。保留账号和现有连接设置时，在原 `launcher.json` 中把 `UpdateServiceUrl` 设为空字符串、`DisableGitHubUpdates` 设为 `false`。客户端需要访问 GitHub 的 HTTPS API 和下载地址。
 
 如果曾通过 18083 成功安装过自动更新，先完成任何待恢复的更新，然后退出游戏和登录器，将客户端目录中的 `.dflegacy/state.json` 改名为 `state.hosted-backup.json`。这个文件记录的是旧更新源的版本 ID。完成一次覆盖安装后重新启动，登录器会记录 GitHub 的版本 ID。
 
@@ -160,7 +164,7 @@ GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和�
 
 管理器下载默认普通版；测试版加入同版本 `debug.dll` 并默认加载本地诊断，不自动启用输入、组队文件命令等测试控制。普通版包含完整游戏优化。新版补丁为独立 `DFLegacy.Client.dll`。旧用户先退出游戏、备份客户端，并确认一次可见且经哈希验证的原版 IJL 恢复，不能靠备份文件名推断原版。只支持已验证的兼容展开客户端，不修复原始旧壳；原始 EXE/DLL/PVF/NPK 保持不变。仅服务端覆盖数据依赖本机共享目录，不提供远程目录同步。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可直接查看。
 
-旧版完整客户端发行包含四个附件：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。V2 更新包只有该类型的项目程序和 `update-manifest.json`；tools 包另含安装清单、摘要和迁移说明，不含玩家配置或游戏资源。当前 GitHub 发行包含 x64 普通／测试及 x86 普通／测试共四个 V2 更新 ZIP。发布器按所选模式核对全部附件和共同程序哈希，发布后匿名回读。旧已发布版本保持不变。公开包记录构建提交，源码历史保存在 Gitea。
+旧版发行使用 V2 更新 ZIP 和用于迁移的 tools 包。V2 更新包包含项目程序和 `update-manifest.json`。v0.1.6 的 GitHub V3 更新包含 x64 普通／测试及 x86 普通／测试共四个 ZIP，每个 ZIP 都包含同一份 `Script.pvf`。发布器核对各附件、共同文件摘要及公开下载内容。公开包记录构建提交，源码历史保存在 Gitea。
 
 Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
 

@@ -8,4 +8,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <RootNamespace>DFLegacy.Relay</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="DFLegacy.Relay.Tests" />
+  </ItemGroup>
 </Project>

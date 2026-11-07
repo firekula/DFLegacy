@@ -48,7 +48,7 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
             : await new HostedUpdateClient(http, hostedOrigin, architecture, manifest.Flavor).CheckAsync(installed, token).ConfigureAwait(false);
         // A fresh tools package has no updater state yet. Its validated version
         // already identifies an identical release without a redundant ZIP download.
-        if(release?.Version!=manifest.Version) return release;
+        if(release?.Version!=manifest.Version || UpdateSafety.RequiresScriptPvf(release) && !manifest.HasScriptPvf) return release;
         if(!installer.RecordInstalledReleaseIfMatching(release)) throw new IOException("检查期间安装文件已变化，请重新检查更新。");
         return null;
     }
@@ -71,6 +71,7 @@ internal sealed class UpdateSession : IUpdateSession, IDisposable
         foreach(var file in update.Manifest.Files.Where(f=>f.Path!="DFLegacy.Launcher.exe"))
         {
             var path=Path.Combine(installation,file.Path); UpdateSafety.NoLinks(path);
+            if(file.Path==ClientPackageManifest.ScriptPvfName && !UpdateSafety.ScriptPvfExists(path)) continue;
             using var probe=new FileStream(path,FileMode.Open,FileAccess.ReadWrite,FileShare.ReadWrite);
         }
         return installer.PrepareAsync(update,token);

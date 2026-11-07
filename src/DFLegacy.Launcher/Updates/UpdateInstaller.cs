@@ -20,7 +20,9 @@ public sealed partial class UpdateInstaller
         UpdateSafety.ValidateManifest(update.Manifest);
         using var pin=UpdateSafety.PinDirectory(target);
         var installed=UpdateSafety.ValidateInstalled(target,update.Manifest);
-        return installed.Version==update.Manifest.Version && installed.Commit==update.Manifest.Commit && update.Manifest.Files.All(file=>UpdateTransaction.Matches(Path.Combine(target,file.Path),file));
+        return installed.Version==update.Manifest.Version && installed.Commit==update.Manifest.Commit
+            && (!update.Manifest.HasScriptPvf || installed.HasScriptPvf)
+            && update.Manifest.Files.All(file=>UpdateTransaction.Matches(Path.Combine(target,file.Path),file));
     }
     public bool RecordCurrentIfMatching(PreparedUpdate update)
     {
@@ -47,7 +49,7 @@ public sealed partial class UpdateInstaller
         if(File.Exists(Path.Combine(directory,"pending.json"))) throw new InvalidDataException("存在未完成的更新，请先恢复。");
         UpdateSafety.NoLinks(Path.Combine(target,UpdateSafety.InstalledManifestName));
         var manifest=ClientPackageManifest.LoadAndValidate(target);
-        if(manifest.Version!=release.Version) return false;
+        if(manifest.Version!=release.Version || UpdateSafety.RequiresScriptPvf(release) && !manifest.HasScriptPvf) return false;
         var state=ReadState();
         if(state==null || state.ReleaseId<release.Id)
             UpdateTransaction.WriteJson(Path.Combine(directory,"state.json"),new UpdateState(release.Id,manifest.Version,manifest.Files.Select(f=>new UpdateFile(f.Path,f.Sha256,f.Size)).ToArray()));

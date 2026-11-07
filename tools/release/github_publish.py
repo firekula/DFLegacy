@@ -13,12 +13,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from release import DEV, MAX_UPDATE_ZIP, ReleaseError, UPDATE_ASSET, UPDATE_TEST_ASSET, PUBLIC_ASSETS, X86_UPDATE_ASSETS, read_client_update, validate_identity, verify_client_package
+from release import (DEV, MAX_UPDATE_ZIP, PUBLIC_ASSETS, UPDATE_ASSET, UPDATE_TEST_ASSET, V3_UPDATE_ASSETS,
+                     X86_UPDATE_ASSETS, ReleaseError, read_client_update, validate_identity, verify_client_package)
 
 REPOSITORY = 'firekula/DFLegacy'
 ASSET_NAME = UPDATE_ASSET
 ASSET_NAMES = PUBLIC_ASSETS
-ALLOWED_ASSET_NAMES = (*ASSET_NAMES, *X86_UPDATE_ASSETS)
+ALLOWED_ASSET_NAMES = (*ASSET_NAMES, *X86_UPDATE_ASSETS, *V3_UPDATE_ASSETS)
 TOKEN_ENV = 'DFLEGACY_GITHUB_RELEASE_TOKEN'
 MARKER = '<!-- dflegacy-client-update:v2 -->'
 README = b'# DFLegacy client updates\n\nThis repository distributes public client releases only. Source development and build history are maintained separately.\n'
@@ -200,9 +201,13 @@ def publish(api, version, commit, archives, check_only=False, updates_only=False
     if isinstance(archives, (str, Path)):
         raise ReleaseError('public archives must be supplied as a list')
     paths = [Path(path) for path in archives]
-    if updates_only and any(path.name in X86_UPDATE_ASSETS for path in paths):
-        approved_names = (*approved_names, *X86_UPDATE_ASSETS)
-    if len(paths) != len(approved_names) or {path.name for path in paths} != set(approved_names):
+    names = {path.name for path in paths}
+    if updates_only:
+        if names.intersection(V3_UPDATE_ASSETS):
+            approved_names = V3_UPDATE_ASSETS
+        elif names.intersection(X86_UPDATE_ASSETS):
+            approved_names = (*approved_names, *X86_UPDATE_ASSETS)
+    if len(paths) != len(approved_names) or names != set(approved_names):
         raise ReleaseError('public asset inventory must match the approved names')
     # Snapshot every archive before any remote calls; never reopen validated paths.
     contents, inventory, binaries = {}, {}, {}
@@ -325,7 +330,7 @@ def main(argv=None):
     parser.add_argument('--preflight', action='store_true', help='read-only credential and repository capability check')
     parser.add_argument('--check-only', action='store_true', help='verify identity and any existing bytes without mutation')
     parser.add_argument('--archive', action='append')
-    parser.add_argument('--updates-only', action='store_true', help='publish only the normal and test automatic update ZIPs')
+    parser.add_argument('--updates-only', action='store_true', help='publish a complete set of V2 or V3 automatic update ZIPs')
     for name in ('version', 'commit'):
         parser.add_argument('--' + name)
     args = parser.parse_args(argv)

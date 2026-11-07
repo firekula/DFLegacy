@@ -21,7 +21,7 @@ def encrypt(raw, key):
                     for (word,) in struct.iter_unpack("<I", raw))
 
 
-def pvf_bytes(entries):
+def pvf_bytes(entries, tree_alignment=4, extra_padding=0, padding_byte=0):
     tree, body = bytearray(), bytearray()
     for number, (path, value) in enumerate(entries):
         path = path.encode("cp949")
@@ -32,6 +32,7 @@ def pvf_bytes(entries):
         tree.extend(path)
         body.extend(encrypt(value, key))
     key = 0x1234A5B6
+    tree.extend(bytes([padding_byte]) * (-len(tree) % tree_alignment + extra_padding))
     encrypted_tree = encrypt(bytes(tree), key)
     return MAGIC + struct.pack("<iII", len(encrypted_tree), key, len(entries)) + encrypted_tree + body
 
@@ -151,6 +152,20 @@ class TownNavigationTests(unittest.TestCase):
             area.area_id = 9
         with self.assertRaises(FrozenInstanceError):
             area.walkable[0].x = 10
+
+    def test_eight_byte_directory_alignment_preserves_catalog_and_rejects_junk(self):
+        entries = entries_for({(1, 0): ([(0, 0, 30, 30)], [], "normal")})
+        for suffix in range(8):
+            varied = entries + [("unused/" + "x" * (suffix + 1), "")]
+            with self.subTest(suffix=suffix):
+                self.path.write_bytes(pvf_bytes(varied, tree_alignment=8))
+                self.assertEqual(self.api.load_catalog(self.path).area((1, 0)).kind, "normal")
+                self.path.write_bytes(pvf_bytes(varied, tree_alignment=8, extra_padding=8))
+                self.expect_code("invalid_pvf", lambda: self.api.load_catalog(self.path))
+        # This tree needs padding, so a nonzero byte must remain an error.
+        varied = entries + [("unused/x", "")]
+        self.path.write_bytes(pvf_bytes(varied, tree_alignment=8, padding_byte=1))
+        self.expect_code("invalid_pvf", lambda: self.api.load_catalog(self.path))
 
     def test_pvf_header_tree_entry_bounds_duplicates_and_size_reject(self):
         valid = pvf_bytes(entries_for({(1, 0): ([(0, 0, 30, 30)], [], "normal")}))
