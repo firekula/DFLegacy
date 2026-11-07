@@ -667,6 +667,8 @@ public sealed partial class JsonGameStore(
         public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
         public List<DungeonGoldLedgerEntry> DungeonGoldLedger { get; set; } = [];
         public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
+        public List<AdminVictoryPointReceipt> AdminVictoryPointGrants { get; set; } = [];
+        public List<AdminMailBatchReceipt> AdminMailBatches { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -734,6 +736,8 @@ public sealed partial class JsonGameStore(
                     _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
                     _dungeonGoldLedger = state.DungeonGoldLedger ?? [];
                     _pvpLedger = state.PvpLedger ?? [];
+                    _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
+                    _adminMailBatches = state.AdminMailBatches ?? [];
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
@@ -3465,6 +3469,8 @@ public sealed partial class JsonGameStore(
         Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
         _accounts = state.Accounts;
         _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger; _pvpLedger = state.PvpLedger ?? [];
+        _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
+        _adminMailBatches = state.AdminMailBatches ?? [];
         _rewardQuarantined = false;
     }
 
@@ -6538,9 +6544,10 @@ public sealed partial class JsonGameStore(
 
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
     private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
-        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null)
+        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null,
+        List<AdminVictoryPointReceipt>? adminVictoryPointGrants = null, List<AdminMailBatchReceipt>? adminMailBatches = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger, AdminVictoryPointGrants = adminVictoryPointGrants ?? _adminVictoryPointGrants, AdminMailBatches = adminMailBatches ?? _adminMailBatches }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
@@ -6564,7 +6571,9 @@ public sealed partial class JsonGameStore(
                     FatigueDayKey = _fatigueDayKey,
                     DungeonRewardLedger = _dungeonRewardLedger,
                     DungeonGoldLedger = _dungeonGoldLedger,
-                    PvpLedger = _pvpLedger
+                    PvpLedger = _pvpLedger,
+                    AdminVictoryPointGrants = _adminVictoryPointGrants,
+                    AdminMailBatches = _adminMailBatches
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);
