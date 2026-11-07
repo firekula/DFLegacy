@@ -335,6 +335,10 @@ internal static class Program
         if (requiredPort is { } required)
         {
             ports.Add(required);
+            // Existing launcher.json is deliberately preserved by updates. Extend
+            // standard ACT1 PvP TCP lists in memory, retaining every custom entry.
+            if (ports.Contains(DFLegacy.Protocol.Act1PvpPorts.Initial))
+                ports.UnionWith(DFLegacy.Protocol.Act1PvpPorts.Additional);
         }
 
         return [.. ports];

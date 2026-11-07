@@ -18,6 +18,7 @@
       </div>
       <nav class="nav" aria-label="后台功能">
         <button class="nav-item active admin-only" type="button" data-view="mail">邮件</button>
+        <button class="nav-item admin-only" type="button" data-view="victory">胜点发放</button>
         <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
         <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
         <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
@@ -57,6 +58,13 @@
           </div>
           <div class="form-grid two-column">
             <label class="field span-two">
+              <span>发送范围</span>
+              <select id="mailScope" name="scope">
+                <option value="single">指定角色</option>
+                <option value="all">全服现有角色（含离线）</option>
+              </select>
+            </label>
+            <label id="mailCharacterField" class="field span-two">
               <span>收件角色</span>
               <select class="character-select" name="characterId" required></select>
             </label>
@@ -101,8 +109,52 @@
             </div>
           </div>
           <div class="form-actions">
-            <button class="primary-button" type="submit">发送邮件</button>
+            <button id="mailSubmit" class="primary-button" type="submit">发送邮件</button>
           </div>
+        </form>
+        <section id="mailBatchPending" class="surface form-layout hidden" aria-live="polite">
+          <p>当前批次：<code id="mailPendingId"></code></p>
+          <p>响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
+          <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+        </section>
+        <section id="mailBatchPreview" class="surface form-layout hidden" aria-live="polite">
+          <h2>确认全服邮件</h2>
+          <p id="mailBatchPreviewText"></p>
+          <p>每个接收角色各一封，包含离线角色；之后新建的角色不补发。</p>
+          <div class="form-actions">
+            <button id="mailBatchConfirm" class="danger-button" type="button">确认发送</button>
+            <button id="mailBatchCancel" class="secondary-button" type="button">取消</button>
+          </div>
+        </section>
+        <section id="mailBatchResult" class="surface form-layout hidden" aria-live="polite">
+          <h2>全服邮件结果</h2>
+          <p id="mailBatchSummary"></p>
+          <p>批次：<code id="mailBatchId"></code></p>
+          <ul id="mailBatchFailures"></ul>
+          <div class="form-actions">
+            <button id="mailBatchRetry" class="secondary-button hidden" type="button">仅补发失败角色</button>
+            <button id="mailBatchNew" class="secondary-button" type="button">新建全服邮件批次</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="view admin-only" data-view-panel="victory">
+        <form id="victoryForm" class="surface form-layout">
+          <div class="section-heading">
+            <h2>发放决斗胜点</h2>
+            <p>在线、离线角色均可发放；只增加可消费胜点，不改变决斗段位和战绩。</p>
+          </div>
+          <label class="field">
+            <span>目标角色</span>
+            <select class="character-select" name="characterId" required></select>
+          </label>
+          <p id="victoryBalance" aria-live="polite">当前胜点：—</p>
+          <p id="victoryOperation" aria-live="polite"></p>
+          <label class="field">
+            <span>发放数量</span>
+            <input name="amount" type="number" min="1" max="4294967295" step="1" value="100" required>
+          </label>
+          <div class="form-actions"><button class="primary-button" type="submit">发放胜点</button></div>
         </form>
       </section>
 
@@ -345,5 +397,6 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/admin/admin.js" defer></script>
+  <script src="/admin/admin-rewards.js" defer></script>
 </body>
 </html>

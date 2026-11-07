@@ -129,6 +129,10 @@ Invoke-RestMethod `
 | `GET` | `/api/admin/dungeons` | 管理员 | 副本目录 |
 | `GET` | `/api/admin/message-types` | 管理员 | 消息类型目录 |
 | `POST` | `/api/admin/characters/{characterId}/mail` | 管理员 | 后台工具发送邮件 |
+| `POST` | `/api/admin/characters/{characterId}/victory-points` | 管理员 | 增加角色可消费胜点 |
+| `POST` | `/api/admin/mail/broadcast/preview` | 管理员 | 持久化预览及固定全服接收名单 |
+| `POST` | `/api/admin/mail/broadcast/{operationId}/send` | 管理员 | 确认投递或重取批次结果 |
+| `GET` | `/api/admin/mail/broadcast/{operationId}` | 管理员 | 查询批次状态和逐角色结果 |
 | `PUT` | `/api/admin/characters/{characterId}/dungeons/{dungeonId}` | 管理员 | 设置角色副本难度权限 |
 | `POST` | `/api/admin/broadcast/message` | 管理员 | 全服聊天栏广播 |
 | `POST` | `/api/admin/broadcast/popup` | 管理员 | 全服弹窗广播 |
@@ -515,6 +519,27 @@ $character.id
 - 角色的作用是**后台权限**，与账号 UID 段（`Test`/`Reserved`/`Normal`）无关，不影响游戏内玩法。
 
 ## 5. 邮件接口
+
+### GM 胜点与全服邮件（待发布）
+
+新增接口均要求管理员 Bearer token；匿名返回 401，普通玩家返回 403。胜点接口正文为 `{"operationId":"<新 UUID>","amount":100}`，数量为 1～4294967295 的整数，余额溢出拒绝。只增加 VictoryPoints，不改变 PvpPoints、段位或胜负记录；返回 `status`、`operationId`、`characterId`、`amount`、`balance` 和 `replayed`。在线角色由所属会话读取新余额并刷新。
+
+全服邮件预览正文为：
+
+```json
+{
+  "operationId": "<新 UUID>",
+  "mail": {"sender":"GM","text":"维护补偿","gold":1000,"attachmentKind":0,"itemId":0,"quantity":1}
+}
+```
+
+`mail` 使用既有后台 `AdminSendMailRequest` 字段与附件校验；全服邮件额外拒绝 CP936 无法编码的文字。预览返回 `Prepared`，持久化此时所有现有角色 ID（含离线），不发送邮件。随后 POST `/api/admin/mail/broadcast/<operationId>/send`，正文可为空，才实际发送。之后新建角色不加入该批次或补发范围。装备、时装、宠物蛋按接收角色生成独立实例。
+
+结果含 `targetCount`、`sentCount`、`failedCount`、`skippedCount`、`deliveries`，每项有 `characterId`、`name`、`success`、`mailId`、`error`、`alreadyDelivered`。满邮箱返回该角色 `mailbox-full`，已删除角色为 `character-not-found`；不清空邮箱，其他可投递角色仍成功。邮箱上限 255，附件领取仍受背包空间、堆叠与负重约束。
+
+仅补发失败角色：使用新 `operationId` 调用同一预览接口，附上 `retryOf`（已完成原批次 ID）和相同 `mail`，预览会排除该原批次及其所有补发中已成功的角色。确认时再次核对，防止同时准备的补发重复投递。重复同一确认仅返回持久化回执，重启后也不重复发送。
+
+状态为 `Prepared/Completed/Rejected/Unknown`。同一操作 ID 只属于同一管理员和请求内容，改变内容或跨功能重用返回 409；数量/附件非法返回 400，角色或批次不存在返回 404。写入结果不确定返回 503/`Unknown`，不发送成功通知，不应新建操作 ID 盲目重试；先检查存档恢复状态并保留原 ID。该状态与仅因邮箱已满而部分失败的 `Completed` 不同。
 
 邮件是后台发放金币和物品的主要接口。本节中的字段语义直接对应
 `CreateCharacterMailRequest`、`CharacterMailAttachmentRecord`、邮件领取规划器和 DF2008

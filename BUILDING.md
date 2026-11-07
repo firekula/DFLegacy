@@ -139,7 +139,11 @@ CI 使用 [Git 提交时间固定 BuildKit 时间戳](https://docs.docker.com/bu
 
 ## 源码与产物发布
 
-Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Windows、Linux 和 macOS 的独立服务端归档可手工构建。
+Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Gitea保存开发提交历史，GitHub同步经过脱敏的源码快照并分发产物；公开仓库不导入私有开发历史。`PUBLIC_SOURCE.md`记录快照对应的Gitea构建提交。提交源码不等同发布镜像或客户端更新。Windows、Linux 和 macOS 的独立服务端归档可手工构建。
+
+v0.1.7本次只发布GHCR服务端镜像及GitHub源码快照，不创建新的客户端更新Release，也不修改已发布的v0.1.6客户端附件。镜像仍需包含同提交构建的双架构client-assets，供管理后台生成安装包；构建这些内嵌资源不等于发布客户端自动更新。
+
+本轮组队战、擂台赛及多人结算已纳入标准服务端smoke。单独验证可运行 `dotnet run --project tests/DFLegacy.SmokeTests -c Release -- --pvp-team-relay-only`；协议/段位回归使用 `--pvp-protocol-rating`，原有双人个人战回归使用 `--pvp-individual-only`。四类频道和GM功能的配套资源要求见[部署指南](DEPLOYING.md#四类决斗频道与-gm-奖励v017)，本地验证范围见[验收记录](docs/acceptance/2026-11-07-pvp-team-relay.md)。
 
 在干净的发布检出中，使用 `python tools/release/ci.py windows --client-only --version <版本> --commit <提交>` 构建并测试 Windows 客户端资源。使用生成的 `client-assets` 从同一提交构建 Linux amd64/arm64 OCI 镜像，按上文命令推送到 `ghcr.io/firekula/dflegacy`。
 

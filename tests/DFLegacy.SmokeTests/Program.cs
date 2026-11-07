@@ -9,6 +9,36 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--pvp-admission-race"))
+{
+    await PvpMultiChannelSmokeTests.DisplacedAdmission(Check);
+    foreach(var failure in failures) Console.Error.WriteLine("FAIL: "+failure);
+    Console.WriteLine($"PvP admission race: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Length == 0 || args.Contains("--pvp-multichannel"))
+{
+    await PvpMultiChannelSmokeTests.RunAsync(Check);
+    if (args.Contains("--pvp-multichannel"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"PvP multichannel smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args.Contains("--admin-rewards"))
+{
+    await AdminRewardStoreSmokeTests.RunAsync(Check);
+    if (args.Contains("--admin-rewards"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Admin reward store smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Contains("--party-network"))
 {
     await PartyNetworkFaultSmokeTests.RunAsync(Check);
@@ -169,6 +199,14 @@ if (args.Contains("--fallback-protocol"))
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Fallback protocol smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--pvp-team-relay-only"))
+{
+    await PvpTeamRelaySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP team/relay smoke: {failures.Count} failures");
+    return failures.Count == 0 ? 0 : 1;
 }
 
 if (args.Contains("--pvp-individual-only"))
@@ -394,6 +432,7 @@ await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
 await MentorMasterGoldSmokeTests.RunAsync(Check);
 await PvpIndividualSmokeTests.RunAsync(Check);
+await PvpTeamRelaySmokeTests.RunAsync(Check);
 await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);

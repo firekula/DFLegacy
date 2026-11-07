@@ -456,6 +456,7 @@ app.MapGet("/api/admin/characters", async (
                 character.Job,
                 character.GrowType,
                 character.Level,
+                character.VictoryPoints,
                 account.UserName,
                 account.AccountUid,
                 Online = sessions.IsOnline(character.Id),
@@ -577,6 +578,8 @@ app.MapPost("/api/admin/characters/{characterId:guid}/mail", async (
         $"/api/characters/{characterId}/mail/{result.Mail!.Id}",
         new { result.Mail, NotifiedOnlineCharacter = notifiedOnlineCharacter });
 });
+
+app.MapAdminRewardEndpoints();
 
 app.MapPost("/api/admin/broadcast/message", (
     AdminBroadcastMessageRequest request,

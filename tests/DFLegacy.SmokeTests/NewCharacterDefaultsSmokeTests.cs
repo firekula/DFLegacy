@@ -300,6 +300,7 @@ internal static class NewCharacterDefaultsSmokeTests
         private readonly Task _pump;
         internal GameServerPacket? MainList;
         internal GameServerPacket? SelectReply;
+        internal GameServerPacket? LoginReply;
         private uint _seed = 0x4321;
         private ushort _sequence;
 
@@ -312,17 +313,18 @@ internal static class NewCharacterDefaultsSmokeTests
             _session = (Task)handler.Invoke(service, [accepted, port, _stop.Token])!;
             _pump = PumpAsync();
         }
-        internal static async Task<Connection> CreateAsync(EntranceService service, ServerOptions options)
+        internal static async Task<Connection> CreateAsync(EntranceService service, ServerOptions options, int? gameplayPort = null)
         {
             var listener = new TcpListener(IPAddress.Loopback, 0);
             listener.Start();
             var peer = new TcpClient { NoDelay = true };
             try
             {
-                options.Channel.Port = ((IPEndPoint)listener.LocalEndpoint).Port;
-                await peer.ConnectAsync(IPAddress.Loopback, options.Channel.Port);
+                var actualPort = ((IPEndPoint)listener.LocalEndpoint).Port;
+                if (gameplayPort is null) options.Channel.Port = actualPort;
+                await peer.ConnectAsync(IPAddress.Loopback, actualPort);
                 var accepted = await listener.AcceptTcpClientAsync();
-                return new Connection(peer, accepted, service, options.Channel.Port);
+                return new Connection(peer, accepted, service, gameplayPort ?? options.Channel.Port);
             }
             catch { peer.Dispose(); service.Dispose(); throw; }
             finally { listener.Stop(); }
@@ -364,7 +366,7 @@ internal static class NewCharacterDefaultsSmokeTests
                 throw new TimeoutException($"no reply type={type} id={id} within {timeout ?? TimeSpan.FromSeconds(5)}");
             }
         }
-        internal async Task LoginAsync(string userName, byte slot)
+        internal async Task LoginAsync(string userName, byte slot, bool expectSelection = true)
         {
             await ReadAsync(null, 0); // Real channel greeting has a built-in 750 ms delay.
             using var credentials = new MemoryStream();
@@ -375,9 +377,11 @@ internal static class NewCharacterDefaultsSmokeTests
             }
             await SendAsync(Command(1, credentials.ToArray()));
             var login = await ReadAsync(1, 1);
+            LoginReply = login;
             if (login.Payload.Length == 0 || login.Payload[0] != 1) throw new InvalidOperationException("fixture channel authentication rejected");
             await SendAsync(Command(4, slot));
             SelectReply = await ReadAsync(GameProtocolEngine.CommandPacketType, GameProtocolEngine.SelectCharacterCommand);
+            if (!expectSelection) return;
             do { MainList = await ReadAsync(0, 13); } while (MainList.Payload[0] != 0);
             await ReadAsync(0, 19);
             // Direct CHECK_CONNECTION stays plaintext and does not advance the

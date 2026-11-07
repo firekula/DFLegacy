@@ -212,7 +212,8 @@ public sealed class EntranceService(
 
             var remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remote = remoteEndpoint?.ToString() ?? "unknown";
-            var isPvpChannel = options.Pvp.Enabled && localPort == options.Pvp.Port;
+            var pvpProfile = PvpChannelCatalog.Profiles(options.Pvp).FirstOrDefault(c => c.Port == localPort);
+            var isPvpChannel = pvpProfile is not null;
             var channel = PvpChannelConfiguration.GameplayChannels(options).FirstOrDefault(c => c.Port == localPort);
             var isChannelPort = channel.Port != 0;
             var runtimeSession = runtime.Add($"{(isChannelPort ? "channel" : "entrance")}:{localPort}", remote);
@@ -377,6 +378,7 @@ public sealed class EntranceService(
             var premiumExpiryUnix = new ConcurrentDictionary<byte, long>();
             var ceraCashInvalidation = new CeraCashInvalidation();
             var pendingFatigueReset = 0;
+            var pendingVictoryPointsRefresh = 0;
             var observedFatigueDayKey = 0;
             var weaknessRecovery = new EntranceWeaknessRecovery(partyMembershipWake);
             Func<GameServerPacket, ValueTask>? dungeonMemberSend = null;
@@ -1359,6 +1361,25 @@ public sealed class EntranceService(
                     await stamina.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, stamina);
+                }
+
+                async Task RefreshPendingVictoryPointsAsync()
+                {
+                    if (activeCharacter is null || Interlocked.Exchange(ref pendingVictoryPointsRefresh, 0) == 0)
+                        return;
+                    await dungeonCurrencyGate.WaitAsync(serverToken);
+                    try
+                    {
+                        var canonical = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                        if (canonical is null || currentVictoryPoints == canonical.VictoryPoints) return;
+                        currentVictoryPoints = canonical.VictoryPoints;
+                        activeCharacter = activeCharacter with { VictoryPoints = currentVictoryPoints };
+                        var refresh = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                        await refresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, refresh);
+                    }
+                    finally { dungeonCurrencyGate.Release(); }
                 }
 
                 async Task<bool> RefreshPendingFatigueResetAsync()
@@ -4782,6 +4803,7 @@ public sealed class EntranceService(
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
                         // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
                         var partyMembershipChanged = partyMembershipWake.Capture();
+                        await RefreshPendingVictoryPointsAsync();
                         if (await RefreshPendingFatigueResetAsync())
                             await SendFatigueStateAsync(initializeTownHud: currentDungeonId == 0);
 
@@ -5128,6 +5150,7 @@ public sealed class EntranceService(
                         await InstallPendingDungeonGoldAsync();
                         await InstallMentorGoldAsync();
                         await DeliverExternalCurrencyAsync();
+                        await RefreshPendingVictoryPointsAsync();
                         if (activeCharacter is { } mentorOwner && mentorService.TryTakeRefresh(mentorOwner.Id))
                         {
                             var canonical = await store.GetCharacterAsync(accountName, mentorOwner.Id, serverToken);
@@ -5333,7 +5356,7 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
-                            && (request.ProtocolId is >= 53 and <= 62 or 100 or 101 or 120))
+                            && PvpService.IsPvpCommand(request.ProtocolId))
                         {
                             if (isPvpChannel && activeCharacter is not null && pvpAttachment is { } pvpToken)
                             {
@@ -5558,7 +5581,8 @@ public sealed class EntranceService(
                             var slot = request.Body.Length >= 3 ? request.Body[2] : 0;
                             var character = characters.FirstOrDefault(candidate =>
                                 candidate.Slot == slot);
-                            if (character is null)
+                            if (character is null || (pvpProfile is not null
+                                && !pvpProfile.Allows(pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints), pvpExperienceCatalog.MaximumGrade)))
                             {
                                 var selectError = GameProtocolEngine.CreateCommandError(request, errorCode: 2);
                                 await selectError.WriteAsync(stream, serverToken);
@@ -5706,7 +5730,7 @@ public sealed class EntranceService(
                                             .ToList()
                                     };
                                     _ = SendDungeonPermissionsAsync();
-                                });
+                                }, () => { Interlocked.Exchange(ref pendingVictoryPointsRefresh, 1); partyMembershipWake.Pulse(); });
 
                             // A displaced connection performs its final save before
                             // releasing the character lease. Reload after the claim
@@ -5717,6 +5741,19 @@ public sealed class EntranceService(
                             if (claimedCharacter is null || await store.IsAccountBannedAsync(accountName, serverToken))
                                 throw new IOException("Character is no longer available for selection.");
                             character = claimedCharacter;
+                            // Displacing an existing PvP connection can settle a
+                            // forfeit before releasing its lease and lower its rank.
+                            if (pvpProfile is not null && !pvpProfile.Allows(
+                                pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints), pvpExperienceCatalog.MaximumGrade))
+                            {
+                                characterSessions.Release(activeCharacterLease);
+                                activeCharacterLease = null;
+                                var rankError = GameProtocolEngine.CreateCommandError(request, errorCode: 2);
+                                await rankError.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, rankError);
+                                continue;
+                            }
 
                             // 结算后的交付安装自愈：这个角色可能带着"未安装交付"的守门标记
                             // （被动方在结算登记前后掉线、或在安装前回了选人）。选角路径下面的
@@ -6392,7 +6429,7 @@ public sealed class EntranceService(
                                         if (townTicket is null) await EnterTownAreaAsync(serverToken);
                                         await SendTownAppearanceAsync(waitForTownActor: true);
                                         pvpReturnPending = false;
-                                    }), serverToken);
+                                    }, ChannelNumber: pvpProfile!.Number), serverToken);
                             }
                             continue;
                         }

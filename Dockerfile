@@ -60,7 +60,7 @@ ENV DFLEGACY_MANAGER_ROOT=/app \
     ASPNETCORE_URLS=
 USER app
 VOLUME ["/app/data"]
-EXPOSE 18080/tcp 18081/tcp 18082/tcp 18083/tcp 7100/tcp 7101/tcp 7102/tcp 7103/tcp 7104/tcp 7105/tcp 8081/tcp 2311/tcp 7001/tcp 8080/tcp 7004/tcp 7005/tcp
+EXPOSE 18080/tcp 18081/tcp 18082/tcp 18083/tcp 7100/tcp 7101/tcp 7102/tcp 7103/tcp 7104/tcp 7105/tcp 8081/tcp 2311/tcp 7001/tcp 8080/tcp 7004/tcp 7005/tcp 7110/tcp 7111/tcp 7112/tcp
 EXPOSE 2311/udp 7002/udp 7003/udp 7005/udp
 # A stopped game is a normal management state. /ready is separate.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

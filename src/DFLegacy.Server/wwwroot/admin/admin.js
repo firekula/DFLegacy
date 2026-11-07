@@ -205,7 +205,10 @@ async function api(path, options = {}, retry = true) {
     throw new Error(message);
   }
   if (!response.ok) {
-    throw new Error(errorText(body) || `${response.status} ${response.statusText}`);
+    const error = new Error(errorText(body) || `${response.status} ${response.statusText}`);
+    error.status = response.status;
+    error.body = body;
+    throw error;
   }
   return body;
 }
@@ -315,6 +318,7 @@ function renderCharacters() {
       select.value = previous;
     }
   });
+  if (typeof refreshVictoryPointBalance === "function") refreshVictoryPointBalance();
 }
 
 function renderDungeons() {
@@ -788,6 +792,10 @@ function bindForms() {
         quantity: item && item.scriptKind !== "Stackable" ? 1 : Number(data.get("quantity") || 1),
         avatarAbilityIndex: Number(data.get("avatarAbilityIndex") || 0)
       };
+      if (data.get("scope") === "all") {
+        await prepareBroadcastMail(payload);
+        return { message: "全服邮件预览已就绪，请核对并确认发送。" };
+      }
       await api(`/api/admin/characters/${data.get("characterId")}/mail`, {
         method: "POST",
         body: JSON.stringify(payload)

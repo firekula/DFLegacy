@@ -31,11 +31,31 @@ internal static class PvpIndividualSmokeTests
         check(!o.Pvp.Enabled && EntranceMetadata.BuildLocalChannels(PvpChannelConfiguration.Channels(o)).SequenceEqual(old), "disabled PvP preserves default entrance bytes");
         o.Pvp.Enabled = true; o.Pvp.Validate(o);
         var ports = EntrancePortFamilies.Split(8080,[7001,7004,2311],PvpChannelConfiguration.Ports(o));
-        check(ports.ChannelPorts.SequenceEqual(new[]{7001,7004}) && ports.EntrancePorts.SequenceEqual(new[]{8080,2311}), "both gameplay TCP ports are excluded from handshake family");
+        check(ports.ChannelPorts.SequenceEqual(new[]{7001,7004,7110,7111,7112}) && ports.EntrancePorts.SequenceEqual(new[]{8080,2311}), "all gameplay TCP ports are excluded from handshake family");
         var metadata = EntranceMetadata.BuildLocalChannels(PvpChannelConfiguration.Channels(o));
-        check(BinaryPrimitives.ReadInt32LittleEndian(metadata.AsSpan(24))==2 && metadata.Length==4+9*(24+2*48), "all nine native groups contain both channel descriptors");
+        check(BinaryPrimitives.ReadInt32LittleEndian(metadata.AsSpan(24))==5 && metadata.Length==4+9*(24+5*48), "all nine native groups contain all channel descriptors");
         o.Pvp.Port=7001; check(Throws(()=>o.Pvp.Validate(o)),"PvP rejects duplicate TCP listener");
         o.Pvp.Port=7004; o.Pvp.ChannelNumber=52; check(Throws(()=>o.Pvp.Validate(o)),"unverified PVF channel category rejected");
+    }
+
+    internal static async Task MultiChannelIsolation(Action<bool,string> check)
+    {
+        await using var f = await Fixture.Create();
+        await f.Attach(2, 55); await f.Attach(3, 52); f.Clear();
+        await f.Command(0, 53, [1,3,0,0]);
+        var initialRoom = f.RoomId(0);
+        check(f.Packets[1].Any(p => p.ProtocolId == 41), "same-channel lobby receives new room");
+        check(f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "other PvP channels receive no room or model broadcasts");
+        f.Clear(); await f.Join(2, initialRoom);
+        check(!f.Service.IsBusy(f.Characters[2].Id) && f.Packets[2].Any(p => p.Type == 1 && p.ProtocolId == 54 && p.Payload[0] == 0), "forged cross-channel room join is rejected");
+        f.Clear(); await f.Attach(3, 53);
+        check(!f.Packets[3].Any(p => p.ProtocolId == 2), "joining another lobby does not reveal foreign room models");
+        f.Clear(); await f.Join(1, initialRoom);
+        check(f.Service.IsBusy(f.Characters[1].Id) && f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "same-channel joining succeeds without leaking seat updates");
+        await f.Command(2, 53, [1,3,0,0]);
+        check(f.Service.IsBusy(f.Characters[2].Id), "free channel can create its own independent room");
+        f.Clear(); await f.Command(0,55,[0,254]); await f.Command(1,55,[1,254]);
+        check(f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "room deletion remains in its own lobby");
     }
 
     private static async Task RoomsAndMatches(Action<bool,string> check)
@@ -284,9 +304,9 @@ internal static class PvpIndividualSmokeTests
         check(f.Udp.PvpRelayTargets(f.Sessions[0].Id).Count==0,"attachment replacement removes old relay context");
     }
 
-    private sealed class Clock:TimeProvider
+    internal sealed class Clock:TimeProvider
     { private long value; public override long TimestampFrequency=>1; public override long GetTimestamp()=>value; public override DateTimeOffset GetUtcNow()=>DateTimeOffset.UnixEpoch.AddSeconds(value); internal void Advance(int seconds)=>value+=seconds; }
-    private sealed class Fixture: IAsyncDisposable
+    internal sealed class Fixture: IAsyncDisposable
     {
         internal PartyHarness Harness=null!;private JsonGameStore? _overrideStore;internal JsonGameStore Store=>_overrideStore??Harness.Store;
         internal GameplayDatagramService Udp=null!;internal PvpService Service=null!;internal PvpExperienceCatalog Rating=null!;
@@ -294,23 +314,37 @@ internal static class PvpIndividualSmokeTests
         internal ushort[] Sequences=new ushort[4];internal byte[][] LastBodies=[[],[],[],[]];
         internal ushort[] Weapons=[27093,27093,27093,27093];internal byte[] SkillLevels=[1,1,1,1];
         internal Guid[] Attachments=new Guid[4];internal bool[] FailSend=new bool[4];internal List<GameServerPacket>[] Packets=[[],[],[],[]];
-        private static readonly string[] Accounts=["alice","bobby","carol","dave"];
-        internal static async Task<Fixture> Create(IDungeonRewardSnapshotWriter? writer=null)
+        internal string[] Accounts=["alice","bobby","carol","dave"];
+        internal static async Task<Fixture> Create(IDungeonRewardSnapshotWriter? writer=null,int count=4)
         {
             var f=new Fixture{Harness=await PartyHarness.CreateAsync()};
+            if(count!=4 && count!=8) throw new ArgumentOutOfRangeException(nameof(count));
+            if(count==8)
+            {
+                f.Accounts=["alice","bobby","carol","dave","ellen","frank","grace","henry"];
+                for(int i=4;i<8;i++)
+                {
+                    await f.Store.CreateAccountAsync(new(f.Accounts[i],"password",OicqCode:"123456"));
+                    await f.Store.CreateCharacterAsync(f.Accounts[i],new("Arena"+i));
+                }
+                f.Sequences=new ushort[8];f.LastBodies=Enumerable.Range(0,8).Select(_=>Array.Empty<byte>()).ToArray();
+                f.Weapons=Enumerable.Repeat((ushort)27093,8).ToArray();f.SkillLevels=Enumerable.Repeat((byte)1,8).ToArray();
+                f.Attachments=new Guid[8];f.FailSend=new bool[8];f.Packets=Enumerable.Range(0,8).Select(_=>new List<GameServerPacket>()).ToArray();
+            }
             if(writer is not null){f._overrideStore=new(f.Harness.Options,NullLogger<JsonGameStore>.Instance,writer);await f._overrideStore.InitializeAsync();}
             var dir=f.Harness.Root;Directory.CreateDirectory(Path.Combine(dir,"map"));Directory.CreateDirectory(Path.Combine(dir,"etc"));
-            File.WriteAllText(Path.Combine(dir,"map","map.lst"),"50000 `random`\n50018 `one.map`\n50019 `two.map`\n50035 `three.map`");
+            File.WriteAllText(Path.Combine(dir,"map","map.lst"),"50000 `random`\n50018 `one.map`\n50019 `two.map`\n50035 `three.map`\n50036 `four.map`");
             foreach(var name in new[]{"one","two","three"}) File.WriteAllText(Path.Combine(dir,"map",name+".map"),"[player number] 2 8");
+            File.WriteAllText(Path.Combine(dir,"map","four.map"),"[player number] 6 8");
             int[] thresholds=[2000,8000,19000,36000,59000,91000,131000,181000,240000,275000,315000,365000,422000,490000,566000,655000,753000,865000,986000,1081000,1259000,1526000,1889000,2355000,2930000,3620000,4431000,5370000,6444000,9999999];
             File.WriteAllText(Path.Combine(dir,"etc","pvp_ref.etc"),"[pvp experience max grade]\n30\n[pvp experience]\n"+string.Join('\n',thresholds.Select((v,i)=>$"{i+1} {v}"))+"\n[/pvp experience]");
             var scripts=new ScriptFileSystem(f.Harness.Options,NullLogger<ScriptFileSystem>.Instance);
             f.Rating=new(scripts,NullLogger<PvpExperienceCatalog>.Instance);
             var runtime=new RuntimeState();f.Udp=new(f.Harness.Options,runtime,NullLogger<GameplayDatagramService>.Instance);
             f.Service=new(f.Store,f.Udp,f.Rating,new(scripts),f.Clock,NullLogger<PvpService>.Instance);
-            f.Characters=await Task.WhenAll(Accounts.Select(async a=>(await f.Store.GetCharactersAsync(a))[0]));
-            f.Sessions=Accounts.Select(a=>runtime.Add("pvp-test",a)).ToArray();
-            for(int i=0;i<4;i++)
+            f.Characters=await Task.WhenAll(f.Accounts.Select(async a=>(await f.Store.GetCharactersAsync(a))[0]));
+            f.Sessions=f.Accounts.Select(a=>runtime.Add("pvp-test",a)).ToArray();
+            for(int i=0;i<count;i++)
             {
                 f.Udp.RegisterChannelSession(f.Sessions[i],IPAddress.Loopback);
                 f.Udp.SetNatReport(f.Sessions[i].Id,new(0,IPAddress.Loopback,IPAddress.Loopback,(ushort)(42000+i),1200));
@@ -318,7 +352,7 @@ internal static class PvpIndividualSmokeTests
             }
             f.Clear();return f;
         }
-        internal async Task Attach(int i)
+        internal async Task Attach(int i, int channelNumber = 51)
         {
             Attachments[i]=Guid.NewGuid();var c=Characters[i];
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -330,7 +364,7 @@ internal static class PvpIndividualSmokeTests
                 return new(appearance,detail);
             }
             await Service.AttachAsync(new(Attachments[i],Sessions[i].Id,Accounts[i],c.Id,(ushort)(i+1),c.AccountUid,()=>ValueTask.FromResult<PvpModelSnapshot?>(Capture()),
-                p=>{if(FailSend[i])throw new IOException("transport gone");Packets[i].Add(p);return ValueTask.CompletedTask;},()=>true,()=>Task.CompletedTask,()=>{}));
+                p=>{if(FailSend[i])throw new IOException("transport gone");Packets[i].Add(p);return ValueTask.CompletedTask;},()=>true,()=>Task.CompletedTask,()=>{}, ChannelNumber: channelNumber));
         }
         internal Task Command(int i,byte command,byte[] payload)
         {var sequence=++Sequences[i];LastBodies[i]=[..U16(sequence),..payload];return Replay(i,command,LastBodies[i]);}
