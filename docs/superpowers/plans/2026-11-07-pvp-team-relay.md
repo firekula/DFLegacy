@@ -9,7 +9,7 @@
 
 ## Completion record
 
-Implementation committed as `0a6a422`; protocol/rating, original individual, team/relay and complete server smoke passed. Native acceptance and remaining multi-client/network limits are recorded in `docs/acceptance/2026-11-07-pvp-team-relay.md`. The user subsequently authorized source/document pushes and requested stopping the local test server; the implementation-time local-only constraint below describes the original phase. Test listeners on127.0.0.4 have been stopped. No image or client asset publication is part of this follow-up.
+Implementation committed as `0a6a422`; protocol/rating, original individual, team/relay and complete server smoke passed. Native acceptance and remaining multi-client/network limits are recorded in `docs/acceptance/2026-11-07-pvp-team-relay.md`. The user subsequently authorized source/document pushes and requested stopping the local test server; the implementation-time local-only constraint below describes the original phase. Test listeners on127.0.0.4 have been stopped. A subsequent user request authorizes sanitized GitHub source synchronization and the v0.1.7 server image; client update attachments remain unpublished.
 
 ## Constraints
 - Worktree D:/codex_worktree/manager-export-release/DFLegacy only, branch codex/pvp-team-relay, baseline16fa02c.
