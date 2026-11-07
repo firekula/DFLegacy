@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Buffers.Binary;
+using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class AdminRewardStoreSmokeTests
@@ -16,7 +19,7 @@ internal static class AdminRewardStoreSmokeTests
             if (Armed) throw new IOException("admin after replacement");
         }
     }
-    private sealed class Fixture : IDisposable
+    internal sealed class Fixture : IDisposable
     {
         internal readonly string Root = Directory.CreateTempSubdirectory("dflegacy-admin-rewards-").FullName;
         internal readonly ServerOptions Options;
@@ -33,7 +36,7 @@ internal static class AdminRewardStoreSmokeTests
                 ScriptPvfPath = Path.Combine(Root, "missing.pvf"), SkillScriptPath = Root };
             Items = new(new ScriptFileSystem(Options, NullLogger<ScriptFileSystem>.Instance), NullLogger<ItemCatalog>.Instance);
         }
-        internal JsonGameStore Open(Writer? writer = null) => writer is null
+        internal JsonGameStore Open(IDungeonRewardSnapshotWriter? writer = null) => writer is null
             ? new(Options, NullLogger<JsonGameStore>.Instance, itemCatalog: Items)
             : new(Options, NullLogger<JsonGameStore>.Instance, writer, itemCatalog: Items);
         public void Dispose() => Directory.Delete(Root, true);
@@ -41,6 +44,7 @@ internal static class AdminRewardStoreSmokeTests
 
     public static async Task RunAsync(Action<bool, string> check)
     {
+        await CheckSessionAsync(check);
         using var f = new Fixture();
         var writer = new Writer();
         var store = f.Open(writer);
@@ -126,6 +130,36 @@ internal static class AdminRewardStoreSmokeTests
         check((await empty.PrepareAdminMailBatchAsync("gm", emptyId, new("GM", "Empty"))).TargetCount == 0
             && (await empty.SendAdminMailBatchAsync("gm", emptyId)).Status == AdminOperationStatus.Completed,
             "empty broadcast safely completes with zero recipients");
+    }
+
+    private static async Task CheckSessionAsync(Action<bool, string> check)
+    {
+        using var f = new Fixture(); var store = f.Open(); await store.InitializeAsync();
+        await store.CreateAccountAsync(new("online", "password", OicqCode: "123456"));
+        var c = (await store.CreateCharacterAsync("online", new("OnlineReward"))).Character!;
+        await using var services = NewCharacterDefaultsSmokeTests.CreateSessionServices(f.Options, store, f.Items);
+        var sessions = services.GetRequiredService<CharacterSessionRegistry>();
+        var service = ActivatorUtilities.CreateInstance<EntranceService>(services);
+        await using (var connection = await NewCharacterDefaultsSmokeTests.Connection.CreateAsync(service, f.Options))
+        {
+            await connection.LoginAsync("online", c.Slot);
+            await store.GrantAdminVictoryPointsAsync("gm", Guid.NewGuid(), c.Id, 321);
+            check(sessions.NotifyVictoryPointsChanged(c.Id), "GM VP invalidation reaches the numeric character lease");
+            var refresh = await connection.ReadAsync(0, GameProtocolEngine.ItemListNotification);
+            check(refresh.Payload.Length >= 27
+                && BinaryPrimitives.ReadUInt16LittleEndian(refresh.Payload.AsSpan(15)) == 2
+                && BinaryPrimitives.ReadUInt16LittleEndian(refresh.Payload.AsSpan(17)) == 2
+                && BinaryPrimitives.ReadUInt32LittleEndian(refresh.Payload.AsSpan(19)) == 321,
+                "idle encrypted game session receives canonical VP in slot2 without another client command");
+            await store.GrantAdminVictoryPointsAsync("gm", Guid.NewGuid(), c.Id, 17);
+            sessions.NotifyVictoryPointsChanged(c.Id);
+            var second = await connection.ReadAsync(0, GameProtocolEngine.ItemListNotification);
+            check(BinaryPrimitives.ReadUInt32LittleEndian(second.Payload.AsSpan(19)) == 338,
+                "subsequent online VP refresh preserves both grants");
+        }
+        check((await store.GetCharacterAsync("online", c.Id))!.VictoryPoints == 338,
+            "game disconnect cannot overwrite GM victory points");
+        check(!sessions.NotifyVictoryPointsChanged(c.Id), "released game lease receives no VP notifications");
     }
 
     private static async Task CheckFaultAsync(Action<bool, string> check, bool after)

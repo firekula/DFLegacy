@@ -377,6 +377,7 @@ public sealed class EntranceService(
             var premiumExpiryUnix = new ConcurrentDictionary<byte, long>();
             var ceraCashInvalidation = new CeraCashInvalidation();
             var pendingFatigueReset = 0;
+            var pendingVictoryPointsRefresh = 0;
             var observedFatigueDayKey = 0;
             var weaknessRecovery = new EntranceWeaknessRecovery(partyMembershipWake);
             Func<GameServerPacket, ValueTask>? dungeonMemberSend = null;
@@ -1359,6 +1360,25 @@ public sealed class EntranceService(
                     await stamina.WriteAsync(stream, serverToken);
                     Interlocked.Increment(ref runtimeSession.SentPackets);
                     LogPacket("TX", runtimeSession, stamina);
+                }
+
+                async Task RefreshPendingVictoryPointsAsync()
+                {
+                    if (activeCharacter is null || Interlocked.Exchange(ref pendingVictoryPointsRefresh, 0) == 0)
+                        return;
+                    await dungeonCurrencyGate.WaitAsync(serverToken);
+                    try
+                    {
+                        var canonical = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                        if (canonical is null || currentVictoryPoints == canonical.VictoryPoints) return;
+                        currentVictoryPoints = canonical.VictoryPoints;
+                        activeCharacter = activeCharacter with { VictoryPoints = currentVictoryPoints };
+                        var refresh = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                        await refresh.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, refresh);
+                    }
+                    finally { dungeonCurrencyGate.Release(); }
                 }
 
                 async Task<bool> RefreshPendingFatigueResetAsync()
@@ -4782,6 +4802,7 @@ public sealed class EntranceService(
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
                         // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
                         var partyMembershipChanged = partyMembershipWake.Capture();
+                        await RefreshPendingVictoryPointsAsync();
                         if (await RefreshPendingFatigueResetAsync())
                             await SendFatigueStateAsync(initializeTownHud: currentDungeonId == 0);
 
@@ -5128,6 +5149,7 @@ public sealed class EntranceService(
                         await InstallPendingDungeonGoldAsync();
                         await InstallMentorGoldAsync();
                         await DeliverExternalCurrencyAsync();
+                        await RefreshPendingVictoryPointsAsync();
                         if (activeCharacter is { } mentorOwner && mentorService.TryTakeRefresh(mentorOwner.Id))
                         {
                             var canonical = await store.GetCharacterAsync(accountName, mentorOwner.Id, serverToken);
@@ -5706,7 +5728,7 @@ public sealed class EntranceService(
                                             .ToList()
                                     };
                                     _ = SendDungeonPermissionsAsync();
-                                });
+                                }, () => { Interlocked.Exchange(ref pendingVictoryPointsRefresh, 1); partyMembershipWake.Pulse(); });
 
                             // A displaced connection performs its final save before
                             // releasing the character lease. Reload after the claim
