@@ -304,9 +304,9 @@ internal static class PvpIndividualSmokeTests
         check(f.Udp.PvpRelayTargets(f.Sessions[0].Id).Count==0,"attachment replacement removes old relay context");
     }
 
-    private sealed class Clock:TimeProvider
+    internal sealed class Clock:TimeProvider
     { private long value; public override long TimestampFrequency=>1; public override long GetTimestamp()=>value; public override DateTimeOffset GetUtcNow()=>DateTimeOffset.UnixEpoch.AddSeconds(value); internal void Advance(int seconds)=>value+=seconds; }
-    private sealed class Fixture: IAsyncDisposable
+    internal sealed class Fixture: IAsyncDisposable
     {
         internal PartyHarness Harness=null!;private JsonGameStore? _overrideStore;internal JsonGameStore Store=>_overrideStore??Harness.Store;
         internal GameplayDatagramService Udp=null!;internal PvpService Service=null!;internal PvpExperienceCatalog Rating=null!;
@@ -314,23 +314,37 @@ internal static class PvpIndividualSmokeTests
         internal ushort[] Sequences=new ushort[4];internal byte[][] LastBodies=[[],[],[],[]];
         internal ushort[] Weapons=[27093,27093,27093,27093];internal byte[] SkillLevels=[1,1,1,1];
         internal Guid[] Attachments=new Guid[4];internal bool[] FailSend=new bool[4];internal List<GameServerPacket>[] Packets=[[],[],[],[]];
-        private static readonly string[] Accounts=["alice","bobby","carol","dave"];
-        internal static async Task<Fixture> Create(IDungeonRewardSnapshotWriter? writer=null)
+        internal string[] Accounts=["alice","bobby","carol","dave"];
+        internal static async Task<Fixture> Create(IDungeonRewardSnapshotWriter? writer=null,int count=4)
         {
             var f=new Fixture{Harness=await PartyHarness.CreateAsync()};
+            if(count!=4 && count!=8) throw new ArgumentOutOfRangeException(nameof(count));
+            if(count==8)
+            {
+                f.Accounts=["alice","bobby","carol","dave","ellen","frank","grace","henry"];
+                for(int i=4;i<8;i++)
+                {
+                    await f.Store.CreateAccountAsync(new(f.Accounts[i],"password",OicqCode:"123456"));
+                    await f.Store.CreateCharacterAsync(f.Accounts[i],new("Arena"+i));
+                }
+                f.Sequences=new ushort[8];f.LastBodies=Enumerable.Range(0,8).Select(_=>Array.Empty<byte>()).ToArray();
+                f.Weapons=Enumerable.Repeat((ushort)27093,8).ToArray();f.SkillLevels=Enumerable.Repeat((byte)1,8).ToArray();
+                f.Attachments=new Guid[8];f.FailSend=new bool[8];f.Packets=Enumerable.Range(0,8).Select(_=>new List<GameServerPacket>()).ToArray();
+            }
             if(writer is not null){f._overrideStore=new(f.Harness.Options,NullLogger<JsonGameStore>.Instance,writer);await f._overrideStore.InitializeAsync();}
             var dir=f.Harness.Root;Directory.CreateDirectory(Path.Combine(dir,"map"));Directory.CreateDirectory(Path.Combine(dir,"etc"));
-            File.WriteAllText(Path.Combine(dir,"map","map.lst"),"50000 `random`\n50018 `one.map`\n50019 `two.map`\n50035 `three.map`");
+            File.WriteAllText(Path.Combine(dir,"map","map.lst"),"50000 `random`\n50018 `one.map`\n50019 `two.map`\n50035 `three.map`\n50036 `four.map`");
             foreach(var name in new[]{"one","two","three"}) File.WriteAllText(Path.Combine(dir,"map",name+".map"),"[player number] 2 8");
+            File.WriteAllText(Path.Combine(dir,"map","four.map"),"[player number] 6 8");
             int[] thresholds=[2000,8000,19000,36000,59000,91000,131000,181000,240000,275000,315000,365000,422000,490000,566000,655000,753000,865000,986000,1081000,1259000,1526000,1889000,2355000,2930000,3620000,4431000,5370000,6444000,9999999];
             File.WriteAllText(Path.Combine(dir,"etc","pvp_ref.etc"),"[pvp experience max grade]\n30\n[pvp experience]\n"+string.Join('\n',thresholds.Select((v,i)=>$"{i+1} {v}"))+"\n[/pvp experience]");
             var scripts=new ScriptFileSystem(f.Harness.Options,NullLogger<ScriptFileSystem>.Instance);
             f.Rating=new(scripts,NullLogger<PvpExperienceCatalog>.Instance);
             var runtime=new RuntimeState();f.Udp=new(f.Harness.Options,runtime,NullLogger<GameplayDatagramService>.Instance);
             f.Service=new(f.Store,f.Udp,f.Rating,new(scripts),f.Clock,NullLogger<PvpService>.Instance);
-            f.Characters=await Task.WhenAll(Accounts.Select(async a=>(await f.Store.GetCharactersAsync(a))[0]));
-            f.Sessions=Accounts.Select(a=>runtime.Add("pvp-test",a)).ToArray();
-            for(int i=0;i<4;i++)
+            f.Characters=await Task.WhenAll(f.Accounts.Select(async a=>(await f.Store.GetCharactersAsync(a))[0]));
+            f.Sessions=f.Accounts.Select(a=>runtime.Add("pvp-test",a)).ToArray();
+            for(int i=0;i<count;i++)
             {
                 f.Udp.RegisterChannelSession(f.Sessions[i],IPAddress.Loopback);
                 f.Udp.SetNatReport(f.Sessions[i].Id,new(0,IPAddress.Loopback,IPAddress.Loopback,(ushort)(42000+i),1200));

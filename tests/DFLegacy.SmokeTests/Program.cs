@@ -201,6 +201,14 @@ if (args.Contains("--fallback-protocol"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--pvp-team-relay-only"))
+{
+    await PvpTeamRelaySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP team/relay smoke: {failures.Count} failures");
+    return failures.Count == 0 ? 0 : 1;
+}
+
 if (args.Contains("--pvp-individual-only"))
 {
     await PvpIndividualSmokeTests.RunAsync(Check);
@@ -424,6 +432,7 @@ await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
 await MentorMasterGoldSmokeTests.RunAsync(Check);
 await PvpIndividualSmokeTests.RunAsync(Check);
+await PvpTeamRelaySmokeTests.RunAsync(Check);
 await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);

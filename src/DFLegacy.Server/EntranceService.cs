@@ -5356,7 +5356,7 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
-                            && (request.ProtocolId is >= 53 and <= 62 or 100 or 101 or 120))
+                            && PvpService.IsPvpCommand(request.ProtocolId))
                         {
                             if (isPvpChannel && activeCharacter is not null && pvpAttachment is { } pvpToken)
                             {
