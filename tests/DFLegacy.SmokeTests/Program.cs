@@ -9,6 +9,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Length == 0 || args.Contains("--pvp-multichannel"))
+{
+    await PvpMultiChannelSmokeTests.RunAsync(Check);
+    if (args.Contains("--pvp-multichannel"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"PvP multichannel smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Length == 0 || args.Contains("--admin-rewards"))
 {
     await AdminRewardStoreSmokeTests.RunAsync(Check);

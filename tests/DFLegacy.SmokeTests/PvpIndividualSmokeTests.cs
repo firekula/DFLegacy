@@ -31,11 +31,31 @@ internal static class PvpIndividualSmokeTests
         check(!o.Pvp.Enabled && EntranceMetadata.BuildLocalChannels(PvpChannelConfiguration.Channels(o)).SequenceEqual(old), "disabled PvP preserves default entrance bytes");
         o.Pvp.Enabled = true; o.Pvp.Validate(o);
         var ports = EntrancePortFamilies.Split(8080,[7001,7004,2311],PvpChannelConfiguration.Ports(o));
-        check(ports.ChannelPorts.SequenceEqual(new[]{7001,7004}) && ports.EntrancePorts.SequenceEqual(new[]{8080,2311}), "both gameplay TCP ports are excluded from handshake family");
+        check(ports.ChannelPorts.SequenceEqual(new[]{7001,7004,7110,7111,7112}) && ports.EntrancePorts.SequenceEqual(new[]{8080,2311}), "all gameplay TCP ports are excluded from handshake family");
         var metadata = EntranceMetadata.BuildLocalChannels(PvpChannelConfiguration.Channels(o));
-        check(BinaryPrimitives.ReadInt32LittleEndian(metadata.AsSpan(24))==2 && metadata.Length==4+9*(24+2*48), "all nine native groups contain both channel descriptors");
+        check(BinaryPrimitives.ReadInt32LittleEndian(metadata.AsSpan(24))==5 && metadata.Length==4+9*(24+5*48), "all nine native groups contain all channel descriptors");
         o.Pvp.Port=7001; check(Throws(()=>o.Pvp.Validate(o)),"PvP rejects duplicate TCP listener");
         o.Pvp.Port=7004; o.Pvp.ChannelNumber=52; check(Throws(()=>o.Pvp.Validate(o)),"unverified PVF channel category rejected");
+    }
+
+    internal static async Task MultiChannelIsolation(Action<bool,string> check)
+    {
+        await using var f = await Fixture.Create();
+        await f.Attach(2, 55); await f.Attach(3, 52); f.Clear();
+        await f.Command(0, 53, [1,3,0,0]);
+        var initialRoom = f.RoomId(0);
+        check(f.Packets[1].Any(p => p.ProtocolId == 41), "same-channel lobby receives new room");
+        check(f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "other PvP channels receive no room or model broadcasts");
+        f.Clear(); await f.Join(2, initialRoom);
+        check(!f.Service.IsBusy(f.Characters[2].Id) && f.Packets[2].Any(p => p.Type == 1 && p.ProtocolId == 54 && p.Payload[0] == 0), "forged cross-channel room join is rejected");
+        f.Clear(); await f.Attach(3, 53);
+        check(!f.Packets[3].Any(p => p.ProtocolId == 2), "joining another lobby does not reveal foreign room models");
+        f.Clear(); await f.Join(1, initialRoom);
+        check(f.Service.IsBusy(f.Characters[1].Id) && f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "same-channel joining succeeds without leaking seat updates");
+        await f.Command(2, 53, [1,3,0,0]);
+        check(f.Service.IsBusy(f.Characters[2].Id), "free channel can create its own independent room");
+        f.Clear(); await f.Command(0,55,[0,254]); await f.Command(1,55,[1,254]);
+        check(f.Packets[2].Count == 0 && f.Packets[3].Count == 0, "room deletion remains in its own lobby");
     }
 
     private static async Task RoomsAndMatches(Action<bool,string> check)
@@ -318,7 +338,7 @@ internal static class PvpIndividualSmokeTests
             }
             f.Clear();return f;
         }
-        internal async Task Attach(int i)
+        internal async Task Attach(int i, int channelNumber = 51)
         {
             Attachments[i]=Guid.NewGuid();var c=Characters[i];
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -330,7 +350,7 @@ internal static class PvpIndividualSmokeTests
                 return new(appearance,detail);
             }
             await Service.AttachAsync(new(Attachments[i],Sessions[i].Id,Accounts[i],c.Id,(ushort)(i+1),c.AccountUid,()=>ValueTask.FromResult<PvpModelSnapshot?>(Capture()),
-                p=>{if(FailSend[i])throw new IOException("transport gone");Packets[i].Add(p);return ValueTask.CompletedTask;},()=>true,()=>Task.CompletedTask,()=>{}));
+                p=>{if(FailSend[i])throw new IOException("transport gone");Packets[i].Add(p);return ValueTask.CompletedTask;},()=>true,()=>Task.CompletedTask,()=>{}, ChannelNumber: channelNumber));
         }
         internal Task Command(int i,byte command,byte[] payload)
         {var sequence=++Sequences[i];LastBodies[i]=[..U16(sequence),..payload];return Replay(i,command,LastBodies[i]);}

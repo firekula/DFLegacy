@@ -7,7 +7,8 @@ internal sealed record PvpModelSnapshot(GameServerPacket Appearance, GameServerP
 
 internal sealed record PvpAttachment(Guid Id, Guid SessionId, string Account, Guid CharacterId, ushort Uid,
     uint AccountUid, Func<ValueTask<PvpModelSnapshot?>> CaptureModel, Func<GameServerPacket, ValueTask> Send,
-    Func<bool> CanEnter, Func<Task> LeaveTownAndParty, Action Wake, Action? Disconnect = null, Func<Task>? RestoreTown = null);
+    Func<bool> CanEnter, Func<Task> LeaveTownAndParty, Action Wake, Action? Disconnect = null, Func<Task>? RestoreTown = null,
+    int ChannelNumber = 51);
 
 /// <summary>Runtime-only ACT1 individual rooms. Every mutation and enqueue is ordered under one gate;
 /// socket writes are drained afterwards per attachment. Immutable matches outlive emptied rooms.</summary>
@@ -34,8 +35,9 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
         internal bool Entering, Retired;
         internal Guid Activity;
     }
-    private sealed class Room(ushort id, byte selection, byte[] name, ushort map)
+    private sealed class Room(ushort id, byte selection, byte[] name, ushort map, int channelNumber)
     {
+        internal readonly int ChannelNumber = channelNumber;
         internal readonly Guid Identity = Guid.NewGuid();
         internal readonly ushort Id = id;
         internal readonly byte Selection = selection;
@@ -83,8 +85,9 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
         var channel = new Channel(attachment);
         _channels[attachment.CharacterId] = channel;
         _ingress[attachment.CharacterId] = channel;
-        foreach (var room in _rooms.Values) PublishModels(channel, room);
-        Enqueue(channel, GameProtocolEngine.CreatePvpRoomList(_rooms.Values.Select(RoomInfo).ToArray()));
+        var rooms = _rooms.Values.Where(r => r.ChannelNumber == attachment.ChannelNumber).ToArray();
+        foreach (var room in rooms) PublishModels(channel, room);
+        Enqueue(channel, GameProtocolEngine.CreatePvpRoomList(rooms.Select(RoomInfo).ToArray()));
         }, ct);
     }
 
@@ -213,7 +216,7 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
             if (c is null || c.Generation != generation) { c = null; return Task.CompletedTask; }
             if (c.Room is not null || c.Entering || !c.A.CanEnter() || !TryPeer(c, out _) || store.IsTradeDeliveryPending(character)
                 || (create is not null && !maps.IsValidRequested(create.RequestedMap))
-                || (create is null && (!_rooms.TryGetValue(target, out r) || r.Match is not null || !r.Seats.OfType<Channel>().All(c => TryPeer(c, out _)) || Enumerable.Range(0,2).All(i => r.Seats[i] is not null || r.Closed[i])))
+                || (create is null && (!_rooms.TryGetValue(target, out r) || r.ChannelNumber != c.A.ChannelNumber || r.Match is not null || !r.Seats.OfType<Channel>().All(c => TryPeer(c, out _)) || Enumerable.Range(0,2).All(i => r.Seats[i] is not null || r.Closed[i])))
                 || !store.Commerce.TryAcquire(CommerceActivity.Pvp, activity, character))
             { Error(c, create is null ? (byte)54 : (byte)53); c = null; return Task.CompletedTask; }
             c.Entering = true; c.Activity = activity;
@@ -247,7 +250,7 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
             {
                 var id = AllocateRoom();
                 if (id == 0) { store.Commerce.Release(activity, character); Error(c, 53); return Task.CompletedTask; }
-                r = new(id, create.NameSelection, create.Name, create.RequestedMap); _rooms.Add(id, r);
+                r = new(id, create.NameSelection, create.Name, create.RequestedMap, c.A.ChannelNumber); _rooms.Add(id, r);
             }
             var open = Enumerable.Range(0, 2).FirstOrDefault(i => r!.Seats[i] is null && !r.Closed[i], -1);
             if (open < 0 || !udp.SetPvpContext(c.A.SessionId, c.A.Id, r!.Identity, null))
@@ -255,9 +258,9 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
             foreach (var (owner, model) in models) owner.Model = model;
             c.Room = r; r.Seats[open] = c; entered = true;
             Interlocked.Increment(ref c.Generation);
-            foreach (var recipient in _channels.Values) PublishModels(recipient, r);
+            foreach (var recipient in _channels.Values.Where(x => x.A.ChannelNumber == r.ChannelNumber)) PublishModels(recipient, r);
             PublishPeers(r);
-            if (create is not null) Broadcast(GameProtocolEngine.CreatePvpRoomList([RoomInfo(r)]));
+            if (create is not null) Broadcast(r, GameProtocolEngine.CreatePvpRoomList([RoomInfo(r)]));
             else { PublishSeats(r); Enqueue(c, GameProtocolEngine.CreatePvpEnterReply([.. r.Ready, false,false,false,false,false,false])); }
             return Task.CompletedTask;
         }, CancellationToken.None);
@@ -291,7 +294,7 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
         PublishSeats(r);
         if (r.Host == seat) r.Host = (byte)Math.Max(0, Array.FindIndex(r.Seats, s => s is not null));
         if (r.Seats.All(s => s is null))
-        { _rooms.Remove(r.Id); Broadcast(GameProtocolEngine.CreatePvpRoomState(r.Id, 0, r.Host, r.RequestedMap)); }
+        { _rooms.Remove(r.Id); Broadcast(r, GameProtocolEngine.CreatePvpRoomState(r.Id, 0, r.Host, r.RequestedMap)); }
         else BroadcastState(r);
         if (m is null || m.Phase == Phase.Results) store.Commerce.Release(c.Activity, c.A.CharacterId);
         if (m is { Phase: Phase.Playing }) FinishDecision(m);
@@ -419,9 +422,10 @@ public sealed class PvpService(JsonGameStore store, GameplayDatagramService udp,
             if (peers.Length > 0) Enqueue(recipient, GameProtocolEngine.CreateUdpPeerInfo(peers));
         }
     }
-    private void PublishSeats(Room r) => Broadcast(GameProtocolEngine.CreatePvpSeatState(r.Id, Seats(r)));
-    private void BroadcastState(Room r) => Broadcast(GameProtocolEngine.CreatePvpRoomState(r.Id, r.Match is null ? (byte)1 : (byte)2, r.Host, r.RequestedMap));
-    private void Broadcast(GameServerPacket packet) { foreach (var c in _channels.Values) Enqueue(c, packet); }
+    private void PublishSeats(Room r) => Broadcast(r, GameProtocolEngine.CreatePvpSeatState(r.Id, Seats(r)));
+    private void BroadcastState(Room r) => Broadcast(r, GameProtocolEngine.CreatePvpRoomState(r.Id, r.Match is null ? (byte)1 : (byte)2, r.Host, r.RequestedMap));
+    private void Broadcast(Room r, GameServerPacket packet)
+    { foreach (var c in _channels.Values.Where(c => c.A.ChannelNumber == r.ChannelNumber)) Enqueue(c, packet); }
     private static void BroadcastMembers(Room r, GameServerPacket packet) { foreach (var c in r.Seats.OfType<Channel>()) Enqueue(c, packet); }
     private static void Enqueue(Channel c, GameServerPacket packet) { if (!c.Retired) c.Outbox.Enqueue(packet); }
     private static void Error(Channel c, byte command) => Enqueue(c, new(GameProtocolEngine.CommandPacketType, command, [0, 2]));

@@ -212,7 +212,8 @@ public sealed class EntranceService(
 
             var remoteEndpoint = client.Client.RemoteEndPoint as IPEndPoint;
             var remote = remoteEndpoint?.ToString() ?? "unknown";
-            var isPvpChannel = options.Pvp.Enabled && localPort == options.Pvp.Port;
+            var pvpProfile = PvpChannelCatalog.Profiles(options.Pvp).FirstOrDefault(c => c.Port == localPort);
+            var isPvpChannel = pvpProfile is not null;
             var channel = PvpChannelConfiguration.GameplayChannels(options).FirstOrDefault(c => c.Port == localPort);
             var isChannelPort = channel.Port != 0;
             var runtimeSession = runtime.Add($"{(isChannelPort ? "channel" : "entrance")}:{localPort}", remote);
@@ -5580,7 +5581,8 @@ public sealed class EntranceService(
                             var slot = request.Body.Length >= 3 ? request.Body[2] : 0;
                             var character = characters.FirstOrDefault(candidate =>
                                 candidate.Slot == slot);
-                            if (character is null)
+                            if (character is null || (pvpProfile is not null
+                                && !pvpProfile.Allows(pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints), pvpExperienceCatalog.MaximumGrade)))
                             {
                                 var selectError = GameProtocolEngine.CreateCommandError(request, errorCode: 2);
                                 await selectError.WriteAsync(stream, serverToken);
@@ -6414,7 +6416,7 @@ public sealed class EntranceService(
                                         if (townTicket is null) await EnterTownAreaAsync(serverToken);
                                         await SendTownAppearanceAsync(waitForTownActor: true);
                                         pvpReturnPending = false;
-                                    }), serverToken);
+                                    }, ChannelNumber: pvpProfile!.Number), serverToken);
                             }
                             continue;
                         }
