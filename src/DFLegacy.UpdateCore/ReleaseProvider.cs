@@ -53,7 +53,7 @@ public sealed class ReleaseProvider : IReleaseProvider
                 var found = new VerifiedRelease(Source, tag!, hash, bytes); found.Validate(Source); candidates.Add(found);
             }
             if (releases.RootElement.GetArrayLength() < PageSize) break;
-            if (page == 3 && candidates.Count == 0) throw new IOException("尚未查完发行版，无法确认线上最新版本。");
+            if (page == 3) throw new IOException("尚未查完发行版，无法确认线上最新版本。");
         }
         var newest = candidates.OrderByDescending(r => r.Manifest.Sequence).FirstOrDefault();
         if (newest != null && candidates.Any(c => c.Manifest.Sequence == newest.Manifest.Sequence && c.ManifestSha256 != newest.ManifestSha256))

@@ -19,7 +19,7 @@ internal static class GiteaProviderTests
         var resource=TestRun.Bytes("abc");
         var resourceUrl=origin+"/attachments/12345678-1234-1234-1234-123456789012";
         var requests=new List<Uri>();
-        var olderPage=false; var draft=false; var missing=false; string? redirect=null;
+        var olderPage=false; var endlessPages=false; var draft=false; var missing=false; string? redirect=null;
         using var http=new HttpClient(new Handler(request=>
         {
             var uri=request.RequestUri!; requests.Add(uri);
@@ -45,6 +45,7 @@ internal static class GiteaProviderTests
             if(uri.AbsolutePath.EndsWith("/releases"))
             {
                 TestRun.Check(uri.Query.Contains("limit=50") && !uri.Query.Contains("per_page"),"Gitea uses its actual maximum page size 50");
+                if(endlessPages) return Json(Enumerable.Repeat(row,50).ToArray());
                 if(olderPage && uri.Query.Contains("page=1")) return Json(Enumerable.Range(0,50).Select(i=>new{id=100+i,tag_name="old-"+i,draft=false,assets=Array.Empty<object>()}).ToArray());
                 return Json(new[]{row});
             }
@@ -55,7 +56,11 @@ internal static class GiteaProviderTests
         TestRun.Check((await provider.FindAsync())?.ManifestSha256==TestRun.Hash(raw),"Gitea manifest binds exact raw bytes");
         olderPage=true;
         TestRun.Check((await provider.FindAsync())?.ManifestSha256==TestRun.Hash(raw) && requests.Any(u=>u.Query.Contains("page=2")),"Gitea full 50-row page does not truncate discovery");
-        olderPage=false; missing=true; TestRun.Check(await provider.FindAsync()==null,"Gitea absent manifest ignored"); missing=false;
+        olderPage=false; endlessPages=true;
+        var incompleteRejected=false;
+        try { await provider.FindAsync(); } catch(IOException) { incompleteRejected=true; }
+        TestRun.Check(incompleteRejected,"A candidate on a full final page cannot certify latest version"); endlessPages=false;
+        missing=true; TestRun.Check(await provider.FindAsync()==null,"Gitea absent manifest ignored"); missing=false;
         draft=true;TestRun.Check(await provider.FindAsync()==null,"Gitea draft invisible");draft=false;
         foreach(var bad in new[]{url.Replace(":3000",":3001"),url.Replace("firekula.site","evil.test"),url.Replace("/firekula/DFLegacy/","/other/repo/"),url+"?token=bad",url+"#bad",url.Replace("http://","http://user:secret@"),origin+"/api/v1/user",url.Replace("/releases/download/","/releases/download/other/")})
         { assetUrl=bad;await TestRun.RejectAsync(async()=>await provider.FindAsync(),"Gitea attachment boundary"); }
