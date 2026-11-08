@@ -143,9 +143,9 @@ v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动�
 
 ### V4 测试来源与保留配置
 
-仅在配套测试登录器中，把 `launcher.json` 的 `UpdateProvider` 设为 `gitee`、`UpdateChannel` 设为 `gitee-test`、`UpdateRepository` 设为测试仓库；保留现有账号、服务器与 `Relay`。显式 Gitee 来源优先于遗留 `UpdateServiceUrl`，且不会静默回退 GitHub。正式来源配置为 `github`／`stable`；该模式下非空 `UpdateServiceUrl` 仍沿用现有自托管 V3 路径。完整来源决策表见 [来源与离线状态](CLIENT_UPDATES_V4.md#来源与离线状态)。
+仅在配套测试登录器中，把 `launcher.json` 的 `UpdateProvider` 设为 `gitea`、`UpdateChannel` 设为 `gitea-test`、`UpdateRepository` 设为测试仓库；保留现有账号、服务器与 `Relay`。显式 Gitea 来源固定使用 `http://firekula.site:3000`，优先于遗留 `UpdateServiceUrl`，且不会静默回退 GitHub。正式来源配置为 `github`／`stable`；该模式下非空 `UpdateServiceUrl` 仍沿用现有自托管 V3 路径。完整来源决策表见 [来源与离线状态](CLIENT_UPDATES_V4.md#来源与离线状态)。
 
-V4 不整文件覆盖 `launcher.json` 或 `Config.ini`。`Relay.TcpPorts`／`UdpPorts` 在玩家配置中仍是逗号分隔字符串；迁移值使用端口数组，合并后保留自定义端口并写回字符串。格式损坏时保留原配置并提示错误，不以空模板覆盖账号。登录器自身无法运行时需要单独的可信修复程序；独立 `--repair-client` 入口仍在集成验收，当前不把它列为已交付的修复保障。
+V4 不整文件覆盖 `launcher.json` 或 `Config.ini`。`Relay.TcpPorts`／`UdpPorts` 在玩家配置中仍是逗号分隔字符串；迁移值使用端口数组，合并后保留自定义端口并写回字符串。格式损坏时保留原配置并提示错误，不以空模板覆盖账号。登录器自身无法运行时需要单独的可信修复程序；独立 `--repair-client` 入口及验收范围见 [V4 更新说明](CLIENT_UPDATES_V4.md#安装恢复与诊断)，修复程序必须放在被修复目录之外。
 
 ### 可选的自托管客户端更新
 

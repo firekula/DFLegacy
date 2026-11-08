@@ -1,0 +1,144 @@
+[
+  {
+    "path": "tools/DFLegacy.Repair-win-x86.zip",
+    "sha256": "afd2f399d3b978a7463e12564367658c54430e29badbfd3116719ee2a96c8c5b",
+    "size": 71115905,
+    "executableSha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57",
+    "sourceCommit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+    "architecture": "x86"
+  },
+  {
+    "path": "starter-clients/DFLegacy-V4-starter-tools-normal-win-x86.zip",
+    "sha256": "19f0a2f064c076587263debe50a7ddc8dbff058f6f03528347d3e3ca6cead8a5",
+    "size": 71435570,
+    "manifest": {
+      "schemaVersion": 2,
+      "version": "v0.1.8-giteatest.1",
+      "commit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+      "flavor": "normal",
+      "files": [
+        {
+          "path": "DFLegacy.Launcher.exe",
+          "size": 164604394,
+          "sha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57"
+        },
+        {
+          "path": "DFLegacy.Client.dll",
+          "size": 935936,
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70"
+        }
+      ]
+    },
+    "schema2ExtraFiles": [
+      "UpdateTestAssets/probe.npk",
+      "UpdateTestAssets/probe.pvf",
+      "Enable-Gitea-Test.ps1",
+      "README.md"
+    ]
+  },
+  {
+    "path": "starter-clients/DFLegacy-V4-starter-tools-test-win-x86.zip",
+    "sha256": "cf3819abfeea641405832d31a668bdc1bd0e28582474e40df37fcf7487c4fbef",
+    "size": 71598417,
+    "manifest": {
+      "schemaVersion": 2,
+      "version": "v0.1.8-giteatest.1",
+      "commit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+      "flavor": "test",
+      "files": [
+        {
+          "path": "DFLegacy.Launcher.exe",
+          "size": 164604394,
+          "sha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57"
+        },
+        {
+          "path": "DFLegacy.Client.dll",
+          "size": 935936,
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70"
+        },
+        {
+          "path": "debug.dll",
+          "size": 373248,
+          "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc"
+        }
+      ]
+    },
+    "schema2ExtraFiles": [
+      "UpdateTestAssets/probe.npk",
+      "UpdateTestAssets/probe.pvf",
+      "Enable-Gitea-Test.ps1",
+      "README.md"
+    ]
+  },
+  {
+    "path": "tools/DFLegacy.Repair-win-x64.zip",
+    "sha256": "b2a962ccc1aab59481fe6f733e82e7890ed2b532e509bc800fe718949701cf4d",
+    "size": 75444295,
+    "executableSha256": "63d0c07c3cf2d751ccbcf9ba7c12e813573e595ba566283cdbaf377f442d1f18",
+    "sourceCommit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+    "architecture": "x64"
+  },
+  {
+    "path": "starter-clients/DFLegacy-V4-starter-tools-normal-win-x64.zip",
+    "sha256": "3dd43a4c38fa816d2aca8fd34096455afeff1ccec218ba63894a88d27e021ea5",
+    "size": 75763961,
+    "manifest": {
+      "schemaVersion": 2,
+      "version": "v0.1.8-giteatest.1",
+      "commit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+      "flavor": "normal",
+      "files": [
+        {
+          "path": "DFLegacy.Launcher.exe",
+          "size": 174037482,
+          "sha256": "63d0c07c3cf2d751ccbcf9ba7c12e813573e595ba566283cdbaf377f442d1f18"
+        },
+        {
+          "path": "DFLegacy.Client.dll",
+          "size": 935936,
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70"
+        }
+      ]
+    },
+    "schema2ExtraFiles": [
+      "UpdateTestAssets/probe.npk",
+      "UpdateTestAssets/probe.pvf",
+      "Enable-Gitea-Test.ps1",
+      "README.md"
+    ]
+  },
+  {
+    "path": "starter-clients/DFLegacy-V4-starter-tools-test-win-x64.zip",
+    "sha256": "ea86fad02ba6f6b0567e39d91f9127c0b10ad34580ce7653669fd150804cc433",
+    "size": 75926806,
+    "manifest": {
+      "schemaVersion": 2,
+      "version": "v0.1.8-giteatest.1",
+      "commit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+      "flavor": "test",
+      "files": [
+        {
+          "path": "DFLegacy.Launcher.exe",
+          "size": 174037482,
+          "sha256": "63d0c07c3cf2d751ccbcf9ba7c12e813573e595ba566283cdbaf377f442d1f18"
+        },
+        {
+          "path": "DFLegacy.Client.dll",
+          "size": 935936,
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70"
+        },
+        {
+          "path": "debug.dll",
+          "size": 373248,
+          "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc"
+        }
+      ]
+    },
+    "schema2ExtraFiles": [
+      "UpdateTestAssets/probe.npk",
+      "UpdateTestAssets/probe.pvf",
+      "Enable-Gitea-Test.ps1",
+      "README.md"
+    ]
+  }
+]

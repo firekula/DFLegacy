@@ -1,6 +1,6 @@
 # DFLegacy
 
-开发中（Unreleased）：V4 客户端更新已通过本地验收，新增完整文件校验、逐文件资源修复、配置迁移、离线打包预览和按事件保存的故障报告。Gitee 第一版 x86/x64 测试附件已上传，最终匿名验收因平台限流尚未完成，第二版待发布。此功能尚未正式发布，也不改变下述 v0.1.6／v0.1.7 已发布版本的范围。使用方法及待验收项见 [V4 更新说明](CLIENT_UPDATES_V4.md)和[验收报告](artifacts/client-update-v4-20261108/REPORT.md)。
+开发中（Unreleased）：V4 客户端更新支持完整文件校验、逐文件资源修复、配置迁移、离线打包预览和按事件保存的故障报告。已改用 Gitea 发布 `v0.1.8-giteatest.1`／`.2`，x86/x64 × normal/test 的真实匿名安装、增量更新、损坏修复、配置保留和离线校验通过；独立双架构修复程序也完成联网修复。正式 GitHub 更新与线上服务未改动，仍保留下述 v0.1.6／v0.1.7 发布范围。使用方法及验证边界见 [V4 更新说明](CLIENT_UPDATES_V4.md)和[Gitea 验收报告](artifacts/client-update-gitea-20261108/REPORT.md)。
 
 v0.1.7 服务端更新：决斗场扩展为初级、中级、高级和自由四类频道，覆盖全部决斗段位；决斗房间新增组队战与擂台赛，支持八座位和整队结算；18081 GM 后台新增胜点发放，以及向所有现有角色（含离线角色）预览、发送和补发邮件。升级需同时更换服务端、客户端 PVF，并映射和放行 `7110–7112/TCP`。本轮已完成本地验证并停止测试服务；同步GitHub源码快照并发布GHCR服务端镜像，客户端自动更新附件继续保留v0.1.6。见[部署说明](DEPLOYING.md#四类决斗频道与-gm-奖励v017)、[频道与GM验收](docs/acceptance/2026-11-07-pvp-gm-rewards.md)和[组队战与擂台赛验收](docs/acceptance/2026-11-07-pvp-team-relay.md)。
 
@@ -332,7 +332,7 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `AccountServicePort` | 账号服务（后台）端口，默认 `8081`。**域名与 `EntranceHost` 共用**：实际地址 = `http://{EntranceHost}:{AccountServicePort}`，发布前只改这一个端口，域名不用改两处。 |
 | `AccountServiceUrl` | 可选覆盖：填了就完全使用该地址（账号服务在别的域名或走内网时）；留空即按上面的「域名:端口」自动拼。 |
 | `Theme` | 启动器界面主题：`auto` / `light` / `dark`（只作用于注册/改密/找回/账号管理/设置这些窗口，主窗口是原版皮肤不受影响）。 |
-| `UpdateProvider` / `UpdateChannel` | V4 测试构建：正式来源配置为 `github` / `stable`，隔离测试为 `gitee` / `gitee-test`。显式 Gitee 来源不回退到 GitHub，也不被旧 `UpdateServiceUrl` 覆盖；GitHub 模式保留显式自托管地址优先。 |
+| `UpdateProvider` / `UpdateChannel` | V4 测试构建：正式来源配置为 `github` / `stable`，本轮隔离测试为 `gitea` / `gitea-test`（固定 `http://firekula.site:3000`）；另保留 `gitee` / `gitee-test` 适配。显式测试来源不回退到 GitHub，也不被旧 `UpdateServiceUrl` 覆盖；GitHub 模式保留显式自托管地址优先。 |
 | `UpdateRepository` / `UpdateFlavor` | V4 来源仓库与 `normal`／`test` 类型；类型留空时从已安装记录或安装包清单取得。架构跟随当前登录器进程，不在 x86／x64 之间自动切换。 |
 | `Accounts[]` 子项 | 除 `Account` / `Password` 外还支持 `DisplayName`（显示名）、`CreateTime`（创建时间）、`OicqCode` 与 `RememberPassword`（记住密码，默认 `true`；为 `false` 时只保存空密码，启动前需在界面输入，无头启动需要存储密码）。 |
 

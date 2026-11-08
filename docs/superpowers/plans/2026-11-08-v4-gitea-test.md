@@ -9,12 +9,12 @@
 ## Tasks
 
 - [x] Inspect exact repository and remove matching Gitee remote from isolated public clone. Preserve hosted Gitee repository and existing origin.
-- [ ] Core: failing Gitea source/API/URL-boundary tests, adapter, full core suite. Files src/DFLegacy.UpdateCore/ReleaseSource.cs and ReleaseProvider.cs; tests/DFLegacy.UpdateCore.Tests/ProviderTests.cs.
-- [ ] Publisher/GUI: failing Gitea API contract and grouped publication tests; fixed-origin draft publication, manifests last, exact-source anonymous validation; add Gitea choice and preserving opt-in script. Files tools/release/update_v4.py, related tests, src/DFLegacy.ClientPackager. Do not edit Core/Launcher.
-- [ ] Launcher: explicit Gitea selection overriding legacy hosted source without GitHub fallback; repair/source regression tests. Files src/DFLegacy.Launcher/Updates and tests. Do not edit Core/Publisher.
-- [ ] Integrate, test, independent review, build self-contained x86/x64 with new source commit. Generate Gitea .1/.2 test-only bundles and starter/repair packages on C: (D: space low).
-- [ ] Obtain existing Gitea authentication through its credential helper in memory, publish isolated .1 draft and validate anonymously, test actual engine A; publish .2 and test differential update B. Never echo credentials, delete or overwrite existing releases, or change GitHub/online servers.
-- [ ] Update documentation and local report with actual tests and links; preserve ACT1_LOCAL_ACCEPTANCE.md and other worktrees.
+- [x] Core: failing Gitea source/API/URL-boundary tests, adapter, full core suite. Files src/DFLegacy.UpdateCore/ReleaseSource.cs and ReleaseProvider.cs; tests/DFLegacy.UpdateCore.Tests/ProviderTests.cs.
+- [x] Publisher/GUI: failing Gitea API contract and grouped publication tests; fixed-origin draft publication, manifests last, exact-source anonymous validation; add Gitea choice and preserving opt-in script. Files tools/release/update_v4.py, related tests, src/DFLegacy.ClientPackager. Do not edit Core/Launcher.
+- [x] Launcher: explicit Gitea selection overriding legacy hosted source without GitHub fallback; repair/source regression tests. Files src/DFLegacy.Launcher/Updates and tests. Do not edit Core/Publisher.
+- [x] Integrate, test, independent review, build self-contained x86/x64 with new source commit. Generate Gitea .1/.2 test-only bundles and starter/repair packages on C: (D: space low).
+- [x] Obtain existing Gitea authentication through its credential helper in memory, publish isolated .1 draft and validate anonymously, test actual engine A; publish .2 and test differential update B. Never echo credentials, delete or overwrite existing releases, or change GitHub/online servers.
+- [x] Update documentation and local report with actual tests and links; preserve ACT1_LOCAL_ACCEPTANCE.md and other worktrees.
 
 ## Shared contract
 

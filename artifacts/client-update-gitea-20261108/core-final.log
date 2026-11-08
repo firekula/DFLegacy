@@ -1,0 +1,3 @@
+Lease blocked: checkpoint=controlled-holder; observerPid=42024; owners=[{"ProcessId":19056,"StartTimeUtcTicks":639297017071054261,"Name":"DFLegacy.UpdateCore.Tests"}]
+Lease acquired: checkpoint=controlled-holder; failedProbes=1; elapsedMs=138
+Update Core: 702 assertions passed

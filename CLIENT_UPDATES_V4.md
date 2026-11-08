@@ -1,6 +1,6 @@
 # V4 客户端更新与离线资源发布
 
-状态：**Unreleased，本地验收通过，Gitee 第一版附件已上传，最终匿名验收受平台限流阻断，第二版待发布**。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用；本文不表示 V4 已正式发布。测试包为 `v0.1.8-v4test.1` 和 `v0.1.8-v4test.2`，来源是显式 Gitee 测试仓库。本地结果及实际发布状态见[验收报告](artifacts/client-update-v4-20261108/REPORT.md)。
+状态：**Unreleased，Gitea 双版本、四变体远端验收通过**。测试版本为 `v0.1.8-giteatest.1` 和 `v0.1.8-giteatest.2`，固定来源 `http://firekula.site:3000/firekula/DFLegacy`。实际匿名安装、增量升级、单文件修复、配置保留、离线校验和独立双架构联网修复通过，见[Gitea 验收报告](artifacts/client-update-gitea-20261108/REPORT.md)。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用；本文不表示 V4 已正式发布。
 
 ## 来源与离线状态
 
@@ -8,9 +8,9 @@
 
 ```json
 {
-  "UpdateProvider": "gitee",
+  "UpdateProvider": "gitea",
   "UpdateRepository": "firekula/DFLegacy",
-  "UpdateChannel": "gitee-test",
+  "UpdateChannel": "gitea-test",
   "UpdateFlavor": "test",
   "DisableGitHubUpdates": false
 }
@@ -20,7 +20,7 @@
 | --- | --- |
 | `UpdateProvider=github`，`UpdateChannel=stable`，`UpdateServiceUrl` 为空 | 检查 GitHub 对应架构／类型的 V4 清单；首次尚无 V4 安装且仓库没有兼容 V4 清单时保留旧 V3 桥接路径。 |
 | `UpdateProvider=github`，显式非空 `UpdateServiceUrl` | 保留该自托管地址及原有 V3 更新路径，不静默改用公共仓库。 |
-| `UpdateProvider=gitee`，`UpdateChannel=gitee-test` | 显式测试源优先于遗留自托管地址；没有完整兼容清单时报错，不回退到 GitHub。 |
+| `UpdateProvider=gitea`，`UpdateChannel=gitea-test`（本轮测试）或 `gitee`／`gitee-test` | 显式测试源优先于遗留自托管地址；没有完整兼容清单时报错，不回退到 GitHub。 |
 | V4 公共来源且 `DisableGitHubUpdates=true` | 该兼容字段在 V4 路径中停用联网检查；仍检查已提交的本地 V4 安装，尚未安装 V4 时沿用本地安装包校验。自托管 V3 保留其既有配置语义。 |
 
 每次启动都重新读取受管理文件并核对 SHA256；版本相同、时间戳相同或长度相同均不能跳过校验。显示的阶段包括校验、下载、安装与复核。普通版与测试版、x86 与 x64 的清单和程序保持分开，不自动切换。
@@ -31,7 +31,7 @@
 
 V4 清单是完整目标集，资源可有任意扩展名和嵌套路径，包括明确选择的 EXE、DLL、PVF、NPK、网页和零字节文件。未列入受管理集合的本地文件默认保留。发布器必须有显式包含规则，排除规则优先；`launcher.json`、`Config.ini`、日志、存档、账号目录、更新缓存／备份、版本控制目录及已知私密文件始终排除，也不能通过大小写、路径上跳、Windows 别名或链接绕过。路径分量包含 `~` 紧接数字时拒绝，避免 `LAUNCH~1.JSO`、`IMAGEP~1/a.npk` 等 8.3 短名称绕过保护；使用完整长名称。
 
-这不同于旧 `client-assets`／V2 工具包的固定文件白名单；后者仍保持原合同。不要为了制作 V4 清单修改旧打包器白名单，也不要将完整玩家目录、私有 Git 历史或凭据作为发布输入。
+上述保护也覆盖 `launcher.json.backup-*`、`Config.ini.bak` 等受保护配置的点号／波浪号后缀副本，以及 `.launcher-save-*` 原子保存临时文件；在任意目录层级、大小写下都先于包含规则排除。这不同于旧 `client-assets`／V2 工具包的固定文件白名单；后者仍保持原合同。不要为了制作 V4 清单修改旧打包器白名单，也不要将完整玩家目录、私有 Git 历史或凭据作为发布输入。
 
 `launcher.json` 是保留并迁移的配置，不是必须与服务器字节完全一致的受管理文件。当前声明式操作仅支持该文件的 `Relay.TcpPorts`、`Relay.UdpPorts`、`Relay.Enabled`、`Relay.Preference`：
 
@@ -58,7 +58,7 @@ V4 清单是完整目标集，资源可有任意扩展名和嵌套路径，包�
 
 ## 本地构建双架构测试产物
 
-在仓库根目录运行，要求 Python 3.12。按 [BUILDING.md](BUILDING.md#构建不可变-windows-客户端资源) 的原生构建及 `dotnet publish` 参数，从同一提交生成 x86／x64 自包含登录器和匹配补丁。设置 `DFLEGACY_RELEASE_VERSION=v0.1.8-v4test.1`；源程序的构建版本、V4 `version` 与最终 Release tag 必须一致，`commit` 填该构建的 40 位源提交。测试发布使用独立标签，不占用正式 `v0.1.8`。
+在仓库根目录运行，要求 Python 3.12。按 [BUILDING.md](BUILDING.md#构建不可变-windows-客户端资源) 的原生构建及 `dotnet publish` 参数，从同一提交生成 x86／x64 自包含登录器和匹配补丁。设置 `DFLEGACY_RELEASE_VERSION=v0.1.8-giteatest.1`；源程序的构建版本、V4 `version` 与最终 Release tag 必须一致，`commit` 填该构建的 40 位源提交。测试发布使用独立标签，不占用正式 `v0.1.8`。
 
 V4 直接读取这些构建字节。旧 `release.py build-client-assets`／V3 工具仍只接受 `vX.Y.Z` 或 `dev-YYYYMMDDTHHMMSSZ-<SHA12>`，不能把 `.1`／`.2` 测试标签传给该旧入口。需要 V3 桥接时，另用其允许的独立 dev 版本从同一源提交构建桥接程序，再构建对应 `.1`／`.2` 的 V4 程序；不要伪装成正式 `v0.1.8` 来绕过旧校验。
 
@@ -76,9 +76,9 @@ for arch in ("x86", "x64"):
     for flavor in ("normal", "test"):
         request = {
             "root": str(base / "inputs" / f"{arch}-{flavor}"),
-            "provider": "gitee", "repository": "firekula/DFLegacy",
-            "version": "v0.1.8-v4test.1", "commit": source_commit,
-            "architecture": arch, "flavor": flavor, "channel": "gitee-test",
+            "provider": "gitea", "repository": "firekula/DFLegacy",
+            "version": "v0.1.8-giteatest.1", "commit": source_commit,
+            "architecture": arch, "flavor": flavor, "channel": "gitea-test",
             "sequence": 1, "minimum_sequence": 0,
             "includes": ["DFLegacy.Launcher.exe", "DFLegacy.Client.dll",
                          "Script.pvf", "ImagePacks2/**"] + (["debug.dll"] if flavor == "test" else []),
@@ -112,11 +112,11 @@ foreach ($arch in 'x86','x64') {
 }
 ```
 
-每个输出包含 `receipt.json`、内容哈希命名的 `assets/dflegacy-v4-<sha256>.bin` 和 `DFLegacy-client-update-v4-gitee-test-<normal|test>-win-<x86|x64>.json`。回执列出完整文件、排除原因、差异、逻辑总量、待上传字节、复用字节、迁移和退役。输出已存在时拒绝覆盖，失败后选择新目录并审查原因。
+每个输出包含 `receipt.json`、内容哈希命名的 `assets/dflegacy-v4-<sha256>.bin` 和 `DFLegacy-client-update-v4-gitea-test-<normal|test>-win-<x86|x64>.json`。回执列出完整文件、排除原因、差异、逻辑总量、待上传字节、复用字节、迁移和退役。输出已存在时拒绝覆盖，失败后选择新目录并审查原因。
 
 ## 第二版与增量资源
 
-构建 `.2` 前先保留 `.1` 的四个完整清单及其发布资源。每个变体的请求从对应 `.1` 请求复制，改为 `version=v0.1.8-v4test.2`、`sequence=2`，`previous` 指向**同架构、同类型、同渠道**的 `.1` 清单；`commit` 与更新后的程序构建一致，输出改为 `v2-<arch>-<flavor>`。新的资源或变更文件直接体现在完整输入目录中；遗漏旧文件时必须添加本次 `retired` 声明。原有迁移可由先前清单自动累计，新迁移使用新的 ID。
+构建 `.2` 前先保留 `.1` 的四个完整清单及其发布资源。每个变体的请求从对应 `.1` 请求复制，改为 `version=v0.1.8-giteatest.2`、`sequence=2`，`previous` 指向**同架构、同类型、同渠道**的 `.1` 清单；`commit` 与更新后的程序构建一致，输出改为 `v2-<arch>-<flavor>`。新的资源或变更文件直接体现在完整输入目录中；遗漏旧文件时必须添加本次 `retired` 声明。原有迁移可由先前清单自动累计，新迁移使用新的 ID。
 
 `reuse` 可以列出同渠道、同类型、其他架构先前已发布的清单，供公共 NPK／PVF／补丁内容复用；不能用它代替本变体的 `previous` 管理历史。构建只为此前没有的内容生成上传附件；未变化资源的 `parts.release` 保留旧不可变 tag。发布前会通过同一来源的匿名结构化附件列表和实际下载核对所有旧引用，不能引用本地尚未发布的构建。资源引用仍存在时不能删除旧 Release；工具提供 `release_references`／`ensure_release_unreferenced` 检查，没有自动删除 Release 的操作。
 
@@ -124,11 +124,11 @@ foreach ($arch in 'x86','x64') {
 
 ## 发布门槛与匿名验证
 
-发布前核对四份产物、完整清单及迁移，并取得测试仓库授权。本轮只授权 Gitee 测试发布；本文中的命令不是正式 GitHub 发布授权。凭据仅由发布进程环境中的 `DFLEGACY_GITEE_RELEASE_TOKEN`（或另行授权的 `DFLEGACY_GITHUB_RELEASE_TOKEN`）读取，不能写入请求 JSON、清单、客户端配置、URL 或日志。
+发布前核对四份产物、完整清单及迁移，并取得测试仓库授权。本轮按用户指示改为 Gitea 隔离测试发布；本文中的命令不是正式 GitHub 发布授权。凭据仅由发布进程环境中的 `DFLEGACY_GITEA_RELEASE_TOKEN`（保留 Gitee／GitHub 各自的专用变量）读取，不能写入请求 JSON、清单、客户端配置、URL 或日志。
 
 `--target-commitish` 是公开发布仓库**已经存在的提交 SHA**，与清单内的源构建 `commit` 分开。空测试仓库需要先按获授权范围建立最小公开说明提交；发布器不会推送源码、私有 Git 历史或自动初始化仓库。
 
-同一 tag 的变体必须一次分组发布。组内来源、仓库、版本、源提交、顺序、渠道和最低基线一致，架构／类型组合唯一；共享资源按哈希与长度合并。先上传并校验全部资源，再上传所有清单。GitHub 最后开放草稿；Gitee 没有草稿状态，某个清单可见时其全部资源已经具备。
+同一 tag 的变体必须一次分组发布。组内来源、仓库、版本、源提交、顺序、渠道和最低基线一致，架构／类型组合唯一；共享资源按哈希与长度合并。先上传并校验全部资源，再上传所有清单。GitHub 与 Gitea 最后开放已校验的草稿；Gitee 没有草稿状态，某个清单可见时其全部资源已经具备。
 
 ```powershell
 # 仅在测试发布已经获授权、凭据已进入当前进程且产物已审查后执行。
@@ -143,7 +143,7 @@ py -3.12 $v4 publish `
 
 每次发布使用新 tag，拒绝重写已有 Release，包括中断后的不完整 Release。上传失败后保留现场，没有自动删除、覆盖或补传流程；审查后通常使用新测试 tag。Gitee 在清单上传阶段失败时可能已有部分变体可发现，但其资源必须已完整；不能重用同 tag 把另一些字节悄悄换进去。
 
-平台预检按分组后的唯一附件计数，并将每份清单计入：GitHub 最多 1000 个附件，单附件必须小于 2 GiB；Gitee 单附件不超过 100,000,000 字节、仓库附件累计不超过 1,000,000,000 字节。每个传输分卷最多 48 MiB（50,331,648 字节）；空文件用一个零字节卷。分卷解决单附件限制，不能解决仓库总量超限。旧资源复用能减少新增上传，但旧 Release 占用仍计入 Gitee 总量；工具明确阻止超限，不静默漏文件或删除历史。
+Gitea 发布器目前保守限制单附件不超过 100,000,000 字节，不套用 Gitee 的 1 GB 仓库累计限制。平台预检按分组后的唯一附件计数，并将每份清单计入：GitHub 最多 1000 个附件，单附件必须小于 2 GiB；Gitee 单附件不超过 100,000,000 字节、仓库附件累计不超过 1,000,000,000 字节。每个传输分卷最多 48 MiB（50,331,648 字节）；空文件用一个零字节卷。分卷解决单附件限制，不能解决仓库总量超限。旧资源复用能减少新增上传，但旧 Release 占用仍计入 Gitee 总量；工具明确阻止超限，不静默漏文件或删除历史。
 
 发布后使用新建、无 Cookie／Authorization 的客户端重新下载清单和资源，检查长度、SHA256 与 Range 结果。也可单独运行：
 
@@ -151,15 +151,17 @@ py -3.12 $v4 publish `
 py -3.12 $v4 verify --bundle (Join-Path $base 'v1-x86-normal') --remote
 ```
 
-Gitee 先从指定仓库／Release 的 `attach_files` 列表取得附件 ID，再通过规范下载接口取得临时地址。已验证的 `foruda.gitee.com/attach_file/...` 重定向可能有 `attname`、`token`、`ts` 签名查询参数；这些是短时附件地址，不是玩家登录凭据，不持久化或记录其值。HTML 登录页／验证码、陌生来源、截断或哈希错误都失败。实际公开样本忽略 Range 返回 200，因此不能承诺所有 Gitee附件都支持206续传。
+Gitea 仅接受固定来源 `http://firekula.site:3000` 的 Release 附件路径或结构化附件记录中的 `/attachments/<UUID>`，拒绝跨站重定向、凭据、查询串及片段。HTTP 例外只属于此测试来源，不改变 GitHub／Gitee 的 HTTPS 要求。发现流程按 Gitea 的 `limit=50` 分页；连续三页满页而不能确认遍历结束时失败，不以不完整结果宣称最新版。
+
+Gitee 适配仍保留：先从指定仓库／Release 的 `attach_files` 列表取得附件 ID，再通过规范下载接口取得临时地址。已验证的 `foruda.gitee.com/attach_file/...` 重定向可能有 `attname`、`token`、`ts` 签名查询参数；这些是短时附件地址，不是玩家登录凭据，不持久化或记录其值。HTML 登录页／验证码、陌生来源、截断或哈希错误都失败。实际公开样本忽略 Range 返回 200，因此不能承诺所有 Gitee附件都支持206续传。
 
 ## 无 Token 的手动上传交付
 
-本轮先交付本地 Release 上传包，随后用户提供令牌改为代发：第一版全部附件已上传，但最终匿名复核受 Gitee HTTP 403 限流阻断，第二版未发布。以下保留手动上传方法；恢复时先检查已有 Release，不能重新创建或覆盖第一版。GitHub 正式发布没有修改。公开仓库只需已有公开说明提交，无需推送私有源码历史。生成的 `handoff.json` 区分实际构建的源码提交与公开仓库标签所指提交，并记录每个输入、ZIP 和附件的 SHA256。
+此前 Gitee 的 `v0.1.8-v4test.1` 附件已上传，但最终匿名复核受 HTTP 403 限流阻断，第二版未发布；用户随后改用现有 Gitea 的全新 `v0.1.8-giteatest.1`／`.2` 标签。以下保留手动上传方法。GitHub 正式发布没有修改，测试标签使用 Gitea 中已经存在的提交，不推送其他工作区内容。生成的 `handoff.json` 区分实际构建的源码提交与公开仓库标签所指提交，并记录每个输入、ZIP 和附件的 SHA256。
 
 每个标签的上传包包含 `01-resources/`、`02-manifests/`、`UPLOAD.md` 和校验和。先上传并匿名验证所有资源，再上传四份清单；x86/x64 × normal/test 共用一个不可变标签，公共资源只上传一次。只将两个编号目录中的原始文件作为 Release 附件，保留文件名；ZIP 与说明供人工交付，不代替实际资源或清单附件。发布 `.2` 前保留并验证 `.1` 的资源，`.2` 的清单会引用它们。
 
-本轮 `v0.1.8-v4test.1`／`.2` 使用同一次实际构建：`.2` 为资源更新，复用 `.1` 登录器、客户端 DLL 和测试版 debug.dll 的完整字节，因此二进制版本仍为 `.1`。只改变未被游戏引用的 `UpdateTestAssets/probe.npk`，同目录 `probe.pvf` 保持不变。两份 probe 是合成传输测试数据，**不是有效游戏资源**；绝不生成或替换假的根目录 `Script.pvf`。安装时仍需用户已有的合法兼容游戏文件。
+本轮 `v0.1.8-giteatest.1`／`.2` 使用同一次实际构建：`.2` 为资源更新，复用 `.1` 登录器、客户端 DLL 和测试版 debug.dll 的完整字节，因此二进制版本仍为 `.1`。只改变未被游戏引用的 `UpdateTestAssets/probe.npk`，同目录 `probe.pvf` 保持不变。两份 probe 是合成传输测试数据，**不是有效游戏资源**；绝不生成或替换假的根目录 `Script.pvf`。安装时仍需用户已有的合法兼容游戏文件。
 
 配置测试中，`.1` 将 7110 并入 Relay.TcpPorts，`.2` 保留此前迁移再并入 7111、7112；端口仍写成逗号分隔字符串。用户配置不是可上传资源。供初次启动的桥接包／独立修复副本与这些 Release 附件分别交付。
 
@@ -169,7 +171,7 @@ Gitee 先从指定仓库／Release 的 `attach_files` 列表取得附件 ID，�
 
 文件、配置迁移及安装记录使用同一事务；安装记录最后提交。发生中断先恢复，再判断是否可启动。备份保存的是原始实际字节，即使它原来已损坏；“回滚成功”不等于“旧版健康”。账户／设置写入需要与安装互斥并读取最新配置。提交前处理文件占用，只能在玩家同意后终止可终止的占用进程；助手交接、独立修复程序和实机锁文件验收仍以最终测试报告为准。
 
-独立自包含程序 `DFLegacy.Repair.exe --repair-client <目录>` 不执行安装目录中已损坏的登录器。x86/x64 两份实际程序均完成本地离线验证：完整 V4 安装返回成功，受管理 DLL 损坏且停用联网时拒绝放行，原配置字节保持不变。它只处理 V4；旧 V3 未决事务需先按桥接恢复指引处理。联网下载修复仍需在测试附件发布后复验。
+独立自包含程序 `DFLegacy.Repair.exe --repair-client <目录>` 不执行安装目录中已损坏的登录器。x86/x64 两份实际程序均完成本地离线验证：完整 V4 安装返回成功，受管理 DLL 损坏且停用联网时拒绝放行，原配置字节保持不变。两架构还完成真实 Gitea 联网修复并生成单独 update 报告。它只处理 V4；旧 V3 未决事务需先按桥接恢复指引处理。修复程序必须放在被修复目录之外。
 
 报告写入 `Logs/DFLegacy/Incidents/`，文件名包含时间、PID 和事件 ID：
 
@@ -182,4 +184,6 @@ Gitee 先从指定仓库／Release 的 `attach_files` 列表取得附件 ID，�
 
 报告包含版本、架构、时间／时区、会话和事件 ID、错误码及有界上下文；凭据脱敏、重复异常合并并限制保留时间／数量／总量，不自动上传。服务器版本无可靠接口时记录未知。正常退出、正常 EOF／频道切换、用户取消及可处理的探针异常不应当作事故。CrashSender 弹窗但进程仍存活的入口尚未验证时，继续使用[显式详细抓取工具](tools/debug/crash_capture/README.md)；普通启动不默认附加调试器。转储可能包含进程内存，反馈前单独审查。
 
-旧客户端先通过相应 V3 桥接包升级登录器，再使用 V4 管理资源；原 `release.py build-client-packages --updates-only --script-pvf ...` 与 `github_publish.py` 未改写。本次也交付四个 `starter-clients` 手动替换工具包，需在隔离游戏副本解压后执行包内 `Enable-Gitee-Test.ps1`，才会切到 Gitee 测试源；脚本备份现有配置并保留其他字段。四包通过生产清单解析器验证，实际程序和资源完成本地更新生命周期验收；真实 Gitee 双架构升级及旧版线上桥接仍待远端复验。
+旧客户端先通过相应 V3 桥接包升级登录器，再使用 V4 管理资源；原 `release.py build-client-packages --updates-only --script-pvf ...` 与 `github_publish.py` 未改写。本次也交付四个 `starter-clients` 手动替换工具包，需在隔离游戏副本解压后执行包内 `Enable-Gitea-Test.ps1`，才会切到 Gitea 测试源；脚本备份现有配置并保留其他字段。四包通过生产清单解析器验证，实际程序和资源完成本地与 Gitea 远端更新验收。旧版正式 GitHub 桥接仍未发布或远端验收。
+
+本轮 `.2` 只更新测试资源，二进制及 starter 的 `client-package.json` 仍为 `.1`。实际 V4 安装版本查看 `.dflegacy/v4/installed.json` 中的 `release.tag`；不能仅根据旧安装包清单判断资源版本。现在最新测试版本是 `.2`，新启动会直接安装它，A→B 流程已由自动验收完成。

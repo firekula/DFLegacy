@@ -1,0 +1,5 @@
+System.Exception: FAIL: A candidate on a full final page cannot certify latest version
+   at DFLegacy.UpdateCore.Tests.TestRun.Check(Boolean value, String message) in D:\codex_worktree\manager-export-release\DFLegacy\tests\DFLegacy.UpdateCore.Tests\TestRun.cs:line 12
+   at DFLegacy.UpdateCore.Tests.GiteaProviderTests.Run() in D:\codex_worktree\manager-export-release\DFLegacy\tests\DFLegacy.UpdateCore.Tests\GiteaProviderTests.cs:line 62
+   at DFLegacy.UpdateCore.Tests.ProviderTests.Run() in D:\codex_worktree\manager-export-release\DFLegacy\tests\DFLegacy.UpdateCore.Tests\ProviderTests.cs:line 10
+   at DFLegacy.UpdateCore.Tests.TestRun.RunAsync(String[] args) in D:\codex_worktree\manager-export-release\DFLegacy\tests\DFLegacy.UpdateCore.Tests\TestRun.cs:line 36
