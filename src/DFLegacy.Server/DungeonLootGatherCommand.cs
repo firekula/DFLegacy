@@ -9,8 +9,9 @@ internal static class DungeonLootGatherCommand
         ushort localUserId, bool alive, bool inPvp, Func<GameServerPacket, ValueTask> sendToRequester)
     {
         // This is a normal player command, independent of test/admin account privileges.
+        // The native dungeon chat tab sends type 2 even in a solo run; map chat uses type 3.
         // Detached tutorial rooms and stopped instances have no active run room.
-        if (messageType != (byte)GameMessageType.Type03White
+        if ((messageType != (byte)GameMessageType.Type02LightCyan && messageType != (byte)GameMessageType.Type03White)
             || !string.Equals(message, "牛来", StringComparison.Ordinal)
             || !alive || inPvp || characterId == Guid.Empty
             || instance is null || instance.IsParty || instance.SoloCharacterId != characterId

@@ -59,6 +59,21 @@ internal static class DungeonLootGatherSmokeTests
         check(requesterPackets is [var notification] && notification.Type == 0 && notification.ProtocolId == 12
                 && notification.Payload.SequenceEqual(expected) && otherPackets.Count == 0,
             "gather sends exactly one private Type16 marker with the requester uid and exact native ASCII bytes");
+
+        // Captured from the user's solo dungeon CMD 17 on 2026-11-08 15:16:34.
+        // The default dungeon chat tab sends type 2 even without a party.
+        var liveRequest = Convert.FromHexString("34000201000000000004000000C5A3C0B4");
+        check(EntranceService.TryReadSendMessage(liveRequest, out var liveParsed)
+                && liveParsed.MessageType == 2 && liveParsed.TargetOrItemSpace == 1,
+            "the actual solo dungeon chat packet parses as type 2 with target field 1");
+        requesterPackets.Clear();
+        check(await DungeonLootGatherCommand.TrySendAsync(liveParsed.MessageType,
+                Encoding.GetEncoding(936).GetString(liveParsed.MessageBytes), instance, characterId,
+                0x1234, alive: true, inPvp: false, SendSelf),
+            "the captured type-2 solo dungeon chat authorizes exact 牛来 for an ordinary account");
+        check(requesterPackets is [var liveNotification] && liveNotification.Type == 0 && liveNotification.ProtocolId == 12
+                && liveNotification.Payload.SequenceEqual(expected) && otherPackets.Count == 0,
+            "the type-2 command sends one private marker using the real requester uid, not the request target field");
         check(instance.Snapshot().Version == before.Version && instance.GetRoomGroundItems(0, 0).SequenceEqual(groundBefore)
                 && !instance.TryBeginLootPickup(characterId, drop, false, [], _ => 0, out var retry)
                 && retry.Outcome == LootPickupOutcome.PickupInProgress,
@@ -67,31 +82,35 @@ internal static class DungeonLootGatherSmokeTests
                 && ReferenceEquals(claimed, drop),
             "the original room/id/pending pickup remains valid without server physics coordinate changes");
 
-        foreach (var (messageType, message, run, who, alive, inPvp) in new[]
+        foreach (var messageType in new byte[] { 2, 3 })
+        foreach (var (message, run, who, alive, inPvp) in new[]
         {
-            ((byte)3, " 牛来", instance, characterId, true, false),
-            ((byte)3, "牛来 ", instance, characterId, true, false),
-            ((byte)3, "牛来!", instance, characterId, true, false),
-            ((byte)3, "牛來", instance, characterId, true, false),
-            ((byte)2, "牛来", instance, characterId, true, false),
-            ((byte)1, "牛来", instance, characterId, true, false),
-            ((byte)7, "牛来", instance, characterId, true, false),
-            ((byte)16, "牛来", instance, characterId, true, false),
-            ((byte)18, "牛来", instance, characterId, true, false),
-            ((byte)3, "牛来", party, characterId, true, false),
-            ((byte)3, "牛来", singleMemberParty, characterId, true, false),
-            ((byte)3, "牛来", inactive, characterId, true, false),
-            ((byte)3, "牛来", tutorial, characterId, true, false),
-            ((byte)3, "牛来", (DungeonInstance?)null, characterId, true, false),
-            ((byte)3, "牛来", instance, Guid.NewGuid(), true, false),
-            ((byte)3, "牛来", instance, characterId, false, false),
-            ((byte)3, "牛来", instance, characterId, true, true),
+            (" 牛来", instance, characterId, true, false),
+            ("牛来 ", instance, characterId, true, false),
+            ("牛来!", instance, characterId, true, false),
+            ("牛來", instance, characterId, true, false),
+            ("普通聊天", instance, characterId, true, false),
+            ("牛来", party, characterId, true, false),
+            ("牛来", singleMemberParty, characterId, true, false),
+            ("牛来", inactive, characterId, true, false),
+            ("牛来", tutorial, characterId, true, false),
+            ("牛来", (DungeonInstance?)null, characterId, true, false),
+            ("牛来", instance, Guid.NewGuid(), true, false),
+            ("牛来", instance, characterId, false, false),
+            ("牛来", instance, characterId, true, true),
         })
         {
             requesterPackets.Clear();
             check(!await DungeonLootGatherCommand.TrySendAsync(messageType, message, run, who, 0x1234,
                     alive, inPvp, SendSelf) && requesterPackets.Count == 0 && otherPackets.Count == 0,
                 $"gather rejects non-exact/type/party/town/dead/PvP/foreign-run context: {messageType}, '{message}', {run?.PartyId}, {alive}, {inPvp}");
+        }
+        foreach (var unsupportedType in new byte[] { 1, 7, 16, 18 })
+        {
+            requesterPackets.Clear();
+            check(!await DungeonLootGatherCommand.TrySendAsync(unsupportedType, "牛来", instance, characterId,
+                    0x1234, true, false, SendSelf) && requesterPackets.Count == 0 && otherPackets.Count == 0,
+                $"whisper, system and messenger types still cannot authorize a gather: {unsupportedType}");
         }
 
         requesterPackets.Clear();
