@@ -22,6 +22,11 @@ import urllib.request
 import uuid
 
 PART_LIMIT = 48 * 1024 * 1024
+# This isolated test provider is pinned; this is not a general HTTP source option.
+GITEA_ORIGIN = 'http://firekula.site:3000'
+# /api/v1/settings/attachment reported max_size=100 on 2026-11-08. Release
+# uploads can differ from issue uploads; use a conservative decimal MB bound.
+GITEA_ATTACHMENT_LIMIT = 100_000_000
 MAX_METADATA = 16 * 1024 * 1024
 MAX_LONG = 2**63 - 1
 PROTECTED = {'launcher.json', 'launcher.txt', 'config.ini', 'client-package.json',
@@ -178,13 +183,15 @@ def ensure_release_unreferenced(tag, manifests):
 
 def preflight_limits(provider, sizes, existing_bytes=0):
     sizes=list(sizes)
-    require(provider in ('github','gitee') and integer(existing_bytes) and all(integer(s) for s in sizes), 'invalid provider inventory')
+    require(provider in ('github','gitee','gitea') and integer(existing_bytes) and all(integer(s) for s in sizes), 'invalid provider inventory')
     if provider == 'github':
         require(len(sizes) <= 1000, 'GitHub release exceeds 1000 attachments')
         require(all(s < 2**31 for s in sizes), 'GitHub attachment must be smaller than 2 GiB')
-    else:
+    elif provider == 'gitee':
         require(all(s <= 100000000 for s in sizes), 'Gitee attachment exceeds 100 MB')
         require(sum(sizes) + existing_bytes <= 1000000000, 'Gitee repository attachments exceed 1 GB')
+    else:
+        require(all(s <= GITEA_ATTACHMENT_LIMIT for s in sizes), 'Gitea attachment exceeds conservative 100 MB limit')
 
 
 def plan_resources(root, version, commit, architecture, flavor, channel, sequence,
@@ -274,13 +281,15 @@ def build_manifest(**kwargs):
 
 
 def validate_source(provider, repository):
-    require(provider in ('github','gitee') and isinstance(repository,str)
+    require(provider in ('github','gitee','gitea') and isinstance(repository,str)
             and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*',repository), 'invalid provider/repository')
+    require(provider != 'gitea' or repository == 'firekula/DFLegacy', 'Gitea test repository must be firekula/DFLegacy')
 
 
 def source_identity(provider, repository, manifest):
     validate_source(provider,repository)
     require(provider != 'gitee' or manifest['channel']=='gitee-test', 'Gitee requires explicit gitee-test channel')
+    require(provider != 'gitea' or manifest['channel']=='gitea-test', 'Gitea requires explicit gitea-test channel')
     require(name(manifest_name(manifest)), 'manifest attachment name is too long')
 
 
@@ -329,6 +338,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 class ReleaseApi:
     """Bound repository API. An explicit loopback root is only for HTTP contract tests.
 
+    Gitea 1.26 uses /api/v1, limit=50 pagination, assets and multipart attachment.
     Gitee API 5.4.93: /api/v5/swagger_doc; release attachments use attach_files,
     multipart field file, and the canonical per-attachment download endpoint.
     No credential-bearing URL, ambient cookies, proxy auth, or redirect forwarding.
@@ -337,25 +347,30 @@ class ReleaseApi:
         validate_source(provider,repository)
         require(token is None or isinstance(token,str) and token and not any(c.isspace() for c in token), 'invalid publishing credential')
         self.provider=provider; self.repository=repository; self.token=token
-        self.root=api_root or ('https://api.github.com' if provider=='github' else 'https://gitee.com/api/v5')
+        self.root=api_root or {'github':'https://api.github.com','gitee':'https://gitee.com/api/v5','gitea':GITEA_ORIGIN+'/api/v1'}[provider]
         self.test_root=api_root
         if api_root:
             p=urllib.parse.urlsplit(api_root)
             require(p.scheme=='http' and p.hostname=='127.0.0.1' and not p.username and not p.password and not p.query and not p.fragment and p.path=='', 'custom API root must be loopback')
+            if provider=='gitea': self.root+='/api/v1'
         self.prefix='/repos/'+repository
         self.opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
 
     def anonymous(self):
         return ReleaseApi(self.provider,self.repository,api_root=self.test_root)
 
-    def _open(self,url,method='GET',data=None,headers=None,authenticated=False):
+    def _open(self,url,method='GET',data=None,headers=None,authenticated=False,attachment=None):
         values={'User-Agent':'DFLegacy-V4-publisher/1.0','Accept':'application/json'}
         values.update(headers or {})
         if authenticated:
             require(self.token is not None, 'publishing credential is unavailable')
-            allowed=(self.root+self.prefix+'/', 'https://uploads.github.com'+self.prefix+'/')
-            require(url==self.root+self.prefix or any(url.startswith(p) for p in allowed), 'untrusted authenticated API destination')
-            values['Authorization']='Bearer '+self.token
+            allowed=[self.root+self.prefix+'/']
+            if self.provider=='github': allowed.append('https://uploads.github.com'+self.prefix+'/')
+            if self.provider=='gitea' and attachment is not None:
+                self.validate_gitea_url(url,*attachment)
+            else:
+                require(url==self.root+self.prefix or any(url.startswith(p) for p in allowed), 'untrusted authenticated API destination')
+            values['Authorization']=('token ' if self.provider=='gitea' else 'Bearer ')+self.token
         try:
             return self.opener.open(urllib.request.Request(url,data=data,method=method,headers=values),timeout=120)
         except urllib.error.HTTPError as error: return error
@@ -374,11 +389,14 @@ class ReleaseApi:
 
     def listing(self,path,authenticated=False):
         result=[]
+        # This instance caps responses at 50 even when a higher limit is asked.
+        page_size=50 if self.provider=='gitea' else 100
+        parameter='limit' if self.provider=='gitea' else 'per_page'
         for page in range(1,101):
-            batch=self.request('GET',path+f'?per_page=100&page={page}',authenticated=authenticated)
-            require(isinstance(batch,list) and len(batch)<=100 and all(isinstance(x,dict) for x in batch), 'invalid provider listing')
+            batch=self.request('GET',path+f'?{parameter}={page_size}&page={page}',authenticated=authenticated)
+            require(isinstance(batch,list) and len(batch)<=page_size and all(isinstance(x,dict) for x in batch), 'invalid provider listing')
             result.extend(batch)
-            if len(batch)<100: return result
+            if len(batch)<page_size: return result
         raise ReleaseError('provider listing limit reached; refusing partial inventory')
 
     def release(self,tag,authenticated=False):
@@ -390,7 +408,7 @@ class ReleaseApi:
 
     def attachments(self,release,authenticated=False):
         require(integer(release.get('id'),1), 'invalid release ID')
-        suffix='assets' if self.provider=='github' else 'attach_files'
+        suffix='attach_files' if self.provider=='gitee' else 'assets'
         rows=self.listing(f'/releases/{release["id"]}/{suffix}',authenticated)
         names=set(); ids=set()
         for asset in rows:
@@ -408,10 +426,11 @@ class ReleaseApi:
     def create(self,m,target_commitish):
         require(checksum(target_commitish,40), 'target_commitish must be the existing public repository commit SHA')
         body=dict(tag_name=m['version'],name=m['version'],body='DFLegacy V4 client resources. Manifest is uploaded only after resources are verified.',
-                  target_commitish=target_commitish,prerelease=self.provider=='gitee' or m['flavor']=='test')
-        if self.provider=='github': body['draft']=True
+                  target_commitish=target_commitish,prerelease=self.provider in ('gitee','gitea') or m['flavor']=='test')
+        if self.provider in ('github','gitea'): body['draft']=True
         release=self.request('POST','/releases',body,authenticated=True)
         require(isinstance(release,dict) and integer(release.get('id'),1) and release.get('tag_name')==m['version'], 'created release identity differs')
+        if self.provider=='gitea': require(release.get('draft') is True, 'Gitea did not create the required draft; attachments were not uploaded')
         return release
 
     def upload(self,release,path,asset_name):
@@ -422,9 +441,11 @@ class ReleaseApi:
             url=root+self.prefix+f'/releases/{release["id"]}/assets?name='+asset_name
             prefix=b''; suffix=b''; content_type='application/octet-stream'
         else:
-            url=self.root+self.prefix+f'/releases/{release["id"]}/attach_files'
+            endpoint='assets?name='+asset_name if self.provider=='gitea' else 'attach_files'
+            url=self.root+self.prefix+f'/releases/{release["id"]}/'+endpoint
             boundary='dflegacy-'+uuid.uuid4().hex
-            prefix=(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{asset_name}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()
+            field='attachment' if self.provider=='gitea' else 'file'
+            prefix=(f'--{boundary}\r\nContent-Disposition: form-data; name="{field}"; filename="{asset_name}"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()
             suffix=f'\r\n--{boundary}--\r\n'.encode(); content_type='multipart/form-data; boundary='+boundary
         def stream():
             yield prefix
@@ -440,6 +461,10 @@ class ReleaseApi:
     def download_url(self,release,asset,draft=False):
         if self.provider=='gitee':
             return self.root+self.prefix+f'/releases/{release["id"]}/attach_files/{asset["id"]}/download'
+        if self.provider=='gitea':
+            value=asset.get('browser_download_url')
+            self.validate_gitea_url(value,release,asset)
+            return value
         if draft:
             return self.root+self.prefix+f'/releases/assets/{asset["id"]}'
         expected='https://github.com/'+self.repository+'/releases/download/'+release['tag_name']+'/'+asset['name']
@@ -447,7 +472,21 @@ class ReleaseApi:
         require(value==expected or self.test_root and value==self.test_root+'/download/'+release['tag_name']+'/'+asset['name'], 'attachment URL escapes release/repository')
         return value
 
-    def validate_redirect(self,url):
+    def validate_gitea_url(self,url,release,asset):
+        require(isinstance(url,str) and name(release.get('tag_name')) and name(asset.get('name')), 'invalid Gitea attachment identity')
+        origin=self.test_root or GITEA_ORIGIN
+        canonical=origin+'/'+self.repository+'/releases/download/'+release['tag_name']+'/'+asset['name']
+        identity=asset.get('uuid')
+        uuid_ok=isinstance(identity,str) and re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}',identity)
+        # Exact strings exclude credentials, query/fragment, percent escapes,
+        # alternate ports, traversal and another repository, tag, asset or UUID.
+        require(url==canonical or uuid_ok and url==origin+'/attachments/'+identity,
+                'Gitea attachment URL escapes its source-bound identity')
+
+    def validate_redirect(self,url,release=None,asset=None):
+        if self.provider=='gitea':
+            require(release is not None and asset is not None, 'Gitea redirect requires structured attachment identity')
+            self.validate_gitea_url(url,release,asset); return
         p=urllib.parse.urlsplit(url)
         require(not p.username and not p.password and not p.fragment, 'untrusted attachment redirect')
         if self.test_root:
@@ -477,10 +516,14 @@ class ReleaseApi:
         headers={'Accept':'application/octet-stream'}
         if start: headers['Range']='bytes=1-'
         for hop in range(6):
-            with self._open(url,headers=headers,authenticated=draft and hop==0) as response:
+            options={'headers':headers,'authenticated':draft and hop==0}
+            if self.provider=='gitea' and draft and hop==0: options['attachment']=(release,asset)
+            with self._open(url,**options) as response:
                 if response.status in (301,302,303,307,308):
                     url=urllib.parse.urljoin(url,response.headers.get('Location',''))
-                    self.validate_redirect(url); continue
+                    if self.provider=='gitea': self.validate_redirect(url,release,asset)
+                    else: self.validate_redirect(url)
+                    continue
                 require(response.status in (200,206), f'anonymous attachment download failed (HTTP {response.status})')
                 require('text/html' not in response.headers.get('Content-Type','').lower(), 'attachment returned an HTML login/challenge page')
                 actual_start=start if response.status==206 else 0
@@ -589,9 +632,10 @@ def publish_many(bundles,api=None,target_commitish=None):
         api.upload(release,path,asset)
         assets={a['name']:a for a in api.attachments(release,authenticated=True)}
         require(asset in assets,'uploaded attachment absent from structured release list')
-        verifier=api if api.provider=='github' else public
-        verifier.verify_asset(release,assets[asset],digest,size,draft=api.provider=='github')
-    if api.provider=='github': api.request('PATCH',f'/releases/{release["id"]}',{'draft':False},authenticated=True)
+        draft=api.provider in ('github','gitea')
+        verifier=api if draft else public
+        verifier.verify_asset(release,assets[asset],digest,size,draft=draft)
+    if api.provider in ('github','gitea'): api.request('PATCH',f'/releases/{release["id"]}',{'draft':False},authenticated=True)
     verified=[verify_remote(bundle,api)|{'manifestAsset':item['manifestAsset'],
                'architecture':item['manifest']['architecture'],'flavor':item['manifest']['flavor']} for bundle,item in prepared]
     require(all(result['releaseId']==release['id'] for result in verified),'grouped release identity changed during verification')

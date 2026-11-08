@@ -231,9 +231,9 @@ internal sealed class V4ResourcesForm : Form
 {
     private readonly TableLayoutPanel fields = new() { ColumnCount = 2, Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(10) };
     private readonly TextBox source = new(), output = new(), version = new(), commit = new(), repository = new() { Text = "firekula/DFLegacy" },
-        channel = new() { Text = "gitee-test" }, previous = Multi(42), reuse = Multi(42), includes = Multi(65), excludes = Multi(42),
+        channel = new() { Text = "gitea-test" }, previous = Multi(42), reuse = Multi(42), includes = Multi(65), excludes = Multi(42),
         migrations = Multi(75), retired = Multi(65), targetCommit = new();
-    private readonly ComboBox provider = Choice("Gitee 测试源", "GitHub 正式源"), architecture = Choice("x86", "x64"), flavor = Choice("test", "normal");
+    private readonly ComboBox provider = Choice("Gitea 测试源", "Gitee 测试源", "GitHub 正式源"), architecture = Choice("x86", "x64"), flavor = Choice("test", "normal");
     private readonly NumericUpDown sequence = new() { Minimum = 1, Maximum = 999999999, Value = 1 },
         minimum = new() { Minimum = 0, Maximum = 999999999, Value = 0 };
     private readonly TextBox preview = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both, WordWrap = false, Height = 260 };
@@ -264,7 +264,7 @@ internal sealed class V4ResourcesForm : Form
         AddAction(actions, "验证本地产物", () => Execute("verify")); AddAction(actions, "发布已生成产物…", () => Execute("publish"));
         Row("操作", actions); Row("文件差异 / 迁移预览", preview); Row("结果", status);
         status.Text = "默认仅选择列出的资源。账号、配置、日志、存档和私有目录始终排除。V3 桥接包仍由原发行工具生成。";
-        provider.SelectedIndexChanged += (_, _) => channel.Text = provider.SelectedIndex == 0 ? "gitee-test" : "stable";
+        provider.SelectedIndexChanged += (_, _) => channel.Text = provider.SelectedIndex switch { 0 => "gitea-test", 1 => "gitee-test", _ => "stable" };
         FormClosing += (_, e) => { if (busy) e.Cancel = true; };
     }
 
@@ -304,7 +304,8 @@ internal sealed class V4ResourcesForm : Form
         return JsonSerializer.Serialize(new { root = source.Text.Trim(), version = version.Text.Trim(), commit = commit.Text.Trim(),
             architecture = architecture.Text, flavor = flavor.Text, channel = channel.Text.Trim(), sequence = (long)sequence.Value,
             minimum_sequence = (long)minimum.Value, includes = Lines(includes), excludes = Lines(excludes), previous = Lines(previous), reuse = Lines(reuse),
-            migrations = migrationJson.RootElement, retired = retiredJson.RootElement, provider = provider.SelectedIndex == 0 ? "gitee" : "github", repository = repository.Text.Trim() });
+            migrations = migrationJson.RootElement, retired = retiredJson.RootElement,
+            provider = provider.SelectedIndex switch { 0 => "gitea", 1 => "gitee", _ => "github" }, repository = repository.Text.Trim() });
     }
     private void ShowPreview(string json)
     {
