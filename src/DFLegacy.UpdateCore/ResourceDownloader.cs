@@ -52,6 +52,7 @@ public sealed class ResourceDownloader(IResourceTransport transport, DownloadOpt
                     { File.Move(partial, target, true); if (File.Exists(identityPath)) File.Delete(identityPath); return target; }
                     var offset = File.Exists(partial) ? new FileInfo(partial).Length : 0;
                     if (offset == part.Size && part.Size != 0) { File.Delete(partial); offset = 0; }
+                    cache.EnsureAvailableBytes(checked(part.Size + 65536));
                     using var idle = CancellationTokenSource.CreateLinkedTokenSource(token);
                     idle.CancelAfter(settings.IdleTimeout ?? TimeSpan.FromSeconds(30));
                     using var response = await transport.OpenAsync(part, offset, identity.ETag, idle.Token).ConfigureAwait(false);
