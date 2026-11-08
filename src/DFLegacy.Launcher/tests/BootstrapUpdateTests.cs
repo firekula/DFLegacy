@@ -28,6 +28,7 @@ internal static class BootstrapUpdateTests
         check(BootstrapLayout.Parse(Encoding.ASCII.GetBytes(text),arch).LauncherSha256==hash,"strict bootstrap descriptor parses CRLF");
         foreach(var bad in new[]{text.Replace("SchemaVersion=1","SchemaVersion=2"),text+"Architecture="+arch+"\n",text+"[Other]\n",text+"Source=evil\n",text.Replace(hash,hash.ToUpperInvariant()),text.Replace(arch,arch=="x64"?"x86":"x64"),"\ufeff"+text,text.Replace("[Bootstrap]","[bootstrap]"),new string('x',4097)})
         {try{BootstrapLayout.Parse(Encoding.UTF8.GetBytes(bad),arch);check(false,"reject malformed bootstrap metadata");}catch(InvalidDataException){check(true,"reject malformed bootstrap metadata");}}
+        try{BootstrapLayout.Parse(Encoding.ASCII.GetBytes(text.Replace("Architecture=","\r\nArchitecture=")),arch);check(false,"blank lines rejected consistently with native grammar");}catch(InvalidDataException){check(true,"blank lines rejected consistently with native grammar");}
         var request=BootstrapUpdateClient.ParseArguments(["--bootstrap-client",scratch,"--","--account","a space \" quote","尾部\\"]);
         check(request.Directory==Path.GetFullPath(scratch)&&request.LauncherArguments.SequenceEqual(new[]{"--account","a space \" quote","尾部\\"}),"bootstrap preserves original arguments without reinterpretation");
         foreach(var bad in new[]{new[]{"--bootstrap-client",scratch},new[]{"--bootstrap-client",scratch,"--bad"},new[]{"--bootstrap-client",scratch,"--","--bootstrap-verified"}})

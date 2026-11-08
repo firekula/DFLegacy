@@ -12,13 +12,15 @@ internal static class BootstrapLayout
     internal static string Architecture=>RuntimeInformation.ProcessArchitecture==System.Runtime.InteropServices.Architecture.X86?"x86":"x64";
     internal static BootstrapDescriptor Parse(byte[] bytes,string architecture)
     {
-        if(bytes.Length is 0 or >4096||bytes.Any(b=>b>127||b==0))throw new InvalidDataException("启动恢复描述文件大小或编码无效。");
-        var lines=Encoding.ASCII.GetString(bytes).Replace("\r\n","\n").Split('\n');
+        if(bytes.Length is 0 or >4096||bytes.Any(b=>b>126||b<32&&b is not (10 or 13)))throw new InvalidDataException("启动恢复描述文件大小或编码无效。");
+        var text=Encoding.ASCII.GetString(bytes).Replace("\r\n","\n");
+        if(text.EndsWith('\n'))text=text[..^1];
+        var lines=text.Split('\n');
+        if(lines.Length!=5||lines.Any(l=>l.Length==0||l.Contains('\r')))throw new InvalidDataException("启动恢复描述文件必须包含五行有效字段。");
         if(lines[0]!="[Bootstrap]")throw new InvalidDataException("启动恢复描述文件缺少 Bootstrap 节。");
         var values=new Dictionary<string,string>(StringComparer.Ordinal);
         foreach(var line in lines.Skip(1))
         {
-            if(line.Length==0)continue;
             var split=line.IndexOf('=');
             if(split<1||!values.TryAdd(line[..split],line[(split+1)..]))throw new InvalidDataException("启动恢复描述文件包含重复或无效字段。");
         }
