@@ -36,6 +36,9 @@ add_library(ijl15 SHARED
     src/client_debug_state.h
     src/boss_room_death.cpp
     src/boss_room_death.h
+    src/loot_gather.cpp
+    src/loot_gather.h
+    src/loot_gather_hooks.cpp
     src/creature_gift_row.cpp
     src/creature_gift_row.h
     src/countdown_coin.cpp
@@ -172,6 +175,15 @@ add_custom_command(TARGET ijl15 POST_BUILD
         "$<TARGET_FILE_DIR:ijl15>/Config.ini")
 
 include(CTest)
+if(BUILD_TESTING)
+    add_executable(loot_gather_tests tests/loot_gather_tests.cpp src/loot_gather.cpp)
+    target_compile_options(loot_gather_tests PRIVATE /W4 /WX /permissive- /EHsc)
+    add_test(NAME loot_gather COMMAND loot_gather_tests)
+    add_executable(loot_gather_hook_tests tests/loot_gather_hook_tests.cpp src/loot_gather.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_compile_options(loot_gather_hook_tests PRIVATE /W4 /WX /permissive- /EHsc)
+    target_link_options(loot_gather_hook_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    add_test(NAME loot_gather_hook_abi COMMAND loot_gather_hook_tests)
+endif()
 if(BUILD_TESTING)
     add_executable(native_incident_tests tests/incident_tests.cpp src/native_incidents.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
     target_include_directories(native_incident_tests PRIVATE src)
@@ -310,6 +322,8 @@ if(BUILD_TESTING)
         tests/mage_skill_contact_tests.cpp
         src/boss_room_death.cpp
         src/boss_room_death.h
+        src/loot_gather.cpp
+        src/loot_gather_hooks.cpp
         tests/boss_room_death_tests.cpp
         src/creature_gift_row.cpp
         src/creature_gift_row.h

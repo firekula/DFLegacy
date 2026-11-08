@@ -139,6 +139,8 @@
     <ClCompile Include="..\src\mage_skill_contact.cpp" />
     <ClCompile Include="mage_skill_contact_tests.cpp" />
     <ClCompile Include="..\src\boss_room_death.cpp" />
+    <ClCompile Include="..\src\loot_gather.cpp" />
+    <ClCompile Include="..\src\loot_gather_hooks.cpp" />
     <ClCompile Include="boss_room_death_tests.cpp" />
     <ClCompile Include="..\src\channel_reentry.cpp" />
     <ClCompile Include="..\src\channel_switch.cpp" />

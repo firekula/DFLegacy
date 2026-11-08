@@ -154,6 +154,8 @@
     <ClCompile Include="src\auto_input.cpp" />
     <ClCompile Include="src\debug_module.cpp" />
     <ClCompile Include="src\boss_room_death.cpp" />
+    <ClCompile Include="src\loot_gather.cpp" />
+    <ClCompile Include="src\loot_gather_hooks.cpp" />
     <ClCompile Include="src\channel_reentry.cpp" />
     <ClCompile Include="src\relay_send_queue.cpp" />
     <ClCompile Include="src\channel_switch.cpp" />

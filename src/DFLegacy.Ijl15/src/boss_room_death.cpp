@@ -8,6 +8,7 @@
 
 #include "boss_room_death.h"
 #include "memory_patch.h"
+#include "loot_gather.h"
 
 namespace
 {
@@ -116,6 +117,9 @@ namespace
 
     void __stdcall AfterNativeFrame() noexcept
     {
+        // Share the existing UI frame boundary; loot commands also work before
+        // boss completion and must not depend on the boss flag below.
+        dfl::loot_gather::OnFrame();
         // Snapshot only for this frame. A previous death can remove another
         // actor, so membership is checked again before interpreting its bytes.
         // Nothing retains an actor pointer across a frame or scene change.
