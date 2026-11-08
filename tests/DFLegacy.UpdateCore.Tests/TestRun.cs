@@ -30,6 +30,8 @@ internal static class TestRun
         try
         {
             await ManifestTests.Run(root);
+            await DownloadTests.Run(root);
+            await ProviderTests.Run();
             Console.WriteLine($"Update Core: {checks} assertions passed");
             return 0;
         }
