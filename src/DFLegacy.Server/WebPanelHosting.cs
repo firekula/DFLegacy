@@ -68,7 +68,8 @@ public static class WebPanelHosting
             var page = player ? "/admin/player.html" : "/admin/index.html";
             var allowed = path.Equals(page, StringComparison.OrdinalIgnoreCase)
                 || path.Equals("/admin/admin.css", StringComparison.OrdinalIgnoreCase)
-                || gm && path.Equals("/admin/admin.js", StringComparison.OrdinalIgnoreCase)
+                || gm && (path.Equals("/admin/admin.js", StringComparison.OrdinalIgnoreCase)
+                    || path.Equals("/admin/admin-rewards.js", StringComparison.OrdinalIgnoreCase))
                 || path.Equals("/health", StringComparison.OrdinalIgnoreCase);
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
                 allowed = gm || AdminAccessPolicy.Resolve(context.Request.Method, path, options.EnableTestCeraTopUp).Access != AdminAccess.Admin;
