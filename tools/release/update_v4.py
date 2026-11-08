@@ -60,6 +60,7 @@ def validate_path(value):
     require(not any(ord(c) < 32 or ord(c) == 127 or c in '\\:<>"|?*' for c in value), 'invalid resource path')
     for part in value.split('/'):
         require(0 < len(part) <= 255 and part not in ('.', '..') and not part.endswith(('.', ' '))
+                and not re.search(r'~[0-9]',part)
                 and not re.match(r'^(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)', part, re.I), 'unsafe Windows resource path')
     require(value.split('/')[0].casefold() not in PROTECTED, 'protected resource path')
 

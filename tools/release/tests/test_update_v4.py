@@ -127,6 +127,12 @@ class Resources(FileFixture):
         bad=copy.deepcopy(original); bad['files'].append(dict(bad['files'][0], path='good.bin/child'))
         with self.assertRaises(v4.ReleaseError): v4.validate_manifest(bad)
 
+    def test_windows_short_name_aliases_cannot_bypass_protected_paths(self):
+        self.put('good.bin'); original=v4.build_manifest(**self.options())
+        for alias in ['LAUNCH~1.JSO','IMAGEP~1/a.npk','config~2.ini','nested/ACCOUN~1/data.bin']:
+            manifest=copy.deepcopy(original); manifest['files'][0]['path']=alias
+            with self.assertRaises(v4.ReleaseError,msg=alias): v4.validate_manifest(manifest)
+
     def test_cli_preview_build_verify_share_json_contract(self):
         self.put('nested/test.pvf')
         request = self.options(); request.update(provider='gitee', repository='owner/repo')
