@@ -28,7 +28,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         if(provider==null) { ownedHttp=Core.ReleaseProvider.CreateHttpClient(); provider=new Core.ReleaseProvider(ownedHttp,source); }
         if(provider.Source!=source) throw new InvalidDataException("测试或更新来源与登录器配置不一致。");
         this.provider=provider; engine=new(root,provider);
-        legacyActive=options.UpdateProvider!="gitee" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
+        legacyActive=options.UpdateProvider=="github" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
     }
     internal static Core.ReleaseSource SourceFor(string installation,LauncherOptions options)
     {
@@ -101,7 +101,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         StatusMessage=$"{provider.Source.Provider} / V4：{pending.Message}"; ShowStatusNotice=pending.IsOffline;
         if(pending.Target==null && pending.Installed==null)
         {
-            if(options.UpdateProvider=="gitee") throw new InvalidDataException("Gitee 测试源尚无对应架构和类型的完整 V4 更新。");
+            if(provider.Source.Provider!="github") throw new InvalidDataException($"{(provider.Source.Provider=="gitea"?"Gitea":"Gitee")} 测试源尚无对应架构和类型的完整 V4 更新。");
             legacyActive=true; StatusMessage="GitHub 源尚无 V4 清单，使用 V3 桥接协议。";
             report.Complete("legacy-bridge"); return await Legacy.CheckAsync(installed,token).ConfigureAwait(false);
         }
@@ -122,8 +122,9 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
             return null;
         }
         var release=pending.Target!; var manifest=release.Manifest;
+        var origin=provider.Source.Provider switch {"gitea"=>Core.ReleaseSource.GiteaOrigin,"gitee"=>"https://gitee.com",_=>"https://github.com"};
         return new(manifest.Sequence,manifest.Version,DateTimeOffset.UtcNow,true,
-            new Uri($"https://{(provider.Source.Provider=="github"?"github.com":"gitee.com")}/{provider.Source.Repository}/releases/download/{release.Tag}/{provider.Source.ManifestAssetName}"),
+            new Uri($"{origin}/{provider.Source.Repository}/releases/download/{release.Tag}/{provider.Source.ManifestAssetName}"),
             manifest.Files.Sum(f=>f.Size),release.ManifestSha256);
     }
     public async Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string attempt,IProgress<UpdateProgress> progress,CancellationToken token)

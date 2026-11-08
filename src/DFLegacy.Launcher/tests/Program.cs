@@ -36,8 +36,9 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
-    if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
-    if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await GiteaSourceTests.RunV4(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--incident-tests")) { IncidentTests.Run(root,Check); Console.WriteLine($"Incident tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Length==0) IncidentTests.Run(root,Check);
     if(args.Contains("--pvp-relay-ports")) { PvpRelayPortTests.Run(Check); Console.WriteLine($"PvP relay ports: {checks} assertions, {failures} failures"); return failures == 0 ? 0 : 1; }
@@ -77,9 +78,11 @@ try
     await UpdateV2Tests.Run(root, Check);
     await UpdateV3Tests.Run(root, Check);
     await UpdateV4Tests.Run(root, Check);
+    await GiteaSourceTests.RunV4(root, Check);
     await FileLockOwnerTests.Run(root, Check);
     await UpdateV4HelperTests.Run(root, Check);
     await RepairClientTests.Run(root, Check);
+    await GiteaSourceTests.RunRepair(root, Check);
     await UpdateRecoveryTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);

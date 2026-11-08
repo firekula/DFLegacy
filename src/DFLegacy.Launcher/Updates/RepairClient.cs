@@ -66,7 +66,7 @@ internal static class RepairClient
         source.Validate();
         var arch=RuntimeInformation.ProcessArchitecture==Architecture.X86?"x86":"x64";
         if(source.Architecture!=arch)throw new InvalidDataException($"此安装需要 {source.Architecture} 修复工具；当前程序为 {arch}。请使用对应架构的独立修复包。");
-        if(!string.IsNullOrWhiteSpace(options.UpdateServiceUrl)&&source.Provider!="gitee"&&request.Provider is null)
+        if(!string.IsNullOrWhiteSpace(options.UpdateServiceUrl)&&source.Provider=="github"&&request.Provider is null)
             throw new InvalidDataException("当前配置使用自托管 V3 更新源。此独立修复入口需要 V4 源；请使用该服务器提供的完整桥接包，或明确指定已授权的 --update-provider 和渠道。");
         return new(source,options.DisableGitHubUpdates&&request.Provider is null);
     }
