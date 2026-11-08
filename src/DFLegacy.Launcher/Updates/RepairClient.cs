@@ -72,7 +72,8 @@ internal static class RepairClient
     }
 
     internal static async Task<RepairOutcome> RunAsync(RepairRequest request,Core.IReleaseProvider? provider=null,
-        IProgress<Core.UpdateProgress>? progress=null,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirmClose=null,CancellationToken token=default)
+        IProgress<Core.UpdateProgress>? progress=null,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirmClose=null,CancellationToken token=default,
+        Action<Core.ClientManifest>? validateManifest=null)
     {
         var root=Path.GetFullPath(request.Directory);
         if(!Directory.Exists(root))throw new DirectoryNotFoundException("客户端目录不存在："+root);
@@ -100,10 +101,13 @@ internal static class RepairClient
             {
                 var local=await engine.ValidateInstalledAsync(progress,token).ConfigureAwait(false);
                 if(!local.CanLaunch)throw new InvalidDataException("已停用联网更新，无法修复不完整文件。请明确选择 V4 更新源后重试。"+local.Message);
+                validateManifest?.Invoke(new Core.InstallationStore(root).ReadInstalled()!.Release.Manifest);
                 report.Complete("offline-verified-network-disabled");
                 return new(true,true,"已停用联网更新；"+local.Message);
             }
             var found=await engine.CheckAsync(progress,token).ConfigureAwait(false);
+            if(found.Target is {} target)validateManifest?.Invoke(target.Manifest);
+            else if(found.Installed is {} installed)validateManifest?.Invoke(installed.Release.Manifest);
             if(found.Verification is {} verified)
             {
                 var problems=verified.Problems.ToDictionary(p=>p.Path,StringComparer.OrdinalIgnoreCase);
@@ -125,6 +129,7 @@ internal static class RepairClient
             await Task.Run(()=>Core.InstallTransaction.Apply(root,staged,progress),CancellationToken.None).ConfigureAwait(false);
             var final=await engine.ValidateInstalledAsync(progress,CancellationToken.None).ConfigureAwait(false);
             if(!final.CanLaunch)throw new InvalidDataException(final.Message);
+            validateManifest?.Invoke(new Core.InstallationStore(root).ReadInstalled()!.Release.Manifest);
             report.Complete("repaired-and-verified");
             return new(true,false,$"已修复并完整校验版本 {final.Version}（{settings.Source.Provider} / {settings.Source.Channel} / {settings.Source.Architecture}）。请手动启动客户端目录中的 DFLegacy.Launcher.exe。");
         }
@@ -137,7 +142,7 @@ internal static class RepairClient
         Core.InstalledReceipt? receipt=null;
         try { receipt=new Core.InstallationStore(root).ReadInstalled(); }catch(InvalidDataException) { }
         return (receipt?.Release.Manifest.Files.Select(f=>Core.PathPolicy.Resolve(root,f.Path))??[])
-            .Concat(new[]{"DFLegacy.Launcher.exe","DFLegacy.Client.dll","DNF.exe","Script.pvf","launcher.json"}.Select(f=>Path.Combine(root,f)));
+            .Concat(new[]{"DFLegacy.Launcher.exe","DFLegacy.Launcher.App.exe","DFLegacy.Updater.exe","DFLegacy.Client.dll","DNF.exe","Script.pvf","launcher.json"}.Select(f=>Path.Combine(root,f)));
     }
     private static async Task ReleaseLocksAsync(IEnumerable<string> files,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirm,CancellationToken token)
     {

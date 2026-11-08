@@ -20,6 +20,7 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
 if (await UpdateV4HelperTests.Dispatch(args) is int v4HelperExit) return v4HelperExit;
 if (await RepairClientTests.Dispatch(args) is int repairExit) return repairExit;
+if (await BootstrapUpdateTests.Dispatch(args) is int bootstrapUpdateExit) return bootstrapUpdateExit;
 if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recoveryExit;
 if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
@@ -36,6 +37,8 @@ var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.Ne
 Directory.CreateDirectory(root);
 try
 {
+    if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Length==0) await BootstrapUpdateTests.Run(root,Check);
     if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await GiteaSourceTests.RunV4(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }

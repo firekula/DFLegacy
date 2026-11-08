@@ -5,11 +5,20 @@ namespace DFLegacy.Launcher;
 
 public partial class App : Application
 {
+    private FileStream? bootstrapAppLock;
+    private bool restartBootstrap;
+    internal static bool BootstrapVerified { get; private set; }
     private static readonly string[] HeadlessArgs =
         ["--headless", "--account", "--account-index", "--self-test", "--install-ijl15", "--check-d3d9", "--no-dialog", "--third-party-notices"];
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if(Updates.BootstrapUpdateClient.IsRequested(e.Args))
+        {
+            ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            Shutdown(await Updates.BootstrapUpdateClient.RunEntryAsync(e.Args));
+            return;
+        }
         if(Updates.RepairClient.IsRequested(e.Args,Environment.ProcessPath))
         {
             ShutdownMode=ShutdownMode.OnExplicitShutdown;
@@ -33,8 +42,30 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_,args) => { if(args.ExceptionObject is Exception error) Program.Incidents.Report(Diagnostics.IncidentKind.Crash,"launcher-unhandled",error,details:"evidence=managed-unhandled-exception"); };
         DispatcherUnhandledException += (_,args) => Program.Incidents.Report(Diagnostics.IncidentKind.Crash,"launcher-dispatcher",args.Exception,details:"evidence=dispatcher-unhandled-exception");
         var args = e.Args;
+        try
+        {
+            if(string.Equals(Path.GetFileName(Environment.ProcessPath),Updates.BootstrapLayout.AppName,StringComparison.OrdinalIgnoreCase))
+            {
+                ShutdownMode=ShutdownMode.OnExplicitShutdown;
+                if(args.Length<2||args[0]!="--bootstrap-verified"||args[1]!="--")
+                {
+                    StartFixedEntry(args,false);Shutdown(0);return;
+                }
+                args=args[2..];
+                try{bootstrapAppLock=Updates.BootstrapLayout.AcquireAppLock(AppContext.BaseDirectory);}
+                catch(IOException ex) when((ex.HResult&0xffff) is 32 or 33){Shutdown(0);return;}
+                await Updates.BootstrapLayout.ValidateInstalledAsync(AppContext.BaseDirectory,Updates.BootstrapLayout.Architecture);
+                BootstrapVerified=true;
+            }
+        }
+        catch(Exception ex)
+        {
+            Program.ReportError("bootstrap-ui-validation",ex);
+            MessageBox.Show(ex.Message,"DFLegacy 启动校验失败",MessageBoxButton.OK,MessageBoxImage.Error);Shutdown(1);return;
+        }
         if (args.Any(a => HeadlessArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))
         {
+            if(BootstrapVerified)Updates.BootstrapUpdateClient.SignalReady();
             var code = await Program.RunHeadlessAsync(args);
             Shutdown(code);
             return;
@@ -46,6 +77,7 @@ public partial class App : Application
             MainWindow = window;
             ShutdownMode=ShutdownMode.OnMainWindowClose;
             window.StartUpdates();
+            if(BootstrapVerified)Updates.BootstrapUpdateClient.SignalReady();
         }
         catch (Exception exception)
         {
@@ -58,6 +90,36 @@ public partial class App : Application
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    internal static void RecheckBootstrap()
+    {
+        if(Current is not App app||!BootstrapVerified)return;
+        app.restartBootstrap=true;app.Shutdown();
+    }
+    private static void StartFixedEntry(string[] args,bool waitForThisProcess)
+    {
+        var root=Path.TrimEndingDirectorySeparator(Path.GetFullPath(AppContext.BaseDirectory));
+        var entry=Path.Combine(root,Updates.BootstrapLayout.EntryName);
+        DFLegacy.UpdateCore.PathPolicy.NoLinks(entry);
+        var start=new System.Diagnostics.ProcessStartInfo(entry){WorkingDirectory=root,UseShellExecute=false};
+        if(waitForThisProcess)
+        {
+            using var process=System.Diagnostics.Process.GetCurrentProcess();
+            start.ArgumentList.Add("--bootstrap-wait-parent");start.ArgumentList.Add(process.Id.ToString());start.ArgumentList.Add(process.StartTime.ToUniversalTime().Ticks.ToString());
+        }
+        foreach(var arg in args)start.ArgumentList.Add(arg);
+        using var child=System.Diagnostics.Process.Start(start)??throw new InvalidOperationException("无法启动自动修复入口。");
+    }
+    protected override void OnExit(ExitEventArgs e)
+    {
+        bootstrapAppLock?.Dispose();bootstrapAppLock=null;
+        if(restartBootstrap)
+        {
+            try{StartFixedEntry([],true);}
+            catch(Exception ex){Program.ReportError("bootstrap-recheck",ex);MessageBox.Show(ex.Message,"重新检查更新失败");}
+        }
+        base.OnExit(e);
     }
 
     internal static void ApplyTheme(string theme)
