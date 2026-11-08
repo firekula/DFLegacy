@@ -160,7 +160,7 @@ public static class InstallTransaction
     }
     private static void ValidateJournal(InstallationStore store, Journal j)
     {
-        if (j.Schema != 4 || j.Root != store.Root || j.Id is not { Length: 32 } || !Guid.TryParseExact(j.Id, "N", out _)
+        if (j.Schema != 4 || !string.Equals(j.Root, store.Root, StringComparison.OrdinalIgnoreCase) || j.Id is not { Length: 32 } || !Guid.TryParseExact(j.Id, "N", out _)
             || j.Target?.Source == null || j.Changes is not { Length: > 0 and <= 200002 }) throw new InvalidDataException("未决事务身份或结构无效。");
         j.Target.Validate(j.Target.Source);
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase); var target = j.Target.Manifest;
