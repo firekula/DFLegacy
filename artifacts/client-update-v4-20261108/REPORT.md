@@ -1,78 +1,87 @@
-# V4 更新与事故报告验收草稿
+# V4 客户端更新与故障报告：本地验收及手动发布交付
 
-日期：2026-11-08（Asia/Shanghai）。状态：**Unreleased / 测试中 / 最终整合验收未完成**。
+日期：2026-11-08（Asia/Shanghai）。状态：**本地验收通过；Gitee 附件由用户手动发布，远端验收待上传后执行。**
 
-本稿记录 `codex/client-update-v4-diagnostics` 隔离工作区已有证据和剩余门槛，不是正式 v0.1.8 发布说明。未发布正式 GitHub Release、未推送私有 Git 历史、未更新线上服务器。计划测试版本为 `v0.1.8-v4test.1`／`v0.1.8-v4test.2`，均应使用 Gitee `firekula/DFLegacy` 的 `gitee-test` 渠道。
+本轮范围为隔离分支 `codex/client-update-v4-diagnostics` 的 V4 热更新与独立事故日志。产物使用源码提交 `757e7f02e486526d9334f32216bed5153fdc53a6`；其后是测试、说明和手动启用脚本。正式 GitHub 更新、线上服务器及第二章工作区未修改。原玩家“里鬼剑术中强制上挑崩溃”的根因尚未取得现场，不能把新增诊断等同于该崩溃已修复。
 
-## 可追溯实现
+## 已交付的行为
 
-| 子系统 | 已有提交／状态 |
+- 每次启动校验清单管理的全部文件，支持嵌套目录、NPK、PVF、DLL、EXE 等；仅获取变化或损坏文件需要的资源。未列入清单的玩家文件不属于本次校验范围。
+- 分卷 SHA256、可续传缓存、HTTP 200/206/416 处理和中断恢复；安装采用事务日志与实际旧字节备份，安装记录最后提交，未决或混合状态阻止启动。
+- 已安装 A 与发现的 B 分开保存。B 下载失败或取消后，A 全量校验通过可继续使用，明确提示“未确认线上最新版本”。
+- `launcher.json` 配置使用结构化迁移；端口集合增量合并，保留账号、密码、未知字段和自定义端口。损坏配置保留原文件并报错。
+- 安装前识别占用程序；终止进程仍需玩家同意。助手等待操作系统确认父进程真正结束后才安装，避免托管退出信号早于文件释放的竞争。
+- 独立的 x86/x64 修复程序不执行安装目录中可能已损坏的登录器，修复范围为 V4；旧 V3 未决事务会给出桥接恢复指引。
+- `Logs/DFLegacy/Incidents/` 单独保存 `error-`、`networkerror-`、`crash-`、`update-` 报告，含关联 ID、版本与有界上下文，脱敏并限制保留量；不自动上传。
+
+## 最终本地验证
+
+原始输出保存在工作区 `.tmp/client-update-v4-20261108/`。所有计数针对下表实际入口，不能相加为互不重叠的测试总数。
+
+| 检查 | 结果 | 证据 |
+| --- | --- | --- |
+| UpdateCore 完整套件 | **286 assertions passed** | `core-integration-final.log`；真实文件、HTTP、配置迁移、安装中断、恢复、缓存预算与空间预检。 |
+| 登录器完整 Release 套件 | **2065 assertions passed** | `launcher-release-final.log`；包含真实旧归档、原生夹具、助手、占用交接及 WPF 界面检查。 |
+| 整库 Python | **778 passed、7 skipped、587 subtests passed**，退出码 0 | `python-integration-final.log`；设置 `PYTHONPATH=tools` 与原生夹具。7 项跳过不计为已验证。 |
+| 原生 CMake | **47/47 passed** | `incident-native-final.log`。 |
+| 托管事故日志 / Relay / 显式详细抓取 | **23 项断言 / 10 项 / 5 项通过** | `incident-managed-final.log`、`incident-relay-final.log`、`incident-capture-tests.log`。 |
+| 独立修复专项 | **13 项断言通过** | `repair-green.log`；损坏登录器、来源、锁、架构与恢复边界。 |
+| 离线打包器 Release 构建 | **0 警告、0 错误** | `packager-final.log`。 |
+| 实际自包含登录器构建 | **win-x86、win-x64 均成功** | `build-win-x86.log`、`build-win-x64.log`；不是小型占位 EXE。 |
+| 真实产物的四变体更新生命周期 | **x86/x64 × normal/test 全通过** | `actual-bundle-final-*.log`；下表与交付目录 `acceptance/*.json`。 |
+| 手动启用脚本与发布工具 | **12 个 PS5.1/7 场景；发布套件 133 passed、29 subtests passed** | `tools-and-starters-validation/`；脚本提交 `e2e39cc`，只修改五个更新来源字段并保留配置原字节备份。 |
+| 交付 ZIP 的生产解析与实际程序冒烟 | **4/4 清单解析、10/10 程序场景** | `compiled-smoke-results.json`；两架构只读启动，四变体离线完整返回 0、损坏 DLL 返回 1，配置不变。 |
+| 最终交付完整性 | **8 个 ZIP 的 SHA256、长度和全部 ZIP CRC 一致** | 对实际交付文件重新读取核对；两个上传包、四个首次工具包、两个独立修复包。 |
+
+Python 汇总运行中 Unicorn 原生夹具曾输出 access violation 诊断栈，进程继续执行且最终退出 0；不将该输出描述为原始游戏的崩溃复现。初轮缺少 PYTHONPATH、原生入口参数、旧归档等收集问题已纠正后重跑，旧失败日志保留。
+
+最终审查发现并修复：启动互斥锁持有到整个游戏生命周期、退役路径未进入占用检查、纯 V4 启动仍打开旧 schema2 文件、测试类型缺少受管理 debug.dll。每项有失败回归与修复后证据；最终完整登录器测试在修复之后执行。
+
+## 实际更新包生命周期
+
+四个变体均使用本次真正构建的 EXE/DLL，经生产 UpdateCore 引擎处理。传输为本地 bundle 流，**不是本项目 Gitee 实际下载或真实游戏游玩验收**。
+
+| 阶段 | 四变体均观察到的结果 |
 | --- | --- |
-| V4 清单、安全路径和全文件 SHA256 | `c9cdd99` |
-| 匿名来源、分卷下载和内容缓存 | `0eb9809` |
-| 配置迁移与可恢复事务 | `9649c25` |
-| CLI、离线 GUI 和单变体发布 | `e9fa9f4` |
-| 四变体分组发布 | `be9eaa4`；全部资源先于全部清单，组内附件去重，并补齐实际旧客户端解析 probe 的 UpdateCore 项目依赖。 |
-| 登录器助手、独立修复、进程占用交接 | 整合中，不据核心库专项通过推断已交付。 |
-| 事件报告、原生最小现场和中继分类 | 已有专项证据，最终登录器与原生整合构建仍需统一确认。 |
+| 安装 `.1` | normal 的 4 个文件、test 的 5 个文件完整重组，大小和 SHA256 一致。 |
+| 相同版本再校验 | 全部管理文件重新校验，**0 个资源请求、0 字节下载**。 |
+| 损坏一个同长度测试资源 | 只下载对应的 **1 个、70 字节**资源，再校验全部管理文件。 |
+| 发现 `.2` 后中断 | 下载首字节后取消；已安装 `.1` 仍独立、完整、可校验。 |
+| 离线重启 | `.1` 校验通过，返回“文件符合缓存版本……未确认线上最新版本”。 |
+| 继续安装 `.2` | 从偏移 1 续传余下 **69 字节**；不请求 `.1` 的未变化资源，最终全部哈希符合 `.2`。 |
+| 配置 | 保留合成账号、未知字段及自定义 9000；累计增加 7110、7111、7112。 |
 
-主要使用说明：[CLIENT_UPDATES_V4.md](../../CLIENT_UPDATES_V4.md)。原始日志位于工作区 `.tmp/client-update-v4-20261108/`；下表指向这些本地证据文件，不把未保存的控制台印象当成通过依据。
+所有结果 JSON 均明确记录 `remoteSourceVerified=false`、`published=false`、`gameExecuted=false`。另有核心套件覆盖 A 跳 C 的累计迁移与退役、200 全量回退、416、错误哈希、故障注入及进程中断恢复；这不替代远端实机复验。
 
-## 已执行的局部验证
+## 上传交付清单
 
-| 检查 | 观察结果 | 证据与边界 |
-| --- | --- | --- |
-| 发布器原完整回归 | 114 passed，29 subtests passed | `publisher-all-release-python-final.log`，53.30 秒；包含原 V2／V3 发布测试。 |
-| V4 发布器原专项 | 24 passed，无跳过 | `publisher-v4-final.log`；临时真实文件、49 MiB 分卷、零字节、Windows junction、配置／退役、内容复用、匿名本地 HTTP。 |
-| 分组后的发布完整回归 | **120 passed，29 subtests passed**，无跳过 | `publisher-grouped-all-release-final.log`，69.60 秒；包含当前 30 项 V4 用例及旧版归档解析。 |
-| 文档中的四变体构建示例 | 四份请求的 preview／build／verify 全部通过；7 份 Markdown 相对文件链接检查通过 | `publisher-doc-validation.log`；使用明确标记的临时小文件，不访问远端。 |
-| 离线打包器 | Release 构建 0 警告、0 错误 | `publisher-packager-build.log`；证明编译与工具复制，不宣称已完成所有 DPI／人工 GUI 操作。 |
-| Python → C# 清单 | x86／x64 × normal／test 共 4 个通过 | `publisher-cross-language.log`；临时控制台直接链接实际 `Manifest.cs`／`PathPolicy.cs`。这些小文件是 schema fixture，**不是可运行客户端测试包**。 |
-| UpdateCore 完整专项 | 206 assertions passed | `transaction-suite-green.log`；包括真实子进程中断、配置和事务恢复。来源与下载 fixture 使用本地 HTTP。 |
-| 登录器 V4 适配初轮 | 8 assertions，0 failures | `launcher-v4-green.log`；后续助手／锁进程／修复改动后必须重新执行，不能当最终登录器总验收。 |
-| 托管事件报告 | 21 assertions，0 failures | `incident-managed-final.log`；脱敏、上下文、独立事件、保留和异常分类。 |
-| Relay | 10/10 passed | `incident-relay-final.log`；正常结束、拒绝连接、重置、关联 ID 与字节计数。 |
-| 原生 CMake 套件 | 47/47 passed | `incident-native-final.log`；原生 fixture 与签名／调用约定验证，不扩大为原始游戏每种崩溃都已实测。 |
-| 显式详细崩溃抓取 | handled、unhandled、detach、snapshot、rotate 五例均 passed | `incident-capture-tests.log`；只对自行启动的测试子进程操作；循环保留观察到 16 份转储。 |
+交付目录：`C:/Users/Firekula/Downloads/DFLegacy-V4-test-20261108`。
 
-所有发布器 RED→GREEN 证据保留为 `publisher-red-*`／`publisher-green-*`、`publisher-grouped-red.log` 与 `publisher-grouped-conflict-red.log`。分组发布检查了四变体共用 tag、共享资源只上传一次、全部资源先于清单、GitHub 草稿最终可见、合并后的 1000 附件边界、错误身份在远端变更前拒绝，以及失败后不自动删除或覆盖 Release。
+| 外层交付 ZIP | 大小 | Gitee 中的实际附件 |
+| --- | ---: | --- |
+| `DFLegacy-Gitee-v0.1.8-v4test.1-upload.zip` | 147,044,152 字节 | 12 个资源卷 + 4 个清单，总计 339,961,556 字节。 |
+| `DFLegacy-Gitee-v0.1.8-v4test.2-upload.zip` | 7,907 字节 | 1 个新资源卷 + 4 个清单，总计 14,256 字节。 |
 
-## 真实 Gitee 只读下载证据
+第一包 SHA256：`c9bb3ecd40102aea2840ee965fc4d22bc465356e9acd0d2637c2fc90ff15451d`。
+第二包 SHA256：`a51448ae7cdec56f97934e527e97b426b21b689e56a2cadd9b5d849c6c10d361`。
 
-这是第三方公开附件的匿名来源／传输验证，**不是本项目测试版本已发布**。
+两个包均覆盖 x86/x64 × normal/test。`.2` 是仅资源变化的测试版，复用 `.1` 的程序字节，因此 EXE 文件版本仍是 `.1`，以 V4 安装记录中的清单版本为准。`UpdateTestAssets/probe.npk` 和 `probe.pvf` 是游戏不引用的合成传输测试数据，**不是有效游戏资源，也不会替换根目录 Script.pvf**。
 
-- 仓库 `lifedever/health-tick-release`，版本 `v1.3.13`，Release ID `586860`，附件 ID `2611855`。
-- 从仓库专属 `attach_files` 列表取得 ID，再从规范 API 下载入口跳转到 `foruda.gitee.com/attach_file/...`；无 Authorization、无 Cookie。
-- 完整读取 1,981,247 字节，SHA256 `3b9129678e9bd6316aeca48b8b74b93b023689ba7302b7d64fc7434099d0ad34`，发布器复读校验通过。
-- CDN 的临时签名查询键为 `attname`、`token`、`ts`；证据不保存其值。删除查询再直连会得到 401，说明需要每次从固定附件身份刷新地址。
-- Range 请求返回 200 全量内容，完整哈希仍通过。这只证明忽略 Range 的回退路径，不声称该 Gitee 节点支持 206 续传。
+`starter-clients/` 提供四个首次测试的替换工具包，保留现有游戏资源与配置；`tools/` 提供独立 x86/x64 修复包。使用包内说明，在游戏目录副本中测试。`Enable-Gitee-Test.ps1` 只在操作者执行后启用 Gitee 测试来源，并先保存配置原始字节备份。附件 ZIP 不包含玩家配置或凭据。构建输入、所有 ZIP、清单和附件的哈希保存在 `handoff.json`、`tools-and-starters.json`、校验和文件及分版本目录内。
 
-原始摘要：`publisher-gitee-live-verification.json`；重定向链摘要：`publisher-gitee-download-probe.json`。提供方 API 字段以实时公开 `https://gitee.com/api/v5/swagger_doc`（5.4.93）核对，下载列表使用 `attach_files`，不从发行说明中的任意链接选取文件。
+## 手动发布顺序
 
-## 执行中的失败与未完成检查
+1. 在 `firekula/DFLegacy` 创建测试标签/Release `v0.1.8-v4test.1`，指向已经推送的公开说明提交 `be713f94b42883b83c8312bd21ea04d7bbe03fc8`，分支 `codex/v4-update-test`。不需要推送私有源码历史。
+2. 解压第一包，保持文件名，先上传 `01-resources/` 中 **12 个文件**。确认资源完整后，最后上传 `02-manifests/` 中 **4 个 JSON**。不要只上传外层 ZIP。
+3. 对 `.1` 做匿名下载校验并在客户端副本测试，再创建 `v0.1.8-v4test.2`，按同一顺序上传第二包的 1 个资源和 4 个清单。
+4. **保留 `.1` 的全部附件**；`.2` 引用了它们。不要覆盖已发布的标签或同名附件。
 
-1. 仓库根目录直接执行 `py -3.12 -m pytest -q` 在收集阶段出现 **15 个错误**，见 `publisher-all-python.log`，不能汇报整库 Python 全绿。`src/DFLegacy.Ijl15/tests/test_incidents.py` 需要原生可执行文件参数；`tools/debug/crash_capture/test_capture.py` 需要抓取程序、测试程序与输出目录参数。另 13 个 `tools/acceptance/tests` 文件缺少正确的 `PYTHONPATH=tools` 导入环境：`test_actor_pid.py`、`test_auto_input.py`、`test_cli_dry_run.py`、`test_cli_orchestrate.py`、`test_collector.py`、`test_combat_gate.py`、`test_model.py`、`test_multi_server.py`、`test_orchestrate.py`、`test_party_dungeon.py`、`test_runner.py`、`test_state_seed.py`、`test_verdict.py`。后续按 [BUILDING.md](../../BUILDING.md#本地测试) 的专用入口与夹具运行。
-2. 一次完整登录器测试因未设置 `DFL_LEGACY_PATCH_ARCHIVE` 而停止，见 `incident-launcher-full.log`。V4／incident 专项通过不抹去这个未完成项；最终整合需要提供已校验的旧版本归档并执行完整套件。
-3. `core-integrated.log` 曾在强杀子进程后立即恢复时报告 `.dflegacy/update.lock` 共享冲突；后续未修改锁策略的完整套件多次达到 206 assertions。`transaction-notes.txt` 记录了这一观察及另一个已修正的测试夹具选择问题。最终整合仍须核对该时序边界，不能把一次重跑通过当成已根因修复。
-4. 共享源码整合后，旧归档解析测试 `test_github_publish.py::UpdatePackageTests::test_real_client_parsers_accept_all_produced_archives` 曾因 `PackageProbe.csproj` 缺少新 `UpdateCore` 引用编译失败。已添加实际项目引用，专项复跑通过（`publisher-probe-green.log`），随后发布完整套件达到 120 passed。旧失败记录保存在 `publisher-grouped-all-release.log`。
+目前只有公开说明分支推送完成；**没有创建这些标签、Release 或上传附件**。用户选择稍后手动发布，不再等待 API Token。
 
-## 端到端验收矩阵
+## 尚待验证的边界
 
-| 场景 | 当前可证明 | 最终门槛 |
-| --- | --- | --- |
-| 四变体正式自包含程序与清单 | 四份小型 schema fixture 通过；本地生成工具与分组发布 fixture 通过 | 从同一提交构建实际 x86／x64 normal／test `.1`／`.2` 产物，记录字节与哈希。 |
-| 本项目 Gitee `.1` 发布 | 尚未进行；缺少可用发布授权，已请求 `DFLEGACY_GITEE_RELEASE_TOKEN` 进入当前发布进程 | 最小公开说明提交、附件上传、匿名清单／分卷／文件复核与提供方总量预检。不得推送私有开发历史。 |
-| `.1` → `.2` 内容复用 | 本地 HTTP 和实际内容哈希证明不重复上传共享资源 | 本项目真实仓库记录每个引用 tag、附件 ID、下载字节和未变化资源零重复上传证据。 |
-| V3 → 桥接 → V4 | 旧 V3 工具保留，相关旧发布测试通过 | 用旧客户端副本完成真实桥接，核对 x86／x64 和 normal／test 不串线。 |
-| 同版本损坏、缺失、同长错误 | 核心 SHA256 与事务 fixture 覆盖 | 实际客户端损坏一个受管理文件后，只修复必要资源并复核全部管理集。 |
-| A 完整、B 下载取消／离线 | 核心引擎 fixture 覆盖状态分离与 A 校验 | 真实登录器取消、重启、断网，提示缓存版本而非“线上最新”，最终安装 A 保持完整。 |
-| B 部分提交／损坏备份 | 真实子进程检查点与拒绝混合状态 fixture | 实际助手交接中断后恢复或明确失败，未决状态不能启动游戏。 |
-| A 跳 C | 累计退役、迁移与最低基线 fixture | 本项目三清单／跨版本实机验收；只删除历史受管理文件，未知玩家文件保留。 |
-| 配置迁移 | 端口字符串／数组语义、缺省展开、凭据与未知字段保留 fixture | 真实账号／设置并发编辑与安装回滚核对；配置坏文件保留。 |
-| 下载恢复 | 本地 200／206／416、截断／错误哈希及完成缓存 fixture；真实 Gitee 200 回退 | 本项目真实大登录器 48 MiB 分卷，在断网与重开后核对实际字节与缓存复用。 |
-| 独立修复与占用提示 | 实现整合中 | 损坏安装目录登录器后，从独立自包含入口启动修复；真实占用进程可辨认，未经同意不终止。 |
-| 原生崩溃与断线 | 原生／Relay／详细抓取 fixture 通过 | 原始游戏受支持签名的实机证据；CrashSender 存活弹窗入口未验证时继续标记需详细抓取。 |
+- 本项目 Gitee 实际匿名下载、CDN 行为及 `.1`→`.2` 双架构实机更新：待用户上传。已有第三方公开 Gitee 附件匿名实读证据，只能证明提供方适配；该样本 Range 返回 200，不能承诺所有 Gitee 节点支持 206。
+- 真实旧登录器通过线上 V3 桥接自动升级、真实游戏全流程及原玩家故障场景尚未实测。本次交付通过手动替换工具包进入测试源。
+- 原生 CrashSender 弹窗且进程仍存活时，默认捕获入口的覆盖尚未证实，必要时用显式详细抓取；普通启动不自动附加调试器。x86 编译与本机运行不等于已证明 Windows 7 兼容。
 
-Gitee 的 48 MiB 分卷不能绕过仓库累计 1,000,000,000 字节限制；实际两轮测试产物预检超限时应停下报告，不自动漏选资源、删除旧发布或切换存储。任何不完整发布保留现场；没有同 tag 自动覆盖／恢复上传流程，审查后改用新的测试 tag。
-
-最终负责人应在集成完成后补充：准确提交、实际四变体清单哈希、测试 Release URL／ID、各阶段测试命令与退出码、真实请求字节、未完成项和是否取得发布授权。本稿不替代这一步。
+使用及安全边界见仓库 `CLIENT_UPDATES_V4.md`，每个 Release 包中的 `UPLOAD.md` 提供该版本的具体上传步骤。源代码与报告保留本地提交，没有正式发布或线上部署。
