@@ -7,6 +7,7 @@ internal static class ProviderTests
 {
     internal static async Task Run()
     {
+        await GiteaProviderTests.Run();
         foreach (var provider in new[] { "github", "gitee" })
         {
             var m = ManifestTests.Sample(); var raw = ManifestCodec.Serialize(m); var body = TestRun.Bytes("abc");

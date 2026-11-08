@@ -12,7 +12,9 @@ public sealed class ReleaseProvider : IReleaseProvider
     private readonly Dictionary<string,Attachment[]> fixedAttachments = new(StringComparer.Ordinal);
     public ReleaseSource Source { get; }
     public string Identity => Source.Identity;
-    private string Api => Source.Provider == "github" ? "https://api.github.com" : "https://gitee.com/api/v5";
+    private string Api => Source.Provider switch
+    { "github" => "https://api.github.com", "gitea" => ReleaseSource.GiteaOrigin + "/api/v1", _ => "https://gitee.com/api/v5" };
+    private int PageSize => Source.Provider == "gitea" ? 50 : 100;
     private sealed record Attachment(string Name, long Size, Uri Url, string? Digest, long Id, long ReleaseId = 0);
     public ReleaseProvider(HttpClient http, ReleaseSource source) { source.Validate(); this.http = http; Source = source; }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler
@@ -28,7 +30,8 @@ public sealed class ReleaseProvider : IReleaseProvider
         var candidates = new List<VerifiedRelease>();
         for (var page = 1; page <= 3; page++)
         {
-            using var releases = await JsonAsync($"/repos/{Source.Repository}/releases?per_page=100&page={page}", token).ConfigureAwait(false);
+            var paging = Source.Provider == "gitea" ? "limit=50" : "per_page=100";
+            using var releases = await JsonAsync($"/repos/{Source.Repository}/releases?{paging}&page={page}", token).ConfigureAwait(false);
             if (releases.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("发行版列表不是数组。");
             foreach (var release in releases.RootElement.EnumerateArray())
             {
@@ -49,7 +52,7 @@ public sealed class ReleaseProvider : IReleaseProvider
                     throw new InvalidDataException("更新清单附件摘要或长度不符。");
                 var found = new VerifiedRelease(Source, tag!, hash, bytes); found.Validate(Source); candidates.Add(found);
             }
-            if (releases.RootElement.GetArrayLength() < 100) break;
+            if (releases.RootElement.GetArrayLength() < PageSize) break;
             if (page == 3 && candidates.Count == 0) throw new IOException("尚未查完发行版，无法确认线上最新版本。");
         }
         var newest = candidates.OrderByDescending(r => r.Manifest.Sequence).FirstOrDefault();
@@ -60,7 +63,9 @@ public sealed class ReleaseProvider : IReleaseProvider
     private static bool IsDraft(JsonElement release) => release.TryGetProperty("draft", out var value) && value.ValueKind == JsonValueKind.True;
     private async Task<List<Attachment>> AttachmentsAsync(JsonElement release, CancellationToken token)
     {
-        if (Source.Provider == "github") return ParseAttachments(release.GetProperty("assets"));
+        // Gitea's Release embeds its complete attachment array, like GitHub.
+        // Avoid one extra API request for every historical non-V4 release.
+        if (Source.Provider is "github" or "gitea") return ParseAttachments(release.GetProperty("assets"));
         var id = release.GetProperty("id").GetInt64();
         if (id <= 0) throw new InvalidDataException("发行版 ID 无效。");
         var result = new List<Attachment>();
@@ -114,9 +119,11 @@ public sealed class ReleaseProvider : IReleaseProvider
     }
     private void ValidateAttachment(Attachment asset, string tag)
     {
-        var uri = asset.Url; RequireHttps(uri);
+        var uri = asset.Url; RequireTransport(uri);
         var valid = Source.Provider == "github"
             ? uri.Host == "github.com" && uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}"
+            : Source.Provider == "gitea"
+            ? asset.Id > 0 && IsGiteaOrigin(uri) && (uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}" || IsGiteaAttachment(uri))
             : uri.Host == "gitee.com" && asset.Id > 0 && asset.ReleaseId > 0 &&
                 (uri.AbsolutePath == $"/attach_files/{asset.Id}/download"
                  || uri.AbsolutePath == $"/{Source.Repository}/attach_files/{asset.Id}/download/{asset.Name}"
@@ -124,8 +131,17 @@ public sealed class ReleaseProvider : IReleaseProvider
                  || uri.AbsolutePath == $"/api/v5/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download");
         if (!valid || uri.Query.Length != 0) throw new InvalidDataException("附件地址不属于所配置发行版。");
     }
-    private static void RequireHttps(Uri uri)
+    private static bool IsGiteaOrigin(Uri uri) => uri.Scheme == "http" && uri.Host == "firekula.site" && uri.Port == 3000;
+    private static bool IsGiteaAttachment(Uri uri) => System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath,
+        @"\A/attachments/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\z");
+    private void RequireTransport(Uri uri)
     {
+        if (Source.Provider == "gitea")
+        {
+            if (!IsGiteaOrigin(uri) || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0)
+                throw new InvalidDataException("Gitea 测试更新请求不属于配置的实例。");
+            return;
+        }
         if (uri.Scheme != "https" || !uri.IsDefaultPort || uri.UserInfo.Length != 0 || uri.Fragment.Length != 0)
             throw new InvalidDataException("更新请求必须使用不含凭据的 HTTPS 地址。");
     }
@@ -137,11 +153,13 @@ public sealed class ReleaseProvider : IReleaseProvider
         var uri = canonical;
         for (var hop = 0; hop < 6; hop++)
         {
-            RequireHttps(uri);
+            RequireTransport(uri);
             if (hop > 0)
             {
                 var valid = Source.Provider == "github"
                     ? uri.Host is "release-assets.githubusercontent.com" or "objects.githubusercontent.com" || uri == asset.Url
+                    : Source.Provider == "gitea"
+                    ? IsGiteaOrigin(uri) && uri.Query.Length == 0 && (uri == asset.Url || IsGiteaAttachment(uri))
                     : uri.Host == "gitee.com" && uri.AbsolutePath == canonical.AbsolutePath && uri.Query.Length == 0
                         || uri.Host == "foruda.gitee.com" && System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath, @"\A/attach_file/[0-9]+/[A-Za-z0-9._-]+\z") && ValidGiteeCdnQuery(uri);
                 if (!valid) throw new InvalidDataException("更新重定向域名不受信任。");
@@ -190,6 +208,7 @@ public sealed class ReleaseProvider : IReleaseProvider
     }
     private async Task<HttpResponseMessage> SendAsync(Uri uri, long offset, string? etag, bool json, CancellationToken token)
     {
+        RequireTransport(uri);
         AnonymousOnly();
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.UserAgent.ParseAdd("DFLegacy-Updater/4.0"); request.Headers.Accept.ParseAdd(json ? "application/json" : "application/octet-stream");

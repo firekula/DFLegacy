@@ -5,11 +5,13 @@ namespace DFLegacy.UpdateCore;
 
 public sealed record ReleaseSource(string Provider, string Repository, string Channel, string Architecture, string Flavor)
 {
+    public const string GiteaOrigin = "http://firekula.site:3000";
     [JsonIgnore] public string Identity => $"{Provider}:{Repository}:{Channel}:{Architecture}:{Flavor}";
     [JsonIgnore] public string ManifestAssetName => $"DFLegacy-client-update-v4-{Channel}-{Flavor}-win-{Architecture}.json";
     public void Validate()
     {
-        if (Provider is not ("github" or "gitee") || Repository != "firekula/DFLegacy" || !ManifestCodec.IsName(Channel)
+        if (Provider is not ("github" or "gitee" or "gitea") || Repository != "firekula/DFLegacy" || !ManifestCodec.IsName(Channel)
+            || Provider == "gitea" && Channel != "gitea-test"
             || Architecture is not ("x86" or "x64") || Flavor is not ("normal" or "test")) throw new InvalidDataException("更新源配置无效。");
     }
 }
