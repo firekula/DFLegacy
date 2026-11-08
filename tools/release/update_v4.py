@@ -530,7 +530,33 @@ def verify_remote(bundle,api=None):
 
 
 def publish(bundle,api=None,target_commitish=None):
-    receipt=verify_local(bundle); m=receipt['manifest']; bundle=Path(bundle)
+    """Compatibility entry for one variant; grouped releases use publish_many."""
+    return publish_many([bundle],api,target_commitish)['bundles'][0]
+
+
+def publish_many(bundles,api=None,target_commitish=None):
+    require(isinstance(bundles,(list,tuple)) and 0<len(bundles)<=4, 'one to four unique variant bundles are required')
+    prepared=[(Path(bundle),verify_local(bundle)) for bundle in bundles]
+    receipt=prepared[0][1]; m=receipt['manifest']; variants=set(); resources={}; manifests=[]; references={}
+    identity_keys=('version','commit','sequence','minimumSequence','channel')
+    for bundle,item in prepared:
+        variant=item['manifest']
+        require((item['provider'],item['repository'])==(receipt['provider'],receipt['repository'])
+                and all(variant[key]==m[key] for key in identity_keys), 'grouped bundle release identity differs')
+        name_key=(variant['architecture'],variant['flavor'])
+        require(name_key not in variants, 'duplicate architecture/flavor in grouped release'); variants.add(name_key)
+        for file in variant['files']:
+            for part in file['parts']:
+                key=(part['release'],part['asset']); identity=(part['sha256'],part['size'])
+                require(key not in references or references[key]==identity,'conflicting grouped resource reference')
+                references[key]=identity
+        for asset,metadata in item['assets'].items():
+            identity=(metadata['sha256'],metadata['size'])
+            require(asset not in resources or resources[asset][1:]==identity, 'conflicting grouped attachment identity')
+            resources[asset]=(bundle/'assets'/asset,*identity)
+        manifests.append((item['manifestAsset'],bundle/item['manifestAsset'],item['manifestSha256'],item['manifestSize']))
+    # This preflight is local and counts the final deduplicated attachment set.
+    preflight_limits(receipt['provider'],[value[2] for value in resources.values()]+[value[3] for value in manifests])
     if api is None:
         token=os.environ.get('DFLEGACY_'+receipt['provider'].upper()+'_RELEASE_TOKEN')
         require(token is not None,'dedicated provider publishing credential is unavailable')
@@ -544,18 +570,19 @@ def publish(bundle,api=None,target_commitish=None):
     existing=api.listing('/releases',authenticated=True)
     require(not any(row.get('tag_name')==m['version'] for row in existing),'release tag is immutable; use a new version')
     current_bytes=api.existing_storage() if api.provider=='gitee' else 0
-    preflight_limits(api.provider,[v['size'] for v in receipt['assets'].values()]+[receipt['manifestSize']],current_bytes)
+    preflight_limits(api.provider,[value[2] for value in resources.values()]+[value[3] for value in manifests],current_bytes)
     public=api.anonymous(); checked=set()
-    for f in m['files']:
-        for p in f['parts']:
-            if p['release']==m['version'] or (p['release'],p['asset']) in checked: continue
-            old=public.release(p['release']); require(old is not None and not old.get('draft',False),'reused release unavailable')
-            old_assets={a['name']:a for a in public.attachments(old)}
-            require(p['asset'] in old_assets,'reused attachment unavailable')
-            public.verify_asset(old,old_assets[p['asset']],p['sha256'],p['size']); checked.add((p['release'],p['asset']))
+    for _,item in prepared:
+        for f in item['manifest']['files']:
+            for p in f['parts']:
+                if p['release']==m['version'] or (p['release'],p['asset']) in checked: continue
+                old=public.release(p['release']); require(old is not None and not old.get('draft',False),'reused release unavailable')
+                old_assets={a['name']:a for a in public.attachments(old)}
+                require(p['asset'] in old_assets,'reused attachment unavailable')
+                public.verify_asset(old,old_assets[p['asset']],p['sha256'],p['size']); checked.add((p['release'],p['asset']))
     release=api.create(m,target_commitish)
-    inventory=[(asset,bundle/'assets'/asset,item['sha256'],item['size']) for asset,item in receipt['assets'].items()]
-    inventory.append((receipt['manifestAsset'],bundle/receipt['manifestAsset'],receipt['manifestSha256'],receipt['manifestSize']))
+    # No manifest is visible until every resource needed by every variant verifies.
+    inventory=[(asset,*metadata) for asset,metadata in resources.items()]+manifests
     for asset,path,digest,size in inventory:
         require(file_hash(path)==(digest,size),'local attachment changed before upload')
         api.upload(release,path,asset)
@@ -564,7 +591,11 @@ def publish(bundle,api=None,target_commitish=None):
         verifier=api if api.provider=='github' else public
         verifier.verify_asset(release,assets[asset],digest,size,draft=api.provider=='github')
     if api.provider=='github': api.request('PATCH',f'/releases/{release["id"]}',{'draft':False},authenticated=True)
-    return verify_remote(bundle,api)
+    verified=[verify_remote(bundle,api)|{'manifestAsset':item['manifestAsset'],
+               'architecture':item['manifest']['architecture'],'flavor':item['manifest']['flavor']} for bundle,item in prepared]
+    require(all(result['releaseId']==release['id'] for result in verified),'grouped release identity changed during verification')
+    return dict(status='published-verified',provider=api.provider,repository=api.repository,version=m['version'],
+                releaseId=release['id'],bundles=verified)
 
 
 def main(argv=None):
@@ -574,11 +605,11 @@ def main(argv=None):
         command=commands.add_parser(action); command.add_argument('--request',required=True)
         if action=='build': command.add_argument('--output',required=True)
     command=commands.add_parser('verify'); command.add_argument('--bundle',required=True); command.add_argument('--remote',action='store_true')
-    command=commands.add_parser('publish'); command.add_argument('--bundle',required=True); command.add_argument('--target-commitish',required=True)
+    command=commands.add_parser('publish'); command.add_argument('--bundle',required=True,action='append',help='repeat for each architecture/flavor in the same immutable release'); command.add_argument('--target-commitish',required=True)
     args=parser.parse_args(argv)
     try:
         if args.command=='verify': result=verify_remote(args.bundle) if args.remote else verify_local(args.bundle)
-        elif args.command=='publish': result=publish(args.bundle,target_commitish=args.target_commitish)
+        elif args.command=='publish': result=publish_many(args.bundle,target_commitish=args.target_commitish)
         else:
             request=load_json(args.request)
             if args.command=='build': result=build(args.output,**request)

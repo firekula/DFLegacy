@@ -247,6 +247,7 @@ class ApiHandler(http.server.BaseHTTPRequestHandler):
         else: name=urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)['name'][0]; data=raw
         state['uploads'].append(name)
         if state.get('fail_asset') and name.endswith('.bin'): return self.reply({},503)
+        if state.get('fail_manifest') and name.endswith('.json'): return self.reply({},503)
         asset_id=len(state['ids'])+1; state['ids'][asset_id]=name; state['data'][name]=data
         asset=dict(id=asset_id,name=name,size=len(data),digest='sha256:'+hashlib.sha256(data).hexdigest(),
                    browser_download_url=state['base']+f'/download/{release["tag_name"]}/{name}')
@@ -348,6 +349,83 @@ class Publishing(FileFixture):
         result=v4.publish(self.root/'second',api,target_commitish='b'*40)
         self.assertEqual(self.server.state['uploads'][count:],[v4.manifest_name(previous)])
         self.assertEqual({x['release'] for x in result['checks']},{'v4-test-1','v4-test-2'})
+
+    def grouped_bundles(self,provider='gitee'):
+        self.put('shared.npk',b'shared across every variant')
+        bundles=[]
+        for arch in ('x86','x64'):
+            for flavor in ('normal','test'):
+                self.put('app.exe',('launcher-'+arch+'-'+flavor).encode())
+                opts=self.options(); opts.update(architecture=arch,flavor=flavor)
+                bundle=self.root/(arch+'-'+flavor)
+                v4.build(output=bundle,provider=provider,repository='owner/repo',**opts)
+                bundles.append(bundle)
+        return bundles
+
+    def test_grouped_four_variants_share_tag_upload_resources_once_and_manifests_last(self):
+        bundles=self.grouped_bundles()
+        result=v4.publish_many(bundles,self.api('gitee'),target_commitish='b'*40)
+        uploads=self.server.state['uploads']
+        self.assertEqual(len(self.server.state['releases']),1)
+        self.assertEqual(len([x for x in uploads if x.endswith('.bin')]),5)
+        self.assertEqual(len(uploads),9)
+        self.assertTrue(all(x.endswith('.json') for x in uploads[-4:]))
+        self.assertTrue(all(x.endswith('.bin') for x in uploads[:-4]))
+        self.assertEqual(len(result['bundles']),4)
+        self.assertEqual({x['releaseId'] for x in result['bundles']},{1})
+
+    def test_grouped_github_draft_is_visible_after_all_four_manifests(self):
+        bundles=self.grouped_bundles('github')
+        v4.publish_many(bundles,self.api('github'),target_commitish='b'*40)
+        self.assertEqual(self.server.state['visible_uploads'],self.server.state['uploads'])
+        self.assertEqual(len([x for x in self.server.state['visible_uploads'] if x.endswith('.json')]),4)
+
+    def test_grouped_duplicate_or_mismatched_identity_rejected_before_mutation(self):
+        bundles=self.grouped_bundles()
+        for invalid in [[],[bundles[0],bundles[0]]]:
+            with self.assertRaises(v4.ReleaseError): v4.publish_many(invalid,self.api('gitee'),target_commitish='b'*40)
+        opts=self.options(); opts.update(version='v4-other',sequence=2,architecture='x64')
+        wrong=self.root/'wrong'; v4.build(output=wrong,provider='gitee',repository='owner/repo',**opts)
+        with self.assertRaises(v4.ReleaseError): v4.publish_many([bundles[0],wrong],self.api('gitee'),target_commitish='b'*40)
+        command=subprocess.run([sys.executable,str(MODULE),'publish','--bundle',str(bundles[0]),'--bundle',str(wrong),
+                                '--target-commitish','b'*40],capture_output=True,text=True)
+        self.assertEqual(command.returncode,2)
+        self.assertIn('grouped bundle release identity differs',command.stderr)
+        self.assertFalse(any(r[0]!='GET' for r in self.server.state['requests']))
+
+    def test_grouped_reused_attachment_cannot_have_conflicting_hashes(self):
+        self.put('app.exe',b'first')
+        prior=v4.build_manifest(**self.options()); prior['files'][0]['parts'][0]['asset']='shared.bin'
+        opts=self.options(previous=[prior]); opts.update(version='v4-test-2',sequence=2)
+        first=self.root/'first'; v4.build(output=first,provider='gitee',repository='owner/repo',**opts)
+        self.put('app.exe',b'other')
+        prior=v4.build_manifest(**self.options()); prior['architecture']='x64'; prior['files'][0]['parts'][0]['asset']='shared.bin'
+        opts=self.options(previous=[prior]); opts.update(version='v4-test-2',sequence=2,architecture='x64')
+        second=self.root/'second'; v4.build(output=second,provider='gitee',repository='owner/repo',**opts)
+        with self.assertRaisesRegex(v4.ReleaseError,'conflicting grouped resource'):
+            v4.publish_many([first,second],self.api('gitee'),target_commitish='b'*40)
+        self.assertEqual(self.server.state['requests'],[])
+
+    def test_grouped_limit_is_counted_across_unique_assets_and_all_manifests(self):
+        self.put('first.bin',b'a')
+        first=self.root/'first'; v4.build(output=first,provider='github',repository='owner/repo',**self.options())
+        opts=self.options(); opts.update(architecture='x64')
+        # Each variant individually fits, but their combined release exceeds 1000.
+        for i in range(500): self.put(f'{i}.bin',str(i).encode())
+        second=self.root/'second'; v4.build(output=second,provider='github',repository='owner/repo',**opts)
+        for i in range(500): self.put(f'{i}.bin',('other-'+str(i)).encode())
+        third=self.root/'third'; opts['flavor']='normal'; v4.build(output=third,provider='github',repository='owner/repo',**opts)
+        with self.assertRaisesRegex(v4.ReleaseError,'1000'): v4.publish_many([first,second,third],self.api('github'),target_commitish='b'*40)
+        self.assertFalse(any(r[0]!='GET' for r in self.server.state['requests']))
+
+    def test_grouped_failed_manifest_keeps_resources_without_deleting_or_overwriting(self):
+        bundles=self.grouped_bundles(); self.server.state['fail_manifest']=True
+        with self.assertRaises(v4.ReleaseError): v4.publish_many(bundles,self.api('gitee'),target_commitish='b'*40)
+        self.assertEqual(len([x for x in self.server.state['data'] if x.endswith('.bin')]),5)
+        self.assertEqual(len(self.server.state['releases']),1)
+        self.assertFalse(any(r[0] in ('DELETE','PATCH') for r in self.server.state['requests']))
+        self.server.state['fail_manifest']=False
+        with self.assertRaisesRegex(v4.ReleaseError,'immutable'): v4.publish_many(bundles,self.api('gitee'),target_commitish='b'*40)
 
 
 if __name__ == '__main__': unittest.main()
