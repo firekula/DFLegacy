@@ -73,7 +73,7 @@ internal static class RepairClient
 
     internal static async Task<RepairOutcome> RunAsync(RepairRequest request,Core.IReleaseProvider? provider=null,
         IProgress<Core.UpdateProgress>? progress=null,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirmClose=null,CancellationToken token=default,
-        Action<Core.ClientManifest>? validateManifest=null)
+        Action<Core.ClientManifest>? validateManifest=null,bool bootstrapSupervisor=false)
     {
         var root=Path.GetFullPath(request.Directory);
         if(!Directory.Exists(root))throw new DirectoryNotFoundException("客户端目录不存在："+root);
@@ -83,12 +83,14 @@ internal static class RepairClient
             throw new InvalidDataException("此客户端存在未完成的 V3 更新。请先使用原桥接更新包恢复该事务；独立 V4 修复不会覆盖旧恢复资料或提交混合版本。");
         Program.LogClientPath=Path.Combine(root,"DNF.exe");
         using var report=Program.Incidents.BeginUpdate("independent-repair");
+        IEnumerable<string> WithoutSupervisor(IEnumerable<string> files)=>bootstrapSupervisor
+            ?files.Where(f=>!string.Equals(Path.GetFullPath(f),Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase)):files;
         try
         {
             token.ThrowIfCancellationRequested();
             if(Core.InstallTransaction.HasPending(root))
             {
-                await ReleaseLocksAsync(RecoveryFiles(root),confirmClose,token).ConfigureAwait(false);
+                await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
                 progress?.Report(new("recover","",0,0,Detail:"正在恢复未完成事务；此阶段请勿退出。"));
                 await Task.Run(()=>Core.InstallTransaction.Recover(root,progress),CancellationToken.None).ConfigureAwait(false);
             }
@@ -123,7 +125,7 @@ internal static class RepairClient
             var files=staged.Release.Manifest.Files.Select(f=>Core.PathPolicy.Resolve(root,f.Path))
                 .Concat(staged.Release.Manifest.Retired.Select(f=>Core.PathPolicy.Resolve(root,f.Path)))
                 .Append(Path.Combine(root,"launcher.json"));
-            await ReleaseLocksAsync(files,confirmClose,token).ConfigureAwait(false);
+            await ReleaseLocksAsync(WithoutSupervisor(files),confirmClose,token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"正在提交修复；此阶段请勿退出。"));
             await Task.Run(()=>Core.InstallTransaction.Apply(root,staged,progress),CancellationToken.None).ConfigureAwait(false);

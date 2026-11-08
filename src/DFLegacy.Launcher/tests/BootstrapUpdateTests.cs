@@ -8,9 +8,17 @@ internal static class BootstrapUpdateTests
 {
     internal static async Task<int?> Dispatch(string[] args)
     {
-        if(args.Length!=2||args[0]!="--bootstrap-ready-fixture")return null;
+        if(args.Length<2||args[0]!="--bootstrap-ready-fixture")return null;
         if(args[1]=="fail")return 23;
-        BootstrapUpdateClient.SignalReady();await Task.Delay(2000);return 0;
+        if(args[1]=="wait-cancel")
+        {
+            var directory=Environment.GetEnvironmentVariable("DFLEGACY_TEST_CHILD_ROOT")!;
+            using var held=BootstrapLayout.AcquireAppLock(directory);
+            File.WriteAllText(Path.Combine(directory,"child-ready"),Environment.ProcessId.ToString());
+            await Task.Delay(Timeout.Infinite);return 0;
+        }
+        if(args[1]=="slow-fail"){BootstrapUpdateClient.SignalReady();await Task.Delay(400);return 23;}
+        BootstrapUpdateClient.SignalReady();if(args[1]!="immediate")await Task.Delay(2000);return 0;
     }
     internal static async Task Run(string scratch,Action<bool,string> check)
     {
@@ -18,9 +26,30 @@ internal static class BootstrapUpdateTests
         handshake.ArgumentList.Add("--bootstrap-ready-fixture");handshake.ArgumentList.Add("ready");
         await BootstrapUpdateClient.LaunchAndConfirmAsync(handshake,default);
         check(true,"real child confirms readiness through a unique event");
+        handshake.ArgumentList[1]="immediate";
+        await BootstrapUpdateClient.LaunchAndConfirmAsync(handshake,default);
+        check(true,"immediate successful headless completion acknowledges readiness exactly once");
         handshake.ArgumentList[1]="fail";
         try{await BootstrapUpdateClient.LaunchAndConfirmAsync(handshake,default);check(false,"failed UI child cannot claim successful handoff");}
         catch(InvalidOperationException ex){check(ex.Message.Contains("23"),"premature UI exit preserves failure code for recovery fallback");}
+        handshake.ArgumentList[1]="slow-fail";handshake.ArgumentList.Add("--headless");
+        try{await BootstrapUpdateClient.LaunchAndConfirmAsync(handshake,default);check(false,"headless result waits for actual completion");}
+        catch(InvalidOperationException ex){check(ex.Message.Contains("23"),"delayed headless failure is not readiness success");}
+        handshake.ArgumentList.RemoveAt(2);handshake.ArgumentList[1]="wait-cancel";
+        var cancelRoot=Path.Combine(scratch,"cancel-owned-ui");Directory.CreateDirectory(cancelRoot);handshake.Environment["DFLEGACY_TEST_CHILD_ROOT"]=cancelRoot;
+        using(var cancelled=new CancellationTokenSource())
+        {
+            var pending=BootstrapUpdateClient.LaunchAndConfirmAsync(handshake,cancelled.Token);
+            var timer=System.Diagnostics.Stopwatch.StartNew();
+            while(!File.Exists(Path.Combine(cancelRoot,"child-ready"))&&timer.Elapsed<TimeSpan.FromSeconds(15))await Task.Delay(25);
+            if(!File.Exists(Path.Combine(cancelRoot,"child-ready")))throw new Exception("Owned child fixture failed to become ready");
+            using var owned=System.Diagnostics.Process.GetProcessById(int.Parse(File.ReadAllText(Path.Combine(cancelRoot,"child-ready"))));_ = owned.SafeHandle;
+            cancelled.Cancel();
+            try{await pending;check(false,"cancel interrupts UI readiness");}catch(OperationCanceledException){check(true,"cancel interrupts UI readiness");}
+            try{check(owned.HasExited,"cancelled unconfirmed child exits before a fallback may start");}
+            finally{if(!owned.HasExited)owned.Kill();await FileLockOwners.WaitForExitConfirmedAsync(owned,default);}
+            using var unlocked=BootstrapLayout.AcquireAppLock(cancelRoot);check(true,"cancelled child cannot retain UI lock");
+        }
         string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
         var arch=System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture==System.Runtime.InteropServices.Architecture.X86?"x86":"x64";
         var hash=new string('a',64);
@@ -46,6 +75,22 @@ internal static class BootstrapUpdateTests
         await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
         check(File.ReadAllText(Path.Combine(root,"launcher.json"))==config,"bootstrap repair preserves unknown/user config bytes");
         await BootstrapLayout.ValidateInstalledAsync(root,arch);
+        var installed=new Core.InstallationStore(root).ReadInstalled()!;
+        var changedEntry=installed.Release.Manifest with {Files=installed.Release.Manifest.Files.Select(f=>f.Path==BootstrapLayout.EntryName?f with{Sha256=new string('f',64)}:f).ToArray()};
+        try{BootstrapLayout.RequireStableEntry(root,changedEntry);check(false,"fixed running entry cannot be replaced during repair");}catch(InvalidDataException){check(true,"changed native entry is rejected before repair");}
+        var holdStart=new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=false,RedirectStandardInput=true,RedirectStandardOutput=true,CreateNoWindow=true};
+        holdStart.ArgumentList.Add("--repair-lock-fixture");holdStart.ArgumentList.Add(Path.Combine(root,BootstrapLayout.EntryName));
+        using(var holder=System.Diagnostics.Process.Start(holdStart)!)
+        {
+            try
+            {
+                check(await holder.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(10))=="ready","native supervisor fixture owns unchanged entry");
+                File.Delete(Path.Combine(root,BootstrapLayout.AppName));
+                await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>Task.CompletedTask);
+                check(!holder.HasExited,"repair never asks to terminate unchanged native supervisor");
+            }
+            finally{await holder.StandardInput.WriteLineAsync("release");await holder.StandardInput.FlushAsync();await holder.WaitForExitAsync();}
+        }
         var launches=0;
         async Task Launch(System.Diagnostics.ProcessStartInfo start,CancellationToken token)
         {
@@ -64,6 +109,7 @@ internal static class BootstrapUpdateTests
         // different UI. The repaired installation must not execute that UI.
         var mismatch=new Dictionary<string,byte[]>(files){[BootstrapLayout.DescriptorName]=Encoding.ASCII.GetBytes(text)};
         var mismatchRoot=Path.Combine(scratch,"mismatched-layout");Directory.CreateDirectory(mismatchRoot);File.WriteAllText(Path.Combine(mismatchRoot,"launcher.json"),config);
+        File.WriteAllBytes(Path.Combine(mismatchRoot,BootstrapLayout.EntryName),files[BootstrapLayout.EntryName]);
         try{await BootstrapUpdateClient.RunAsync(new(mismatchRoot,[]),new FixtureProvider(arch,mismatch),launch:Launch);check(false,"descriptor must match full receipt");}
         catch(InvalidDataException){check(launches==2,"descriptor identity disagreement blocks UI even after file hashes pass");}
         using(var held=BootstrapLayout.AcquireAppLock(root))

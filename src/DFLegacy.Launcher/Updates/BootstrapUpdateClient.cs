@@ -5,6 +5,8 @@ using Core=DFLegacy.UpdateCore;
 namespace DFLegacy.Launcher.Updates;
 
 internal sealed record BootstrapRequest(string Directory,string[] LauncherArguments,int? WaitPid=null,long? WaitStartTicks=null);
+internal sealed class BootstrapCommandException(int exitCode):InvalidOperationException($"登录器命令已结束，退出码 {exitCode}；不会重复执行命令。");
+internal sealed class BootstrapChildStillRunningException(Exception error):InvalidOperationException("新登录器尚未确认退出；为避免重复启动，已停止自动重试。",error);
 
 internal static class BootstrapUpdateClient
 {
@@ -36,7 +38,8 @@ internal static class BootstrapUpdateClient
                     throw new InvalidDataException("重新检查更新的父进程不属于此客户端。");
             }
             catch(InvalidOperationException){return;}
-            await parent.WaitForExitAsync(token).WaitAsync(TimeSpan.FromSeconds(45),token).ConfigureAwait(false);
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(token);deadline.CancelAfter(TimeSpan.FromSeconds(45));
+            await FileLockOwners.WaitForExitConfirmedAsync(parent,deadline.Token).ConfigureAwait(false);
         }
     }
     internal static async Task<RepairOutcome> RunAsync(BootstrapRequest request,Core.IReleaseProvider? provider=null,
@@ -44,7 +47,8 @@ internal static class BootstrapUpdateClient
         Func<ProcessStartInfo,CancellationToken,Task>? launch=null,CancellationToken token=default)
     {
         await WaitForParentAsync(request,token).ConfigureAwait(false);
-        var outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,BootstrapLayout.RequireManifest).ConfigureAwait(false);
+        var outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
+            manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true).ConfigureAwait(false);
         await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
         var start=new ProcessStartInfo(Path.Combine(request.Directory,BootstrapLayout.AppName)){WorkingDirectory=request.Directory,UseShellExecute=false};
         start.ArgumentList.Add("--bootstrap-verified");start.ArgumentList.Add("--");
@@ -59,17 +63,40 @@ internal static class BootstrapUpdateClient
         using var ready=new EventWaitHandle(false,EventResetMode.ManualReset,eventName);
         start.Environment["DFLEGACY_BOOTSTRAP_READY_EVENT"]=eventName;
         using var process=Process.Start(start)??throw new InvalidOperationException("无法打开已修复的登录器。");
-        var deadline=Stopwatch.StartNew();
-        while(deadline.Elapsed<TimeSpan.FromSeconds(30))
+        _ = process.SafeHandle;
+        try
         {
-            token.ThrowIfCancellationRequested();
-            if(process.HasExited)throw new InvalidOperationException($"登录器启动后提前退出（{process.ExitCode}）；保留恢复组件供下次重试。");
-            // Signal is sent only after validated UI creation. An error dialog
-            // must never bless a failed updater as the recovery engine.
-            if(ready.WaitOne(0))return;
-            await Task.Delay(100,token).ConfigureAwait(false);
+            if(App.IsHeadless(start.ArgumentList))
+            {
+                await FileLockOwners.WaitForExitConfirmedAsync(process,token).ConfigureAwait(false);
+                if(process.ExitCode!=0)throw new BootstrapCommandException(process.ExitCode);
+                return;
+            }
+            var deadline=Stopwatch.StartNew();
+            while(deadline.Elapsed<TimeSpan.FromSeconds(30))
+            {
+                token.ThrowIfCancellationRequested();
+                // Signal is sent only after validated UI creation. An error dialog
+                // must never bless a failed updater as the recovery engine.
+                if(ready.WaitOne(0)&&(!process.HasExited||process.ExitCode==0))return;
+                if(process.HasExited)throw new InvalidOperationException($"登录器启动后提前退出（{process.ExitCode}）；保留恢复组件供下次重试。");
+                await Task.Delay(100,token).ConfigureAwait(false);
+            }
+            throw new TimeoutException("已修复的登录器未在限定时间内完成启动，请查看错误日志。");
         }
-        throw new TimeoutException("已修复的登录器未在限定时间内完成启动，请查看错误日志。");
+        catch
+        {
+            // Only the exact child created for this failed handoff is owned here.
+            // Never allow the native fallback to run beside an unconfirmed child.
+            try
+            {
+                if(!process.HasExited)process.Kill();
+                using var exit=new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await FileLockOwners.WaitForExitConfirmedAsync(process,exit.Token).ConfigureAwait(false);
+            }
+            catch(Exception cleanup){throw new BootstrapChildStillRunningException(cleanup);}
+            throw;
+        }
     }
     internal static void SignalReady()
     {
@@ -86,27 +113,38 @@ internal static class BootstrapUpdateClient
         try
         {
             var request=ParseArguments(args);
+            var quiet=App.IsHeadless(request.LauncherArguments);
             Program.LogClientPath=Path.Combine(request.Directory,"DNF.exe");
-            window=new Views.UpdateInstallWindow{Title="验证与修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();
+            if(!quiet){window=new Views.UpdateInstallWindow{Title="验证与修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();}
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
                 var message=$"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path} {p.Detail}";
-                if(p.Phase is "recover" or "install" or "prepared" or "commit")window.Render(new UpdateInstallProgress(.85,message));
-                else window.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,
+                if(quiet){Console.WriteLine(message);return;}
+                if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
+                else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,
                     Progress:new UpdateProgress(p.BytesReceived,p.TotalBytes,p.BytesPerSecond,p.Phase,p.Path,p.CompletedFiles,p.TotalFiles,message)));
             });
             async Task<bool> Confirm(IReadOnlyList<FileLockOwner> owners,CancellationToken token)
             {
                 token.ThrowIfCancellationRequested();
+                if(quiet)return false;
                 return await Application.Current.Dispatcher.InvokeAsync(()=>MessageBox.Show(window,
                     "以下进程占用客户端文件：\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+"\n是否关闭这些进程并继续修复？请先保存其他工作。",
                     "修复需要释放文件",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
             }
             var outcome=await RunAsync(request,progress:progress,confirmClose:Confirm,token:cancel.Token);
-            if(outcome.Offline)MessageBox.Show(window,"本地文件已通过完整校验，可以启动。未确认线上最新版本。\n"+outcome.Message,"离线校验",MessageBoxButton.OK,MessageBoxImage.Information);
+            if(outcome.Offline)
+            {
+                if(quiet)Console.WriteLine(outcome.Message);
+                else MessageBox.Show(window!,"本地文件已通过完整校验，可以启动。未确认线上最新版本。\n"+outcome.Message,"离线校验",MessageBoxButton.OK,MessageBoxImage.Information);
+            }
             return 0;
         }
         catch(OperationCanceledException){return 2;}
+        catch(Exception ex) when(ex is BootstrapCommandException or BootstrapChildStillRunningException)
+        {
+            Program.ReportError("bootstrap-terminal-child",ex);return 3;
+        }
         catch(Exception ex)
         {
             Program.ReportError("bootstrap-auto-repair",ex);

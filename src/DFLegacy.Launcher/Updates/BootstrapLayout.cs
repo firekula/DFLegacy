@@ -42,6 +42,13 @@ internal static class BootstrapLayout
         }
         if(manifest.Architecture!=Architecture)throw new InvalidDataException("自动修复启动组件架构不匹配。");
     }
+    internal static void RequireStableEntry(string root,Core.ClientManifest manifest)
+    {
+        RequireManifest(manifest);
+        var entry=manifest.Files.Single(f=>f.Path==EntryName);
+        if(!Core.FileVerifier.MatchesAsync(Core.PathPolicy.Resolve(root,EntryName),entry.Size,entry.Sha256).GetAwaiter().GetResult())
+            throw new InvalidDataException("此更新需要替换正在运行的固定入口。请使用新的完整启动包；当前入口和恢复副本已保留。");
+    }
     internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
     {
         using var lease=Core.InstallationLease.Acquire(root);

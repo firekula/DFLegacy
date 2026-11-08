@@ -10,6 +10,7 @@ public partial class App : Application
     internal static bool BootstrapVerified { get; private set; }
     private static readonly string[] HeadlessArgs =
         ["--headless", "--account", "--account-index", "--self-test", "--install-ijl15", "--check-d3d9", "--no-dialog", "--third-party-notices"];
+    internal static bool IsHeadless(IEnumerable<string> args)=>args.Any(a=>HeadlessArgs.Contains(a,StringComparer.OrdinalIgnoreCase));
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -63,7 +64,7 @@ public partial class App : Application
             Program.ReportError("bootstrap-ui-validation",ex);
             MessageBox.Show(ex.Message,"DFLegacy 启动校验失败",MessageBoxButton.OK,MessageBoxImage.Error);Shutdown(1);return;
         }
-        if (args.Any(a => HeadlessArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))
+        if (IsHeadless(args))
         {
             if(BootstrapVerified)Updates.BootstrapUpdateClient.SignalReady();
             var code = await Program.RunHeadlessAsync(args);
