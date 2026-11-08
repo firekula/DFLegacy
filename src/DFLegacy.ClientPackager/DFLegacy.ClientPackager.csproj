@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../DFLegacy.Manager/DFLegacy.Manager.csproj" />
-    <Content Include="../../tools/release/release.py;../../tools/release/bundle.py;../../tools/release/github_publish.py"
+    <Content Include="../../tools/release/release.py;../../tools/release/bundle.py;../../tools/release/github_publish.py;../../tools/release/update_v4.py"
              Link="tools/release/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest"
              CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>

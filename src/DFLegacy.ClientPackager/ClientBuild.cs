@@ -70,7 +70,17 @@ internal static class ClientBuild
         return destination;
     }
 
-    private static async Task RunPythonAsync(string script, IEnumerable<string> args)
+    internal static Task<string> RunV4Async(string command, string location, string? output = null, string? targetCommit = null)
+    {
+        if (command is not ("preview" or "build" or "verify" or "publish"))
+            throw new ArgumentException("未知 V4 操作。");
+        var args = new List<string> { command, command is "preview" or "build" ? "--request" : "--bundle", location };
+        if (command == "build") { args.Add("--output"); args.Add(output ?? throw new ArgumentException("缺少输出目录。")); }
+        if (command == "publish") { args.Add("--target-commitish"); args.Add(targetCommit ?? throw new ArgumentException("缺少公开仓库提交。")); }
+        return RunPythonAsync("update_v4.py", args);
+    }
+
+    private static async Task<string> RunPythonAsync(string script, IEnumerable<string> args)
     {
         var start = new ProcessStartInfo("py") { UseShellExecute = false, CreateNoWindow = true,
             RedirectStandardOutput = true, RedirectStandardError = true };
@@ -87,9 +97,10 @@ internal static class ClientBuild
         var stdout = process.StandardOutput.ReadToEndAsync();
         var stderr = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
-        await stdout;
+        var result = await stdout;
         var error = await stderr;
         if (process.ExitCode != 0)
             throw new IOException(string.IsNullOrWhiteSpace(error) ? $"{script} 退出码 {process.ExitCode}" : error.Trim());
+        return result;
     }
 }
