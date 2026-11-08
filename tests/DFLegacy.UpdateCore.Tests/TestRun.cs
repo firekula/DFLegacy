@@ -25,6 +25,7 @@ internal static class TestRun
     internal static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
     internal static async Task<int> RunAsync(string[] args)
     {
+        if (await LocalBundleTests.Dispatch(args) is { } bundleResult) return bundleResult;
         if (TransactionTests.Dispatch(args) is { } child) return child;
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-v4-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
