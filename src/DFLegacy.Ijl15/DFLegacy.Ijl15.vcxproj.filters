@@ -30,6 +30,7 @@
     <ClInclude Include="src\d3d8_hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\native_incidents.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\diagnostic_delivery.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -125,6 +126,7 @@
     <ClCompile Include="src\inventory_tab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\native_incidents.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\dnf_patches.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

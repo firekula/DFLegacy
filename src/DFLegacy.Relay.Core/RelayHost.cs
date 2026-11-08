@@ -23,7 +23,8 @@ internal sealed class TcpForwarder(
     IPAddress bindAddress,
     int port,
     IPAddress targetAddress,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
     private static long _nextConnectionId;
     private readonly TcpListener _listener = new(bindAddress, port);
@@ -92,7 +93,12 @@ internal sealed class TcpForwarder(
                     $"TCP {port}: connection={connectionId} event=connection-start client={client.Client.RemoteEndPoint} target={RelayHost.FormatEndpoint(targetAddress, port)}");
                 try
                 {
-                    await server.ConnectAsync(new IPEndPoint(targetAddress, port), connectionCancellation.Token);
+                    using(var connectDeadline=CancellationTokenSource.CreateLinkedTokenSource(connectionCancellation.Token))
+                    {
+                        connectDeadline.CancelAfter(TimeSpan.FromSeconds(15));
+                        try { await server.ConnectAsync(new IPEndPoint(targetAddress, port), connectDeadline.Token); }
+                        catch(OperationCanceledException) when(!connectionCancellation.IsCancellationRequested) { throw new TimeoutException("Relay connection deadline elapsed."); }
+                    }
                     phase = "transfer";
                     var clientStream = client.GetStream();
                     var serverStream = server.GetStream();
@@ -115,6 +121,8 @@ internal sealed class TcpForwarder(
         }
         finally
         {
+            var reason=end.Reason switch { "eof"=>RelayTerminationReason.Eof,"cancelled"=>RelayTerminationReason.Cancelled,"socket-error"=>RelayTerminationReason.SocketError,"timeout"=>RelayTerminationReason.Timeout,_=>RelayTerminationReason.Error };
+            RelayTermination.Deliver(terminated,new(reason,"TCP",phase,port,connectionId,end.Direction ?? "connect",clientToServerBytes,serverToClientBytes,Stopwatch.GetElapsedTime(started).TotalMilliseconds,end.SocketError,end.NativeError));
             LogConnection(
                 end.IsError ? RelayLogLevel.Warn : RelayLogLevel.Info,
                 $"TCP {port}: connection={connectionId} event=connection-end phase={phase} {end.Details} clientToServerBytes={clientToServerBytes} serverToClientBytes={serverToClientBytes} elapsedMs={Stopwatch.GetElapsedTime(started).TotalMilliseconds:F0}");
@@ -161,6 +169,7 @@ internal sealed class TcpForwarder(
         {
             ArrayPool<byte>.Shared.Return(buffer);
         }
+        result=result with { Direction=direction };
         LogConnection(
             result.IsError ? RelayLogLevel.Warn : RelayLogLevel.Info,
             $"TCP {port}: connection={connectionId} event=direction-end direction={direction} bytes={result.Bytes} {result.Details}");
@@ -192,7 +201,7 @@ internal sealed class TcpForwarder(
                 && (exception is ObjectDisposedException
                     || socketException?.SocketErrorCode is SocketError.OperationAborted or SocketError.Interrupted)))
             return new TransferResult(bytes, "cancelled", hostCancellation.IsCancellationRequested ? "host-stop" : "peer-error");
-        return new TransferResult(bytes, socketException is null ? "error" : "socket-error", ExceptionType: exception.GetType().Name,
+        return new TransferResult(bytes, exception is TimeoutException ? "timeout" : socketException is null ? "error" : "socket-error", ExceptionType: exception.GetType().Name,
             SocketError: socketException?.SocketErrorCode, NativeError: socketException?.NativeErrorCode);
     }
 
@@ -202,9 +211,10 @@ internal sealed class TcpForwarder(
         string? Cancellation = null,
         string? ExceptionType = null,
         SocketError? SocketError = null,
-        int? NativeError = null)
+        int? NativeError = null,
+        string? Direction = null)
     {
-        public bool IsError => Reason is "socket-error" or "error";
+        public bool IsError => Reason is "socket-error" or "error" or "timeout";
         public string Details => $"reason={Reason}"
             + (Cancellation is null ? "" : $" cancellation={Cancellation}")
             + (ExceptionType is null ? "" : $" exception={ExceptionType}")
@@ -222,7 +232,8 @@ internal sealed class UdpForwarder(
     IPAddress bindAddress,
     int port,
     IPAddress targetAddress,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
     private const int MaxConsecutiveReceiveFailures = 10;
 
@@ -284,8 +295,11 @@ internal sealed class UdpForwarder(
                 // A persistent failure must not spin: log the first few, back off,
                 // and give up rather than flooding the log.
                 consecutiveFailures++;
+                if (cancellationToken.IsCancellationRequested) return;
                 if (consecutiveFailures > MaxConsecutiveReceiveFailures)
                 {
+                    var socket=exception.GetBaseException() as SocketException;
+                    RelayTermination.Deliver(terminated,new(RelayTerminationReason.Error,"UDP","receive",port,0,fromClient ? "client->server" : "server->client",0,0,0,socket?.SocketErrorCode,socket?.NativeErrorCode,consecutiveFailures));
                     log(
                         RelayLogLevel.Error,
                         $"UDP {port}: 连续 {consecutiveFailures} 次接收失败，停止该端口（{exception.Message}）。");
@@ -332,6 +346,9 @@ internal sealed class UdpForwarder(
             }
             catch (Exception exception)
             {
+                if(cancellationToken.IsCancellationRequested) return;
+                var socket=exception.GetBaseException() as SocketException;
+                RelayTermination.Deliver(terminated,new(RelayTerminationReason.SocketError,"UDP","send",port,0,fromClient ? "client->server" : "server->client",0,0,0,socket?.SocketErrorCode,socket?.NativeErrorCode));
                 log(RelayLogLevel.Warn, $"UDP {port}: send failed ({exception.Message})");
             }
         }
@@ -349,7 +366,8 @@ public sealed class RelayHost(
     IPAddress targetAddress,
     IReadOnlyCollection<int> tcpPorts,
     IReadOnlyCollection<int> udpPorts,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
     private readonly List<TcpForwarder> _tcp = [];
     private readonly List<UdpForwarder> _udp = [];
@@ -366,15 +384,17 @@ public sealed class RelayHost(
     {
         foreach (var port in tcpPorts)
         {
-            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log);
-            forwarder.Start();
+            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            try { forwarder.Start(); }
+            catch(SocketException ex) { RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"TCP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
             _tcp.Add(forwarder);
         }
 
         foreach (var port in udpPorts)
         {
-            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log);
-            forwarder.Start();
+            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            try { forwarder.Start(); }
+            catch(SocketException ex) { forwarder.Stop(); RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"UDP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
             _udp.Add(forwarder);
         }
 

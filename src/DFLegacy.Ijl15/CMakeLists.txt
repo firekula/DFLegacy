@@ -68,6 +68,8 @@ add_library(ijl15 SHARED
     src/d3d8_scaler.h
     src/d3d8_hooks.cpp
     src/d3d8_hooks.h
+    src/native_incidents.cpp
+    src/native_incidents.h
     src/diagnostic_delivery.h
     src/pe_import.h
     src/window_input_scaling.cpp
@@ -171,6 +173,12 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(native_incident_tests tests/incident_tests.cpp src/native_incidents.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_include_directories(native_incident_tests PRIVATE src)
+    target_compile_options(native_incident_tests PRIVATE /W4 /WX /EHsc)
+    target_link_options(native_incident_tests PRIVATE /BASE:0x10000000 /DYNAMICBASE:NO)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME native_incidents COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_incidents.py" "$<TARGET_FILE:native_incident_tests>")
     add_executable(payment_window_layout_tests tests/payment_window_layout_tests.cpp)
     target_compile_options(payment_window_layout_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     add_test(NAME payment_window_layout COMMAND payment_window_layout_tests)

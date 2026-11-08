@@ -37,6 +37,9 @@ internal static class ClientBootstrapLauncher
             start.StandardInputEncoding=new UTF8Encoding(false,true); start.StandardOutputEncoding=new UTF8Encoding(false,true);
             start.WorkingDirectory=Path.GetDirectoryName(clientPath)!;
             if(paymentUrl is not null) start.Environment["DFLEGACY_LOCAL_PAYMENT_URL"]=paymentUrl;
+            start.Environment["DFLEGACY_DIAGNOSTIC_SESSION"]=Program.Incidents.SessionId;
+            start.Environment["DFLEGACY_DIAGNOSTIC_VERSION"]=manifest.Version+"+"+manifest.Commit;
+            start.Environment["DFLEGACY_DIAGNOSTIC_PVF"]=Program.Incidents.CapturePvfIdentity(Path.Combine(manifest.DirectoryPath,"Script.pvf"));
             if(fixtureStart is null)
                 foreach(var argument in new[]{"--client",ClientFileIdentity.Canonical(exe.SafeFileHandle),"--patch",patchPath,"--sha256",manifest.Files.Single(f=>f.Path=="DFLegacy.Client.dll").Sha256,"--mode",manifest.Flavor,"--nonce",nonce,"--",launcherData}) start.ArgumentList.Add(argument);
             helper=Process.Start(start) ?? throw Failure("create_failed");

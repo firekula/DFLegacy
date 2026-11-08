@@ -23,6 +23,9 @@ public partial class App : Application
             return;
         }
         base.OnStartup(e);
+        Program.DetailedCaptureEnabled=e.Args.Contains("--detailed-crash-capture",StringComparer.OrdinalIgnoreCase);
+        AppDomain.CurrentDomain.UnhandledException += (_,args) => { if(args.ExceptionObject is Exception error) Program.Incidents.Report(Diagnostics.IncidentKind.Crash,"launcher-unhandled",error,details:"evidence=managed-unhandled-exception"); };
+        DispatcherUnhandledException += (_,args) => Program.Incidents.Report(Diagnostics.IncidentKind.Crash,"launcher-dispatcher",args.Exception,details:"evidence=dispatcher-unhandled-exception");
         var args = e.Args;
         if (args.Any(a => HeadlessArgs.Contains(a, StringComparer.OrdinalIgnoreCase)))
         {
@@ -40,6 +43,7 @@ public partial class App : Application
         }
         catch (Exception exception)
         {
+            Program.ReportError("gui-startup",exception);
             // launcher.json 损坏等配置错误会从 LoadOptions 或 MainWindow 构造内的
             // _store.Load 抛出（InvalidDataException / JsonException）。async void
             // OnStartup 的未处理异常会以 WPF 崩溃对话框收场，这里与 headless 的

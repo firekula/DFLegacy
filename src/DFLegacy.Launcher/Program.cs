@@ -3,12 +3,39 @@ using System.Net;
 using System.Net.Sockets;
 using System.Windows;
 using DFLegacy.Relay;
+using DFLegacy.Launcher.Diagnostics;
 
 namespace DFLegacy.Launcher;
 
 internal static class Program
 {
+    private static readonly object DiagnosticGate = new();
+    private static IncidentReporter? incidentReporter;
+    private static string? incidentDirectory;
+    internal static bool DetailedCaptureEnabled { get; set; }
     internal static string? LogClientPath { get; set; }
+    internal static IncidentReporter Incidents
+    {
+        get
+        {
+            lock(DiagnosticGate)
+            {
+                var path=Path.Combine(ClientLogPaths.GetDirectory(LogClientPath),"Incidents");
+                if(incidentReporter is null || incidentDirectory!=path) { incidentReporter=new IncidentReporter(path); incidentDirectory=path; }
+                return incidentReporter;
+            }
+        }
+    }
+    internal static void ReportError(string stage,Exception error,string? updateId=null)
+    {
+        if(Incidents.Report(IncidentKind.Error,stage,error,updateId:updateId) is null && error is not OperationCanceledException)
+            LogWarning="客户端 Logs/DFLegacy 无法写入，诊断报告不可用。";
+    }
+    internal static void RegisterDiagnosticSecrets(LauncherOptions options)
+    {
+        Incidents.RegisterSecret(options.Account); Incidents.RegisterSecret(options.Password);
+        foreach(var account in options.Accounts) { Incidents.RegisterSecret(account.Account); Incidents.RegisterSecret(account.Password); }
+    }
     internal static string? LogWarning { get; set; }
     internal const string DefaultClientPath = @"D:\DFLegacy\DF2008\DNF.exe";
     private const int ServerStartupAttempts = 40;
@@ -78,6 +105,7 @@ internal static class Program
         }
         catch (Exception exception)
         {
+            ReportError("headless-startup",exception);
             WriteLauncherLog($"Launcher failed: {exception.GetType().Name}");
             Console.Error.WriteLine(exception.Message);
             if (!noDialog)
@@ -112,7 +140,9 @@ internal static class Program
     internal static LauncherOptions LoadOptions()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "launcher.json");
-        return new LauncherAccountStore(path).Load();
+        var options=new LauncherAccountStore(path).Load();
+        RegisterDiagnosticSecrets(options);
+        return options;
     }
 
     internal static string ResolveClientPath(string configuredPath)
@@ -199,6 +229,7 @@ internal static class Program
             throw new InvalidDataException("--account 需要一个账号名。");
         }
 
+        Incidents.RegisterSecret(args[accountArgument + 1]);
         if (options.Accounts.Count == 0)
         {
             options.Account = args[accountArgument + 1];
@@ -285,7 +316,7 @@ internal static class Program
             target,
             BuildRelayPorts(options.Relay.TcpPorts, RelayDefaultTcpPorts, options.EntrancePort),
             BuildRelayPorts(options.Relay.UdpPorts, RelayDefaultUdpPorts, requiredPort: null),
-            LogRelay);
+            LogRelay, incident => Incidents.ReportNetwork(incident));
         try
         {
             relay.Start();
@@ -450,6 +481,7 @@ internal static class Program
 
     internal static void WriteLauncherLog(string message)
     {
-        if(!ClientLogPaths.TryWrite(LogClientPath,message)) LogWarning="客户端 Logs/DFLegacy 无法写入，诊断日志不可用。请检查目录权限。";
+        Incidents.AddContext(message);
+        if(!ClientLogPaths.TryWrite(LogClientPath,Incidents.Redact(message))) LogWarning="客户端 Logs/DFLegacy 无法写入，诊断日志不可用。请检查目录权限。";
     }
 }

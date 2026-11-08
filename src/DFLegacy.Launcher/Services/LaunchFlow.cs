@@ -20,6 +20,8 @@ internal static class LaunchFlow
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
         Program.LogClientPath = clientPath;
+        Program.RegisterDiagnosticSecrets(options);
+        Program.Incidents.RegisterSecret(account.Account); Program.Incidents.RegisterSecret(account.Password);
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
         var manifest = ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
         ClientBootstrapInspector.ValidateForLaunch(clientPath);
@@ -69,12 +71,17 @@ internal static class LaunchFlow
                 async (client, token) =>
                 {
                     Program.TryRaisePriority(client);
+                    using var capture=Diagnostics.DetailedCrashCapture.TryStart(client.Id);
                     Program.WriteLauncherLog(
                         $"Created DFLegacy client process {client.Id}; entrance={entranceHost}:{options.EntrancePort}" +
                         (relay is null ? "." : $"; relay target={relay.TargetAddress}."));
-                    await ClientStartupMonitor.ObserveAsync(client, TimeSpan.FromSeconds(5), token);
-                    Program.WriteLauncherLog($"Client process {client.Id} remained running through startup observation.");
-                    await client.WaitForExitAsync(token);
+                    try
+                    {
+                        await ClientStartupMonitor.ObserveAsync(client, TimeSpan.FromSeconds(5), token);
+                        Program.WriteLauncherLog($"Client process {client.Id} remained running through startup observation.");
+                        await client.WaitForExitAsync(token);
+                    }
+                    finally { if(client.HasExited) Program.Incidents.ReportExit(client.Id,client.ExitCode,token.IsCancellationRequested); }
                     shutdown.Cancel();
                     await relayTask;
                     Program.WriteLauncherLog($"Client process {client.Id} exited; launcher stopping.");
