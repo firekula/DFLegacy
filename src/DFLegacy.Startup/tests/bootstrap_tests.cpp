@@ -115,8 +115,8 @@ void Junction(const fs::path& link, const fs::path& target) {
 }
 
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 6) return 99;
-    const fs::path good(argv[1]), fail(argv[2]), cancel(argv[3]), unknown(argv[4]), launcher(argv[5]);
+    if (argc != 7) return 99;
+    const fs::path good(argv[1]), fail(argv[2]), cancel(argv[3]), unknown(argv[4]), terminal(argv[5]), launcher(argv[6]);
     unsigned passed = 0, failed = 0, index = 0;
     const auto test = [&](const char* name, const std::function<void()>& run) {
         try { run(); ++passed; std::cout << "PASS " << name << '\n'; }
@@ -191,6 +191,38 @@ int wmain(int argc, wchar_t** argv) {
         Root root(++index); root.Primary(unknown); root.Recovery(good);
         Require(Run(root.path, {}).exitCode == 1, "unknown exit succeeded");
         Require(Observations(root).size() == 1, "non-contract exit retried");
+    });
+    test("terminal CLI failure exit3 never retries recovery", [&] {
+        Root root(++index); root.Primary(terminal); root.Recovery(good);
+        auto receipt = Read(root.state() / L"recovery.ini");
+        Require(Run(root.path, {L"--headless"}).exitCode == 1, "terminal CLI exit did not map to failure");
+        const auto observed = Observations(root);
+        Require(observed.size() == 1 && observed[0].result == 3, "terminal CLI command retried");
+        Require(Read(root.state() / L"recovery.ini") == receipt, "terminal CLI failure advanced recovery");
+    });
+    test("only exact managed no-dialog flags suppress native dialogs", [&] {
+        for (const auto* flag : {L"--no-dialog", L"--third-party-notices", L"--self-test", L"--install-ijl15", L"--check-d3d9", L"--No-Dialog", L"--SELF-TEST"})
+            Require(SuppressDialogs({L"unrelated", flag}), "managed quiet flag not recognized");
+        for (const auto* flag : {L"", L"--headless", L"--account", L"--account-index", L"--no-dialog=true", L"prefix--self-test", L"--check-d3d9x"})
+            Require(!SuppressDialogs({flag}), "unrelated flag suppressed native errors");
+        Require(!SuppressDialogs({}), "normal GUI startup suppressed errors");
+    });
+    test("actual fixed entry exits quietly for CLI failure", [&] {
+        for (const auto* flag : {L"--no-dialog", L"--third-party-notices", L"--self-test", L"--install-ijl15", L"--check-d3d9", L"--No-Dialog"}) {
+            Root root(++index); root.Primary(terminal); root.Recovery(good);
+            const auto target = root.path / L"DFLegacy.Launcher.exe"; fs::copy_file(launcher, target);
+            std::wstring command = L"\"" + target.wstring() + L"\" " + flag;
+            STARTUPINFOW startup{}; startup.cb = sizeof(startup); PROCESS_INFORMATION process{};
+            Require(CreateProcessW(target.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
+                root.path.c_str(), &startup, &process), "quiet launcher start failed");
+            const auto waited = WaitForSingleObject(process.hProcess, 3000);
+            if (waited != WAIT_OBJECT_0) { TerminateProcess(process.hProcess, 98); WaitForSingleObject(process.hProcess, 3000); }
+            DWORD exitCode = 99; GetExitCodeProcess(process.hProcess, &exitCode);
+            CloseHandle(process.hThread); CloseHandle(process.hProcess);
+            Require(waited == WAIT_OBJECT_0 && exitCode == 1, "quiet CLI failure displayed a blocking native error dialog");
+            const auto observed = Observations(root);
+            Require(observed.size() == 1 && observed[0].result == 3, "quiet CLI failure was retried");
+        }
     });
     test("invalid hash or machine never executes", [&] {
         Root root(++index); root.Primary(good);

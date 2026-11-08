@@ -19,5 +19,6 @@ struct Result {
 std::string Architecture();
 std::optional<Descriptor> ParseDescriptor(std::string_view bytes, std::string_view architecture);
 std::wstring QuoteArgument(std::wstring_view argument);
+bool SuppressDialogs(const std::vector<std::wstring>& arguments);
 Result Run(const std::filesystem::path& root, const std::vector<std::wstring>& arguments);
 }

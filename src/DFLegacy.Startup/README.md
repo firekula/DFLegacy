@@ -47,9 +47,16 @@ execution. `recovery.ini` is atomically replaced only after exit 0, using the
 descriptor of the worker that actually ran. A replacement installed by that
 worker therefore does not become recovery until its own successful start.
 Exit 2 cancels without fallback. Exit 1 permits at most one different previously
-verified recovery worker; unexpected worker exit codes fail without fallback.
+verified recovery worker. Updater exit 3 means a managed CLI command finished
+with failure: the native entry returns 1 without retrying the command. Other
+unexpected worker exit codes also fail without fallback.
 A receipt commit failure after successful worker execution never retries,
 because the successful worker may already have opened the UI.
+
+Native error dialogs are suppressed only by the managed CLI's exact
+`--no-dialog`, `--third-party-notices`, `--self-test`, `--install-ijl15` and
+`--check-d3d9` flags (case insensitive). Exit status and recovery validation are
+unchanged; flags such as `--headless` alone do not suppress error dialogs.
 
 Temporary directories use random names. Cleanup only deletes the fixed copied
 EXE and then removes that exact empty directory; it never recursively traverses
@@ -66,8 +73,12 @@ bounded fallback, actual fixed-entry startup, real exclusive locks, junctions
 and hard links, bounded private diagnostics, updater self-replacement, cache
 repair, and atomic recovery advancement/failure. Test fixtures are confined to
 unique test-owned temporary roots and never contact update servers.
+CLI tests also exercise terminal exit 3 without recovery retry and run the
+actual fixed entry with each quiet flag to detect blocking error dialogs.
 
 The first implementation run recorded 11 failing groups against the empty
 implementation. A later real file-sharing fault exposed recovery commit failure
 incorrectly triggering fallback after worker success; the regression was
 observed failing before that behavior was corrected.
+The CLI review regression likewise reproduced the blocking native dialog
+before adding the quiet-flag policy.

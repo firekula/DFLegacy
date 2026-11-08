@@ -331,6 +331,18 @@ std::wstring QuoteArgument(std::wstring_view argument) {
     }
     result.append(slashes * 2, L'\\'); result += L'\"'; return result;
 }
+bool SuppressDialogs(const std::vector<std::wstring>& arguments) {
+    constexpr std::wstring_view flags[] = {
+        L"--no-dialog", L"--third-party-notices", L"--self-test", L"--install-ijl15", L"--check-d3d9"
+    };
+    for (const auto& argument : arguments) {
+        for (const auto flag : flags) {
+            if (argument.size() == flag.size() && CompareStringOrdinal(argument.data(), static_cast<int>(argument.size()),
+                flag.data(), static_cast<int>(flag.size()), TRUE) == CSTR_EQUAL) return true;
+        }
+    }
+    return false;
+}
 Result Run(const fs::path& input, const std::vector<std::wstring>& arguments) {
     try {
         const auto root = Absolute(input); Directories directories; directories.Tree(root);

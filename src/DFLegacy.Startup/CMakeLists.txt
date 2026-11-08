@@ -15,7 +15,7 @@ add_executable(DFLegacy.Launcher WIN32 main.cpp launcher.rc)
 target_link_libraries(DFLegacy.Launcher PRIVATE bootstrap shell32)
 include(CTest)
 if(BUILD_TESTING)
-  foreach(result IN ITEMS 0 1 2 7)
+  foreach(result IN ITEMS 0 1 2 3 7)
     add_executable(fixture_${result} tests/fixture.cpp)
     target_compile_definitions(fixture_${result} PRIVATE FIXTURE_RESULT=${result})
   endforeach()
@@ -23,7 +23,7 @@ if(BUILD_TESTING)
   target_link_libraries(bootstrap_tests PRIVATE bootstrap)
   add_test(NAME bootstrap_policy_and_process COMMAND bootstrap_tests
     "$<TARGET_FILE:fixture_0>" "$<TARGET_FILE:fixture_1>"
-    "$<TARGET_FILE:fixture_2>" "$<TARGET_FILE:fixture_7>"
+    "$<TARGET_FILE:fixture_2>" "$<TARGET_FILE:fixture_7>" "$<TARGET_FILE:fixture_3>"
     "$<TARGET_FILE:DFLegacy.Launcher>")
   set_tests_properties(bootstrap_policy_and_process PROPERTIES TIMEOUT 60)
 endif()
