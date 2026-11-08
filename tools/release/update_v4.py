@@ -35,6 +35,11 @@ PROTECTED = {'launcher.json', 'launcher.txt', 'config.ini', 'client-package.json
 PRIVATE = {'.git', '.svn', '.hg', '.vs', '.vscode', '__pycache__', 'node_modules',
            '.ssh', '.aws', '.codex', '.superpowers', '.tmp', 'server.json', 'manager.json',
            'account.json', 'accounts.json', 'credentials.json', 'cookies.json', 'cache', 'backup', 'backups'}
+# Backups and interrupted atomic saves can contain the same credentials as the
+# original configuration. Match derivatives before include rules at every depth.
+PRIVATE_PREFIXES = ('.env', '.launcher-save-') + tuple(
+    filename + suffix for filename in sorted(PROTECTED | PRIVATE)
+    if filename.endswith(('.json', '.ini', '.txt')) for suffix in ('.', '~'))
 MANIFEST_KEYS = {'schemaVersion', 'version', 'commit', 'architecture', 'flavor', 'channel',
                  'sequence', 'minimumSequence', 'files', 'retired', 'migrations'}
 
@@ -72,8 +77,9 @@ def validate_path(value):
 
 def private_path(value):
     # Protect nested copies too: a broad include must never collect player secrets.
-    return any(p.casefold() in PROTECTED | PRIVATE or p.casefold().startswith('.env')
-               or p.casefold().endswith(('.key', '.pem', '.pfx', '.p12', '.log', '.dmp')) for p in value.split('/'))
+    return any(p in PROTECTED | PRIVATE or p.startswith(PRIVATE_PREFIXES)
+               or p.endswith(('.key', '.pem', '.pfx', '.p12', '.log', '.dmp'))
+               for p in (part.casefold() for part in value.split('/')))
 
 
 def no_links(path):
