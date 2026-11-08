@@ -41,7 +41,7 @@ internal static class UpdateSafety
         {
             for (string? current = Path.GetFullPath(path); current != null; current = Path.GetDirectoryName(current))
             {
-                var handle = CreateFile(current, 0, 3, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
+                var handle = CreateFile(current, 0x80000000, 3, IntPtr.Zero, 3, 0x02200000, IntPtr.Zero);
                 if (handle.IsInvalid) { handle.Dispose(); throw new IOException("无法锁定更新目录。", Marshal.GetExceptionForHR(Marshal.GetHRForLastWin32Error())); }
                 handles.Add(handle);
             }

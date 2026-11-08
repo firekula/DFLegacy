@@ -23,7 +23,8 @@ internal static class LaunchFlow
         Program.RegisterDiagnosticSecrets(options);
         Program.Incidents.RegisterSecret(account.Account); Program.Incidents.RegisterSecret(account.Password);
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
-        var manifest = ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
+        using var installationLease=DFLegacy.UpdateCore.InstallationLease.Acquire(Path.GetDirectoryName(clientPath)!);
+        var manifest = await Task.Run(()=>ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!),cancellationToken);
         ClientBootstrapInspector.ValidateForLaunch(clientPath);
         Program.ValidateScriptPvf(clientPath);
         await Program.EnsureD3D9AvailableAsync(options);
@@ -67,7 +68,7 @@ internal static class LaunchFlow
                 "0","0","0","0","0","0","0","0"
             ]);
             await ClientProcessLifetime.RunAsync(
-                () => ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),
+                () => StartWithInstallationLeaseAsync(()=>ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),installationLease),
                 async (client, token) =>
                 {
                     Program.TryRaisePriority(client);
@@ -94,5 +95,13 @@ internal static class LaunchFlow
             catch (OperationCanceledException) when (shutdown.IsCancellationRequested) { }
             finally { relay?.Stop(); }
         }
+    }
+    internal static async Task<Process> StartWithInstallationLeaseAsync(Func<Task<Process>> start,IDisposable lease)
+    {
+        var process=await start().ConfigureAwait(false);
+        // Bootstrap has mapped the game and patch. Their OS file locks now protect them;
+        // do not hold the configuration/install mutex for the whole playing session.
+        lease.Dispose();
+        return process;
     }
 }

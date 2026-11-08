@@ -26,11 +26,12 @@ internal static class ClientBootstrapLauncher
         {
             FileStream Hold(string path) { var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read); locks.Add(stream); return stream; }
             var exe=Hold(clientPath); var patch=Hold(Path.Combine(manifest.DirectoryPath,"DFLegacy.Client.dll"));
-            Hold(Path.Combine(manifest.DirectoryPath,"client-package.json"));
+            DFLegacy.UpdateCore.PathPolicy.NoLinks(manifest.MetadataPath);
+            Hold(manifest.MetadataPath);
             foreach(var file in manifest.Files) Hold(Path.Combine(manifest.DirectoryPath,file.Path));
             Hold(helperPath); if(verifyEmbedded) StandaloneClientInstaller.ValidateHelper(helperPath);
             var current=ClientPackageManifest.LoadAndValidate(manifest.DirectoryPath);
-            if(current.Version!=manifest.Version || current.Commit!=manifest.Commit || current.Flavor!=manifest.Flavor || !current.Files.SequenceEqual(manifest.Files)) throw Failure("hash_mismatch");
+            if(current.MetadataPath!=manifest.MetadataPath || current.Version!=manifest.Version || current.Commit!=manifest.Commit || current.Flavor!=manifest.Flavor || !current.Files.SequenceEqual(manifest.Files)) throw Failure("hash_mismatch");
             var nonce=Guid.NewGuid().ToString("N"); var patchPath=ClientFileIdentity.Canonical(patch.SafeFileHandle);
             var start=fixtureStart?.Invoke(nonce) ?? new ProcessStartInfo(helperPath);
             start.UseShellExecute=false; start.CreateNoWindow=true; start.RedirectStandardInput=true; start.RedirectStandardOutput=true;

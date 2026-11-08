@@ -379,11 +379,16 @@ internal static class ClassicUiTests
                         Descendants<SkinButton>(main).First(b => b.Tag is LocalServerChoice).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                         check(confirm.IsEnabled, "reselection page remains usable after returning to login with an invalid target");
                         ConfirmB(); AssertRuntimeB("restored and reconfirmed profile");
+                        var intactConfiguration=File.ReadAllBytes(Path.Combine(scratch,"launcher.json"));
                         File.WriteAllText(Path.Combine(scratch, "launcher.json"), "{broken");
                         main.ReloadServerSelection(); main.UpdateLayout();
                         check(endpoint.Text.Contains("无法") && !confirm.IsEnabled,
                             "corrupt config shows failure on the visible first footer line without requiring a scroll");
                         check(File.ReadAllText(Path.Combine(scratch, "launcher.json")) == "{broken", "UI reload preserves corrupt bytes");
+                        try {store.Save(localOptions);check(false,"settings merge must preserve malformed current configuration");}
+                        catch(System.Text.Json.JsonException) {check(File.ReadAllText(Path.Combine(scratch,"launcher.json"))=="{broken","saving stale settings does not destroy malformed current configuration");}
+                        // Restore this fixture explicitly; production must not overwrite unreadable player configuration.
+                        File.WriteAllBytes(Path.Combine(scratch,"launcher.json"),intactConfiguration);
                         store.Save(localOptions);
                         var closeReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                         var closeRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
