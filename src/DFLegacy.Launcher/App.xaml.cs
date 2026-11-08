@@ -10,6 +10,12 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        if(Updates.RepairClient.IsRequested(e.Args,Environment.ProcessPath))
+        {
+            ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            Shutdown(await Updates.RepairClient.RunEntryAsync(e.Args));
+            return;
+        }
         if (e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal))
         {
             // Keep the engine result authoritative when the only helper window closes.
