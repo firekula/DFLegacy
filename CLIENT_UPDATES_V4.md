@@ -1,8 +1,20 @@
 # V4 客户端更新与离线资源发布
 
-状态：**Unreleased，Gitea 双版本、四变体远端验收通过**。测试版本为 `v0.1.8-giteatest.1` 和 `v0.1.8-giteatest.2`，固定来源 `http://firekula.site:3000/firekula/DFLegacy`。实际匿名安装、增量升级、单文件修复、配置保留、离线校验和独立双架构联网修复通过，见[Gitea 验收报告](artifacts/client-update-gitea-20261108/REPORT.md)。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用；本文不表示 V4 已正式发布。
+状态：**Unreleased，仅 Gitea 隔离测试**。固定来源 `http://firekula.site:3000/firekula/DFLegacy`，测试版本现为 `v0.1.8-giteatest.4`；`.1`～`.3` 保持不可变。四变体匿名资源及 Range 校验通过；固定入口、恢复副本、真实损坏与中断测试见[本轮报告](artifacts/bootstrap-auto-repair-20261108/REPORT.md)，此前逐文件更新验收见[原报告](artifacts/client-update-gitea-20261108/REPORT.md)。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用，本文不表示 V4 已正式发布。
 
 ## 来源与离线状态
+
+### 固定图标与自动修复（Gitea 测试版）
+
+从 `v0.1.8-giteatest.3` 开始，`DFLegacy.Launcher.exe` 是小型原生入口，原来的快捷方式继续指向它。完整界面移到 `DFLegacy.Launcher.App.exe`；`DFLegacy.Updater.exe` 在校验和修复时运行，打开界面后退出，不安装后台服务。x86 与 x64 分别构建；这不增加 Windows 7 支持。
+
+入口先验证修复程序的摘要，将它复制到独立临时目录再执行，因此可以更换客户端目录中的登录器和更新程序。主修复程序缺失或损坏时，使用 `.dflegacy/bootstrap/` 中经过验证的恢复副本。恢复记录只在修复程序成功结束后原子更新；失败的新程序不会覆盖上一份可用记录。`DFLegacy.Bootstrap.ini` 是严格格式的版本配套描述文件，不要手动编辑摘要或混用不同架构。
+
+双击原图标会先恢复中断事务，再校验全部受管理文件、补下载损坏部分，最后打开登录界面。单独打开 `DFLegacy.Launcher.App.exe` 也会转回固定入口。文件完整但更新源暂时不可达时可按离线规则启动；文件损坏时不会跳过检查。账号和服务器配置保留。游戏或其他程序占用待替换文件时仍需用户确认关闭，不会自动结束无关进程。
+
+原生入口自身在 `.3` 与 `.4` 中保持相同字节，发布工具和运行时都会拒绝普通热更替换它。若入口本身也被删除，或者更新程序及恢复副本全都损坏，需要重新解压对应架构的完整启动修复包。当前自动恢复不能代替系统权限、磁盘空间或网络故障的处理。
+
+新的布局使用 `tools/release/bootstrap_package.py` 构建。输入是明确列出的公共文件及 SHA256/大小；生成严格描述文件、V4 清单及包含初始恢复副本的 starter ZIP。它不会把玩家配置和本地恢复缓存上传。旧 V2/V3 工具包合同保持不变，不能把三程序布局冒充旧 `client-assets`。详见[固定入口设计](docs/superpowers/specs/2026-11-08-bootstrap-auto-repair-design.md)。
 
 在已有 `launcher.json` 中合并以下字段，不覆盖账号、服务器或其他设置。架构由正在运行的 x86／x64 登录器确定；`UpdateFlavor` 可填 `normal` 或 `test`，留空则读取已安装记录／`client-package.json`。
 

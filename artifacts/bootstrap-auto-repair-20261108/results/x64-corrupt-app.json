@@ -1,0 +1,15 @@
+{
+  "architecture": "x64",
+  "case": "corrupt-app",
+  "version": "v0.1.8-giteatest.3",
+  "valid": true,
+  "files": 7,
+  "pending": false,
+  "pid": 45128,
+  "ui": "地下城与勇士",
+  "supervisorObserved": true,
+  "entryLockObserved": true,
+  "elapsedSeconds": 36.62,
+  "shortcutHash": "89E1018F151597A328CEE83F66B08D8FF7F3AE4C4BD590B4EAB888CD2F006948",
+  "configPreserved": true
+}

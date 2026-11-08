@@ -1,0 +1,11 @@
+{
+  "architecture": "x86",
+  "case": "gameplay-test-flavor-update",
+  "version": "v0.1.8-giteatest.4",
+  "valid": true,
+  "files": 8,
+  "pending": false,
+  "exit": 0,
+  "privateSettingsPreserved": true,
+  "clientDllSha256": "38A7DAD0E3B997EF6C5125092CF8E63E90450C12A5576155ED9C96502CF5081F"
+}
