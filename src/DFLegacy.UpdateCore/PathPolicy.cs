@@ -15,6 +15,7 @@ public static class PathPolicy
         foreach (var part in parts)
         {
             if (part.Length is 0 or > 255 || part is "." or ".." || part.EndsWith('.') || part.EndsWith(' ')
+                || Regex.IsMatch(part,@"~[0-9]",RegexOptions.CultureInvariant)
                 || Regex.IsMatch(part, @"\A(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|\z)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
                 throw new InvalidDataException("更新路径包含 Windows 别名或无效分量。");
         }

@@ -36,6 +36,8 @@ internal static class ManifestTests
         foreach (var path in new[] { "../out", "a/../b", "/absolute", "C:/a", "x:y", "a\\b", "con", "a/NUL.txt", "a/com¹.dll", "a.", "a /x", "a//x", "a\u0001x", "launcher.JSON", "Config.ini", ".dflegacy/a", "Logs/a", "Screenshot/a", "client-package.json", "ImagePacks2/aux.npk" })
             Bad(o => o["files"]![0]!["path"] = path, "unsafe path " + path);
         var raw = System.Text.Encoding.UTF8.GetString(ManifestCodec.Serialize(m));
+        foreach(var alias in new[]{"LAUNCH~1.JSO","IMAGEP~1/test.npk"})
+            Bad(o=>o["files"]![0]!["path"]=alias,"Windows short-path alias "+alias);
         TestRun.Reject(() => ManifestCodec.Parse(TestRun.Bytes(raw.Replace("\"schemaVersion\":4", "\"schemaVersion\":4,\"schemaVersion\":4"))), "duplicate JSON key");
         Bad(o => o["extra"] = true, "unknown JSON key");
         var retirement = m with { Retired = [new("old/patch.dll", "delete", 1), new("custom.dat", "unmanage", 1)] };

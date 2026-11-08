@@ -8,10 +8,12 @@ namespace DFLegacy.UpdateCore;
 public sealed class ReleaseProvider : IReleaseProvider
 {
     private readonly HttpClient http;
+    private readonly SemaphoreSlim metadataGate = new(1,1);
+    private readonly Dictionary<string,Attachment[]> fixedAttachments = new(StringComparer.Ordinal);
     public ReleaseSource Source { get; }
     public string Identity => Source.Identity;
     private string Api => Source.Provider == "github" ? "https://api.github.com" : "https://gitee.com/api/v5";
-    private sealed record Attachment(string Name, long Size, Uri Url, string? Digest, long Id);
+    private sealed record Attachment(string Name, long Size, Uri Url, string? Digest, long Id, long ReleaseId = 0);
     public ReleaseProvider(HttpClient http, ReleaseSource source) { source.Validate(); this.http = http; Source = source; }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler
     { AllowAutoRedirect = false, UseCookies = false, UseDefaultCredentials = false, Credentials = null }) { Timeout = Timeout.InfiniteTimeSpan };
@@ -65,7 +67,7 @@ public sealed class ReleaseProvider : IReleaseProvider
         for (var page = 1; page <= 11; page++)
         {
             using var assets = await JsonAsync($"/repos/{Source.Repository}/releases/{id}/attach_files?per_page=100&page={page}", token).ConfigureAwait(false);
-            var part = ParseAttachments(assets.RootElement); result.AddRange(part);
+            var part = ParseAttachments(assets.RootElement).Select(a => a with { ReleaseId = id }).ToList(); result.AddRange(part);
             if (part.Count < 100) return result;
         }
         throw new InvalidDataException("发行版附件列表过大或分页未结束。");
@@ -89,20 +91,37 @@ public sealed class ReleaseProvider : IReleaseProvider
     public async Task<HttpResponseMessage> OpenAsync(ResourcePart part, long offset, string? etag, CancellationToken token)
     {
         if (!ManifestCodec.IsName(part.Release) || !ManifestCodec.IsName(part.Asset)) throw new InvalidDataException("附件身份无效。");
-        using var release = await JsonAsync($"/repos/{Source.Repository}/releases/tags/{part.Release}", token).ConfigureAwait(false);
-        if (release.RootElement.GetProperty("tag_name").GetString() != part.Release || IsDraft(release.RootElement)) throw new InvalidDataException("资源发行版身份不符。");
-        var assets = (await AttachmentsAsync(release.RootElement, token).ConfigureAwait(false)).Where(a => a.Name == part.Asset).ToArray();
+        var assets = (await FixedAttachmentsAsync(part.Release,token).ConfigureAwait(false)).Where(a => a.Name == part.Asset).ToArray();
         if (assets.Length != 1 || assets[0].Size != part.Size || assets[0].Digest != null && assets[0].Digest != "sha256:" + part.Sha256)
             throw new InvalidDataException("更新资源附件缺失、重复或内容身份不符。");
         ValidateAttachment(assets[0], part.Release);
         return await AssetAsync(assets[0], part.Release, offset, etag, token).ConfigureAwait(false);
+    }
+    private async Task<Attachment[]> FixedAttachmentsAsync(string tag,CancellationToken token)
+    {
+        // Cache canonical attachment identities, never expiring CDN redirect URLs or credentials.
+        await metadataGate.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            if(fixedAttachments.TryGetValue(tag,out var cached)) return cached;
+            using var release=await JsonAsync($"/repos/{Source.Repository}/releases/tags/{tag}",token).ConfigureAwait(false);
+            if(release.RootElement.GetProperty("tag_name").GetString()!=tag || IsDraft(release.RootElement)) throw new InvalidDataException("资源发行版身份不符。");
+            var assets=(await AttachmentsAsync(release.RootElement,token).ConfigureAwait(false)).ToArray();
+            if(fixedAttachments.Count>=128) fixedAttachments.Remove(fixedAttachments.Keys.First());
+            fixedAttachments.Add(tag,assets); return assets;
+        }
+        finally {metadataGate.Release();}
     }
     private void ValidateAttachment(Attachment asset, string tag)
     {
         var uri = asset.Url; RequireHttps(uri);
         var valid = Source.Provider == "github"
             ? uri.Host == "github.com" && uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}"
-            : uri.Host == "gitee.com" && asset.Id > 0 && uri.AbsolutePath == $"/attach_files/{asset.Id}/download";
+            : uri.Host == "gitee.com" && asset.Id > 0 && asset.ReleaseId > 0 &&
+                (uri.AbsolutePath == $"/attach_files/{asset.Id}/download"
+                 || uri.AbsolutePath == $"/{Source.Repository}/attach_files/{asset.Id}/download/{asset.Name}"
+                 || uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}"
+                 || uri.AbsolutePath == $"/api/v5/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download");
         if (!valid || uri.Query.Length != 0) throw new InvalidDataException("附件地址不属于所配置发行版。");
     }
     private static void RequireHttps(Uri uri)
@@ -112,7 +131,10 @@ public sealed class ReleaseProvider : IReleaseProvider
     }
     private async Task<HttpResponseMessage> AssetAsync(Attachment asset, string tag, long offset, string? etag, CancellationToken token)
     {
-        ValidateAttachment(asset, tag); var uri = asset.Url;
+        ValidateAttachment(asset, tag);
+        var canonical = Source.Provider == "gitee"
+            ? new Uri($"{Api}/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download") : asset.Url;
+        var uri = canonical;
         for (var hop = 0; hop < 6; hop++)
         {
             RequireHttps(uri);
@@ -120,7 +142,8 @@ public sealed class ReleaseProvider : IReleaseProvider
             {
                 var valid = Source.Provider == "github"
                     ? uri.Host is "release-assets.githubusercontent.com" or "objects.githubusercontent.com" || uri == asset.Url
-                    : uri.Host == "gitee.com" && uri.AbsolutePath == asset.Url.AbsolutePath;
+                    : uri.Host == "gitee.com" && uri.AbsolutePath == canonical.AbsolutePath && uri.Query.Length == 0
+                        || uri.Host == "foruda.gitee.com" && System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath, @"\A/attach_file/[0-9]+/[A-Za-z0-9._-]+\z") && ValidGiteeCdnQuery(uri);
                 if (!valid) throw new InvalidDataException("更新重定向域名不受信任。");
             }
             using var headersTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -135,6 +158,18 @@ public sealed class ReleaseProvider : IReleaseProvider
             return response;
         }
         throw new InvalidDataException("更新重定向过多。");
+    }
+    private static bool ValidGiteeCdnQuery(Uri uri)
+    {
+        if(uri.Query.Length==0) return true;
+        var seen=new HashSet<string>(StringComparer.Ordinal);
+        foreach(var pair in uri.Query[1..].Split('&'))
+        {
+            var split=pair.IndexOf('='); if(split<=0) return false;
+            var key=pair[..split];
+            if(key is not ("attname" or "token" or "ts") || !seen.Add(key) || split==pair.Length-1) return false;
+        }
+        return true;
     }
     private async Task<JsonDocument> JsonAsync(string relative, CancellationToken token)
     {

@@ -13,15 +13,17 @@ internal static class ProviderTests
             var source = new ReleaseSource(provider, "firekula/DFLegacy", "gitee-test", "x86", "test");
             var manifestName = $"DFLegacy-client-update-v4-gitee-test-test-win-x86.json";
             var uri = provider == "github" ? $"https://github.com/firekula/DFLegacy/releases/download/{m.Version}/{manifestName}" : "https://gitee.com/attach_files/10/download";
-            var wrongOrigin = false; var badDigest = false; var draft = false; var missing = false; var redirect = false; var html = false; var expire = false;
-            var requests = new List<string>();
+            var wrongOrigin = false; var badDigest = false; var draft = false; var missing = false; var redirect = false; var html = false; var expire = false; var cdn = false;
+            var requests = new List<string>(); var cdnQuery="?attname=manifest.json&token=fixture-only&ts=1";
             using var http = new HttpClient(new Handler(request =>
             {
                 TestRun.Check(request.Headers.Authorization == null && !request.Headers.Contains("Cookie"), "provider does not send credentials");
                 var path = request.RequestUri!.AbsolutePath; requests.Add(path);
+                if (request.RequestUri.Host == "foruda.gitee.com") return new(HttpStatusCode.OK) { Content = new ByteArrayContent(raw) };
                 if (path.Contains("attach_files/10/download") || path.EndsWith("/" + manifestName))
                 {
                     if (redirect) return new(HttpStatusCode.Redirect) { Headers = { Location = new Uri("https://evil.test/a") } };
+                    if (cdn) return new(HttpStatusCode.Redirect) { Headers = { Location = new Uri("https://foruda.gitee.com/attach_file/1773140874168858731/manifest.json"+cdnQuery) } };
                     var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(raw) };
                     if (html) response.Content.Headers.ContentType = new("text/html");
                     return response;
@@ -50,6 +52,15 @@ internal static class ProviderTests
             draft = true; TestRun.Check(await client.FindAsync() == null, provider + " draft ignored"); draft = false;
             wrongOrigin = true; await TestRun.RejectAsync(async () => await client.FindAsync(), provider + " rejects attachment origin escape"); wrongOrigin = false;
             redirect = true; await TestRun.RejectAsync(async () => await client.FindAsync(), provider + " rejects redirect origin escape"); redirect = false;
+            if (provider == "gitee")
+            {
+                cdn = true; TestRun.Check((await client.FindAsync())?.ManifestSha256 == TestRun.Hash(raw), "Gitee source-bound attachment follows verified foruda CDN"); cdn = false;
+                cdn=true; cdnQuery="?redirect=https%3A%2F%2Fevil.test";
+                await TestRun.RejectAsync(async()=>await client.FindAsync(),"Gitee CDN unexpected query rejected");
+                cdnQuery="?token=x&token=y";
+                await TestRun.RejectAsync(async()=>await client.FindAsync(),"Gitee CDN duplicate signed query rejected"); cdn=false;
+                TestRun.Check(requests.Any(p => p == "/api/v5/repos/firekula/DFLegacy/releases/1/attach_files/10/download"), "Gitee download uses source-bound API attachment identity");
+            }
             html = true; await TestRun.RejectAsync(async () => await client.FindAsync(), provider + " rejects HTML manifest"); html = false;
             if (provider == "github") { badDigest = true; await TestRun.RejectAsync(async () => await client.FindAsync(), "GitHub raw manifest digest mismatch"); badDigest = false; }
             var originalRaw = raw; raw = ManifestCodec.Serialize(m with { Architecture = "x64" });
@@ -59,6 +70,7 @@ internal static class ProviderTests
             using (var response = await client.OpenAsync(resource, 0, null, default)) TestRun.Check(response.StatusCode == HttpStatusCode.Forbidden, "expired temporary resource response surfaced for bounded retry");
             using (var response = await client.OpenAsync(resource, 0, null, default)) TestRun.Check((await response.Content.ReadAsByteArrayAsync()).SequenceEqual(body), "retry resolves fixed asset not latest");
             TestRun.Check(requests.Any(p => p.Contains("/releases/tags/v4-test")), "part lookup uses immutable release tag");
+            TestRun.Check(requests.Count(p=>p.Contains("/releases/tags/v4-test"))==1,"immutable release attachment metadata reused across resource attempts");
             http.DefaultRequestHeaders.Authorization = new("Bearer", "not-a-real-token");
             await TestRun.RejectAsync(async () => await client.FindAsync(), "client with credential defaults rejected");
         }

@@ -25,6 +25,7 @@ internal static class TestRun
     internal static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
     internal static async Task<int> RunAsync(string[] args)
     {
+        if (TransactionTests.Dispatch(args) is { } child) return child;
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-v4-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
@@ -32,6 +33,10 @@ internal static class TestRun
             await ManifestTests.Run(root);
             await DownloadTests.Run(root);
             await ProviderTests.Run();
+            MigrationTests.Run();
+            await TransactionTests.Run(root);
+            await EngineTests.Run(root);
+            await CacheTests.Run(root);
             Console.WriteLine($"Update Core: {checks} assertions passed");
             return 0;
         }
