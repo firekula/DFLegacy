@@ -36,6 +36,16 @@ $env:PYTHONPATH = Join-Path $PWD 'tools'
 
 Linux 使用 `python3 -m venv` 与虚拟环境的 `bin/python`，运行 pytest 时设 `PYTHONPATH="$PWD/tools"`。这些测试只使用临时文件、模拟进程和本机 socket，不需要游戏客户端；端口或环境错误应修复或如实报告，不能用跳过用例制造通过结果。
 
+开发中的 V4 更新增加以下独立入口；在本地执行，不发布远端资源：
+
+```powershell
+dotnet run --project tests/DFLegacy.UpdateCore.Tests -c Release
+py -3.12 -m pytest tools/release/tests -q
+dotnet build src/DFLegacy.ClientPackager/DFLegacy.ClientPackager.csproj -c Release
+```
+
+登录器专项在原生依赖就绪后可追加 `--update-v4-tests` 或 `--incident-tests`。完整登录器套件还需它要求的旧版不可变归档等夹具；专项通过不等同完整套件通过。`tools/debug/crash_capture/test_capture.py` 与原生 incident 测试脚本需要显式可执行文件参数，应按其专用入口运行，不能把无参数 pytest 收集成功当作这些真实进程测试已执行。
+
 Windows 原生与登录器行为测试：
 
 ```powershell
@@ -89,6 +99,8 @@ py -3.12 tools/release/release.py build-client-packages --client-assets client-a
 完整四附件发行必须提供同次原生构建的 `--debug` 资源：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。普通包只包含登录器和独立补丁，测试包另外包含同版本 `debug.dll`；普通包不会因资源目录存在 debug 而包含或启用它。测试模式增加本地诊断，自动输入和其他测试控制仍需显式开启。工具包包含安装清单、摘要和迁移说明，不含玩家配置或游戏文件。
 
 完整登录器模板账号、密码与账号列表为空，`StartServer=false`，`ClientPath=DNF.exe`。不得把游戏客户端、PVF、存档、个人路径、凭据或 CI secret 放入资源。若只准备普通版管理器资源，可省略 `--debug`；此时不能构建完整四附件或导出测试包。
+
+上面的固定资源目录和白名单属于现有 `client-assets`／V2 工具包合同。V3 的 `--script-pvf` 和开发中的 V4 是单独的资源发布入口；V4 可明确选择拥有分发权限的 PVF、NPK 与其他嵌套资源，不把整个游戏目录或私人配置自动纳入 `client-assets`。
 
 同一个干净提交的自动化入口为：
 
@@ -161,5 +173,7 @@ dotnet publish src/DFLegacy.ClientPackager -c Release -r win-x64 --self-containe
 运行输出目录里的 `DFLegacy.ClientPackager.exe`。发行资源目录选择含双架构 `client-assets/manifest.json` 的上一级目录。资源可由上文的 `ci.py windows --client-only` 生成，也可从匹配的发行镜像中提取。首次使用可导入部署数据目录下的 `config` 文件夹，其中有 `server.json` 和 `manager.json`。Compose 覆盖值以线上实际配置为准。填写连接地址、账号 API、端口与中继偏好后，可保存为 JSON 方案。
 
 「仅生成」可离线生成普通版或测试版安装包，内含 x86 和 x64 两套 ZIP。无需 Script.pvf、部署管理服务或 Python。「生成并发布到 GitHub」另外生成四个更新 ZIP，使用 Python 3.12 和 GitHub 发布凭据，复用发布器草稿与摘要校验流程。请保留输出目录内的 `tools/release`，并为 Git Credential Manager 配好可写凭据，或在启动进程的环境中设置 `DFLEGACY_GITHUB_RELEASE_TOKEN`。更新包沿用资源清单的版本和提交，发布新版本前先用新版本号构建资源。同版本仅允许重试同一套字节。更新 ZIP 不包含服务器连接配置。
+
+开发中的「V4 更新资源 → 资源选择、差异与迁移」使用同目录 `tools/release/update_v4.py`，所有操作均需 Python 3.12。选择客户端资源目录、包含／排除规则、架构、类型和来源，先扫描查看完整文件、差异、体积及迁移／退役，再生成到源目录以外的新目录。此入口默认选择 Gitee 测试源，发布凭据只读取专用环境变量，不沿用旧发布器的 Git Credential Manager 回退。它拒绝重写已经存在的发布标签；与上文旧 ZIP 发布器的同字节重试语义不同。GUI 每次处理一个变体；同 tag 的四个变体先分别生成，再用 CLI 的重复 `--bundle` 一次分组发布。完整 CLI 请求示例、双架构测试产物及增量资源步骤见 [V4 构建指南](CLIENT_UPDATES_V4.md#本地构建双架构测试产物)。
 
 发布 v0.1.3 时，使用该版 `client-assets` 在本机生成并上传更新。内嵌充值页面和自动移鼠标缩放由登录器与原生补丁一起更新，现有测试充值接口可继续由 v0.1.2 服务端提供。

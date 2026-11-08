@@ -1,0 +1,173 @@
+# V4 客户端更新与离线资源发布
+
+状态：**Unreleased，隔离测试中**。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用；本文不表示 V4 已正式发布。测试标签计划为 `v0.1.8-v4test.1` 和 `v0.1.8-v4test.2`，来源是显式 Gitee 测试仓库。当前证据、未完成的真实发布和修复验收见[报告草稿](artifacts/client-update-v4-20261108/REPORT.md)。
+
+## 来源与离线状态
+
+在已有 `launcher.json` 中合并以下字段，不覆盖账号、服务器或其他设置。架构由正在运行的 x86／x64 登录器确定；`UpdateFlavor` 可填 `normal` 或 `test`，留空则读取已安装记录／`client-package.json`。
+
+```json
+{
+  "UpdateProvider": "gitee",
+  "UpdateRepository": "firekula/DFLegacy",
+  "UpdateChannel": "gitee-test",
+  "UpdateFlavor": "test",
+  "DisableGitHubUpdates": false
+}
+```
+
+| 配置 | 行为 |
+| --- | --- |
+| `UpdateProvider=github`，`UpdateChannel=stable`，`UpdateServiceUrl` 为空 | 检查 GitHub 对应架构／类型的 V4 清单；首次尚无 V4 安装且仓库没有兼容 V4 清单时保留旧 V3 桥接路径。 |
+| `UpdateProvider=github`，显式非空 `UpdateServiceUrl` | 保留该自托管地址及原有 V3 更新路径，不静默改用公共仓库。 |
+| `UpdateProvider=gitee`，`UpdateChannel=gitee-test` | 显式测试源优先于遗留自托管地址；没有完整兼容清单时报错，不回退到 GitHub。 |
+| V4 公共来源且 `DisableGitHubUpdates=true` | 该兼容字段在 V4 路径中停用联网检查；仍检查已提交的本地 V4 安装，尚未安装 V4 时沿用本地安装包校验。自托管 V3 保留其既有配置语义。 |
+
+每次启动都重新读取受管理文件并核对 SHA256；版本相同、时间戳相同或长度相同均不能跳过校验。显示的阶段包括校验、下载、安装与复核。普通版与测试版、x86 与 x64 的清单和程序保持分开，不自动切换。
+
+已安装并验证通过的版本 A 与发现／下载中的 B 分开记录。B 下载失败、取消或断网后，只有 A 的文件和配置后置条件全部校验通过、且没有待恢复事务，才允许继续使用 A；提示明确说明“未确认线上最新版本”。没有可信已安装记录、文件损坏或提交中断时不放行。已完成的缓存按内容哈希复用，失败不会清掉其他已验证资源；HTTP Range 被服务端忽略返回 200 时重新读取当前分卷并校验。
+
+## 文件与配置策略
+
+V4 清单是完整目标集，资源可有任意扩展名和嵌套路径，包括明确选择的 EXE、DLL、PVF、NPK、网页和零字节文件。未列入受管理集合的本地文件默认保留。发布器必须有显式包含规则，排除规则优先；`launcher.json`、`Config.ini`、日志、存档、账号目录、更新缓存／备份、版本控制目录及已知私密文件始终排除，也不能通过大小写、路径上跳、Windows 别名或链接绕过。路径分量包含 `~` 紧接数字时拒绝，避免 `LAUNCH~1.JSO`、`IMAGEP~1/a.npk` 等 8.3 短名称绕过保护；使用完整长名称。
+
+这不同于旧 `client-assets`／V2 工具包的固定文件白名单；后者仍保持原合同。不要为了制作 V4 清单修改旧打包器白名单，也不要将完整玩家目录、私有 Git 历史或凭据作为发布输入。
+
+`launcher.json` 是保留并迁移的配置，不是必须与服务器字节完全一致的受管理文件。当前声明式操作仅支持该文件的 `Relay.TcpPorts`、`Relay.UdpPorts`、`Relay.Enabled`、`Relay.Preference`：
+
+```json
+[
+  {"id":"pvp-ports-7110","file":"launcher.json","operation":"unionPorts","key":"Relay.TcpPorts","value":[7110,7111,7112]},
+  {"id":"relay-enabled-default","file":"launcher.json","operation":"setDefault","key":"Relay.Enabled","value":false},
+  {"id":"relay-preference-v6","file":"launcher.json","operation":"replaceIf","key":"Relay.Preference","when":"ipv4","value":"ipv6"}
+]
+```
+
+端口 `value` 使用整数数组，合法范围 1–65535。玩家配置中的端口仍写成逗号分隔字符串，例如 `"2311,7001,8080,7110,7111,7112"`；缺省 TCP／UDP 会先展开各自原有默认端口，再合并新增项，不会挤掉默认登录端口。`replaceIf.when` 对端口可使用数组或旧分隔字符串，按端口语义比较；偏好值为 `ipv4`／`ipv6`，不区分大小写。迁移 ID 不可换用不同含义；重复运行不会重复添加端口。账号、密码、地址、自定义端口及未知字段保留。配置损坏时保留原字节并报错，禁止以空模板替换。
+
+新清单遗漏旧受管理文件时必须声明退役：
+
+```json
+[
+  {"path":"old/obsolete.dll","action":"delete","sequence":2},
+  {"path":"optional/user-editable.dat","action":"unmanage","sequence":2}
+]
+```
+
+`delete` 只删除客户端历史记录中确实受管理的文件，操作前备份；`unmanage` 保留文件并解除管理。提供最近目标的完整清单作为 `previous`；工具累积其退役和迁移，再加入本次声明。从 A 跳到 C 时仍能处理 B 的退役与迁移。`minimum_sequence` 明确支持的最早基线；低于该基线需要桥接，不把缺少历史当成成功升级。不要省略真实的先前清单来绕过漏选检查。
+
+## 本地构建双架构测试产物
+
+在仓库根目录运行，要求 Python 3.12。按 [BUILDING.md](BUILDING.md#构建不可变-windows-客户端资源) 的原生构建及 `dotnet publish` 参数，从同一提交生成 x86／x64 自包含登录器和匹配补丁。设置 `DFLEGACY_RELEASE_VERSION=v0.1.8-v4test.1`；源程序的构建版本、V4 `version` 与最终 Release tag 必须一致，`commit` 填该构建的 40 位源提交。测试发布使用独立标签，不占用正式 `v0.1.8`。
+
+V4 直接读取这些构建字节。旧 `release.py build-client-assets`／V3 工具仍只接受 `vX.Y.Z` 或 `dev-YYYYMMDDTHHMMSSZ-<SHA12>`，不能把 `.1`／`.2` 测试标签传给该旧入口。需要 V3 桥接时，另用其允许的独立 dev 版本从同一源提交构建桥接程序，再构建对应 `.1`／`.2` 的 V4 程序；不要伪装成正式 `v0.1.8` 来绕过旧校验。
+
+为每种变体准备明确选择的输入目录。例如 `artifacts/client-update-v4-20261108/inputs/x86-normal`，以及 `x86-test`、`x64-normal`、`x64-test`。每个目录包含该架构的 `DFLegacy.Launcher.exe`、同次构建的 `DFLegacy.Client.dll`，测试版另外放 `debug.dll`；按本次测试范围放入 `Script.pvf` 和选定的 `ImagePacks2/` 资源。不得把账号或整个工作区直接复制进去。登录器取自各自的 `dotnet publish -r win-x86`／`win-x64` 输出，补丁取自同次原生 Release 输出。若使用已有合法版本的 `client-assets`，x86 登录器在 `launcher-x86`，x64 在 `launcher`，公共补丁在 `patch`，仍须核对版本匹配。这些输入目录需要实际构建字节，报告中的微型 schema fixture 不能当成可运行客户端。GUI 每次处理一个变体；同 tag 的四份产物使用下文分组发布命令一次发布。
+
+下面只生成请求文件；它不读取凭据，也不访问远端。保存并运行此 Python 片段，将 `source_commit` 换成已经构建的真实源提交：
+
+```python
+import json
+from pathlib import Path
+
+base = Path("artifacts/client-update-v4-20261108").resolve()
+source_commit = "替换为40位源提交"
+for arch in ("x86", "x64"):
+    for flavor in ("normal", "test"):
+        request = {
+            "root": str(base / "inputs" / f"{arch}-{flavor}"),
+            "provider": "gitee", "repository": "firekula/DFLegacy",
+            "version": "v0.1.8-v4test.1", "commit": source_commit,
+            "architecture": arch, "flavor": flavor, "channel": "gitee-test",
+            "sequence": 1, "minimum_sequence": 0,
+            "includes": ["DFLegacy.Launcher.exe", "DFLegacy.Client.dll",
+                         "Script.pvf", "ImagePacks2/**"] + (["debug.dll"] if flavor == "test" else []),
+            "excludes": ["*.pdb", "*.tmp"], "previous": [], "reuse": [],
+            "retired": [],
+            "migrations": [{"id": "pvp-ports-7110", "file": "launcher.json",
+                            "operation": "unionPorts", "key": "Relay.TcpPorts",
+                            "value": [7110, 7111, 7112]}]
+        }
+        base.mkdir(parents=True, exist_ok=True)
+        (base / f"request-1-{arch}-{flavor}.json").write_text(
+            json.dumps(request, ensure_ascii=False, indent=2), encoding="utf-8")
+```
+
+先检查预览，确认所有必需文件确实出现在 `manifest.files`，不能只依据包含模式推断它们存在。资源扫描只选择现有文件；缺少某个输入是否符合本次发布范围由操作者核对。然后生成到输入目录以外的新目录：
+
+```powershell
+$v4 = Join-Path $PWD 'tools/release/update_v4.py'
+$base = Join-Path $PWD 'artifacts/client-update-v4-20261108'
+foreach ($arch in 'x86','x64') {
+  foreach ($flavor in 'normal','test') {
+    $request = Join-Path $base "request-1-$arch-$flavor.json"
+    $bundle = Join-Path $base "v1-$arch-$flavor"
+    py -3.12 $v4 preview --request $request
+    if ($LASTEXITCODE -ne 0) { throw 'V4 preview failed' }
+    py -3.12 $v4 build --request $request --output $bundle
+    if ($LASTEXITCODE -ne 0) { throw 'V4 build failed' }
+    py -3.12 $v4 verify --bundle $bundle
+    if ($LASTEXITCODE -ne 0) { throw 'V4 local verification failed' }
+  }
+}
+```
+
+每个输出包含 `receipt.json`、内容哈希命名的 `assets/dflegacy-v4-<sha256>.bin` 和 `DFLegacy-client-update-v4-gitee-test-<normal|test>-win-<x86|x64>.json`。回执列出完整文件、排除原因、差异、逻辑总量、待上传字节、复用字节、迁移和退役。输出已存在时拒绝覆盖，失败后选择新目录并审查原因。
+
+## 第二版与增量资源
+
+构建 `.2` 前先保留 `.1` 的四个完整清单及其发布资源。每个变体的请求从对应 `.1` 请求复制，改为 `version=v0.1.8-v4test.2`、`sequence=2`，`previous` 指向**同架构、同类型、同渠道**的 `.1` 清单；`commit` 与更新后的程序构建一致，输出改为 `v2-<arch>-<flavor>`。新的资源或变更文件直接体现在完整输入目录中；遗漏旧文件时必须添加本次 `retired` 声明。原有迁移可由先前清单自动累计，新迁移使用新的 ID。
+
+`reuse` 可以列出同渠道、同类型、其他架构先前已发布的清单，供公共 NPK／PVF／补丁内容复用；不能用它代替本变体的 `previous` 管理历史。构建只为此前没有的内容生成上传附件；未变化资源的 `parts.release` 保留旧不可变 tag。发布前会通过同一来源的匿名结构化附件列表和实际下载核对所有旧引用，不能引用本地尚未发布的构建。资源引用仍存在时不能删除旧 Release；工具提供 `release_references`／`ensure_release_unreferenced` 检查，没有自动删除 Release 的操作。
+
+重新运行上面的 `preview`／`build`／`verify`，检查 `.2` 的上传体积和退役／迁移。缓存已完成分卷会复用，单个逻辑文件的最终长度与 SHA256 仍必须匹配；这不是二进制差分补丁。
+
+## 发布门槛与匿名验证
+
+发布前核对四份产物、完整清单及迁移，并取得测试仓库授权。本轮只授权 Gitee 测试发布；本文中的命令不是正式 GitHub 发布授权。凭据仅由发布进程环境中的 `DFLEGACY_GITEE_RELEASE_TOKEN`（或另行授权的 `DFLEGACY_GITHUB_RELEASE_TOKEN`）读取，不能写入请求 JSON、清单、客户端配置、URL 或日志。
+
+`--target-commitish` 是公开发布仓库**已经存在的提交 SHA**，与清单内的源构建 `commit` 分开。空测试仓库需要先按获授权范围建立最小公开说明提交；发布器不会推送源码、私有 Git 历史或自动初始化仓库。
+
+同一 tag 的变体必须一次分组发布。组内来源、仓库、版本、源提交、顺序、渠道和最低基线一致，架构／类型组合唯一；共享资源按哈希与长度合并。先上传并校验全部资源，再上传所有清单。GitHub 最后开放草稿；Gitee 没有草稿状态，某个清单可见时其全部资源已经具备。
+
+```powershell
+# 仅在测试发布已经获授权、凭据已进入当前进程且产物已审查后执行。
+$publicCommit = '替换为公开测试仓库现有40位提交'
+py -3.12 $v4 publish `
+  --bundle (Join-Path $base 'v1-x86-normal') `
+  --bundle (Join-Path $base 'v1-x86-test') `
+  --bundle (Join-Path $base 'v1-x64-normal') `
+  --bundle (Join-Path $base 'v1-x64-test') `
+  --target-commitish $publicCommit
+```
+
+每次发布使用新 tag，拒绝重写已有 Release，包括中断后的不完整 Release。上传失败后保留现场，没有自动删除、覆盖或补传流程；审查后通常使用新测试 tag。Gitee 在清单上传阶段失败时可能已有部分变体可发现，但其资源必须已完整；不能重用同 tag 把另一些字节悄悄换进去。
+
+平台预检按分组后的唯一附件计数，并将每份清单计入：GitHub 最多 1000 个附件，单附件必须小于 2 GiB；Gitee 单附件不超过 100,000,000 字节、仓库附件累计不超过 1,000,000,000 字节。每个传输分卷最多 48 MiB（50,331,648 字节）；空文件用一个零字节卷。分卷解决单附件限制，不能解决仓库总量超限。旧资源复用能减少新增上传，但旧 Release 占用仍计入 Gitee 总量；工具明确阻止超限，不静默漏文件或删除历史。
+
+发布后使用新建、无 Cookie／Authorization 的客户端重新下载清单和资源，检查长度、SHA256 与 Range 结果。也可单独运行：
+
+```powershell
+py -3.12 $v4 verify --bundle (Join-Path $base 'v1-x86-normal') --remote
+```
+
+Gitee 先从指定仓库／Release 的 `attach_files` 列表取得附件 ID，再通过规范下载接口取得临时地址。已验证的 `foruda.gitee.com/attach_file/...` 重定向可能有 `attname`、`token`、`ts` 签名查询参数；这些是短时附件地址，不是玩家登录凭据，不持久化或记录其值。HTML 登录页／验证码、陌生来源、截断或哈希错误都失败。实际公开样本忽略 Range 返回 200，因此不能承诺所有 Gitee附件都支持206续传。
+
+## 安装恢复与诊断
+
+文件、配置迁移及安装记录使用同一事务；安装记录最后提交。发生中断先恢复，再判断是否可启动。备份保存的是原始实际字节，即使它原来已损坏；“回滚成功”不等于“旧版健康”。账户／设置写入需要与安装互斥并读取最新配置。提交前处理文件占用，只能在玩家同意后终止可终止的占用进程；助手交接、独立修复程序和实机锁文件验收仍以最终测试报告为准。
+
+独立自包含登录器副本的 `--repair-client <目录>` 正在集成，它的目标是不执行安装目录中已损坏的登录器。该入口尚未完成正式双架构交付验收；不要把再次调用损坏 EXE 的脚本当作独立修复。
+
+报告写入 `Logs/DFLegacy/Incidents/`，文件名包含时间、PID 和事件 ID：
+
+| 前缀 | 证据与用途 |
+| --- | --- |
+| `error-` | 启动、配置、账号或更新异常，带阶段、异常链与关联更新 ID。 |
+| `networkerror-` | 有原因与协议／方向／连接 ID／字节计数的中继异常，以及签名验证通过的原生连接失败／断线通知。 |
+| `crash-` | 原生未处理异常或确认的异常退出；非零退出码本身不证明某个原生异常，缺少现场会明确标注。 |
+| `update-` | 每次校验／下载／安装的摘要和受限逐文件结果，成功也保留；超出预算的明细明确截断。 |
+
+报告包含版本、架构、时间／时区、会话和事件 ID、错误码及有界上下文；凭据脱敏、重复异常合并并限制保留时间／数量／总量，不自动上传。服务器版本无可靠接口时记录未知。正常退出、正常 EOF／频道切换、用户取消及可处理的探针异常不应当作事故。CrashSender 弹窗但进程仍存活的入口尚未验证时，继续使用[显式详细抓取工具](tools/debug/crash_capture/README.md)；普通启动不默认附加调试器。转储可能包含进程内存，反馈前单独审查。
+
+旧客户端先通过相应 V3 桥接包升级登录器，再使用 V4 管理资源；原 `release.py build-client-packages --updates-only --script-pvf ...` 与 `github_publish.py` 未改写。旧 V3→V4、真实 Gitee 双架构升级和独立修复的完整验收不能由上述局部测试代替。

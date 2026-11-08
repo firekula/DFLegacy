@@ -169,6 +169,8 @@ Gitea 保存源码并运行测试。服务端以 GHCR 多架构 Docker 镜像分
 
 GitHub Releases 提供 x86 和 x64 更新，每个架构各有普通版和测试版。原先指向自托管端口的客户端需覆盖一次对应安装包。
 
+开发中的 V4 发布与后台现有 ZIP 导出是两个入口。Manager 导出仍使用固定的 `client-assets` 安装包合同，不会把服务器目录、PVF、玩家账号或存档自动上传到 Release。V4 的任意资源选择、包含／排除、差异、配置迁移及上传体积预览在 Windows 离线打包器的「V4 更新资源」中操作；CLI 与 GUI 共用一个引擎。Gitee 必须显式选为测试来源，`UpdateProvider=gitee`／`UpdateChannel=gitee-test`；GitHub 正式来源和现有自托管 V3 路径保留。见 [V4 更新说明](CLIENT_UPDATES_V4.md)及[构建指南](BUILDING.md#windows-离线客户端打包器)。此实现尚未正式发布，不会自动切换既有玩家来源。
+
 ## 地区经验频道
 
 单体部署可在 Compose 服务的 `environment` 加入 `DFLegacy__Channel__RegionalChannelsEnabled: "true"`，并映射 TCP 7100–7105。默认主频道端口 7001 对应艾尔文防线，新增端口依次对应格兰之森、天空之城、天帷巨兽、斯顿雪域、阿法利亚和诺斯玛尔。经验比例与覆盖副本从当前 PVF 的频道表读取，结算使用玩家实际连接的频道。
