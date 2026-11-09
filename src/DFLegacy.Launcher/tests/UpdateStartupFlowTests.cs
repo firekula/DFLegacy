@@ -51,6 +51,7 @@ internal static class UpdateStartupFlowTests
         Window Owner()=>new() { Width=100,Height=100,ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };
         try
         {
+            Wait(BootstrapUpdateTests.RunWindowPolicyAsync(root,check));
             var validatedRoot=Path.Combine(root,"validated-background");Directory.CreateDirectory(validatedRoot);
             var bytes="validated resource"u8.ToArray();var hash=Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
             var source=new DFLegacy.UpdateCore.ReleaseSource("gitee","firekula/DFLegacy","gitee-test","x64","normal");
@@ -60,6 +61,7 @@ internal static class UpdateStartupFlowTests
             var verified=new DFLegacy.UpdateCore.VerifiedRelease(source,manifest.Version,Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(raw)),raw);
             var cache=new DFLegacy.UpdateCore.ContentCache(Path.Combine(validatedRoot,".dflegacy/v4/cache"));File.WriteAllBytes(cache.ObjectPath(hash,bytes.Length),bytes);
             DFLegacy.UpdateCore.InstallTransaction.Apply(validatedRoot,new(verified,cache.DirectoryPath));
+            CheckBootstrapHandoff(validatedRoot,package,cache.ObjectPath(hash,bytes.Length),Owner,check);
             {
                 var owner=Owner();var notices=new List<string>();
                 var feed=new TaskCompletionSource<UpdateRelease?>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -134,5 +136,59 @@ internal static class UpdateStartupFlowTests
         }
         finally { Directory.Delete(root,true); }
         Console.WriteLine("Automatic compact startup flow checks executed");
+    }
+
+    private static void CheckBootstrapHandoff(string root,PreparedUpdate package,string cachedObject,Func<Window> createOwner,Action<bool,string> check)
+    {
+        foreach(var mode in new[]{"ready","current","cancel-download","locks-declined","locks-error","cancel-inspection","close-inspection","restart-fails","recovery-decline","recovery-accept","unverified"})
+        {
+            var owner=createOwner();var notices=new List<string>();var handoffs=0;var inspections=0;var confirmations=0;var prepares=0;
+            var session=new UpdateControllerTests.Session {Package=package,Feed=_=>Task.FromResult<UpdateRelease?>(mode=="current"?null:package.Release)};
+            session.Prepare=(_,_)=>{prepares++;throw new InvalidDataException("the App process is not the legacy Launcher.exe installer");};
+            session.PrepareRecovery=(_,_)=>{prepares++;throw new InvalidDataException("the App process is not the legacy recovery installer");};
+            session.InspectLocks=async _=>
+            {
+                inspections++;
+                if(mode=="locks-error")throw new IOException("inspection failed");
+                if(mode is "cancel-inspection" or "close-inspection")
+                    await owner.Dispatcher.InvokeAsync(()=>
+                    {
+                        if(mode=="close-inspection")owner.Close();
+                        else Application.Current.Windows.OfType<UpdateInstallWindow>().Single(w=>w.IsVisible).Close();
+                    });
+                return mode=="locks-declined"?[new FileLockOwner(1,1,"unrelated fixture",false)]:[];
+            };
+            if(mode=="cancel-download")session.Download=async(_,_,token)=>
+            {
+                await owner.Dispatcher.InvokeAsync(()=>Application.Current.Windows.OfType<UpdateInstallWindow>().Single(w=>w.IsVisible).Close(),DispatcherPriority.Background);
+                token.ThrowIfCancellationRequested();throw new InvalidOperationException("cancel must stop download");
+            };
+            if(mode.StartsWith("recovery"))session.Recovery=new("fixture","hash","old",new("DFLegacy.Launcher.exe","hash",1),new("DFLegacy.Launcher.exe","hash",1),true);
+            using(var flow=new UpdateCoordinator(owner,root,session,()=>check(false,"bootstrap App must not start a legacy helper"),notices.Add,
+                _=>mode=="recovery-accept",()=>mode!="unverified",()=>
+                {
+                    handoffs++;
+                    check(inspections==1,"automatic bootstrap handoff occurs only after file-lock inspection: "+mode);
+                    if(mode=="restart-fails")throw new IOException("fixed entry restart failed");
+                },(_,_)=>{confirmations++;return false;}))
+            {
+                Wait(flow.StartAsync());
+                var handedOff=mode is "ready" or "recovery-accept";
+                check(handoffs==(handedOff||mode=="restart-fails"?1:0),"verified App automatically hands Ready updates to the fixed entry only when permitted: "+mode);
+                check(prepares==(mode=="unverified"?1:0)&&session.Starts==0,"bootstrap handoff never enters the Launcher.exe-only installer: "+mode);
+                check(File.Exists(cachedObject),"bootstrap handoff preserves the installation's downloaded V4 cache: "+mode);
+                if(handedOff)
+                {
+                    flow.Check();Wait(flow.StartAsync());
+                    check(handoffs==1&&inspections==1&&session.Checks==(mode=="recovery-accept"?0:1),"repeat coordinator entry cannot launch a second fixed bootstrap: "+mode);
+                    check(!owner.IsVisible,"successful bootstrap handoff does not reopen the old login: "+mode);
+                }
+                else if(mode!="close-inspection")check(owner.IsVisible,"deferred or failed bootstrap handoff returns to login: "+mode);
+                if(mode=="locks-declined")check(confirmations==1&&prepares==0,"declining occupied files prevents both helper and bootstrap startup");
+                if(mode=="restart-fails")check(notices.Count==1&&notices[0].Contains("fixed entry restart failed"),"bootstrap startup failure is reported once without a fallback installer");
+            }
+            if(mode!="close-inspection")owner.Close();
+            UpdateArtifacts.Sweep(root);
+        }
     }
 }
