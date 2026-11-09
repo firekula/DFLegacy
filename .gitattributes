@@ -10,6 +10,8 @@ deploy/start/*.command text eol=lf
 deploy/*.yaml text eol=lf
 .gitea/workflows/*.yaml text eol=lf
 tools/release/*.py text eol=lf
+# Gitea update acceptance receipts/logs retain the bytes named by their SHA256 inventory.
+/artifacts/client-update-gitea-20261108/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 # Native fixture hashes describe exact producer bytes on every checkout.
 /tests/fixtures/native-debug/** -text whitespace=cr-at-eol
 /tests/fixtures/act1-motion-horizon/** -text whitespace=cr-at-eol

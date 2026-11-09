@@ -142,7 +142,19 @@ internal static class WebPanelsSmokeTests
             try
             {
                 using var gmRoot = await Get(gm, "/"); using var playerRoot = await Get(player, "/");
-                check(gmRoot.StatusCode == HttpStatusCode.OK && (await gmRoot.Content.ReadAsStringAsync()).Contains("admin.js"), "GM root serves actual GM page");
+                var gmHtml = await gmRoot.Content.ReadAsStringAsync();
+                check(gmRoot.StatusCode == HttpStatusCode.OK && gmHtml.Contains("admin.js"), "GM root serves actual GM page");
+                // A page can load while a separate listener silently rejects its feature scripts.
+                // Fetch every local script referenced by the actual page through the GM listener.
+                foreach (System.Text.RegularExpressions.Match script in System.Text.RegularExpressions.Regex.Matches(
+                    gmHtml, "<script[^>]+src=\"(?<path>/[^\"]+)\""))
+                {
+                    var path = script.Groups["path"].Value;
+                    using var resource = await Get(gm, path);
+                    check(resource.StatusCode == HttpStatusCode.OK
+                        && resource.Content.Headers.ContentType?.MediaType?.Contains("javascript") == true,
+                        "GM page feature script is served on its separate listener: " + path);
+                }
                 check(playerRoot.StatusCode == HttpStatusCode.OK && (await playerRoot.Content.ReadAsStringAsync()).Contains("玩家"), "player root serves actual player page");
                 foreach (var port in new[] { gm, player })
                 {
@@ -152,7 +164,7 @@ internal static class WebPanelsSmokeTests
                     check(manager.StatusCode == HttpStatusCode.NotFound, "panel cannot reach manager control with correct secret");
                     client.DefaultRequestHeaders.Remove(ManagerControl.TokenHeader);
                 }
-                foreach (var path in new[] { "/admin/index.html", "/admin/admin.js", "/api/status", "/api/client-pay/cera" })
+                foreach (var path in new[] { "/admin/index.html", "/admin/admin.js", "/admin/admin-rewards.js", "/admin/admin-diagnostics.js", "/api/status", "/api/client-pay/cera" })
                 {
                     using var denied = await Get(player, path); check(denied.StatusCode == HttpStatusCode.NotFound, "player denies privileged surface " + path);
                 }

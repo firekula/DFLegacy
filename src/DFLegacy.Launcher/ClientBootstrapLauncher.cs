@@ -26,17 +26,24 @@ internal static class ClientBootstrapLauncher
         {
             FileStream Hold(string path) { var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read); locks.Add(stream); return stream; }
             var exe=Hold(clientPath); var patch=Hold(Path.Combine(manifest.DirectoryPath,"DFLegacy.Client.dll"));
-            Hold(Path.Combine(manifest.DirectoryPath,"client-package.json"));
+            DFLegacy.UpdateCore.PathPolicy.NoLinks(manifest.MetadataPath);
+            Hold(manifest.MetadataPath);
             foreach(var file in manifest.Files) Hold(Path.Combine(manifest.DirectoryPath,file.Path));
             Hold(helperPath); if(verifyEmbedded) StandaloneClientInstaller.ValidateHelper(helperPath);
             var current=ClientPackageManifest.LoadAndValidate(manifest.DirectoryPath);
-            if(current.Version!=manifest.Version || current.Commit!=manifest.Commit || current.Flavor!=manifest.Flavor || !current.Files.SequenceEqual(manifest.Files)) throw Failure("hash_mismatch");
+            if(current.MetadataPath!=manifest.MetadataPath || current.Version!=manifest.Version || current.Commit!=manifest.Commit || current.Flavor!=manifest.Flavor || !current.Files.SequenceEqual(manifest.Files)) throw Failure("hash_mismatch");
             var nonce=Guid.NewGuid().ToString("N"); var patchPath=ClientFileIdentity.Canonical(patch.SafeFileHandle);
             var start=fixtureStart?.Invoke(nonce) ?? new ProcessStartInfo(helperPath);
             start.UseShellExecute=false; start.CreateNoWindow=true; start.RedirectStandardInput=true; start.RedirectStandardOutput=true;
             start.StandardInputEncoding=new UTF8Encoding(false,true); start.StandardOutputEncoding=new UTF8Encoding(false,true);
             start.WorkingDirectory=Path.GetDirectoryName(clientPath)!;
             if(paymentUrl is not null) start.Environment["DFLEGACY_LOCAL_PAYMENT_URL"]=paymentUrl;
+            start.Environment["DFLEGACY_DIAGNOSTIC_SESSION"]=Program.Incidents.SessionId;
+            Diagnostics.AutomaticDiagnostics.Session?.ApplyEnvironment(start);
+            start.Environment["DFLEGACY_DIAGNOSTIC_VERSION"]=manifest.Version+"+"+manifest.Commit;
+            var pvfIdentity=Program.Incidents.CapturePvfIdentity(Path.Combine(manifest.DirectoryPath,"Script.pvf"));
+            start.Environment["DFLEGACY_DIAGNOSTIC_PVF"]=pvfIdentity;
+            Diagnostics.AutomaticDiagnostics.Session?.SetPvfIdentity(pvfIdentity);
             if(fixtureStart is null)
                 foreach(var argument in new[]{"--client",ClientFileIdentity.Canonical(exe.SafeFileHandle),"--patch",patchPath,"--sha256",manifest.Files.Single(f=>f.Path=="DFLegacy.Client.dll").Sha256,"--mode",manifest.Flavor,"--nonce",nonce,"--",launcherData}) start.ArgumentList.Add(argument);
             helper=Process.Start(start) ?? throw Failure("create_failed");

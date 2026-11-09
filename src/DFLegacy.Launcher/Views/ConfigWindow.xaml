@@ -10,7 +10,7 @@
     <Image x:Name="SettingsCrest" Width="233" Height="48" HorizontalAlignment="Center" VerticalAlignment="Top" Source="../Assets/Skin/classic-crest.png"><Image.RenderTransform><TranslateTransform Y="-8"/></Image.RenderTransform></Image>
     <c:PixelText Text="游戏设置" FontSize="20" Foreground="{StaticResource ClassicGold}" TextAlignment="Center" TextWrapping="NoWrap" Height="30" VerticalAlignment="Top" Margin="34,51,34,0"/>
     <c:SkinButton Width="25" Height="23" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,44,15,0" Style="{StaticResource ClassicImageButton}" NormalSource="../Assets/Skin/buton_close00.png" HoverSource="../Assets/Skin/buton_close01.png" PressedSource="../Assets/Skin/buton_close02.png" AutomationProperties.Name="关闭设置" IsCancel="True" Click="Cancel_Click"/>
-    <TabControl x:Name="SettingsTabs" Style="{StaticResource ClassicTabs}" Margin="34,96,34,23" SelectedIndex="1">
+    <TabControl x:Name="SettingsTabs" Style="{StaticResource ClassicTabs}" Margin="34,96,34,23" SelectedIndex="2">
       <TabItem Header="连接设置">
         <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <ScrollViewer x:Name="ConnectionScroll" Style="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
@@ -39,6 +39,19 @@
             </StackPanel>
           </ScrollViewer>
           <Grid Grid.Row="1" Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><c:PixelText Text="连接与显示分别保存" FontSize="12" Foreground="{StaticResource ClassicSecondary}"/><c:SkinButton Grid.Column="1" Content="保存连接设置" Style="{StaticResource ClassicButton}" Click="Save_Click"/></Grid>
+        </Grid>
+      </TabItem>
+      <TabItem Header="诊断">
+        <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <ScrollViewer Style="{x:Null}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0"><StackPanel>
+          <CheckBox x:Name="DiagnosticEnabledBox" Content="自动发送基本错误诊断" Margin="0,4,0,12"/>
+          <CheckBox x:Name="DiagnosticSmallDumpsBox" Content="在本机保留小型崩溃转储（下次启动生效）" Margin="0,0,0,12"/>
+          <c:PixelText Text="诊断仅包含错误类型、模块相对位置和基本系统信息，用于排查启动失败、崩溃与异常断线。" Margin="0,0,0,12"/>
+          <c:PixelText Text="账号、密码、聊天、截图与原始内存不会上传。原始转储仅保存在当前用户本地。" Foreground="{StaticResource ClassicSecondary}" Margin="0,0,0,12"/>
+          <c:PixelText x:Name="DiagnosticStatusText" Margin="0,0,0,16"/>
+          <c:PixelText Text="此设置只影响当前 Windows 用户；关闭后，旧记录不会在重新开启时自动补传。" Foreground="{StaticResource ClassicSecondary}" Margin="0,0,0,16"/>
+          </StackPanel></ScrollViewer>
+          <c:SkinButton Grid.Row="1" x:Name="DiagnosticSaveButton" Content="保存诊断设置" Style="{StaticResource ClassicButton}" HorizontalAlignment="Right" Margin="0,12,0,0" Click="DiagnosticSave_Click"/>
         </Grid>
       </TabItem>
       <TabItem Header="游戏显示">

@@ -1,0 +1,11 @@
+{
+  "architecture": "x64",
+  "case": "offline-healthy",
+  "exit": 0,
+  "expected": 0,
+  "networkFault": "per-process HTTP(S) proxy 127.0.0.1:9",
+  "files": [
+    "launcher.log"
+  ],
+  "configPreserved": true
+}

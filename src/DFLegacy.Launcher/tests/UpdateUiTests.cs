@@ -48,13 +48,20 @@ internal static class UpdateUiTests
             window.Render(new(UpdatePhase.Downloading,"正在下载", "dev-test",AssetName:"DFLegacy-client-update-v2-test-win-x64.zip"));
             check(((StackPanel)window.FindName("StatusBlocks")).Children.OfType<PixelText>().Any(p=>p.Text.Contains("DFLegacy-client-update-v2-test-win-x64.zip")),"test-flavor UI names the selected test asset");
             var recoveryPrompt=false;
-            bool Confirm(Action<ClassicMessageWindow> action)
+            bool Confirm(Action<ClassicMessageWindow> action, bool replacesScriptPvf=false)
             {
                 Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>action(Application.Current.Windows.OfType<ClassicMessageWindow>().Single())));
-                return UpdateWindow.ConfirmRestart(window,recoveryPrompt);
+                return UpdateWindow.ConfirmRestart(window,recoveryPrompt,replacesScriptPvf);
             }
             check(Confirm(dialog=>((SkinButton)dialog.FindName("ConfirmButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent))),"native confirmation requires explicit yes and returns acceptance");
             check(!Confirm(dialog=>((Grid)dialog.Content).Children.OfType<SkinButton>().Single(b=>Equals(b.Content,"稍后")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent))),"native confirmation later action defers installation");
+            check(Confirm(dialog=>
+            {
+                var blocks=(StackPanel)dialog.FindName("MessageBlocks");
+                var message=string.Concat(blocks.Children.OfType<PixelText>().Select(block=>block.Text));
+                check(message.Contains("替换 Script.pvf") && message.Contains("备份已有文件"),"V3 pre-install confirmation discloses PVF replacement and backup");
+                ((SkinButton)dialog.FindName("ConfirmButton")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            },replacesScriptPvf:true),"V3 confirmation accepts installation");
             check(Confirm(dialog=>dialog.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,PresentationSource.FromVisual(dialog),0,Key.Enter) { RoutedEvent=Keyboard.PreviewKeyDownEvent })),"native restart confirmation supports explicit Enter acceptance");
             foreach(var later in new[]{true,false})
             foreach(var key in new[]{Key.Enter,Key.Escape})
@@ -85,6 +92,9 @@ internal static class UpdateUiTests
         try
         {
             compact.Show(); compact.UpdateLayout(); check(compact.ActualWidth==286 && compact.ActualHeight==104,"install helper uses native 286x104 geometry"); check(compact.FindName("InstallStatus") is PixelText,"helper displays truthful phase without invented percentage");
+            compact.Render(new UpdateViewState(UpdatePhase.Installing,"正在准备安全安装助手…",ReplacesScriptPvf:true));
+            check(compact.FindName("InstallStatus") is PixelText status && status.Text.Contains("替换 Script.pvf") && status.Text.Contains("备份已有文件"),
+                "compact V3 auto-install status discloses PVF replacement and backup");
             compact.Render(new UpdateViewState(UpdatePhase.Downloading,"正在下载更新…",Progress:new(50,100,10))); compact.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(286,104,96,96,PixelFormats.Pbgra32); bitmap.Render(compact); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(Path.ChangeExtension(evidence,"install.png")); encoder.Save(file); }

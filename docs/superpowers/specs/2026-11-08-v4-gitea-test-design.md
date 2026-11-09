@@ -1,0 +1,13 @@
+# V4 test source migration to existing Gitea
+
+User direction: use the existing Gitea server instead of Gitee to test the already approved V4 updater; remove the local Gitee remote address. User repeated the URL, not an explicit request to delete the hosted repository, so remove the local publication clone's remote only. Main worktree already has only Gitea origin. No Gitee DELETE API calls.
+
+The Gitea instance at http://firekula.site:3000 reports version 1.26.0; firekula/DFLegacy is public. HTTPS on this origin was unavailable. Choose a narrowly pinned `gitea` provider and `gitea-test` channel, not a general arbitrary HTTP-source feature. Existing source validation already limits client repositories to firekula/DFLegacy. Only this exact HTTP origin is accepted for Gitea; GitHub/Gitee keep HTTPS and their existing rules. New source has a different provider/channel identity, so no old Gitee receipts or resource references are reused.
+
+Alternatives considered: retry Gitee (user rejected after repeated rate limiting); use hosted V3 (does not exercise V4 per-file updates); implement the small Gitea Release API adapter (selected by user's direct instruction). No extra design approval round: established updater design and verification scope are unchanged, provider choice is explicit.
+
+Gitea uses /api/v1/repos/{owner}/{repo}/releases with `limit` pagination, /releases/{id}/assets, multipart attachment uploads, drafts and prereleases. Public download links may use repository release download paths or /attachments/{uuid}. Bind every URL to the configured origin and structured attachment identity, reject credentials/query/fragment and external redirects. Publisher builds a draft, validates all resources, uploads manifests last, then publishes and anonymously verifies. Authentication stays in publisher memory and is never distributed to clients.
+
+Test tags: v0.1.8-giteatest.1 and v0.1.8-giteatest.2. Four variants x86/x64 × normal/test, actual rebuilt launcher/native inputs. Resource-only second version changes unused probe.npk, carries cumulative port migrations and reuses first-version objects. Do not replace actual Script.pvf. Existing Gitea releases, main code branch, formal GitHub releases and production servers remain untouched.
+
+Acceptance: source/API/path tests, launcher explicit-source/repair regression, publisher grouped tests and GUI build, self-contained x86/x64 builds, actual anonymous Gitea install A / same-version zero resource requests / single-file repair / B incremental upgrade / offline validated state. Test with isolated filesystem copies, no online game/account mutations. Keep exact failures and publication evidence.

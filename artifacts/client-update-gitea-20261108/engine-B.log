@@ -1,0 +1,17 @@
+START B x86-normal
+RESOURCE x86/normal dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+PASS B x86-normal: install requests=1, same-version=0, repair requests=1
+START B x86-test
+RESOURCE x86/test dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+PASS B x86-test: install requests=1, same-version=0, repair requests=1
+START B x64-normal
+RESOURCE x64/normal dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+PASS B x64-normal: install requests=1, same-version=0, repair requests=1
+START B x64-test
+RESOURCE x64/test dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin offset=0 status=200
+PASS B x64-test: install requests=1, same-version=0, repair requests=1
+REMOTE ENGINE B: 4/4 passed

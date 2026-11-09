@@ -41,6 +41,7 @@ public partial class ConfigWindow : System.Windows.Window
         // 非可编辑 ComboBox 的 .Text 在条目为 ComboBoxItem 包装时可能为空。
         PreferenceBox.SelectedValue = _options.Relay.Preference;
         ThemeBox.SelectedValue = _options.Theme;
+        LoadDiagnostics();
 
         // 三处任一改动都刷新"账号服务实际地址"提示。
         HostBox.TextChanged += (_, _) => UpdateAccountUrlHint();
@@ -303,6 +304,36 @@ public partial class ConfigWindow : System.Windows.Window
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
+    private void LoadDiagnostics()
+    {
+        if (ChapterTwoClient.IsBundled)
+        {
+            DiagnosticEnabledBox.IsChecked = DiagnosticSmallDumpsBox.IsChecked = false;
+            DiagnosticEnabledBox.IsEnabled = DiagnosticSmallDumpsBox.IsEnabled = false;
+            DiagnosticSaveButton.IsEnabled = false;
+            DiagnosticStatusText.Text = "第二章本机测试使用客户端 Logs/DFLegacy 下的本地日志。";
+            return;
+        }
+        var settings=Program.UserDiagnosticSettings;
+        try { var preference=settings.Read();DiagnosticEnabledBox.IsChecked=preference.Enabled;DiagnosticSmallDumpsBox.IsChecked=preference.LocalSmallDumps; }
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException) { DiagnosticEnabledBox.IsEnabled=false; }
+        string? clientRoot=null;
+        try {clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(_options.ClientPath));}
+        catch(Exception error) when(error is IOException or ArgumentException or NotSupportedException) { }
+        DiagnosticStatusText.Text=settings.Describe(string.IsNullOrWhiteSpace(_options.Diagnostics.ServiceUrl)?_options.ResolveAccountServiceUrl():_options.Diagnostics.ServiceUrl,clientRoot);
+    }
+    private void DiagnosticSave_Click(object sender,RoutedEventArgs e)
+    {
+        if (ChapterTwoClient.IsBundled) return;
+        try
+        {
+            Program.UserDiagnosticSettings.SetEnabled(DiagnosticEnabledBox.IsChecked==true);
+            Program.UserDiagnosticSettings.SetLocalSmallDumps(DiagnosticSmallDumpsBox.IsChecked==true);
+            Diagnostics.AutomaticDiagnostics.Configure(_options);LoadDiagnostics();
+        }
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        { ClassicMessage.Show(this,"保存诊断设置失败："+error.Message); }
+    }
     internal void ShowConnectionPage() => SettingsTabs.SelectedIndex = 0;
 
     private void Chrome_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)

@@ -20,6 +20,10 @@ public sealed record SkillDefinition(
     ushort ConsumedItemId,
     uint ConsumedItemCount)
 {
+    public int[] FitnessGrowTypes { get; init; } = [];
+    public int StealSpCostPercent { get; init; }
+    public int StealRequiredLevelOffset { get; init; }
+
     public int MaximumLevelFor(int growType, int awakeningType = 0)
     {
         if (growType < 0)
@@ -69,8 +73,23 @@ public sealed record SkillDefinition(
         return cost;
     }
 
-    public int RequiredCharacterLevelFor(int targetLevel) =>
-        RequiredLevel + Math.Max(0, targetLevel - 1) * RequiredLevelRange;
+    public int PurchaseCostFor(int targetLevel, int growType)
+    {
+        var baseCost = CostFor(targetLevel - 1, targetLevel);
+        if (StealSpCostPercent > 0 && IsStealLearning(growType))
+        {
+            return (int)Math.Clamp((long)baseCost * StealSpCostPercent / 100, 1, int.MaxValue);
+        }
+
+        return baseCost;
+    }
+
+    public int RequiredCharacterLevelFor(int targetLevel, int growType = -1) =>
+        RequiredLevel + Math.Max(0, targetLevel - 1) * RequiredLevelRange
+        + (IsStealLearning(growType) ? StealRequiredLevelOffset : 0);
+
+    private bool IsStealLearning(int growType) =>
+        growType >= 0 && FitnessGrowTypes.Length > 0 && !FitnessGrowTypes.Contains(growType);
 }
 
 public sealed record CharacterGrantedSkillChange(
@@ -990,6 +1009,8 @@ public sealed class SkillCatalog
         var type = ReadTag(text, "type");
         var maximumLevel = ReadFirstInteger(text, "maximum level", 1);
         var consumedItem = ReadIntegers(ReadTag(text, "consume item"));
+        var fitnessGrowTypes = ReadIntegers(ReadTag(text, "skill fitness growtype"));
+        var stealLearning = ReadIntegers(ReadTag(text, "steel learning skill", allowUnclosedBlock: true));
         return new SkillDefinition(
             skillId,
             IsActive: Regex.IsMatch(
@@ -998,7 +1019,7 @@ public sealed class SkillCatalog
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant),
             IsGuildSkill: ReadFirstInteger(text, "purchase gsp", 0) > 0,
             RawGroup: ReadFirstInteger(text, "skill class", 0),
-            NumberOfGrowTypes: ReadIntegers(ReadTag(text, "skill fitness growtype")).Length,
+            NumberOfGrowTypes: fitnessGrowTypes.Length,
             MaximumLevel: Math.Max(1, maximumLevel),
             RequiredLevel: Math.Max(0, ReadFirstInteger(text, "required level", 0)),
             RequiredLevelRange: Math.Max(1, ReadFirstInteger(text, "required level range", 1)),
@@ -1014,10 +1035,19 @@ public sealed class SkillCatalog
             ConsumedItemCount: consumedItem.Length >= 2
                 && consumedItem[1] > 0
                     ? checked((uint)consumedItem[1])
-                    : 0);
+                    : 0)
+        {
+            FitnessGrowTypes = fitnessGrowTypes,
+            StealSpCostPercent = stealLearning.Length >= 3 && stealLearning[0] > 0
+                ? Math.Max(0, stealLearning[2])
+                : 0,
+            StealRequiredLevelOffset = stealLearning.Length >= 4 && stealLearning[0] > 0
+                ? Math.Max(0, stealLearning[3])
+                : 0
+        };
     }
 
-    private static string ReadTag(string text, string tag)
+    private static string ReadTag(string text, string tag, bool allowUnclosedBlock = false)
     {
         var marker = $"[{tag}]";
         var start = text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
@@ -1033,6 +1063,11 @@ public sealed class SkillCatalog
         if (close >= 0 && (lineEnd < 0 || string.IsNullOrWhiteSpace(text[start..lineEnd])))
         {
             end = close;
+        }
+        else if (allowUnclosedBlock)
+        {
+            var nextTag = text.IndexOf('[', start);
+            end = nextTag >= 0 ? nextTag : text.Length;
         }
         else
         {

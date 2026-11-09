@@ -1,0 +1,80 @@
+{
+  "schema": "dfl-loot-gather-type2-live-fix/v1",
+  "recorded_utc": "2026-11-08T07:21:22.9846944Z",
+  "commit": "57f45506429363180e1386b510c3b3eff7a8a5b6",
+  "source": {
+    "log": "G:/dnf_local/DFLegacy_Bootstrap_Test_20261108/server.final.stdout.log",
+    "lines": [
+      204,
+      205
+    ],
+    "event_local": "2026-11-08 15:16:34 Asia/Shanghai",
+    "command": 17,
+    "body_hex": "34000201000000000004000000C5A3C0B4",
+    "parsed_type": 2,
+    "target_field": 1,
+    "message_gbk_hex": "C5A3C0B4",
+    "old_route": "Party chat delivered to 0",
+    "root_cause": "The solo dungeon default chat tab sends type 2, but loot gather accepted only type 3."
+  },
+  "behavior": {
+    "accepted_types": [
+      2,
+      3
+    ],
+    "exact_message": "牛来",
+    "required": [
+      "alive",
+      "non-PvP",
+      "active solo run",
+      "requester owns run"
+    ],
+    "still_rejected": [
+      "party",
+      "single-member party",
+      "dead",
+      "PvP",
+      "town or no active run",
+      "detached tutorial",
+      "foreign run",
+      "non-exact text",
+      "whisper types 1 and 7",
+      "system type 16",
+      "messenger type 18"
+    ],
+    "response": "Self-only NOTI12 / Type16 / local requester uid / 25 ASCII bytes @DFLegacy:loot-magnet:v1@",
+    "ordinary_chat": "Both types return false for unrelated text so existing chat routing remains available."
+  },
+  "validation": [
+    {
+      "name": "loot-gather RED",
+      "exit_code": 1,
+      "failures": 2,
+      "log": "server-loot-gather-type2-red.log"
+    },
+    {
+      "name": "loot-gather GREEN",
+      "exit_code": 0,
+      "failures": 0,
+      "log": "server-loot-gather-type2-green.log"
+    },
+    {
+      "name": "party-chat",
+      "exit_code": 0,
+      "failures": 0,
+      "log": "server-loot-gather-type2-party-chat.log"
+    },
+    {
+      "name": "boss-room-death including DungeonParty, overlay and TestControl",
+      "exit_code": 0,
+      "failures": 0,
+      "log": "server-loot-gather-type2-boss-regression.log"
+    }
+  ],
+  "artifact": {
+    "directory": "C:/codex-build/dungeon-server-live-fix/bin/DFLegacy.Server/debug",
+    "server_dll_sha256": "0AE58E4FF5BDA5054F3D89E41420EB566471ED435D8F7666E6C448A2B203C06D",
+    "server_exe_sha256": "355E355E27C339956717DBB69F0D9DBF51B00461E8F75EAD0BFCC6F7692377E0"
+  },
+  "scope": "Focused managed regressions only. No game/server process control, live-client acceptance, deployment or remote publication performed by this worker."
+}

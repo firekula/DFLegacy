@@ -1,0 +1,3076 @@
+{
+  "provenance": {
+    "mainCommit": "c58a362",
+    "sourceEvidenceSha256": "fead7d2addf7092bfc4f0a6f6d2f81dde1b850745ad17812798d5a1ae03330a9",
+    "sourceEvidence": "placeholder-quest-text-evidence.json from ACT1 original-language and historical Chinese audit; copied as evidence only",
+    "sourceArchiveSha256": "B877BAD0DF1F08633ED6F932EDA9EF315C938FF7F8085E2032C081E86FEDE1AE"
+  },
+  "fields": [
+    {
+      "quest_id": 1,
+      "script": "quest/epic/1-1.qst",
+      "field": "depend message",
+      "key": "depend_message_8075",
+      "base": "不使用",
+      "replacement": "赛丽亚~~~\\n那……那些哥布林！！\\n喂，年轻人！！赛丽亚被哥布林抓走了。可恶的哥布林，竟敢这样做。那个像水晶一样漂亮的孩子为什么会……\\n无论如何都得把她救回来，要是晚了不知道会发生什么……你能把赛丽亚救出来吗？我相信你能做到。\\n时间不多了！",
+      "native_korean": "세리아~~~ \\n저..저... 고블린들!! \\n이보게 자네!! 세리아가 고블린들에게 잡혀 갔네. 나쁜 고블린 같으니라고.. 그 수정 같이 예쁜 아이를 왜...\\n 어떻게든 구해와야지 늦는다면 무슨 일이 생길지.. 자네가 세리아를 구출해 주겠나? 자네라면 할 수 있을게야.\\n 시간이 별로 없다네!!",
+      "scriptCanonicalSha256": "5f5e890b4b7e09a7d6de14b50635c1121abac5742e688003d324d2abe66921f2"
+    },
+    {
+      "quest_id": 1,
+      "script": "quest/epic/1-1.qst",
+      "field": "condition message",
+      "key": "condition_message_8080",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从赛丽亚处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 이 퀘스트를 포기하시고 세리아로부터 다시 에픽 퀘스트를 받아 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "5f5e890b4b7e09a7d6de14b50635c1121abac5742e688003d324d2abe66921f2"
+    },
+    {
+      "quest_id": 2,
+      "script": "quest/epic/1-2.qst",
+      "field": "condition message",
+      "key": "condition_message_8100",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从风振处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 이 퀘스트를 포기하시고 풍진로부터 다시 에픽 퀘스트를 받아 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "c5a33103640c0142c00c85df511a5e309aa8d6c0fba1ca5daf5cb5e51db6f5db"
+    },
+    {
+      "quest_id": 3,
+      "script": "quest/epic/1-3.qst",
+      "field": "condition message",
+      "key": "condition_message_8120",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从风振处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 이 퀘스트를 포기하시고 풍진로부터 다시 에픽 퀘스트를 받아 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "27ce0a3c8f37988b5917dbda936355df8d213d535b4515cc2fbfe873eaf41a3f"
+    },
+    {
+      "quest_id": 4,
+      "script": "quest/epic/1-4.qst",
+      "field": "depend message",
+      "key": "depend_message_8135",
+      "base": "不使用",
+      "replacement": "哎呀~好久不见。最近过得好吗？要常来看看我，不然我都要忘记你的脸了。呵呵。\\n你听说传闻了吗？看来你没听说。最近格兰之森正因为这件事闹得沸沸扬扬。\\n听说有个发疯的人类魔法师在欺负前往格兰之森的冒险家。好像叫克拉赫？\\n总之，这个发疯的魔法师见到冒险家就杀，所以大家都不敢进入格兰之森了。\\n被克拉赫杀死的冒险家太多了，据说现在还悬赏了。你要不要试试看？\\n听说克拉赫在冰霜幽暗密林，不过那里很危险，最好不要想着一个人去。",
+      "native_korean": "어머~ 오랜만이시네요. 그간 잘 지내셨어요? 좀 자주 좀 오세요. 얼굴 까먹겠어요. 호호.\\n 소문 들으셨어요? 못 들으셨군요. 요즘 이것때문에 시끄러운데.\\n 뭐냐면요. 요즘 그란플로리스에 모험가들을 괴롭히는 미쳐버린 인간 마법사가 있대요. 케라하라던가?\\n 하여튼 이 미쳐버린 마법사가 모험가들을 보이는대로 죽여서 모험가들이 그란 플로리스에 들어가는 것을 꺼려 하고 있어요.\\n 케라하한테 죽은 모험가들이 워낙에 많아서 지금은 현상금도 걸렸다는데 한번 해보세요.\\n 프로스트 머크우드에 케라하가 있다는데 어려운 곳이라고 하니 혼자서 가실 생각은 하지 않으시는게 좋을 거에요.",
+      "scriptCanonicalSha256": "05ff3c77028792e4155f3abfeeeb1eec47f00c6f3ee6bfd95eb72e1dc6cfe205"
+    },
+    {
+      "quest_id": 4,
+      "script": "quest/epic/1-4.qst",
+      "field": "condition message",
+      "key": "condition_message_8140",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从G.S.D.处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 이 퀘스트를 포기하시고 G.S.D.로부터 다시 에픽 퀘스트를 받아 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "05ff3c77028792e4155f3abfeeeb1eec47f00c6f3ee6bfd95eb72e1dc6cfe205"
+    },
+    {
+      "quest_id": 5,
+      "script": "quest/epic/1-5.qst",
+      "field": "condition message",
+      "key": "condition_message_8160",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从索西雅处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 이 퀘스트를 포기하시고 슈시아로부터 다시 에픽 퀘스트를 받아 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "4ad2eba48bd1d58b9e0a0168b00d8c6e40edaa21e05a92fc68660d59741837fd"
+    },
+    {
+      "quest_id": 6,
+      "script": "quest/epic/1-6.qst",
+      "field": "depend message",
+      "key": "depend_message_8175",
+      "base": "不使用",
+      "replacement": "上次你带来的牛头怪身上提取物，实验结果出来了。\\n结论是，这种物质进入牛头怪的脑内后，使牛头怪的意识变得狂暴。\\n如果这种物质也会影响人类或精灵，那可就要出大事了。\\n（看着从克拉赫身上得到的物质）咦？这种物质和从牛头怪脑中提取的物质非常相似。确定这是从那个人类魔法师身上得到的吗？这下真的糟糕了。\\n嗯。事情突然变成这样，看来这个世界正发生着某种我们无法轻易接近的事情……\\n从帝国引发的大火，以及精灵突然消失这些情况来看，这一切应该都与天空之城有关。\\n请务必前往天空之城，彻底调查这件事。说到天空之城，赛丽亚应该很了解。",
+      "native_korean": "지난 번에 가져다 주신 타우비스트에게서 나온 물질의 실험결과가 나왔어요.\\n 결론은 이 물질이 타우의 머릿 속으로 들어가게 되면서 타우의 의식을 흉폭하게 만든겁니다.\\n 만약 이 물질이 인간이나 요정에게도 영향을 미친다면 정말 큰일이 일어날 듯 한데요?\\n (케라하에게서 나온 물질을 보며) 헉. 이 물질은 타우의 머릿속에서 나온 물질과 매우 흡사하군요. 이것이 그 인간 마법사에게서 나온 것이 확실합니까? 이거 정말 큰일인데요. \\n 으흠. 갑자기 이런일들이 일어나다니. 이건 뭔가 이 세계에 쉽게 범접할 수 없는 일이 일어나고 있는 것 같은데요..\\n 제 생각으로는 제국이 벌인 대화재와 요정들이 돌연히 없어진 것들로 미루어 보아 이 모든 일은 하늘의 성과 연관이 되어있을 거에요.\\n 반드시 하늘의 성에 가서 이 일에 대해서 확실하게 파헤쳐 주세요. 하늘의 성이라면 세리아가 잘 알고 있을 겁니다.",
+      "scriptCanonicalSha256": "db43ab619af0d852caa3338f43e77de71e98191e1b9d449996f9d607777d5673"
+    },
+    {
+      "quest_id": 223,
+      "script": "quest/value/1-7-1.qst",
+      "field": "condition message",
+      "key": "condition_message_12195",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后前往教授各职业技能的NPC处，即可接取重新改编后的任务。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트 입니다. 이 퀘스트를 포기하시고 각 직업 스킬을 가르쳐 주는 NPC를 찾아가시면, 새로이 개편된 퀘스트를 받을 수 있습니다. 불편을 드려 죄송합니다.)",
+      "scriptCanonicalSha256": "ca2c27b7133501ddd2d363cb265a3a52fed5f28c5a459ffce39e85ce36609b78"
+    },
+    {
+      "quest_id": 224,
+      "script": "quest/value/1-7-2.qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "1b32593f3009d1f54dcc549a63143f8bf6908a18b53dff20afed6505651bda55"
+    },
+    {
+      "quest_id": 225,
+      "script": "quest/value/1-7-3.qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "f914329b5b529062f9bc54bab87086c52427f91099445afb189c3fa2452931b7"
+    },
+    {
+      "quest_id": 226,
+      "script": "quest/value/1-7-4.qst",
+      "field": "condition message",
+      "key": "condition_message_12760",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处勇士级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "16bf8680bf5f0c1facf7cd8a5d44feda351e34143658f4d1528a2b4d50bcf23e"
+    },
+    {
+      "quest_id": 227,
+      "script": "quest/value/1-7-5.qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "9e011716a75d331151acae164b198478916807a2887e83916372b5104c118b7d"
+    },
+    {
+      "quest_id": 228,
+      "script": "quest/value/1-7-6.qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "c49ed6d1599d4be181558c375737e115e5a38ee45cc043976ff1eb0822622213"
+    },
+    {
+      "quest_id": 229,
+      "script": "quest/value/1-7-7.qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "1bf84aad0ba09d86538eb8cff4a1aeae40bdc1575867d864d2294a0c90818afe"
+    },
+    {
+      "quest_id": 230,
+      "script": "quest/value/1-7-8.qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "583728759464fb6bf6fa6f50cb34da7e76f239d19052fd9f098c02987445dfec"
+    },
+    {
+      "quest_id": 231,
+      "script": "quest/value/1-7-9.qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "3e2af24461ff2c5a0c0db5cef39f9cd37c05f974f0a6aea2479fe14b4573e24a"
+    },
+    {
+      "quest_id": 231,
+      "script": "quest/value/1-7-9.qst",
+      "field": "solve message",
+      "key": "solve_message_12895",
+      "base": "不使用",
+      "replacement": "鬼剑士通常被看作是被邪恶侵染的存在。因此，我或许才会躲在不显眼的后巷里，偷偷吞吐烟雾，苟活至今吧。\\n没错！鬼剑士想要生存下去，需要把世人的错误偏见转化为敬畏的无穷强大、连自己都不相信的彻底谨慎，以及仅凭观察事物就能看穿其内部的敏锐感知！这些都是必不可少的。\\n让一个连眼睛都看不见的老头说了太多。就这样吧。祝你冒险愉快。天空之城可不容易闯啊~",
+      "native_korean": "귀검사는 흔히 악에 물든 존재로 비춰진다. 그렇기에 내가 남 눈에 잘 띄지 않는 뒷골목에서 몰래 냄새 피우며 살아남아 있는 지도 모르지.\\n 그렇다! 귀검사가 살아남기 위해서는 이 세상 사람의 그릇된 편견을 경외심으로 바꿀 수 있는 무한한 강함, 자신 조차 믿지 않는 철저함, 사물을 보는 것만으로 안의 내용물을 점칠 수 있는 예리한 감각! 그것들이 필요한 것이다.\\n 눈도 안 뵈는 노인네가 말이 길었군. 그럼 이상. 멋진 모험 되길 바란다. 하늘의 성은 쉽지 않을 것이여~",
+      "scriptCanonicalSha256": "3e2af24461ff2c5a0c0db5cef39f9cd37c05f974f0a6aea2479fe14b4573e24a"
+    },
+    {
+      "quest_id": 232,
+      "script": "quest/value/1-8-1.qst",
+      "field": "condition message",
+      "key": "condition_message_12195",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后前往教授各职业技能的NPC处，即可接取重新改编后的任务。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트 입니다. 이 퀘스트를 포기하시고 각 직업 스킬을 가르쳐 주는 NPC를 찾아가시면, 새로이 개편된 퀘스트를 받을 수 있습니다. 불편을 드려 죄송합니다.)",
+      "scriptCanonicalSha256": "d8e0cdd209fb12a43cbe3579b7ee77b9508fa197114e87c1bf152614853c0c6d"
+    },
+    {
+      "quest_id": 233,
+      "script": "quest/value/1-8-2.qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "909c8c94c27a1306daae8b97fda18cda81e6deca9826f6b1824d1100d60686d5"
+    },
+    {
+      "quest_id": 234,
+      "script": "quest/value/1-8-3.qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "0a4847919d52b5f994dad2a6442ff5bfa83553e8cb7c17db789f8cc11cb18638"
+    },
+    {
+      "quest_id": 235,
+      "script": "quest/value/1-8-4.qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "f5154b7fe0712f07ac3b8d130510b094f1b895b63ed8f76af818711c24d512ff"
+    },
+    {
+      "quest_id": 236,
+      "script": "quest/value/1-8-5.qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "3c0accecadb028495ec00e6187d692e317a7d3cc920d4897a21157af10f90129"
+    },
+    {
+      "quest_id": 237,
+      "script": "quest/value/1-8-6.qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "21dc26650239e5c4ac005ad96ffcc653c351b0cf633442f27df2530cb55e8755"
+    },
+    {
+      "quest_id": 238,
+      "script": "quest/value/1-8-7.qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "f3f74c53bba8cb1acfa058df8ea8df1a901faf0803f54666cbc37e598cacd8bc"
+    },
+    {
+      "quest_id": 239,
+      "script": "quest/value/1-8-8.qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "f37cc60e8be73e9acbbf7e2f05d7381242631469eb273c22f1cb686f015e3ccb"
+    },
+    {
+      "quest_id": 240,
+      "script": "quest/value/1-8-9.qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "1fb5b1320b2e2ede3e9ba0d4d55065d1ebc151d455947ebf63ec3fcc61533be6"
+    },
+    {
+      "quest_id": 240,
+      "script": "quest/value/1-8-9.qst",
+      "field": "solve message",
+      "key": "solve_message_13150",
+      "base": "不使用",
+      "replacement": "你终于要前往天空之城了。哈哈，天空之城……真是个奇妙的地方。希望你能在那里获得一件好装备。",
+      "native_korean": "이제는 정말 하늘의 성으로 가시겠군요. 하하 하늘의 성...... 참으로 묘~한 곳이지요. 부디 좋은 장비를 얻으시기 바랍니다.",
+      "scriptCanonicalSha256": "1fb5b1320b2e2ede3e9ba0d4d55065d1ebc151d455947ebf63ec3fcc61533be6"
+    },
+    {
+      "quest_id": 241,
+      "script": "quest/value/1-9-1.qst",
+      "field": "depend message",
+      "key": "depend_message_13175",
+      "base": "不使用",
+      "replacement": "哎呀哎呀，这可怎么办呀~凭你这点实力，去天空之城打算怎么办呀！真是的，姐姐我不亲自照看你，你就总是弄成这副模样~\\n来来，既然这样就到姐姐这里来。我会把你培养成真正的神枪手~先去洛兰把枪口擦一擦吧。",
+      "native_korean": "어머 어머 어쩌나 어쩌나아~ 그 실력으로 하늘의 성에 가셔서 어떻게 하시려고욧! 이그 이그 꼭 꼭 내가 챙겨주지 않으면 이 모양 이 꼴이라니까는~\\n 자 자 됐으니까 이 누나한테 와 봐. 내가 거너다운 거너로 만들어 주겠으~ 자자 일단 총 구멍이나 좀 닦게 로리엔이나 다녀오셔~",
+      "scriptCanonicalSha256": "ec2f6bb46205ed09a8912595ea955b4b4ebbda9e017f02d60c70d3cf717dc43c"
+    },
+    {
+      "quest_id": 241,
+      "script": "quest/value/1-9-1.qst",
+      "field": "condition message",
+      "key": "condition_message_12195",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后前往教授各职业技能的NPC处，即可接取重新改编后的任务。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트 입니다. 이 퀘스트를 포기하시고 각 직업 스킬을 가르쳐 주는 NPC를 찾아가시면, 새로이 개편된 퀘스트를 받을 수 있습니다. 불편을 드려 죄송합니다.)",
+      "scriptCanonicalSha256": "ec2f6bb46205ed09a8912595ea955b4b4ebbda9e017f02d60c70d3cf717dc43c"
+    },
+    {
+      "quest_id": 241,
+      "script": "quest/value/1-9-1.qst",
+      "field": "solve message",
+      "key": "solve_message_13180",
+      "base": "不使用",
+      "replacement": "来了吗？接下来知道吧？洛兰深处~",
+      "native_korean": "왔어? 다음은 알지? 로리엔 안쪽~",
+      "scriptCanonicalSha256": "ec2f6bb46205ed09a8912595ea955b4b4ebbda9e017f02d60c70d3cf717dc43c"
+    },
+    {
+      "quest_id": 242,
+      "script": "quest/value/1-9-2.qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "796309377f3d5a4c2da2a272799e467673a31ea0c1baa76425ca3ae13b283980"
+    },
+    {
+      "quest_id": 242,
+      "script": "quest/value/1-9-2.qst",
+      "field": "solve message",
+      "key": "solve_message_13195",
+      "base": "不使用",
+      "replacement": "接下来~~当然是幽暗密林！",
+      "native_korean": "다음은~~ 당연히 머크우드!",
+      "scriptCanonicalSha256": "796309377f3d5a4c2da2a272799e467673a31ea0c1baa76425ca3ae13b283980"
+    },
+    {
+      "quest_id": 243,
+      "script": "quest/value/1-9-3.qst",
+      "field": "depend message",
+      "key": "depend_message_13220",
+      "base": "不使用",
+      "replacement": "啊~~~哦~~~这都说了好几遍，嘴巴都累了。像这样一个一个解释，怎么说呢~总觉得有点疲惫。听说美女一累皮肤就会变差……\\n哈哈，开个玩笑。我最近还有很多工作堆着呢。以后就算我不长篇大论，也希望你能自己！主动！和平地！通关下一个地下城！",
+      "native_korean": "아~~~ 오~~~ 고거 몇 번 말했다고 입이 다 아프네. 이렇게 하나 하나 설명해주기는 뭐랄까~ 피곤한 감이 있어~. 미인은 피곤하면 피부 다 버린다는데......\\n 하하 농담이고 내가 요새 다른 업무가 많이 밀려서 말예요. 다음부터는 길게 말 안해도 스스로! 알아서! 평화롭게! 다음 던전을 클리어 해줬으면 좋겠어요!",
+      "scriptCanonicalSha256": "71b657bf2247ecb022b5b70806af803b955d931e57fc9a171aca320700fd1fc9"
+    },
+    {
+      "quest_id": 243,
+      "script": "quest/value/1-9-3.qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "71b657bf2247ecb022b5b70806af803b955d931e57fc9a171aca320700fd1fc9"
+    },
+    {
+      "quest_id": 244,
+      "script": "quest/value/1-9-4.qst",
+      "field": "depend message",
+      "key": "depend_message_13250",
+      "base": "不使用",
+      "replacement": "什么~下一个下一个下一个。自己去吧，Go! Go! Go! 怎么？难道想放弃了吗？还是不是男人~~~！",
+      "native_korean": "뭐야~ 바로 다음 다음 다음. 알아서 Go! Go! Go! 뭐야? 포기할 생각인건가요? 사나이 맞나요~~~!",
+      "scriptCanonicalSha256": "d19ca226b68f3bb2c453c2f44b5b2c580f7c6d189628d44f2b6ac1d8bd751675"
+    },
+    {
+      "quest_id": 244,
+      "script": "quest/value/1-9-4.qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "d19ca226b68f3bb2c453c2f44b5b2c580f7c6d189628d44f2b6ac1d8bd751675"
+    },
+    {
+      "quest_id": 245,
+      "script": "quest/value/1-9-5.qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "7622aaf6d6f331334ac5b6f04e3e42177ac0b7c77b5ebd77ab45fddd30867a75"
+    },
+    {
+      "quest_id": 246,
+      "script": "quest/value/1-9-6.qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "18baa4e094fcda79f721516bd471987c2d36305ca4340fbaf1b7f0db0a96617f"
+    },
+    {
+      "quest_id": 246,
+      "script": "quest/value/1-9-6.qst",
+      "field": "solve message",
+      "key": "solve_message_13315",
+      "base": "不使用",
+      "replacement": "啊~是猛毒雷鸣废墟啊。",
+      "native_korean": "아~ 포이즌 선더랜드네.",
+      "scriptCanonicalSha256": "18baa4e094fcda79f721516bd471987c2d36305ca4340fbaf1b7f0db0a96617f"
+    },
+    {
+      "quest_id": 247,
+      "script": "quest/value/1-9-7.qst",
+      "field": "depend message",
+      "key": "depend_message_13340",
+      "base": "不使用",
+      "replacement": "小心点。鲁卡鲁会发动快速的近身攻击，对神枪手来说简直是天敌~",
+      "native_korean": "조심하세요. 루가루는 빠른 근접 공격을 하니까. 거너에겐 쥐약이라 할 수 있거든요~",
+      "scriptCanonicalSha256": "67ef5213e2eb70d16d9d048ae806945d3675bf5991e9855ae9afc665afb16a74"
+    },
+    {
+      "quest_id": 247,
+      "script": "quest/value/1-9-7.qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "67ef5213e2eb70d16d9d048ae806945d3675bf5991e9855ae9afc665afb16a74"
+    },
+    {
+      "quest_id": 247,
+      "script": "quest/value/1-9-7.qst",
+      "field": "solve message",
+      "key": "solve_message_13345",
+      "base": "不使用",
+      "replacement": "哎呀~~接下来是格拉卡啊~沙乌塔~等着我~~~。",
+      "native_korean": "어머~~ 다음은 그락카락이네~ 샤우타~ 기다려~~~.",
+      "scriptCanonicalSha256": "67ef5213e2eb70d16d9d048ae806945d3675bf5991e9855ae9afc665afb16a74"
+    },
+    {
+      "quest_id": 248,
+      "script": "quest/value/1-9-8.qst",
+      "field": "depend message",
+      "key": "depend_message_13370",
+      "base": "不使用",
+      "replacement": "啊~神枪手的精准射击训练终于快结束了。怎么样，有姐姐我教你，还算能应付吧？\\n别忘了这次感受到的感觉，在天空之城也要继续努力！",
+      "native_korean": "아~ 이제 거너의 일발 훈련도 끝이 보이는군요. 그래 이 누님이 가르쳐 주니. 할만 해요?\\n 이번에 느낀 그 느낌을 잊지 말고 하늘의 성에서도 분발하세요!",
+      "scriptCanonicalSha256": "d306c807a2c91a4ad5c74b68587a2eb208272c128ec771cfbd18d4e766bfcfad"
+    },
+    {
+      "quest_id": 248,
+      "script": "quest/value/1-9-8.qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d306c807a2c91a4ad5c74b68587a2eb208272c128ec771cfbd18d4e766bfcfad"
+    },
+    {
+      "quest_id": 248,
+      "script": "quest/value/1-9-8.qst",
+      "field": "solve message",
+      "key": "solve_message_13375",
+      "base": "不使用",
+      "replacement": "哎呀，这下好了~接下来不是彼诺修嘛！",
+      "native_korean": "아이구 이거야 원~ 다음은 비노슈 잖아!",
+      "scriptCanonicalSha256": "d306c807a2c91a4ad5c74b68587a2eb208272c128ec771cfbd18d4e766bfcfad"
+    },
+    {
+      "quest_id": 249,
+      "script": "quest/value/1-9-9.qst",
+      "field": "depend message",
+      "key": "depend_message_13400",
+      "base": "不使用",
+      "replacement": "啊~这段漫长旅程也终于看到尽头了~最后一关了~知道什么叫善始善终吧？",
+      "native_korean": "아~ 이제 이 기나긴 여정도 끝이 보이는 걸~ 마지막이야~ 유종의 미 알죠?",
+      "scriptCanonicalSha256": "15f023e0cdcbf07d407ce1550404a97893aafe3ca69401beeb01b22971ac056b"
+    },
+    {
+      "quest_id": 249,
+      "script": "quest/value/1-9-9.qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "15f023e0cdcbf07d407ce1550404a97893aafe3ca69401beeb01b22971ac056b"
+    },
+    {
+      "quest_id": 249,
+      "script": "quest/value/1-9-9.qst",
+      "field": "solve message",
+      "key": "solve_message_13405",
+      "base": "不使用",
+      "replacement": "我之所以对你进行特别训练，就是因为天空之城。\\n天空之城里住着巴卡尔的爪牙，对于我们天界人来说，那可是仇人中的仇人，是被认为极其~邪恶的家伙。\\n巴卡尔已经死了几百年，可那里至今仍有人守着，真是……巴卡尔的部下果然不好对付！",
+      "native_korean": "내가 특별 훈련을 시킨 이유는 하늘의 성 때문이예요.\\n 하늘의 성은 우리 천계 사람들에게는 원수도 그런 원수가 없을 정도로 대단~히 나쁜 놈으로 여겨지고 있는 바칼의 끄나풀이 머물고 있는 곳이거든요.\\n 바칼이 죽은지 벌써 몇 백년이나 지났는 데도 아직도 지키고 있는 거 보면 참...... 바칼의 부하는 정말 쉽지 않아요!",
+      "scriptCanonicalSha256": "15f023e0cdcbf07d407ce1550404a97893aafe3ca69401beeb01b22971ac056b"
+    },
+    {
+      "quest_id": 258,
+      "script": "quest/value/1-7-2(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "1502954d4f28aa23e1d7e22c3e28671ecc3dfabef01746d35165c94ce1fdfa7e"
+    },
+    {
+      "quest_id": 259,
+      "script": "quest/value/1-7-2(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "ce8479d638ebc9eea9a841ae87b10feff13c5fd8113063e82abf1ba44890db26"
+    },
+    {
+      "quest_id": 260,
+      "script": "quest/value/1-7-2(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "64dbf65c71f87b2d20df4f3caab6001ad8026c06b77194f3040385110aa54745"
+    },
+    {
+      "quest_id": 261,
+      "script": "quest/value/1-7-4(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "df8ff11bf73ce6050954d35c954e776c0e20024e99e2d463e57821f6fa2f304f"
+    },
+    {
+      "quest_id": 262,
+      "script": "quest/value/1-7-4(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "7fff9d286f9bd09701130ba9b0ffbd16c3c09fb3968bad84f5a26adf624ba12d"
+    },
+    {
+      "quest_id": 263,
+      "script": "quest/value/1-7-4(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "19cf25adc0a3dc4563a301fac3aa0cb0da5b18dc5dc01b2cebf3726f5200d359"
+    },
+    {
+      "quest_id": 264,
+      "script": "quest/value/1-7-6(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "e762068035d105c741ebd32102d9e23cf517377f475a886d00c61b04cf83907b"
+    },
+    {
+      "quest_id": 265,
+      "script": "quest/value/1-7-6(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "a0020874a0d648fd15714a2d7a307dfad8e6ea0fdb4c133eb0516af1f1e59cd6"
+    },
+    {
+      "quest_id": 266,
+      "script": "quest/value/1-7-6(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "a97e5862a9c501e33e005f2359422c56134b91ecab7739cabcbeb86a8fc7ec4a"
+    },
+    {
+      "quest_id": 267,
+      "script": "quest/value/1-8-2(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "9f392e23fe2a7389acd8b4f71fff546057494e467829abc92c8aaa873263bfb5"
+    },
+    {
+      "quest_id": 268,
+      "script": "quest/value/1-8-2(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "9af8bf17dd8913c6edab1e9a109f3aed24e9d70abdced5b8fb15c1a1b216bce9"
+    },
+    {
+      "quest_id": 269,
+      "script": "quest/value/1-8-2(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "de52a887239d4c4c90c23a53ed7924da58943f51dac7113a9ce1fc126c7c6b2f"
+    },
+    {
+      "quest_id": 270,
+      "script": "quest/value/1-8-4(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "90cf5eabfafed346c0684311992cb0cd91b0932e280847fb7c679868f78381e8"
+    },
+    {
+      "quest_id": 271,
+      "script": "quest/value/1-8-4(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "1b590beb3ddbb9a3fe2fcb2bc38fc38467cf265cbdb710b0df2f8649b2afd318"
+    },
+    {
+      "quest_id": 272,
+      "script": "quest/value/1-8-4(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "93f7bdcd8698b0b75df91321a5b6d10b08e97f22b6ff9e3bc7f48997df2fc7db"
+    },
+    {
+      "quest_id": 273,
+      "script": "quest/value/1-8-6(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "9c068776cff04ae052a22ad98a1868d026f5ca434e3c79da7c39e34bc1d7dc21"
+    },
+    {
+      "quest_id": 274,
+      "script": "quest/value/1-8-6(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "709b1988ea58e6828a2c0db53a9d4b1398d0671097a10f010ac525e09ce30764"
+    },
+    {
+      "quest_id": 275,
+      "script": "quest/value/1-8-6(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "304b750e53a8874bb38b926b84e65a6dfc7612ab851e595bbc871c517564ce0e"
+    },
+    {
+      "quest_id": 276,
+      "script": "quest/value/1-9-2(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "6a52e5e70268035846cc7635b7d9993d4f80cae19e50823fbfe9d5a735f41f71"
+    },
+    {
+      "quest_id": 276,
+      "script": "quest/value/1-9-2(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13195",
+      "base": "不使用",
+      "replacement": "接下来~~当然是幽暗密林！",
+      "native_korean": "다음은~~ 당연히 머크우드!",
+      "scriptCanonicalSha256": "6a52e5e70268035846cc7635b7d9993d4f80cae19e50823fbfe9d5a735f41f71"
+    },
+    {
+      "quest_id": 277,
+      "script": "quest/value/1-9-2(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "1e9d8eb1dbc1568fdd65f08a1d999f96e19b044d513f3e65bacb36b248d51bfa"
+    },
+    {
+      "quest_id": 277,
+      "script": "quest/value/1-9-2(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13195",
+      "base": "不使用",
+      "replacement": "接下来~~当然是幽暗密林！",
+      "native_korean": "다음은~~ 당연히 머크우드!",
+      "scriptCanonicalSha256": "1e9d8eb1dbc1568fdd65f08a1d999f96e19b044d513f3e65bacb36b248d51bfa"
+    },
+    {
+      "quest_id": 278,
+      "script": "quest/value/1-9-2(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "0846183183dfde883b4646349d1574c4d34a884f7c4b7dbe59c6a43ebd55f835"
+    },
+    {
+      "quest_id": 278,
+      "script": "quest/value/1-9-2(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13195",
+      "base": "不使用",
+      "replacement": "接下来~~当然是幽暗密林！",
+      "native_korean": "다음은~~ 당연히 머크우드!",
+      "scriptCanonicalSha256": "0846183183dfde883b4646349d1574c4d34a884f7c4b7dbe59c6a43ebd55f835"
+    },
+    {
+      "quest_id": 279,
+      "script": "quest/value/1-9-4(1).qst",
+      "field": "depend message",
+      "key": "depend_message_13250",
+      "base": "不使用",
+      "replacement": "什么~下一个下一个下一个。自己去吧，Go! Go! Go! 怎么？难道想放弃了吗？还是不是男人~~~！",
+      "native_korean": "뭐야~ 바로 다음 다음 다음. 알아서 Go! Go! Go! 뭐야? 포기할 생각인건가요? 사나이 맞나요~~~!",
+      "scriptCanonicalSha256": "e580911c47aa3ca00eead56648c71473e502d099305ab41ea3599a9bbc7a8939"
+    },
+    {
+      "quest_id": 279,
+      "script": "quest/value/1-9-4(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "e580911c47aa3ca00eead56648c71473e502d099305ab41ea3599a9bbc7a8939"
+    },
+    {
+      "quest_id": 280,
+      "script": "quest/value/1-9-4(2).qst",
+      "field": "depend message",
+      "key": "depend_message_13250",
+      "base": "不使用",
+      "replacement": "什么~下一个下一个下一个。自己去吧，Go! Go! Go! 怎么？难道想放弃了吗？还是不是男人~~~！",
+      "native_korean": "뭐야~ 바로 다음 다음 다음. 알아서 Go! Go! Go! 뭐야? 포기할 생각인건가요? 사나이 맞나요~~~!",
+      "scriptCanonicalSha256": "94296119c811179f94782892b9377c9a58a0a9956d9f38ca688dbc34a045c1d1"
+    },
+    {
+      "quest_id": 280,
+      "script": "quest/value/1-9-4(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "94296119c811179f94782892b9377c9a58a0a9956d9f38ca688dbc34a045c1d1"
+    },
+    {
+      "quest_id": 281,
+      "script": "quest/value/1-9-4(3).qst",
+      "field": "depend message",
+      "key": "depend_message_13250",
+      "base": "不使用",
+      "replacement": "什么~下一个下一个下一个。自己去吧，Go! Go! Go! 怎么？难道想放弃了吗？还是不是男人~~~！",
+      "native_korean": "뭐야~ 바로 다음 다음 다음. 알아서 Go! Go! Go! 뭐야? 포기할 생각인건가요? 사나이 맞나요~~~!",
+      "scriptCanonicalSha256": "b8547c661d0eab14e44ea621e17bbf6912e9a4202ef1a965022571ac363c0efd"
+    },
+    {
+      "quest_id": 281,
+      "script": "quest/value/1-9-4(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "b8547c661d0eab14e44ea621e17bbf6912e9a4202ef1a965022571ac363c0efd"
+    },
+    {
+      "quest_id": 282,
+      "script": "quest/value/1-9-6(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "4bfa734450cf3d5ca007dde85584c96f0f0a1484704690e239319d654e2bde97"
+    },
+    {
+      "quest_id": 282,
+      "script": "quest/value/1-9-6(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13315",
+      "base": "不使用",
+      "replacement": "啊~是猛毒雷鸣废墟啊。",
+      "native_korean": "아~ 포이즌 선더랜드네.",
+      "scriptCanonicalSha256": "4bfa734450cf3d5ca007dde85584c96f0f0a1484704690e239319d654e2bde97"
+    },
+    {
+      "quest_id": 283,
+      "script": "quest/value/1-9-6(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "96c8defb6133f9fbf831a661c00c227721ff31e1a83a34d3808c6bac47fc371a"
+    },
+    {
+      "quest_id": 283,
+      "script": "quest/value/1-9-6(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13315",
+      "base": "不使用",
+      "replacement": "啊~是猛毒雷鸣废墟啊。",
+      "native_korean": "아~ 포이즌 선더랜드네.",
+      "scriptCanonicalSha256": "96c8defb6133f9fbf831a661c00c227721ff31e1a83a34d3808c6bac47fc371a"
+    },
+    {
+      "quest_id": 284,
+      "script": "quest/value/1-9-6(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "63510fbce211f5a108eb4b4f0a3cc64eaaccf6a0a691cbe9c97adf12249148dc"
+    },
+    {
+      "quest_id": 284,
+      "script": "quest/value/1-9-6(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13315",
+      "base": "不使用",
+      "replacement": "啊~是猛毒雷鸣废墟啊。",
+      "native_korean": "아~ 포이즌 선더랜드네.",
+      "scriptCanonicalSha256": "63510fbce211f5a108eb4b4f0a3cc64eaaccf6a0a691cbe9c97adf12249148dc"
+    },
+    {
+      "quest_id": 300,
+      "script": "quest/value/1-7-5(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "b0457716ba6a39fa399fc099142a6f27c58c48f17216964ba9b19e87ec7e55c1"
+    },
+    {
+      "quest_id": 301,
+      "script": "quest/value/1-7-5(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "d79e9b074b491e4fc676049c351db9e0fe474708177dbebc6dee47ebce2cf236"
+    },
+    {
+      "quest_id": 302,
+      "script": "quest/value/1-7-5(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "e94ca36d0a64cd3a935fd1b5d2b79a20aed924898c459bc0c191e279fedfb10c"
+    },
+    {
+      "quest_id": 303,
+      "script": "quest/value/1-7-7(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d55ef2e5f524a3ee1232fe9b82724c1978df43d13aaa550ea3ada3df6f5b2ae8"
+    },
+    {
+      "quest_id": 304,
+      "script": "quest/value/1-7-7(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "5db47f8d1a98ce0f8ab3ea4ceff9868364c57d064f1df64d692e9b1c6180fead"
+    },
+    {
+      "quest_id": 305,
+      "script": "quest/value/1-7-7(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "0d7ad12c3e21d45fdcbd76558996bd3e45d0d7fc6788c184ddea6bdc3251ee9f"
+    },
+    {
+      "quest_id": 306,
+      "script": "quest/value/1-7-8(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "abbedb30e04684e0f1b067bbfef2eb7436faa2f8e48529a6448654c0b5258be6"
+    },
+    {
+      "quest_id": 307,
+      "script": "quest/value/1-7-8(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "6316b22b15ae4fc8c877df3cdd3debc850a6b09ccc948020bedcd8e769fd4b97"
+    },
+    {
+      "quest_id": 308,
+      "script": "quest/value/1-7-8(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "19aff2b3a027fa1bc75d7b4ab25dfca42acbabc78b8243513235363bd6a31ce0"
+    },
+    {
+      "quest_id": 309,
+      "script": "quest/value/1-7-9(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "578da8fa9da1b4afe5897e68fb3b0fdea12d7aec7173f9d42efdf9c39967c95d"
+    },
+    {
+      "quest_id": 309,
+      "script": "quest/value/1-7-9(1).qst",
+      "field": "solve message",
+      "key": "solve_message_12895",
+      "base": "不使用",
+      "replacement": "鬼剑士通常被看作是被邪恶侵染的存在。因此，我或许才会躲在不显眼的后巷里，偷偷吞吐烟雾，苟活至今吧。\\n没错！鬼剑士想要生存下去，需要把世人的错误偏见转化为敬畏的无穷强大、连自己都不相信的彻底谨慎，以及仅凭观察事物就能看穿其内部的敏锐感知！这些都是必不可少的。\\n让一个连眼睛都看不见的老头说了太多。就这样吧。祝你冒险愉快。天空之城可不容易闯啊~",
+      "native_korean": "귀검사는 흔히 악에 물든 존재로 비춰진다. 그렇기에 내가 남 눈에 잘 띄지 않는 뒷골목에서 몰래 냄새 피우며 살아남아 있는 지도 모르지.\\n 그렇다! 귀검사가 살아남기 위해서는 이 세상 사람의 그릇된 편견을 경외심으로 바꿀 수 있는 무한한 강함, 자신 조차 믿지 않는 철저함, 사물을 보는 것만으로 안의 내용물을 점칠 수 있는 예리한 감각! 그것들이 필요한 것이다.\\n 눈도 안 뵈는 노인네가 말이 길었군. 그럼 이상. 멋진 모험 되길 바란다. 하늘의 성은 쉽지 않을 것이여~",
+      "scriptCanonicalSha256": "578da8fa9da1b4afe5897e68fb3b0fdea12d7aec7173f9d42efdf9c39967c95d"
+    },
+    {
+      "quest_id": 310,
+      "script": "quest/value/1-7-9(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "0d090bff290033070779c7720fcc94de0638a942f25842fc7c4e5ba129407d87"
+    },
+    {
+      "quest_id": 310,
+      "script": "quest/value/1-7-9(2).qst",
+      "field": "solve message",
+      "key": "solve_message_12895",
+      "base": "不使用",
+      "replacement": "鬼剑士通常被看作是被邪恶侵染的存在。因此，我或许才会躲在不显眼的后巷里，偷偷吞吐烟雾，苟活至今吧。\\n没错！鬼剑士想要生存下去，需要把世人的错误偏见转化为敬畏的无穷强大、连自己都不相信的彻底谨慎，以及仅凭观察事物就能看穿其内部的敏锐感知！这些都是必不可少的。\\n让一个连眼睛都看不见的老头说了太多。就这样吧。祝你冒险愉快。天空之城可不容易闯啊~",
+      "native_korean": "귀검사는 흔히 악에 물든 존재로 비춰진다. 그렇기에 내가 남 눈에 잘 띄지 않는 뒷골목에서 몰래 냄새 피우며 살아남아 있는 지도 모르지.\\n 그렇다! 귀검사가 살아남기 위해서는 이 세상 사람의 그릇된 편견을 경외심으로 바꿀 수 있는 무한한 강함, 자신 조차 믿지 않는 철저함, 사물을 보는 것만으로 안의 내용물을 점칠 수 있는 예리한 감각! 그것들이 필요한 것이다.\\n 눈도 안 뵈는 노인네가 말이 길었군. 그럼 이상. 멋진 모험 되길 바란다. 하늘의 성은 쉽지 않을 것이여~",
+      "scriptCanonicalSha256": "0d090bff290033070779c7720fcc94de0638a942f25842fc7c4e5ba129407d87"
+    },
+    {
+      "quest_id": 311,
+      "script": "quest/value/1-7-9(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "11f56dfdceed9f0073a7b08c75cdccfb6921411ea7c801a07c1dc6ef42743b16"
+    },
+    {
+      "quest_id": 311,
+      "script": "quest/value/1-7-9(3).qst",
+      "field": "solve message",
+      "key": "solve_message_12895",
+      "base": "不使用",
+      "replacement": "鬼剑士通常被看作是被邪恶侵染的存在。因此，我或许才会躲在不显眼的后巷里，偷偷吞吐烟雾，苟活至今吧。\\n没错！鬼剑士想要生存下去，需要把世人的错误偏见转化为敬畏的无穷强大、连自己都不相信的彻底谨慎，以及仅凭观察事物就能看穿其内部的敏锐感知！这些都是必不可少的。\\n让一个连眼睛都看不见的老头说了太多。就这样吧。祝你冒险愉快。天空之城可不容易闯啊~",
+      "native_korean": "귀검사는 흔히 악에 물든 존재로 비춰진다. 그렇기에 내가 남 눈에 잘 띄지 않는 뒷골목에서 몰래 냄새 피우며 살아남아 있는 지도 모르지.\\n 그렇다! 귀검사가 살아남기 위해서는 이 세상 사람의 그릇된 편견을 경외심으로 바꿀 수 있는 무한한 강함, 자신 조차 믿지 않는 철저함, 사물을 보는 것만으로 안의 내용물을 점칠 수 있는 예리한 감각! 그것들이 필요한 것이다.\\n 눈도 안 뵈는 노인네가 말이 길었군. 그럼 이상. 멋진 모험 되길 바란다. 하늘의 성은 쉽지 않을 것이여~",
+      "scriptCanonicalSha256": "11f56dfdceed9f0073a7b08c75cdccfb6921411ea7c801a07c1dc6ef42743b16"
+    },
+    {
+      "quest_id": 312,
+      "script": "quest/value/1-7-3(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "7dcd362f64822849b9f4e3f574bb389abdc167089b175e72a9b96139693b156e"
+    },
+    {
+      "quest_id": 313,
+      "script": "quest/value/1-7-3(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "85aae48744aa8a86829f32400fce3e54c4481b67f0bacd9feaa3efff36ee9ffd"
+    },
+    {
+      "quest_id": 314,
+      "script": "quest/value/1-7-3(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "9abe44822a5cb75d4a9734e45399afeb893d7fc9e2d1229d44d3221f7f15fd08"
+    },
+    {
+      "quest_id": 315,
+      "script": "quest/value/1-8-3(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "583bec5d04bebda6d2fb479628526376895a05b825a41a859aa0afa543ed6784"
+    },
+    {
+      "quest_id": 316,
+      "script": "quest/value/1-8-3(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "284bd03c5a837ac1b9b8952c36c573b8c101ee0c0cf7d6dab65e351dc2a453fc"
+    },
+    {
+      "quest_id": 317,
+      "script": "quest/value/1-8-3(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "de29f55353ce6bb3d21f660d3c29f4f84cd66e1055a8533206d0b4150256a2c2"
+    },
+    {
+      "quest_id": 318,
+      "script": "quest/value/1-8-5(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "ef96e19f9b5c0cb322d304816d1c2b533a08df3d6128617d4424b59c0dcb2223"
+    },
+    {
+      "quest_id": 319,
+      "script": "quest/value/1-8-5(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "8bb8f8276bea836b222a1695677a188c0b7d0a606ecfe54e9107b0eb597a0c58"
+    },
+    {
+      "quest_id": 320,
+      "script": "quest/value/1-8-5(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "ea38a6fcf867fc78adb955d3f209a88587238f961629408677ff2e5f4c06e72c"
+    },
+    {
+      "quest_id": 321,
+      "script": "quest/value/1-8-7(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "6eddb39e0ae7289e38ad18219a3a7186793bd44482af0192605684be438553ce"
+    },
+    {
+      "quest_id": 322,
+      "script": "quest/value/1-8-7(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d5973ddbc9a70125a6304df6329159a36e1ad9dcf0c21435820c78f1f5fd23ff"
+    },
+    {
+      "quest_id": 323,
+      "script": "quest/value/1-8-7(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "f59420a66af10872ae6e558b72398112d355ce8f55b839a506aad9a544884461"
+    },
+    {
+      "quest_id": 324,
+      "script": "quest/value/1-8-8(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "4a42c7d2accf922c8f83be739357bdc0bc8aceb78ee4cc2d586b2d0383660bf1"
+    },
+    {
+      "quest_id": 325,
+      "script": "quest/value/1-8-8(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "0ca408a6535d1271d2a92bb465e7e680792ae7e39957b71179b923412b9cb9a9"
+    },
+    {
+      "quest_id": 326,
+      "script": "quest/value/1-8-8(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "e5b5046ff62e1b579078c74b114fe56a544225fa0d2fe4452f0d0177f7cccea6"
+    },
+    {
+      "quest_id": 327,
+      "script": "quest/value/1-8-9(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "defe7bacd724a31fea568308f34086273ed96e8e397cff3e540907a544435bdc"
+    },
+    {
+      "quest_id": 327,
+      "script": "quest/value/1-8-9(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13150",
+      "base": "不使用",
+      "replacement": "你终于要前往天空之城了。哈哈，天空之城……真是个奇妙的地方。希望你能在那里获得一件好装备。",
+      "native_korean": "이제는 정말 하늘의 성으로 가시겠군요. 하하 하늘의 성...... 참으로 묘~한 곳이지요. 부디 좋은 장비를 얻으시기 바랍니다.",
+      "scriptCanonicalSha256": "defe7bacd724a31fea568308f34086273ed96e8e397cff3e540907a544435bdc"
+    },
+    {
+      "quest_id": 328,
+      "script": "quest/value/1-8-9(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "024e32cccfde19ca533c128bcfec1f83f4427a2d2385ed52a42ef9b8a78f5c8f"
+    },
+    {
+      "quest_id": 328,
+      "script": "quest/value/1-8-9(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13150",
+      "base": "不使用",
+      "replacement": "你终于要前往天空之城了。哈哈，天空之城……真是个奇妙的地方。希望你能在那里获得一件好装备。",
+      "native_korean": "이제는 정말 하늘의 성으로 가시겠군요. 하하 하늘의 성...... 참으로 묘~한 곳이지요. 부디 좋은 장비를 얻으시기 바랍니다.",
+      "scriptCanonicalSha256": "024e32cccfde19ca533c128bcfec1f83f4427a2d2385ed52a42ef9b8a78f5c8f"
+    },
+    {
+      "quest_id": 329,
+      "script": "quest/value/1-8-9(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "f26a341ee613640ad6e6e787db576c464c6c299e8faa79dc86cc3eaf047b52bb"
+    },
+    {
+      "quest_id": 329,
+      "script": "quest/value/1-8-9(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13150",
+      "base": "不使用",
+      "replacement": "你终于要前往天空之城了。哈哈，天空之城……真是个奇妙的地方。希望你能在那里获得一件好装备。",
+      "native_korean": "이제는 정말 하늘의 성으로 가시겠군요. 하하 하늘의 성...... 참으로 묘~한 곳이지요. 부디 좋은 장비를 얻으시기 바랍니다.",
+      "scriptCanonicalSha256": "f26a341ee613640ad6e6e787db576c464c6c299e8faa79dc86cc3eaf047b52bb"
+    },
+    {
+      "quest_id": 330,
+      "script": "quest/value/1-9-3(1).qst",
+      "field": "depend message",
+      "key": "depend_message_13220",
+      "base": "不使用",
+      "replacement": "啊~~~哦~~~这都说了好几遍，嘴巴都累了。像这样一个一个解释，怎么说呢~总觉得有点疲惫。听说美女一累皮肤就会变差……\\n哈哈，开个玩笑。我最近还有很多工作堆着呢。以后就算我不长篇大论，也希望你能自己！主动！和平地！通关下一个地下城！",
+      "native_korean": "아~~~ 오~~~ 고거 몇 번 말했다고 입이 다 아프네. 이렇게 하나 하나 설명해주기는 뭐랄까~ 피곤한 감이 있어~. 미인은 피곤하면 피부 다 버린다는데......\\n 하하 농담이고 내가 요새 다른 업무가 많이 밀려서 말예요. 다음부터는 길게 말 안해도 스스로! 알아서! 평화롭게! 다음 던전을 클리어 해줬으면 좋겠어요!",
+      "scriptCanonicalSha256": "dc9a3def070c4db284afbe6177fd5bfef66619227a29eda1582de46b70a083b3"
+    },
+    {
+      "quest_id": 330,
+      "script": "quest/value/1-9-3(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "dc9a3def070c4db284afbe6177fd5bfef66619227a29eda1582de46b70a083b3"
+    },
+    {
+      "quest_id": 331,
+      "script": "quest/value/1-9-3(2).qst",
+      "field": "depend message",
+      "key": "depend_message_13220",
+      "base": "不使用",
+      "replacement": "啊~~~哦~~~这都说了好几遍，嘴巴都累了。像这样一个一个解释，怎么说呢~总觉得有点疲惫。听说美女一累皮肤就会变差……\\n哈哈，开个玩笑。我最近还有很多工作堆着呢。以后就算我不长篇大论，也希望你能自己！主动！和平地！通关下一个地下城！",
+      "native_korean": "아~~~ 오~~~ 고거 몇 번 말했다고 입이 다 아프네. 이렇게 하나 하나 설명해주기는 뭐랄까~ 피곤한 감이 있어~. 미인은 피곤하면 피부 다 버린다는데......\\n 하하 농담이고 내가 요새 다른 업무가 많이 밀려서 말예요. 다음부터는 길게 말 안해도 스스로! 알아서! 평화롭게! 다음 던전을 클리어 해줬으면 좋겠어요!",
+      "scriptCanonicalSha256": "ec9afbd44c6432949ea2140fdc3d0b41fd8eed037153a155e0715d7190e8d1ae"
+    },
+    {
+      "quest_id": 331,
+      "script": "quest/value/1-9-3(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "ec9afbd44c6432949ea2140fdc3d0b41fd8eed037153a155e0715d7190e8d1ae"
+    },
+    {
+      "quest_id": 332,
+      "script": "quest/value/1-9-3(3).qst",
+      "field": "depend message",
+      "key": "depend_message_13220",
+      "base": "不使用",
+      "replacement": "啊~~~哦~~~这都说了好几遍，嘴巴都累了。像这样一个一个解释，怎么说呢~总觉得有点疲惫。听说美女一累皮肤就会变差……\\n哈哈，开个玩笑。我最近还有很多工作堆着呢。以后就算我不长篇大论，也希望你能自己！主动！和平地！通关下一个地下城！",
+      "native_korean": "아~~~ 오~~~ 고거 몇 번 말했다고 입이 다 아프네. 이렇게 하나 하나 설명해주기는 뭐랄까~ 피곤한 감이 있어~. 미인은 피곤하면 피부 다 버린다는데......\\n 하하 농담이고 내가 요새 다른 업무가 많이 밀려서 말예요. 다음부터는 길게 말 안해도 스스로! 알아서! 평화롭게! 다음 던전을 클리어 해줬으면 좋겠어요!",
+      "scriptCanonicalSha256": "998f084a5b5cc4f20ba8b805e07c11a905d70d4c1f025b50f88e63960d0c6fe8"
+    },
+    {
+      "quest_id": 332,
+      "script": "quest/value/1-9-3(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "998f084a5b5cc4f20ba8b805e07c11a905d70d4c1f025b50f88e63960d0c6fe8"
+    },
+    {
+      "quest_id": 333,
+      "script": "quest/value/1-9-5(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "27494d5a3d3e841b96b7ba5fced7382f366ee72945a742b8fb8e32feecf5351b"
+    },
+    {
+      "quest_id": 334,
+      "script": "quest/value/1-9-5(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "eb5d74221ded040dc7a7a4d7196049b77369f611a37feb640f574bf54823c5ec"
+    },
+    {
+      "quest_id": 335,
+      "script": "quest/value/1-9-5(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "7fd04cf0947d64bff3dfd5300389b69c0f73d7c829419a3cc955a721ea622b72"
+    },
+    {
+      "quest_id": 336,
+      "script": "quest/value/1-9-7(1).qst",
+      "field": "depend message",
+      "key": "depend_message_13340",
+      "base": "不使用",
+      "replacement": "小心点。鲁卡鲁会发动快速的近身攻击，对神枪手来说简直是天敌~",
+      "native_korean": "조심하세요. 루가루는 빠른 근접 공격을 하니까. 거너에겐 쥐약이라 할 수 있거든요~",
+      "scriptCanonicalSha256": "572671e5d64f05fd7f8b758879d05459923204b22a1d1beb288850f2e481fb90"
+    },
+    {
+      "quest_id": 336,
+      "script": "quest/value/1-9-7(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "572671e5d64f05fd7f8b758879d05459923204b22a1d1beb288850f2e481fb90"
+    },
+    {
+      "quest_id": 336,
+      "script": "quest/value/1-9-7(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13345",
+      "base": "不使用",
+      "replacement": "哎呀~~接下来是格拉卡啊~沙乌塔~等着我~~~。",
+      "native_korean": "어머~~ 다음은 그락카락이네~ 샤우타~ 기다려~~~.",
+      "scriptCanonicalSha256": "572671e5d64f05fd7f8b758879d05459923204b22a1d1beb288850f2e481fb90"
+    },
+    {
+      "quest_id": 337,
+      "script": "quest/value/1-9-7(2).qst",
+      "field": "depend message",
+      "key": "depend_message_13340",
+      "base": "不使用",
+      "replacement": "小心点。鲁卡鲁会发动快速的近身攻击，对神枪手来说简直是天敌~",
+      "native_korean": "조심하세요. 루가루는 빠른 근접 공격을 하니까. 거너에겐 쥐약이라 할 수 있거든요~",
+      "scriptCanonicalSha256": "a7092d0c1002f250c4ace964876c43df65c8405cf86b126bb25843fd5c82876e"
+    },
+    {
+      "quest_id": 337,
+      "script": "quest/value/1-9-7(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "a7092d0c1002f250c4ace964876c43df65c8405cf86b126bb25843fd5c82876e"
+    },
+    {
+      "quest_id": 337,
+      "script": "quest/value/1-9-7(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13345",
+      "base": "不使用",
+      "replacement": "哎呀~~接下来是格拉卡啊~沙乌塔~等着我~~~。",
+      "native_korean": "어머~~ 다음은 그락카락이네~ 샤우타~ 기다려~~~.",
+      "scriptCanonicalSha256": "a7092d0c1002f250c4ace964876c43df65c8405cf86b126bb25843fd5c82876e"
+    },
+    {
+      "quest_id": 338,
+      "script": "quest/value/1-9-7(3).qst",
+      "field": "depend message",
+      "key": "depend_message_13340",
+      "base": "不使用",
+      "replacement": "小心点。鲁卡鲁会发动快速的近身攻击，对神枪手来说简直是天敌~",
+      "native_korean": "조심하세요. 루가루는 빠른 근접 공격을 하니까. 거너에겐 쥐약이라 할 수 있거든요~",
+      "scriptCanonicalSha256": "57d5085a10a9c772e9ae3e75b0f137ba568e0b45d79edd09b170dc5b2f63d91d"
+    },
+    {
+      "quest_id": 338,
+      "script": "quest/value/1-9-7(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "57d5085a10a9c772e9ae3e75b0f137ba568e0b45d79edd09b170dc5b2f63d91d"
+    },
+    {
+      "quest_id": 338,
+      "script": "quest/value/1-9-7(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13345",
+      "base": "不使用",
+      "replacement": "哎呀~~接下来是格拉卡啊~沙乌塔~等着我~~~。",
+      "native_korean": "어머~~ 다음은 그락카락이네~ 샤우타~ 기다려~~~.",
+      "scriptCanonicalSha256": "57d5085a10a9c772e9ae3e75b0f137ba568e0b45d79edd09b170dc5b2f63d91d"
+    },
+    {
+      "quest_id": 339,
+      "script": "quest/value/1-9-8(1).qst",
+      "field": "depend message",
+      "key": "depend_message_13370",
+      "base": "不使用",
+      "replacement": "啊~神枪手的精准射击训练终于快结束了。怎么样，有姐姐我教你，还算能应付吧？\\n别忘了这次感受到的感觉，在天空之城也要继续努力！",
+      "native_korean": "아~ 이제 거너의 일발 훈련도 끝이 보이는군요. 그래 이 누님이 가르쳐 주니. 할만 해요?\\n 이번에 느낀 그 느낌을 잊지 말고 하늘의 성에서도 분발하세요!",
+      "scriptCanonicalSha256": "7e37d49d645e91ddd2c99d96418de140816f7d159367b521dea27e32f4e58c69"
+    },
+    {
+      "quest_id": 339,
+      "script": "quest/value/1-9-8(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "7e37d49d645e91ddd2c99d96418de140816f7d159367b521dea27e32f4e58c69"
+    },
+    {
+      "quest_id": 339,
+      "script": "quest/value/1-9-8(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13375",
+      "base": "不使用",
+      "replacement": "哎呀，这下好了~接下来不是彼诺修嘛！",
+      "native_korean": "아이구 이거야 원~ 다음은 비노슈 잖아!",
+      "scriptCanonicalSha256": "7e37d49d645e91ddd2c99d96418de140816f7d159367b521dea27e32f4e58c69"
+    },
+    {
+      "quest_id": 340,
+      "script": "quest/value/1-9-8(2).qst",
+      "field": "depend message",
+      "key": "depend_message_13370",
+      "base": "不使用",
+      "replacement": "啊~神枪手的精准射击训练终于快结束了。怎么样，有姐姐我教你，还算能应付吧？\\n别忘了这次感受到的感觉，在天空之城也要继续努力！",
+      "native_korean": "아~ 이제 거너의 일발 훈련도 끝이 보이는군요. 그래 이 누님이 가르쳐 주니. 할만 해요?\\n 이번에 느낀 그 느낌을 잊지 말고 하늘의 성에서도 분발하세요!",
+      "scriptCanonicalSha256": "d313b015269ceb14f74e163690534d19966ad4c3942347a20ca7e2f7f2cf1846"
+    },
+    {
+      "quest_id": 340,
+      "script": "quest/value/1-9-8(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d313b015269ceb14f74e163690534d19966ad4c3942347a20ca7e2f7f2cf1846"
+    },
+    {
+      "quest_id": 340,
+      "script": "quest/value/1-9-8(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13375",
+      "base": "不使用",
+      "replacement": "哎呀，这下好了~接下来不是彼诺修嘛！",
+      "native_korean": "아이구 이거야 원~ 다음은 비노슈 잖아!",
+      "scriptCanonicalSha256": "d313b015269ceb14f74e163690534d19966ad4c3942347a20ca7e2f7f2cf1846"
+    },
+    {
+      "quest_id": 341,
+      "script": "quest/value/1-9-8(3).qst",
+      "field": "depend message",
+      "key": "depend_message_13370",
+      "base": "不使用",
+      "replacement": "啊~神枪手的精准射击训练终于快结束了。怎么样，有姐姐我教你，还算能应付吧？\\n别忘了这次感受到的感觉，在天空之城也要继续努力！",
+      "native_korean": "아~ 이제 거너의 일발 훈련도 끝이 보이는군요. 그래 이 누님이 가르쳐 주니. 할만 해요?\\n 이번에 느낀 그 느낌을 잊지 말고 하늘의 성에서도 분발하세요!",
+      "scriptCanonicalSha256": "9a244a07aecae44e739c7b9521f47f40b2008e34c4de32b89f434e1aede6df40"
+    },
+    {
+      "quest_id": 341,
+      "script": "quest/value/1-9-8(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "9a244a07aecae44e739c7b9521f47f40b2008e34c4de32b89f434e1aede6df40"
+    },
+    {
+      "quest_id": 341,
+      "script": "quest/value/1-9-8(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13375",
+      "base": "不使用",
+      "replacement": "哎呀，这下好了~接下来不是彼诺修嘛！",
+      "native_korean": "아이구 이거야 원~ 다음은 비노슈 잖아!",
+      "scriptCanonicalSha256": "9a244a07aecae44e739c7b9521f47f40b2008e34c4de32b89f434e1aede6df40"
+    },
+    {
+      "quest_id": 342,
+      "script": "quest/value/1-9-9(1).qst",
+      "field": "depend message",
+      "key": "depend_message_13400",
+      "base": "不使用",
+      "replacement": "啊~这段漫长旅程也终于看到尽头了~最后一关了~知道什么叫善始善终吧？",
+      "native_korean": "아~ 이제 이 기나긴 여정도 끝이 보이는 걸~ 마지막이야~ 유종의 미 알죠?",
+      "scriptCanonicalSha256": "4914bdc6557e276e0a96f95fee2c3cfca4dfcdcfbb8dab46b863390eb576ab51"
+    },
+    {
+      "quest_id": 342,
+      "script": "quest/value/1-9-9(1).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "4914bdc6557e276e0a96f95fee2c3cfca4dfcdcfbb8dab46b863390eb576ab51"
+    },
+    {
+      "quest_id": 342,
+      "script": "quest/value/1-9-9(1).qst",
+      "field": "solve message",
+      "key": "solve_message_13405",
+      "base": "不使用",
+      "replacement": "我之所以对你进行特别训练，就是因为天空之城。\\n天空之城里住着巴卡尔的爪牙，对于我们天界人来说，那可是仇人中的仇人，是被认为极其~邪恶的家伙。\\n巴卡尔已经死了几百年，可那里至今仍有人守着，真是……巴卡尔的部下果然不好对付！",
+      "native_korean": "내가 특별 훈련을 시킨 이유는 하늘의 성 때문이예요.\\n 하늘의 성은 우리 천계 사람들에게는 원수도 그런 원수가 없을 정도로 대단~히 나쁜 놈으로 여겨지고 있는 바칼의 끄나풀이 머물고 있는 곳이거든요.\\n 바칼이 죽은지 벌써 몇 백년이나 지났는 데도 아직도 지키고 있는 거 보면 참...... 바칼의 부하는 정말 쉽지 않아요!",
+      "scriptCanonicalSha256": "4914bdc6557e276e0a96f95fee2c3cfca4dfcdcfbb8dab46b863390eb576ab51"
+    },
+    {
+      "quest_id": 343,
+      "script": "quest/value/1-9-9(2).qst",
+      "field": "depend message",
+      "key": "depend_message_13400",
+      "base": "不使用",
+      "replacement": "啊~这段漫长旅程也终于看到尽头了~最后一关了~知道什么叫善始善终吧？",
+      "native_korean": "아~ 이제 이 기나긴 여정도 끝이 보이는 걸~ 마지막이야~ 유종의 미 알죠?",
+      "scriptCanonicalSha256": "a1ff4cfb7c42df17d5b445e2d6be603cdc20818d695806062a7b1fc9754f97e2"
+    },
+    {
+      "quest_id": 343,
+      "script": "quest/value/1-9-9(2).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "a1ff4cfb7c42df17d5b445e2d6be603cdc20818d695806062a7b1fc9754f97e2"
+    },
+    {
+      "quest_id": 343,
+      "script": "quest/value/1-9-9(2).qst",
+      "field": "solve message",
+      "key": "solve_message_13405",
+      "base": "不使用",
+      "replacement": "我之所以对你进行特别训练，就是因为天空之城。\\n天空之城里住着巴卡尔的爪牙，对于我们天界人来说，那可是仇人中的仇人，是被认为极其~邪恶的家伙。\\n巴卡尔已经死了几百年，可那里至今仍有人守着，真是……巴卡尔的部下果然不好对付！",
+      "native_korean": "내가 특별 훈련을 시킨 이유는 하늘의 성 때문이예요.\\n 하늘의 성은 우리 천계 사람들에게는 원수도 그런 원수가 없을 정도로 대단~히 나쁜 놈으로 여겨지고 있는 바칼의 끄나풀이 머물고 있는 곳이거든요.\\n 바칼이 죽은지 벌써 몇 백년이나 지났는 데도 아직도 지키고 있는 거 보면 참...... 바칼의 부하는 정말 쉽지 않아요!",
+      "scriptCanonicalSha256": "a1ff4cfb7c42df17d5b445e2d6be603cdc20818d695806062a7b1fc9754f97e2"
+    },
+    {
+      "quest_id": 344,
+      "script": "quest/value/1-9-9(3).qst",
+      "field": "depend message",
+      "key": "depend_message_13400",
+      "base": "不使用",
+      "replacement": "啊~这段漫长旅程也终于看到尽头了~最后一关了~知道什么叫善始善终吧？",
+      "native_korean": "아~ 이제 이 기나긴 여정도 끝이 보이는 걸~ 마지막이야~ 유종의 미 알죠?",
+      "scriptCanonicalSha256": "97d8b419e3c89abc0a7f30edf981b9ec4fa093f8f86207e6a19a07419ef31c9a"
+    },
+    {
+      "quest_id": 344,
+      "script": "quest/value/1-9-9(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "97d8b419e3c89abc0a7f30edf981b9ec4fa093f8f86207e6a19a07419ef31c9a"
+    },
+    {
+      "quest_id": 344,
+      "script": "quest/value/1-9-9(3).qst",
+      "field": "solve message",
+      "key": "solve_message_13405",
+      "base": "不使用",
+      "replacement": "我之所以对你进行特别训练，就是因为天空之城。\\n天空之城里住着巴卡尔的爪牙，对于我们天界人来说，那可是仇人中的仇人，是被认为极其~邪恶的家伙。\\n巴卡尔已经死了几百年，可那里至今仍有人守着，真是……巴卡尔的部下果然不好对付！",
+      "native_korean": "내가 특별 훈련을 시킨 이유는 하늘의 성 때문이예요.\\n 하늘의 성은 우리 천계 사람들에게는 원수도 그런 원수가 없을 정도로 대단~히 나쁜 놈으로 여겨지고 있는 바칼의 끄나풀이 머물고 있는 곳이거든요.\\n 바칼이 죽은지 벌써 몇 백년이나 지났는 데도 아직도 지키고 있는 거 보면 참...... 바칼의 부하는 정말 쉽지 않아요!",
+      "scriptCanonicalSha256": "97d8b419e3c89abc0a7f30edf981b9ec4fa093f8f86207e6a19a07419ef31c9a"
+    },
+    {
+      "quest_id": 370,
+      "script": "quest/value/1-10-1.qst",
+      "field": "condition message",
+      "key": "condition_message_12195",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后前往教授各职业技能的NPC处，即可接取重新改编后的任务。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트 입니다. 이 퀘스트를 포기하시고 각 직업 스킬을 가르쳐 주는 NPC를 찾아가시면, 새로이 개편된 퀘스트를 받을 수 있습니다. 불편을 드려 죄송합니다.)",
+      "scriptCanonicalSha256": "aaf1119f19bb99c4b2f14460278abd367c871ed51e549d41b7f375de38d27eda"
+    },
+    {
+      "quest_id": 371,
+      "script": "quest/value/1-10-2.qst",
+      "field": "depend message",
+      "key": "depend_message_12210",
+      "base": "不使用",
+      "replacement": "这次请独自通关洛兰深处冒险级以上难度的地下城。不要因为太简单就觉得麻烦，把它当作练习至今所学魔法的机会吧。",
+      "native_korean": "이번엔 로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어해 보세요. 너무 쉽다고 귀찮다 마시고 그동안 배운 마법을 연습한다고 생각해 주세요.",
+      "scriptCanonicalSha256": "2ae7aa6c8331cfcd4c449d6cf9f36401bd1486c2ca41610e45929fdd92070903"
+    },
+    {
+      "quest_id": 371,
+      "script": "quest/value/1-10-2.qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "2ae7aa6c8331cfcd4c449d6cf9f36401bd1486c2ca41610e45929fdd92070903"
+    },
+    {
+      "quest_id": 373,
+      "script": "quest/value/1-10-2(3).qst",
+      "field": "depend message",
+      "key": "depend_message_12210",
+      "base": "不使用",
+      "replacement": "这次请独自通关洛兰深处冒险级以上难度的地下城。不要因为太简单就觉得麻烦，把它当作练习至今所学魔法的机会吧。",
+      "native_korean": "이번엔 로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어해 보세요. 너무 쉽다고 귀찮다 마시고 그동안 배운 마법을 연습한다고 생각해 주세요.",
+      "scriptCanonicalSha256": "2322d2d1047ab38c74b3ccbbd23d5d1f529d6ecb666c368ca0e71ee849638a5b"
+    },
+    {
+      "quest_id": 373,
+      "script": "quest/value/1-10-2(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12215",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "2322d2d1047ab38c74b3ccbbd23d5d1f529d6ecb666c368ca0e71ee849638a5b"
+    },
+    {
+      "quest_id": 375,
+      "script": "quest/value/1-10-3.qst",
+      "field": "depend message",
+      "key": "depend_message_12240",
+      "base": "不使用",
+      "replacement": "这次是幽暗密林勇士级以上难度的地下城。请独自通关，顺便练习魔法。",
+      "native_korean": "이번엔 머크우드 마스터 로드 이상의 던전 이랍니다. 혼자서 클리어 하시면서 마법을 연습하세요.",
+      "scriptCanonicalSha256": "df5a1848cfbcc46c2b63595cf532768b10a160ffc726b893e5c4a0431e858664"
+    },
+    {
+      "quest_id": 375,
+      "script": "quest/value/1-10-3.qst",
+      "field": "condition message",
+      "key": "condition_message_12245",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "df5a1848cfbcc46c2b63595cf532768b10a160ffc726b893e5c4a0431e858664"
+    },
+    {
+      "quest_id": 376,
+      "script": "quest/value/1-10-4.qst",
+      "field": "depend message",
+      "key": "depend_message_12260",
+      "base": "不使用",
+      "replacement": "这次请前往幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "이번엔 머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전으로 가세요.",
+      "scriptCanonicalSha256": "53b926e754a8da2127d5825355e88f35b81204d9ef9d45ecc674c48ced77b41e"
+    },
+    {
+      "quest_id": 376,
+      "script": "quest/value/1-10-4.qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "53b926e754a8da2127d5825355e88f35b81204d9ef9d45ecc674c48ced77b41e"
+    },
+    {
+      "quest_id": 378,
+      "script": "quest/value/1-10-4(3).qst",
+      "field": "depend message",
+      "key": "depend_message_12260",
+      "base": "不使用",
+      "replacement": "这次请前往幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "이번엔 머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전으로 가세요.",
+      "scriptCanonicalSha256": "027fe5cfcda138872893536287a1278949fef61b6bb41e4902d6a192f6c6732c"
+    },
+    {
+      "quest_id": 378,
+      "script": "quest/value/1-10-4(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12265",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "027fe5cfcda138872893536287a1278949fef61b6bb41e4902d6a192f6c6732c"
+    },
+    {
+      "quest_id": 380,
+      "script": "quest/value/1-10-5.qst",
+      "field": "condition message",
+      "key": "condition_message_12295",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "76fbb9270484da82b62e3367e28d6b3d7c7ede8ead3959148d1df09d0cf4a139"
+    },
+    {
+      "quest_id": 381,
+      "script": "quest/value/1-10-6.qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "ed0a482221a92518a580d6112ac1f2ab291172803f35d7088ba5024e085a1723"
+    },
+    {
+      "quest_id": 383,
+      "script": "quest/value/1-10-6(3).qst",
+      "field": "condition message",
+      "key": "condition_message_12315",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "8e0dc44bb9d4d7551cda7447856c290ee3f42994a2e9856b640366435db3d455"
+    },
+    {
+      "quest_id": 385,
+      "script": "quest/value/1-10-7.qst",
+      "field": "condition message",
+      "key": "condition_message_12345",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级以上难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "afbef14dc3427d00331cf1deb5d5d156fc656057f3d4ddb07742fac3c2f35d6b"
+    },
+    {
+      "quest_id": 386,
+      "script": "quest/value/1-10-8.qst",
+      "field": "condition message",
+      "key": "condition_message_12365",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d7de34825e2180de0a6f08e4fd667e28f815d029bfcb65fb18bae88d2b12fb79"
+    },
+    {
+      "quest_id": 387,
+      "script": "quest/value/1-10-9.qst",
+      "field": "condition message",
+      "key": "condition_message_12385",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "36d51ec04cc81447b628a2a49dea21b7149de07597a0b4641807a8f0a79b4259"
+    },
+    {
+      "quest_id": 455,
+      "script": "quest/value/1-11-1.qst",
+      "field": "name",
+      "key": "name_19200",
+      "base": "不使用",
+      "replacement": "神圣之路 1",
+      "native_korean": "성스러운 길 1",
+      "scriptCanonicalSha256": "cd32305472778f7c7785ae60003f01fb6c957c9a5b34e8bc8cdd41f9404c57ba"
+    },
+    {
+      "quest_id": 455,
+      "script": "quest/value/1-11-1.qst",
+      "field": "depend message",
+      "key": "depend_message_19205",
+      "base": "不使用",
+      "replacement": "你要前往天空之城吗？\\n这对你来说会是一场艰苦的试炼。想走上牧师之路，就必须不断修炼。\\n不能满足于自己当前的实力。修炼永远要从基础开始。\\n请通关洛兰后再来找我。",
+      "native_korean": "하늘성으로 가시려 하십니까?\\n 그대에게는 힘든 시련이 되겠군요. 프리스트의 길을 걷기 위해서는 끊임 없이 수련을 해야 합니다.\\n  자신의 만족은 있으면 안됩니다. 수련의 시작은 언제나 기초부터입니다.\\n  로리엔을 클리어하고 저를 다시 찾아 오시기 바랍니다.",
+      "scriptCanonicalSha256": "cd32305472778f7c7785ae60003f01fb6c957c9a5b34e8bc8cdd41f9404c57ba"
+    },
+    {
+      "quest_id": 455,
+      "script": "quest/value/1-11-1.qst",
+      "field": "condition message",
+      "key": "condition_message_12195",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后前往教授各职业技能的NPC处，即可接取重新改编后的任务。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트 입니다. 이 퀘스트를 포기하시고 각 직업 스킬을 가르쳐 주는 NPC를 찾아가시면, 새로이 개편된 퀘스트를 받을 수 있습니다. 불편을 드려 죄송합니다.)",
+      "scriptCanonicalSha256": "cd32305472778f7c7785ae60003f01fb6c957c9a5b34e8bc8cdd41f9404c57ba"
+    },
+    {
+      "quest_id": 455,
+      "script": "quest/value/1-11-1.qst",
+      "field": "solve message",
+      "key": "solve_message_19215",
+      "base": "不使用",
+      "replacement": "你回来啦？接下来是洛兰深处。",
+      "native_korean": "다녀오셨군요? 다음은 로리엔 안쪽입니다.",
+      "scriptCanonicalSha256": "cd32305472778f7c7785ae60003f01fb6c957c9a5b34e8bc8cdd41f9404c57ba"
+    },
+    {
+      "quest_id": 456,
+      "script": "quest/value/1-11-2.qst",
+      "field": "name",
+      "key": "name_19220",
+      "base": "不使用",
+      "replacement": "神圣之路 2",
+      "native_korean": "성스러운 길 2",
+      "scriptCanonicalSha256": "70806a71f65f6ce8599c8e8809f24ce25a0f032cc8720594a1901717eca204b7"
+    },
+    {
+      "quest_id": 456,
+      "script": "quest/value/1-11-2.qst",
+      "field": "depend message",
+      "key": "depend_message_19225",
+      "base": "不使用",
+      "replacement": "果然很快。这次是洛兰深处。",
+      "native_korean": "역시 빠르시군요. 이번엔 로리엔 안쪽 입니다.",
+      "scriptCanonicalSha256": "70806a71f65f6ce8599c8e8809f24ce25a0f032cc8720594a1901717eca204b7"
+    },
+    {
+      "quest_id": 456,
+      "script": "quest/value/1-11-2.qst",
+      "field": "condition message",
+      "key": "condition_message_19230",
+      "base": "不使用",
+      "replacement": "独自通关洛兰深处冒险级以上难度的地下城。",
+      "native_korean": "로리엔 안쪽 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "70806a71f65f6ce8599c8e8809f24ce25a0f032cc8720594a1901717eca204b7"
+    },
+    {
+      "quest_id": 456,
+      "script": "quest/value/1-11-2.qst",
+      "field": "solve message",
+      "key": "solve_message_19235",
+      "base": "不使用",
+      "replacement": "不要以为太简单。回顾自己走过的路，对修炼也很有帮助。",
+      "native_korean": "너무 쉽다고만 생각하지 마시길 바랍니다. 자신이 온 길을 돌아보는 것도 수련에 많은 도움이 됩니다.",
+      "scriptCanonicalSha256": "70806a71f65f6ce8599c8e8809f24ce25a0f032cc8720594a1901717eca204b7"
+    },
+    {
+      "quest_id": 457,
+      "script": "quest/value/1-11-3.qst",
+      "field": "name",
+      "key": "name_19240",
+      "base": "不使用",
+      "replacement": "神圣之路 3",
+      "native_korean": "성스러운 길 3",
+      "scriptCanonicalSha256": "493c97f0e63ca1b7471ae434c8891498cba8d0c2cea76b4a7c41251514686a5f"
+    },
+    {
+      "quest_id": 457,
+      "script": "quest/value/1-11-3.qst",
+      "field": "depend message",
+      "key": "depend_message_19245",
+      "base": "不使用",
+      "replacement": "接下来是幽暗密林。愿神圣的力量与你同在……",
+      "native_korean": "다음은 머크우드 입니다. 성스로운 힘이 그대와 함께하기를..",
+      "scriptCanonicalSha256": "493c97f0e63ca1b7471ae434c8891498cba8d0c2cea76b4a7c41251514686a5f"
+    },
+    {
+      "quest_id": 457,
+      "script": "quest/value/1-11-3.qst",
+      "field": "condition message",
+      "key": "condition_message_19250",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "머크우드 마스터 로드 이상의 던전울 혼자서 클리어",
+      "scriptCanonicalSha256": "493c97f0e63ca1b7471ae434c8891498cba8d0c2cea76b4a7c41251514686a5f"
+    },
+    {
+      "quest_id": 457,
+      "script": "quest/value/1-11-3.qst",
+      "field": "solve message",
+      "key": "solve_message_19255",
+      "base": "不使用",
+      "replacement": "辛苦了。",
+      "native_korean": "수고하셨습니다.",
+      "scriptCanonicalSha256": "493c97f0e63ca1b7471ae434c8891498cba8d0c2cea76b4a7c41251514686a5f"
+    },
+    {
+      "quest_id": 458,
+      "script": "quest/value/1-11-4.qst",
+      "field": "name",
+      "key": "name_19260",
+      "base": "不使用",
+      "replacement": "神圣之路 4",
+      "native_korean": "성스러운 길 4",
+      "scriptCanonicalSha256": "0eb4c88eb7b246f11e2c8a6f2761c23ac1b8bc7b426813d5e11d3bb499c721ce"
+    },
+    {
+      "quest_id": 458,
+      "script": "quest/value/1-11-4.qst",
+      "field": "depend message",
+      "key": "depend_message_19265",
+      "base": "不使用",
+      "replacement": "神圣之光即使在黑暗之中也会与你同在。这次要前往幽暗密林深处。",
+      "native_korean": "성스러운 빛은 어두운 곳에서도 그대와 함께 할 것 입니다. 이번엔 머크우드 깊숙한 곳입니다.",
+      "scriptCanonicalSha256": "0eb4c88eb7b246f11e2c8a6f2761c23ac1b8bc7b426813d5e11d3bb499c721ce"
+    },
+    {
+      "quest_id": 458,
+      "script": "quest/value/1-11-4.qst",
+      "field": "condition message",
+      "key": "condition_message_19270",
+      "base": "不使用",
+      "replacement": "独自通关幽暗密林深处冒险级以上难度的地下城。",
+      "native_korean": "머크우드 깊숙한 곳 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "0eb4c88eb7b246f11e2c8a6f2761c23ac1b8bc7b426813d5e11d3bb499c721ce"
+    },
+    {
+      "quest_id": 458,
+      "script": "quest/value/1-11-4.qst",
+      "field": "solve message",
+      "key": "solve_message_19275",
+      "base": "不使用",
+      "replacement": "愿神圣之光照耀每一个地方……",
+      "native_korean": "성스러운 빛이 모든 곳에 비추기를..",
+      "scriptCanonicalSha256": "0eb4c88eb7b246f11e2c8a6f2761c23ac1b8bc7b426813d5e11d3bb499c721ce"
+    },
+    {
+      "quest_id": 459,
+      "script": "quest/value/1-11-5.qst",
+      "field": "name",
+      "key": "name_19280",
+      "base": "不使用",
+      "replacement": "神圣之路 5",
+      "native_korean": "성스러운 길 5",
+      "scriptCanonicalSha256": "7882e7e18233308e69d2258cd62c54457aa5e5ee3b6e2efe8397f54bdec607f6"
+    },
+    {
+      "quest_id": 459,
+      "script": "quest/value/1-11-5.qst",
+      "field": "depend message",
+      "key": "depend_message_19285",
+      "base": "不使用",
+      "replacement": "以你的力量，对付凯诺已经绰绰有余。",
+      "native_korean": "키놀을 상대하기에 그대의 힘은 부족함이 없을 것입니다.",
+      "scriptCanonicalSha256": "7882e7e18233308e69d2258cd62c54457aa5e5ee3b6e2efe8397f54bdec607f6"
+    },
+    {
+      "quest_id": 459,
+      "script": "quest/value/1-11-5.qst",
+      "field": "condition message",
+      "key": "condition_message_19290",
+      "base": "不使用",
+      "replacement": "独自通关雷鸣废墟冒险级以上难度的地下城。",
+      "native_korean": "선더랜드 익스퍼트 로드 이상의 던전을 혼자서 클리어",
+      "scriptCanonicalSha256": "7882e7e18233308e69d2258cd62c54457aa5e5ee3b6e2efe8397f54bdec607f6"
+    },
+    {
+      "quest_id": 459,
+      "script": "quest/value/1-11-5.qst",
+      "field": "solve message",
+      "key": "solve_message_19295",
+      "base": "不使用",
+      "replacement": "神明始终在你身边。",
+      "native_korean": "신께서는 항상 그대의 곁에 있습니다.",
+      "scriptCanonicalSha256": "7882e7e18233308e69d2258cd62c54457aa5e5ee3b6e2efe8397f54bdec607f6"
+    },
+    {
+      "quest_id": 460,
+      "script": "quest/value/1-11-6.qst",
+      "field": "name",
+      "key": "name_19300",
+      "base": "不使用",
+      "replacement": "神圣之路 6",
+      "native_korean": "성스러운 길 6",
+      "scriptCanonicalSha256": "df4f9446d7b01934bc29b21b7fa7f81dc6f2dd1f9afe91185d17a5d36bf5b535"
+    },
+    {
+      "quest_id": 460,
+      "script": "quest/value/1-11-6.qst",
+      "field": "depend message",
+      "key": "depend_message_19305",
+      "base": "不使用",
+      "replacement": "牧师啊，请将可怜的灵魂克拉赫送往安宁之处。",
+      "native_korean": "프리스트여 불쌍한 영혼인 케라하를 편안한 곳으로 보내 주시길 바랍니다.",
+      "scriptCanonicalSha256": "df4f9446d7b01934bc29b21b7fa7f81dc6f2dd1f9afe91185d17a5d36bf5b535"
+    },
+    {
+      "quest_id": 460,
+      "script": "quest/value/1-11-6.qst",
+      "field": "condition message",
+      "key": "condition_message_19310",
+      "base": "不使用",
+      "replacement": "通关冰霜幽暗密林勇士级以上难度的地下城。",
+      "native_korean": "프로스트 머크우드 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "df4f9446d7b01934bc29b21b7fa7f81dc6f2dd1f9afe91185d17a5d36bf5b535"
+    },
+    {
+      "quest_id": 460,
+      "script": "quest/value/1-11-6.qst",
+      "field": "solve message",
+      "key": "solve_message_19315",
+      "base": "不使用",
+      "replacement": "愿这个脆弱的灵魂获得永恒的安息……",
+      "native_korean": "가녀린 영혼에게 영원한 안식이 있기를..",
+      "scriptCanonicalSha256": "df4f9446d7b01934bc29b21b7fa7f81dc6f2dd1f9afe91185d17a5d36bf5b535"
+    },
+    {
+      "quest_id": 461,
+      "script": "quest/value/1-11-7.qst",
+      "field": "name",
+      "key": "name_19320",
+      "base": "不使用",
+      "replacement": "神圣之路 7",
+      "native_korean": "성스러운 길 7",
+      "scriptCanonicalSha256": "06b9b1bf2c149679f8c651eaf6a0440ea58b83b99380aca4960dff5ff133a3d2"
+    },
+    {
+      "quest_id": 461,
+      "script": "quest/value/1-11-7.qst",
+      "field": "depend message",
+      "key": "depend_message_19325",
+      "base": "不使用",
+      "replacement": "请用你的神圣之力净化芬里尔的毒素。",
+      "native_korean": "펜릴의 독도 그대의 성스러움으로 정화시켜 주시길 바랍니다.",
+      "scriptCanonicalSha256": "06b9b1bf2c149679f8c651eaf6a0440ea58b83b99380aca4960dff5ff133a3d2"
+    },
+    {
+      "quest_id": 461,
+      "script": "quest/value/1-11-7.qst",
+      "field": "condition message",
+      "key": "condition_message_19330",
+      "base": "不使用",
+      "replacement": "通关猛毒雷鸣废墟勇士级难度的地下城。",
+      "native_korean": "포이즌 선더랜드 마스터 로드의 던전을 클리어",
+      "scriptCanonicalSha256": "06b9b1bf2c149679f8c651eaf6a0440ea58b83b99380aca4960dff5ff133a3d2"
+    },
+    {
+      "quest_id": 461,
+      "script": "quest/value/1-11-7.qst",
+      "field": "solve message",
+      "key": "solve_message_19335",
+      "base": "不使用",
+      "replacement": "现在能逐渐看到修炼的成果了吗？",
+      "native_korean": "이제 수련의 성과가 조금씩 보이시나요?",
+      "scriptCanonicalSha256": "06b9b1bf2c149679f8c651eaf6a0440ea58b83b99380aca4960dff5ff133a3d2"
+    },
+    {
+      "quest_id": 462,
+      "script": "quest/value/1-11-8.qst",
+      "field": "name",
+      "key": "name_19340",
+      "base": "不使用",
+      "replacement": "神圣之路 8",
+      "native_korean": "성스러운 길 8",
+      "scriptCanonicalSha256": "d04505929919bce8629200ca8648b257056d4f346c6290a4b9508b6fc8e304a3"
+    },
+    {
+      "quest_id": 462,
+      "script": "quest/value/1-11-8.qst",
+      "field": "depend message",
+      "key": "depend_message_19345",
+      "base": "不使用",
+      "replacement": "现在还不是满足的时候。这次是格拉卡。",
+      "native_korean": "아직 만족하시긴 이릅니다. 이번엔 그락카락입니다.",
+      "scriptCanonicalSha256": "d04505929919bce8629200ca8648b257056d4f346c6290a4b9508b6fc8e304a3"
+    },
+    {
+      "quest_id": 462,
+      "script": "quest/value/1-11-8.qst",
+      "field": "condition message",
+      "key": "condition_message_19350",
+      "base": "不使用",
+      "replacement": "通关格拉卡勇士级以上难度的地下城。",
+      "native_korean": "그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "d04505929919bce8629200ca8648b257056d4f346c6290a4b9508b6fc8e304a3"
+    },
+    {
+      "quest_id": 462,
+      "script": "quest/value/1-11-8.qst",
+      "field": "solve message",
+      "key": "solve_message_19355",
+      "base": "不使用",
+      "replacement": "现在是最后一关。请再努力一点。",
+      "native_korean": "이제 마지막입니다. 조금더 노력해 주시길 바랍니다.",
+      "scriptCanonicalSha256": "d04505929919bce8629200ca8648b257056d4f346c6290a4b9508b6fc8e304a3"
+    },
+    {
+      "quest_id": 463,
+      "script": "quest/value/1-11-9.qst",
+      "field": "name",
+      "key": "name_19360",
+      "base": "不使用",
+      "replacement": "神圣之路 9",
+      "native_korean": "성스러운 길 9",
+      "scriptCanonicalSha256": "ace9632f59e9ae4700ccf00e0561491c50c8343fbe95353adc91cd4f3e538c14"
+    },
+    {
+      "quest_id": 463,
+      "script": "quest/value/1-11-9.qst",
+      "field": "depend message",
+      "key": "depend_message_19365",
+      "base": "不使用",
+      "replacement": "最后一关不会像之前那样容易。请展现你的力量。",
+      "native_korean": "마지막은 지금까지처럼 쉽지는 않을 것입니다. 그대의 힘을 보여 주시기 바랍니다.",
+      "scriptCanonicalSha256": "ace9632f59e9ae4700ccf00e0561491c50c8343fbe95353adc91cd4f3e538c14"
+    },
+    {
+      "quest_id": 463,
+      "script": "quest/value/1-11-9.qst",
+      "field": "condition message",
+      "key": "condition_message_19370",
+      "base": "不使用",
+      "replacement": "通关烈焰格拉卡勇士级以上难度的地下城。",
+      "native_korean": "불타는 그락카락 마스터 로드 이상의 던전을 클리어",
+      "scriptCanonicalSha256": "ace9632f59e9ae4700ccf00e0561491c50c8343fbe95353adc91cd4f3e538c14"
+    },
+    {
+      "quest_id": 463,
+      "script": "quest/value/1-11-9.qst",
+      "field": "solve message",
+      "key": "solve_message_19375",
+      "base": "不使用",
+      "replacement": "你已经完成了全部修炼。即使前往天空之城，也请用你的神圣力量消灭邪恶。",
+      "native_korean": "모든 수련을 다 마치셨습니다. 하늘성에 가서도 그대의 성스러운 힘으로 악을 물리쳐 주시길 바랍니다.",
+      "scriptCanonicalSha256": "ace9632f59e9ae4700ccf00e0561491c50c8343fbe95353adc91cd4f3e538c14"
+    },
+    {
+      "quest_id": 1004,
+      "script": "quest/linus/4.qst",
+      "field": "condition message",
+      "key": "condition_message_9950",
+      "base": "不使用",
+      "replacement": "（本任务已删除。请放弃任务，然后从赛丽亚处重新接取史诗任务继续游戏。给您带来不便，敬请谅解。）",
+      "native_korean": "(본 퀘스트는 삭제된 퀘스트입니다. 퀘스트를 포기하시고 게임을 진행해 주시기 바랍니다. 이용에 불편을 드려서 죄송합니다.)",
+      "scriptCanonicalSha256": "215aa4fb6b4e5547b32629e46d90fa3735b376713fd74e2f5318bd33ce45c289"
+    },
+    {
+      "quest_id": 1016,
+      "script": "quest/seria/sq.qst",
+      "field": "depend message",
+      "key": "depend_message_11095",
+      "base": "不使用",
+      "replacement": "你好，冒险家！我叫赛丽亚·基尔敏~！呼~\\n欢迎来到地下城与勇士的世界！为了表示欢迎~我准备了一份小小的礼物，虽然不贵重，但请一定来领取后再走~！",
+      "native_korean": "안녕하세요 모험가님! 저는 세리아 키르민이라고 해요~! 후~웃.\\n 던전 & 파이터의 세계에 오신 것을 환영합니다! 환영하는 의미에서~ 제가 약소하지만 자그마한 선물을 준비했어요~~ 꼭 들렸다 가세요~!",
+      "scriptCanonicalSha256": "0843816a6c847f1f402b50625be6c9fc1c7bc20fe35760a519482adade67b1c5"
+    },
+    {
+      "quest_id": 1031,
+      "script": "quest/kanna/6.qst",
+      "field": "solve message",
+      "key": "solve_message_9590",
+      "base": "不使用",
+      "replacement": "明天关店后，还得把这里修修补补。唉~",
+      "native_korean": "내일은 가게문 닫고 여기저기 고쳐야겠다. 에휴~",
+      "scriptCanonicalSha256": "791b305db8a913845e479669903853492b5c9bf1555cd8fd26c8cf8ebb70229a"
+    },
+    {
+      "quest_id": 1033,
+      "script": "quest/kanna/children2.qst",
+      "field": "name",
+      "key": "name_19920",
+      "base": "不使用",
+      "replacement": "彩虹般的希望",
+      "native_korean": "무지개빛 희망",
+      "scriptCanonicalSha256": "c2a410c2fd3d5065744479ac31cd659560d1d30c8811f84b7c4c7e82435bf172"
+    },
+    {
+      "quest_id": 1033,
+      "script": "quest/kanna/children2.qst",
+      "field": "depend message",
+      "key": "depend_message_19925",
+      "base": "不使用",
+      "replacement": "如果你之后又收集到更多气球花束，请带给我。",
+      "native_korean": "혹시 풍선다발을 더 구하시게 되면 가져다 주세요.",
+      "scriptCanonicalSha256": "c2a410c2fd3d5065744479ac31cd659560d1d30c8811f84b7c4c7e82435bf172"
+    },
+    {
+      "quest_id": 1033,
+      "script": "quest/kanna/children2.qst",
+      "field": "condition message",
+      "key": "condition_message_19930",
+      "base": "不使用",
+      "replacement": "为了延续坎娜的希望，传递彩色气球串。配方可以在地下城中获得。",
+      "native_korean": "칸나의 희망을 이어가기 위한 무지개빛 풍선 다발을 전해주기. 래서피는 던전에서 구할 수 있습니다.",
+      "scriptCanonicalSha256": "c2a410c2fd3d5065744479ac31cd659560d1d30c8811f84b7c4c7e82435bf172"
+    },
+    {
+      "quest_id": 1033,
+      "script": "quest/kanna/children2.qst",
+      "field": "solve message",
+      "key": "solve_message_19935",
+      "base": "不使用",
+      "replacement": "哎呀，你又带来了。真的非常感谢你。",
+      "native_korean": "어머 또 가져오셨네요 정말 고마워요.",
+      "scriptCanonicalSha256": "c2a410c2fd3d5065744479ac31cd659560d1d30c8811f84b7c4c7e82435bf172"
+    },
+    {
+      "quest_id": 1041,
+      "script": "quest/sinda/1.qst",
+      "field": "condition message",
+      "key": "condition_message_11880",
+      "base": "不使用",
+      "replacement": "带回8个煤尘。（本任务已删除，但仍可以完成。请注意，一旦放弃，就无法再次接取。）",
+      "native_korean": "석탄가루 8개 구해오기 (본 퀘스트는 삭제된 퀘스트입니다만, 수행 완료하셔도 됩니다. 단, 한번 포기하시면 이 퀘스트를 다시 받으실 수 없습니다.)",
+      "scriptCanonicalSha256": "b35f8a6f5815332aad5cd7eef6daf4e4a5cacc10186ba2251d9780c3690ca099"
+    },
+    {
+      "quest_id": 1042,
+      "script": "quest/sinda/2.qst",
+      "field": "condition message",
+      "key": "condition_message_11990",
+      "base": "不使用",
+      "replacement": "带回3个破旧的皮革和3个碎布片。（本任务已删除，但仍可以完成。请注意，一旦放弃，就无法再次接取。）",
+      "native_korean": "낡은 가죽 3개, 헝겊조각 3개 모아오기 (본 퀘스트는 삭제된 퀘스트입니다만, 수행 완료하셔도 됩니다. 단, 한번 포기하시면 이 퀘스트를 다시 받으실 수 없습니다.)",
+      "scriptCanonicalSha256": "76d7223c33289489a5656d535166c712ef97f0e294900b39dcb6edb5746c5be4"
+    },
+    {
+      "quest_id": 1043,
+      "script": "quest/sinda/3.qst",
+      "field": "condition message",
+      "key": "condition_message_12070",
+      "base": "不使用",
+      "replacement": "带回3根莳芽树枝和5个夹具。（本任务已删除，但仍可以完成。请注意，一旦放弃，就无法再次接取。）",
+      "native_korean": "스야나무가지 3개, 조임쇠 5개를 가져오기 (본 퀘스트는 삭제된 퀘스트입니다만, 수행 완료하셔도 됩니다. 단, 한번 포기하시면 이 퀘스트를 다시 받으실 수 없습니다.)",
+      "scriptCanonicalSha256": "4f609bcc58dbf126576fa2fb964ca02fea2df6bdda75059b4427c8a3c7492e5c"
+    },
+    {
+      "quest_id": 1052,
+      "script": "quest/sinda/12.qst",
+      "field": "condition message",
+      "key": "condition_message_11940",
+      "base": "不使用",
+      "replacement": "带回1根莳芽树枝、1个碎布片、1个破旧的皮革和2根缝衣针。（本任务已删除，但仍可以完成。请注意，一旦放弃，就无法再次接取。）",
+      "native_korean": "스야나무가지 1개, 헝겊 조각 1개, 낡은 가죽 1개, 바늘 2개 구해오기 (본 퀘스트는 삭제된 퀘스트입니다만, 수행 완료하셔도 됩니다. 단, 한번 포기하시면 이 퀘스트를 다시 받으실 수 없습니다.)",
+      "scriptCanonicalSha256": "06856b89c4e4f1202cd0394e59d119b15f31a9e36b65336b70c470526083e7af"
+    },
+    {
+      "quest_id": 1055,
+      "script": "quest/sinda/15.qst",
+      "field": "name",
+      "key": "name_18720",
+      "base": "不使用",
+      "replacement": "一把大斧头",
+      "native_korean": "커다란 도끼",
+      "scriptCanonicalSha256": "73b64d4c33e9dbce5f5d5042b4d1547925211ca5b33146ac1eca68a343bfb9b8"
+    },
+    {
+      "quest_id": 1055,
+      "script": "quest/sinda/15.qst",
+      "field": "depend message",
+      "key": "depend_message_18725",
+      "base": "不使用",
+      "replacement": "牧师们都带着很厉害的武器。\\n十字架和念珠之类的东西似乎蕴含着某种神秘力量，我不太懂，所以不敢随便制作，不过大斧头还是可以给你做一把。\\n把材料带来吧。",
+      "native_korean": "프리스트들은 굉장한 무기를 들고 다니더군.\\n 십자가나 염주 같은 것들은 무슨 신비한 힘을 담는지 잘 모르겠어서 함부로 못만들겠지만, 큰 도끼정도는 만들어 줄 수 있지.\\n 재료만 가져오게나.",
+      "scriptCanonicalSha256": "73b64d4c33e9dbce5f5d5042b4d1547925211ca5b33146ac1eca68a343bfb9b8"
+    },
+    {
+      "quest_id": 1055,
+      "script": "quest/sinda/15.qst",
+      "field": "condition message",
+      "key": "condition_message_18730",
+      "base": "不使用",
+      "replacement": "带1根莳芽树枝、2个生锈的铁片、1个最下级硬化剂、1个风化的碎骨和1个最下级砥石给辛达。（本任务已删除，但仍可以完成。请注意，一旦放弃，就无法再次接取。）",
+      "native_korean": "신다에게 스야나무가지 1개, 녹슨 철조각 2개, 최하급 경화제 1개, 풍화된 뼛조각 1개, 최하급 연석 1개를 가져오기. (본 퀘스트는 삭제된 퀘스트입니다만, 수행 완료하셔도 됩니다. 단, 한번 포기하시면 이 퀘스트를 다시 받으실 수 없습니다.)",
+      "scriptCanonicalSha256": "73b64d4c33e9dbce5f5d5042b4d1547925211ca5b33146ac1eca68a343bfb9b8"
+    },
+    {
+      "quest_id": 1055,
+      "script": "quest/sinda/15.qst",
+      "field": "solve message",
+      "key": "solve_message_18735",
+      "base": "不使用",
+      "replacement": "这些就足够了。请稍等一会儿。",
+      "native_korean": "그정도면 충분하구먼. 잠시만 기다리게.",
+      "scriptCanonicalSha256": "73b64d4c33e9dbce5f5d5042b4d1547925211ca5b33146ac1eca68a343bfb9b8"
+    },
+    {
+      "quest_id": 1129,
+      "script": "quest/danjin/2-1.qst",
+      "field": "depend message",
+      "key": "depend_message_7615",
+      "base": "不使用",
+      "replacement": "哎呀，最近生意太好了。虽然要制作罐子……但碎片实在不够！能不能替我保密，无论如何帮我弄些罐子碎片来？",
+      "native_korean": "아니 이거야 원~ 요새 장사가 너무 잘되서요. 항아리를 만들어야 하는데...... 조각이 매우 모자라군요! 다른 분들에게는 비밀로 하고 항아리 조각을 어떻게 해서든 좀 구해주시겠어요?",
+      "scriptCanonicalSha256": "e46002dc3481ecf77010fcd50473a0a69a96db4ff7eae0f84ba3ac9c546c8ddb"
+    },
+    {
+      "quest_id": 1132,
+      "script": "quest/danjin/2-4.qst",
+      "field": "depend message",
+      "key": "depend_message_7675",
+      "base": "不使用",
+      "replacement": "喵~下级罐子就算卖掉也赚不了多少钱，为什么还要找这么多呀~。唉，不过丹君服务精神十足，就算赚不到钱也不能怠慢客人！请帮我找来下级罐子碎片~~~",
+      "native_korean": "이잉 팔아도 남는 돈도 별로 없는 하급 항아리를 왜 이렇게 많이 찾으신다냥~. 쩝 어쨋든 서비스 정신이 투철한 단진이 암만 돈이 안 남더라도 도외시 할 순 없지요! 하급 항아리 조각을 구해주세요~~~",
+      "scriptCanonicalSha256": "c64b64b30c07eeb7ca35ed018b0bf8108f96d872bcac284d6154cbbe426093cc"
+    },
+    {
+      "quest_id": 1132,
+      "script": "quest/danjin/2-4.qst",
+      "field": "solve message",
+      "key": "solve_message_7685",
+      "base": "不使用",
+      "replacement": "啊~这真是亏本活动~~什么都剩不下。都说是完全赔本的买卖嘛~",
+      "native_korean": "아오~ 이건 정말 출혈 이벤트랍니다~~ 남는게 없어. 완전 밑지는 장사라니까~",
+      "scriptCanonicalSha256": "c64b64b30c07eeb7ca35ed018b0bf8108f96d872bcac284d6154cbbe426093cc"
+    },
+    {
+      "quest_id": 1133,
+      "script": "quest/danjin/2-5.qst",
+      "field": "depend message",
+      "key": "depend_message_7675",
+      "base": "不使用",
+      "replacement": "喵~下级罐子就算卖掉也赚不了多少钱，为什么还要找这么多呀~。唉，不过丹君服务精神十足，就算赚不到钱也不能怠慢客人！请帮我找来下级罐子碎片~~~",
+      "native_korean": "이잉 팔아도 남는 돈도 별로 없는 하급 항아리를 왜 이렇게 많이 찾으신다냥~. 쩝 어쨋든 서비스 정신이 투철한 단진이 암만 돈이 안 남더라도 도외시 할 순 없지요! 하급 항아리 조각을 구해주세요~~~",
+      "scriptCanonicalSha256": "4239127c2bca409980f83337f88c28fca658bb3f0d03ea3d29ea00fb7f0d68bf"
+    },
+    {
+      "quest_id": 1133,
+      "script": "quest/danjin/2-5.qst",
+      "field": "solve message",
+      "key": "solve_message_7685",
+      "base": "不使用",
+      "replacement": "啊~这真是亏本活动~~什么都剩不下。都说是完全赔本的买卖嘛~",
+      "native_korean": "아오~ 이건 정말 출혈 이벤트랍니다~~ 남는게 없어. 완전 밑지는 장사라니까~",
+      "scriptCanonicalSha256": "4239127c2bca409980f83337f88c28fca658bb3f0d03ea3d29ea00fb7f0d68bf"
+    },
+    {
+      "quest_id": 1134,
+      "script": "quest/danjin/2-6.qst",
+      "field": "depend message",
+      "key": "depend_message_7615",
+      "base": "不使用",
+      "replacement": "哎呀，最近生意太好了。虽然要制作罐子……但碎片实在不够！能不能替我保密，无论如何帮我弄些罐子碎片来？",
+      "native_korean": "아니 이거야 원~ 요새 장사가 너무 잘되서요. 항아리를 만들어야 하는데...... 조각이 매우 모자라군요! 다른 분들에게는 비밀로 하고 항아리 조각을 어떻게 해서든 좀 구해주시겠어요?",
+      "scriptCanonicalSha256": "b4ddf7a3077d5031fb756bd62dff2d814327c04c6e3387b99bb3da73f3524e54"
+    },
+    {
+      "quest_id": 1165,
+      "script": "quest/lorian/5.qst",
+      "field": "solve message",
+      "key": "solve_message_10175",
+      "base": "不使用",
+      "replacement": "这次要不要吓吓坎娜呢~",
+      "native_korean": "이번엔... 칸나를 놀래켜줄까나~",
+      "scriptCanonicalSha256": "3dc5f595bb583cf870acfb71100ebf1d1627ddb42cea01c5cb83378fa697cdde"
+    },
+    {
+      "quest_id": 1204,
+      "script": "quest/sharan/4.qst",
+      "field": "solve message",
+      "key": "solve_message_11400",
+      "base": "不使用",
+      "replacement": "啊~这样一来，这项研究也结束了。谢谢你~！",
+      "native_korean": "아~ 이걸로 이 연구도 끝이군요. 감사해요~!",
+      "scriptCanonicalSha256": "2fcecf2496bee0d092c9323eb702181b9a9a27c4af210c135ee73e7ac7fb3d1b"
+    },
+    {
+      "quest_id": 1206,
+      "script": "quest/sharan/6.qst",
+      "field": "name",
+      "key": "name_20065",
+      "base": "不使用",
+      "replacement": "魔法血液",
+      "native_korean": "Magical Blood",
+      "scriptCanonicalSha256": "c0d97042aa410bd42b0d06631a0b391a767b5881737eb2b7123c41edfa8e55b1"
+    },
+    {
+      "quest_id": 1224,
+      "script": "quest/rothon/2-2-1.qst",
+      "field": "solve message",
+      "key": "solve_message_10795",
+      "base": "不使用",
+      "replacement": "嘿嘿，来，敬请期待~",
+      "native_korean": "끌끌 자자 고대하시라~",
+      "scriptCanonicalSha256": "c3fae5fc3bef6e43e374e76c38664187948b5d1b0fbf213b5087fe15b4c932c9"
+    },
+    {
+      "quest_id": 2309,
+      "script": "quest/danjin/new - 9.qst",
+      "field": "solve message",
+      "key": "solve_message_7566",
+      "base": "不使用",
+      "replacement": "所谓赌局，就是有输有赢嘛~~",
+      "native_korean": "내기라고 하는 것은 질 때도 있고 이길 때도 있고 ~~",
+      "scriptCanonicalSha256": "48db4f70352cd765467a12e164803e3bc86d690a2e611207c932d12243ff727d"
+    },
+    {
+      "quest_id": 2386,
+      "script": "quest/event/jam_kanna.qst",
+      "field": "depend message",
+      "key": "depend_message_17645",
+      "base": "不使用",
+      "replacement": "怎么样？我做的葡萄酱好吃吧？如果材料再多一些，我可以给你做很多。\\n还有~~如果你还想从我这里拿葡萄酱，就别想着再去找赛丽亚姐姐领取了。做人要有节操，知道吗！",
+      "native_korean": "어때요? 제가 만든 포도잼 맛있죠? 재료만 더 있다면 많이 만들어 드릴텐데. \\n 그리고~~ 저한테 잼을 더 받아갈 생각이시라면 세리아 언니한테 가서 또 받을 생각마시라구요. 사람이 지조가 있어야지, 원!",
+      "scriptCanonicalSha256": "0643f794cd3ca3fff3a3c847a9d300e76028fc9c40f733015453fc495ba94dfa"
+    },
+    {
+      "quest_id": 2386,
+      "script": "quest/event/jam_kanna.qst",
+      "field": "solve message",
+      "key": "solve_message_17655",
+      "base": "不使用",
+      "replacement": "来~美味的葡萄酱上桌啦~~",
+      "native_korean": "자~ 맛있는 포도잼 대령이요~~",
+      "scriptCanonicalSha256": "0643f794cd3ca3fff3a3c847a9d300e76028fc9c40f733015453fc495ba94dfa"
+    },
+    {
+      "quest_id": 2390,
+      "script": "quest/event/happybean.qst",
+      "field": "name",
+      "key": "name_18740",
+      "base": "不使用",
+      "replacement": "把希望播撒到全世界 (重复)",
+      "native_korean": "온 세상에 희망을 심어요 (반복)",
+      "scriptCanonicalSha256": "7b87ff859aea6223f4acce4a35a27604e4b6ea7fb98c6ae9f6793d6c72c2a7a7"
+    },
+    {
+      "quest_id": 2390,
+      "script": "quest/event/happybean.qst",
+      "field": "depend message",
+      "key": "depend_message_18745",
+      "base": "不使用",
+      "replacement": "新年到了，感觉全世界都沉浸在满怀的希望中。\\n但我们似乎不能一直感到幸福，因为想起了身边那些令人心痛、生活困苦的人们。\\n我为没有办法帮助他们而苦恼时，想到了一个办法。\\n那就是……豆子。\\n单个看起来又小又不起眼，但我相信只要大家聚在一起，就一定能汇聚成强大的力量。",
+      "native_korean": "새해를 맞아 세상 모두가 벅찬 희망에 젖어있는 것 같아요.\\n 하지만 항상 행복해할 수 만은 없는 건, 마음을 아프게 하는 주변의 불우한 이웃들이 생각나기 때문인가봐요.\\n 그사람들을 도울 방법이 없어 고민하던 저는 한가지 방법을 생각해 냈어요.\\n 그건....콩이랍니다. \\n 하나하나는 작고 보잘것 없어 보이지만 모두가 함께 모으면 분명 큰 힘이 될 수 있을 것이라고 저는 믿는 답니다.",
+      "scriptCanonicalSha256": "7b87ff859aea6223f4acce4a35a27604e4b6ea7fb98c6ae9f6793d6c72c2a7a7"
+    },
+    {
+      "quest_id": 2390,
+      "script": "quest/event/happybean.qst",
+      "field": "condition message",
+      "key": "condition_message_18750",
+      "base": "不使用",
+      "replacement": "收集25个福豆。（完成此任务后即可参加开心豆活动。详情请查看网站公告！）",
+      "native_korean": "해피빈 콩 25개를 모아오기. (이 퀘스트를 수행하게 되면, 해피빈 이벤트에 참여하게 됩니다. 자세한 사항은 웹의 공지를 확인하세요!)",
+      "scriptCanonicalSha256": "7b87ff859aea6223f4acce4a35a27604e4b6ea7fb98c6ae9f6793d6c72c2a7a7"
+    },
+    {
+      "quest_id": 2390,
+      "script": "quest/event/happybean.qst",
+      "field": "solve message",
+      "key": "solve_message_18755",
+      "base": "不使用",
+      "replacement": "我果然相信你也会和我赛丽亚一起行动。\\n如果有机会，希望你能再多收集一些。",
+      "native_korean": "역시 당신도 이 세리아와 함께 하실 것이라고 믿었어요.\\n 기회가 되신다면 조금더 모아주시면 좋겠어요.",
+      "scriptCanonicalSha256": "7b87ff859aea6223f4acce4a35a27604e4b6ea7fb98c6ae9f6793d6c72c2a7a7"
+    },
+    {
+      "quest_id": 2391,
+      "script": "quest/event/gujeong1.qst",
+      "field": "name",
+      "key": "name_18760",
+      "base": "不使用",
+      "replacement": "新年快乐 1",
+      "native_korean": "새해 복 많이 받으세요 1",
+      "scriptCanonicalSha256": "31f7fe7c04a3d90b62582f95edd6a8391632fdc836e91beb236447ca9daab3c2"
+    },
+    {
+      "quest_id": 2391,
+      "script": "quest/event/gujeong1.qst",
+      "field": "depend message",
+      "key": "depend_message_18765",
+      "base": "不使用",
+      "replacement": "都过新年了，还是没有一个人来找我……\\n能不能给这个孤独的老爷爷也分一点福气再走？",
+      "native_korean": "새해가 되었는데도 찾아오는이 하나 없구먼...\\n 이 외로운 할배에게 복을 나눠주고 갈 수는 없겠나?",
+      "scriptCanonicalSha256": "31f7fe7c04a3d90b62582f95edd6a8391632fdc836e91beb236447ca9daab3c2"
+    },
+    {
+      "quest_id": 2391,
+      "script": "quest/event/gujeong1.qst",
+      "field": "condition message",
+      "key": "condition_message_18770",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给辛达",
+      "native_korean": "복조리 5개를 모아서 신다에게 가기",
+      "scriptCanonicalSha256": "31f7fe7c04a3d90b62582f95edd6a8391632fdc836e91beb236447ca9daab3c2"
+    },
+    {
+      "quest_id": 2391,
+      "script": "quest/event/gujeong1.qst",
+      "field": "solve message",
+      "key": "solve_message_18775",
+      "base": "不使用",
+      "replacement": "呵呵，真是个善良的年轻人……虽然不多，但先收下这个吧……",
+      "native_korean": "허허 착한 젊은 이로군.. 얼마 안되지만 이거라도 받아두게..",
+      "scriptCanonicalSha256": "31f7fe7c04a3d90b62582f95edd6a8391632fdc836e91beb236447ca9daab3c2"
+    },
+    {
+      "quest_id": 2392,
+      "script": "quest/event/gujeong2.qst",
+      "field": "name",
+      "key": "name_18780",
+      "base": "不使用",
+      "replacement": "新年快乐 2",
+      "native_korean": "새해 복 많이 받으세요 2",
+      "scriptCanonicalSha256": "b036783765075f87c7ee846a1a3ad40793416a8f9375187d42c20832a6ef4efa"
+    },
+    {
+      "quest_id": 2392,
+      "script": "quest/event/gujeong2.qst",
+      "field": "depend message",
+      "key": "depend_message_18785",
+      "base": "不使用",
+      "replacement": "赫顿玛尔有很多像我一样孤独的老人。\\n也去看看住在那条昏暗后巷里的G.S.D吧？",
+      "native_korean": "핸돈마이어에는 나같은 외로운 늙은이들이 많이 있지.\\n 저 어두운 뒷골목에 살고 있는 G.S.D에게도 찾아가 봐주지 않겠나?",
+      "scriptCanonicalSha256": "b036783765075f87c7ee846a1a3ad40793416a8f9375187d42c20832a6ef4efa"
+    },
+    {
+      "quest_id": 2392,
+      "script": "quest/event/gujeong2.qst",
+      "field": "condition message",
+      "key": "condition_message_18790",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给G.S.D",
+      "native_korean": "복조리 5개를 모아서 G.S.D에게 가기",
+      "scriptCanonicalSha256": "b036783765075f87c7ee846a1a3ad40793416a8f9375187d42c20832a6ef4efa"
+    },
+    {
+      "quest_id": 2392,
+      "script": "quest/event/gujeong2.qst",
+      "field": "solve message",
+      "key": "solve_message_18795",
+      "base": "不使用",
+      "replacement": "居然来到这么昏暗的地方找我，你一定会有福报的。",
+      "native_korean": "이런 어두운 곳까지 찾아와 주다니 복 받을 걸세.",
+      "scriptCanonicalSha256": "b036783765075f87c7ee846a1a3ad40793416a8f9375187d42c20832a6ef4efa"
+    },
+    {
+      "quest_id": 2393,
+      "script": "quest/event/gujeong3.qst",
+      "field": "name",
+      "key": "name_18800",
+      "base": "不使用",
+      "replacement": "新年快乐 3",
+      "native_korean": "새해 복 많이 받으세요 3",
+      "scriptCanonicalSha256": "546ee63ca6e0ec713fee284043bf5be805adeb91a2e5283b4768bc087aae3257"
+    },
+    {
+      "quest_id": 2393,
+      "script": "quest/event/gujeong3.qst",
+      "field": "depend message",
+      "key": "depend_message_18805",
+      "base": "不使用",
+      "replacement": "住在那边的奥兰奶奶虽然和动物们一起生活，但一定也会想念人。去看看她吧。",
+      "native_korean": "저쪽에 살고 있는 오란 할머니도 동물들과 같이 지낸다고는 하지만 사람이 그리울 걸세 한번 찾아가봐 주게나.",
+      "scriptCanonicalSha256": "546ee63ca6e0ec713fee284043bf5be805adeb91a2e5283b4768bc087aae3257"
+    },
+    {
+      "quest_id": 2393,
+      "script": "quest/event/gujeong3.qst",
+      "field": "condition message",
+      "key": "condition_message_18810",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给奥兰奶奶",
+      "native_korean": "복조리 5개를 모아서 오란할머니에게 가기",
+      "scriptCanonicalSha256": "546ee63ca6e0ec713fee284043bf5be805adeb91a2e5283b4768bc087aae3257"
+    },
+    {
+      "quest_id": 2393,
+      "script": "quest/event/gujeong3.qst",
+      "field": "solve message",
+      "key": "solve_message_18815",
+      "base": "不使用",
+      "replacement": "谢谢你来看望我这个老太婆。这些孩子们似乎也很喜欢你。",
+      "native_korean": "이 늙은이를 찾아와 주다니 고맙네. 이 아이들도 자네를 좋아하는 구먼.",
+      "scriptCanonicalSha256": "546ee63ca6e0ec713fee284043bf5be805adeb91a2e5283b4768bc087aae3257"
+    },
+    {
+      "quest_id": 2394,
+      "script": "quest/event/gujeong4.qst",
+      "field": "name",
+      "key": "name_18820",
+      "base": "不使用",
+      "replacement": "新年快乐 4",
+      "native_korean": "새해 복 많이 받으세요 4",
+      "scriptCanonicalSha256": "7fbfa33e5077679f7fada1cf2b28f9e1addb83da3294b380b965b9668bb02877"
+    },
+    {
+      "quest_id": 2394,
+      "script": "quest/event/gujeong4.qst",
+      "field": "depend message",
+      "key": "depend_message_18825",
+      "base": "不使用",
+      "replacement": "后巷里的夏洛克也从哥布林世界逃出来，孤零零地生活着。能去看看他吗？",
+      "native_korean": "뒷골목에 사는 샤일록도 고블린 세계에서 탈출해 외롭게 살고 있다네 찾아가봐 줄수 있겠나?",
+      "scriptCanonicalSha256": "7fbfa33e5077679f7fada1cf2b28f9e1addb83da3294b380b965b9668bb02877"
+    },
+    {
+      "quest_id": 2394,
+      "script": "quest/event/gujeong4.qst",
+      "field": "condition message",
+      "key": "condition_message_18830",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给夏洛克",
+      "native_korean": "복조리 5개를 모아서 샤일록에게 가기",
+      "scriptCanonicalSha256": "7fbfa33e5077679f7fada1cf2b28f9e1addb83da3294b380b965b9668bb02877"
+    },
+    {
+      "quest_id": 2394,
+      "script": "quest/event/gujeong4.qst",
+      "field": "solve message",
+      "key": "solve_message_18835",
+      "base": "不使用",
+      "replacement": "嘿嘿，您竟然来看我。谢谢您。",
+      "native_korean": "에헤헤 저에게 찾아와 주시다니. 고맙습니다요.",
+      "scriptCanonicalSha256": "7fbfa33e5077679f7fada1cf2b28f9e1addb83da3294b380b965b9668bb02877"
+    },
+    {
+      "quest_id": 2395,
+      "script": "quest/event/gujeong5.qst",
+      "field": "name",
+      "key": "name_18840",
+      "base": "不使用",
+      "replacement": "新年快乐 5",
+      "native_korean": "새해 복 많이 받으세요 5",
+      "scriptCanonicalSha256": "e04b921214455e421665f65ca6e3a22149c6f98f707a1d6fa92667f08af75587"
+    },
+    {
+      "quest_id": 2395,
+      "script": "quest/event/gujeong5.qst",
+      "field": "depend message",
+      "key": "depend_message_18845",
+      "base": "不使用",
+      "replacement": "洛顿这家伙即使到了新年，似乎还在埋头研究。唉唉唉……要是有人能去看看他就好了。",
+      "native_korean": "로톤 이 친구는 새해가 되도 연구만 하고 있는 것 같더라구요. 이그그그.. 누군가 찾아가는 이라도 있으면 좋으련만.",
+      "scriptCanonicalSha256": "e04b921214455e421665f65ca6e3a22149c6f98f707a1d6fa92667f08af75587"
+    },
+    {
+      "quest_id": 2395,
+      "script": "quest/event/gujeong5.qst",
+      "field": "condition message",
+      "key": "condition_message_18850",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给洛顿",
+      "native_korean": "복조리 5개를 모아서 로톤에게 가기",
+      "scriptCanonicalSha256": "e04b921214455e421665f65ca6e3a22149c6f98f707a1d6fa92667f08af75587"
+    },
+    {
+      "quest_id": 2395,
+      "script": "quest/event/gujeong5.qst",
+      "field": "solve message",
+      "key": "solve_message_18855",
+      "base": "不使用",
+      "replacement": "你好吗！看来你也喜欢科学嘛！和我一起喝杯酒聊聊吧。\\n你不会喝酒？那可真遗憾。",
+      "native_korean": "안녕하신가! 자네도 과학을 좋아하는 모양이군! 나와 술이나 한잔 마시며 얘기해 봅세.\\n 술은 못한다구? 그것참 안됐구만.",
+      "scriptCanonicalSha256": "e04b921214455e421665f65ca6e3a22149c6f98f707a1d6fa92667f08af75587"
+    },
+    {
+      "quest_id": 2396,
+      "script": "quest/event/gujeong6.qst",
+      "field": "name",
+      "key": "name_18860",
+      "base": "不使用",
+      "replacement": "新年快乐 6",
+      "native_korean": "새해 복 많이 받으세요 6",
+      "scriptCanonicalSha256": "053e89a3185c0193b63b04b273ddbc5b52e08ab1b51b3d4df0823de841f44c05"
+    },
+    {
+      "quest_id": 2396,
+      "script": "quest/event/gujeong6.qst",
+      "field": "depend message",
+      "key": "depend_message_18865",
+      "base": "不使用",
+      "replacement": "说起来，莱纳斯这家伙从新年开始应该也在精灵之森独自喝酒吧。\\n你能去替我排解一下他的孤独吗？",
+      "native_korean": "그러고보니 라이너스 이 친구도 새해부터 엘븐가드에서 홀로 술을 마시고 있겠구만.\\n 자네가 그 친구의 외로움을 좀 달래주지 않겠나?",
+      "scriptCanonicalSha256": "053e89a3185c0193b63b04b273ddbc5b52e08ab1b51b3d4df0823de841f44c05"
+    },
+    {
+      "quest_id": 2396,
+      "script": "quest/event/gujeong6.qst",
+      "field": "condition message",
+      "key": "condition_message_18870",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给莱纳斯",
+      "native_korean": "복조리 5개를 모아서 라이너스에게 가기",
+      "scriptCanonicalSha256": "053e89a3185c0193b63b04b273ddbc5b52e08ab1b51b3d4df0823de841f44c05"
+    },
+    {
+      "quest_id": 2396,
+      "script": "quest/event/gujeong6.qst",
+      "field": "solve message",
+      "key": "solve_message_18875",
+      "base": "不使用",
+      "replacement": "竟然来看望孤独的我，真是让人高兴啊，冒险家。",
+      "native_korean": "외로운 나를 찾아와 주다니 반갑구만 모험가 양반.",
+      "scriptCanonicalSha256": "053e89a3185c0193b63b04b273ddbc5b52e08ab1b51b3d4df0823de841f44c05"
+    },
+    {
+      "quest_id": 2397,
+      "script": "quest/event/gujeong7.qst",
+      "field": "name",
+      "key": "name_18880",
+      "base": "不使用",
+      "replacement": "新年快乐 7",
+      "native_korean": "새해 복 많이 받으세요 7",
+      "scriptCanonicalSha256": "9b4129309313068977e1133a3c487fc79f4046ed3a7460e43446c086271962f2"
+    },
+    {
+      "quest_id": 2397,
+      "script": "quest/event/gujeong7.qst",
+      "field": "depend message",
+      "key": "depend_message_18885",
+      "base": "不使用",
+      "replacement": "丹君一直以来只会骗人，所以即使过年也没人来找他。你去安慰一下他吧。",
+      "native_korean": "단진은 그동안 사기만 쳐서인지 새해인데도 아무도 찾질 않더군. 자네가 가서 위로좀 해주게.",
+      "scriptCanonicalSha256": "9b4129309313068977e1133a3c487fc79f4046ed3a7460e43446c086271962f2"
+    },
+    {
+      "quest_id": 2397,
+      "script": "quest/event/gujeong7.qst",
+      "field": "condition message",
+      "key": "condition_message_18890",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给丹君",
+      "native_korean": "복조리 5개를 모아서 단진에게 가기",
+      "scriptCanonicalSha256": "9b4129309313068977e1133a3c487fc79f4046ed3a7460e43446c086271962f2"
+    },
+    {
+      "quest_id": 2397,
+      "script": "quest/event/gujeong7.qst",
+      "field": "solve message",
+      "key": "solve_message_18895",
+      "base": "不使用",
+      "replacement": "竟然亲自来找我。祝你新年福气满满……\\n用收到的福气，从罐子里抽个大奖吧。",
+      "native_korean": "이렇게 절 찾아 오시다니요. 새해 복이 가득하시길..\\n 받으신 복으로 항아리에서 대박을 뽑아 보시죠.",
+      "scriptCanonicalSha256": "9b4129309313068977e1133a3c487fc79f4046ed3a7460e43446c086271962f2"
+    },
+    {
+      "quest_id": 2398,
+      "script": "quest/event/gujeong8.qst",
+      "field": "name",
+      "key": "name_18900",
+      "base": "不使用",
+      "replacement": "新年快乐 8",
+      "native_korean": "새해 복 많이 받으세요 8",
+      "scriptCanonicalSha256": "6efd7267f570b18aca254f2dc4dd1e89d0dfd1a494dac96b89b98034a8858445"
+    },
+    {
+      "quest_id": 2398,
+      "script": "quest/event/gujeong8.qst",
+      "field": "depend message",
+      "key": "depend_message_18905",
+      "base": "不使用",
+      "replacement": "看起来你手头不太宽裕。与其在新年里指望中大奖，不如和富有的罗杰·莱文建立关系吧。\\n他很富有，你能得到的东西也会很多。",
+      "native_korean": "돈이 별로 없으신 것 같군요. 새해에 대박을 노리시기 보다는 부유한 로저 레빈과 친분을 쌓아 보시죠.\\n 부유하니 얻는것도 많을 겁니다.",
+      "scriptCanonicalSha256": "6efd7267f570b18aca254f2dc4dd1e89d0dfd1a494dac96b89b98034a8858445"
+    },
+    {
+      "quest_id": 2398,
+      "script": "quest/event/gujeong8.qst",
+      "field": "condition message",
+      "key": "condition_message_18910",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给罗杰·莱文\\n（完成此任务后即可参加金币书活动。详情请查看网站公告！）",
+      "native_korean": "복조리 5개를 모아서 로저레빈에게 가기\\n (이 퀘스트를 수행하게 되면, 코인북 이벤트에 참여하게 됩니다. 자세한 사항은 웹의 공지를 확인하세요!)",
+      "scriptCanonicalSha256": "6efd7267f570b18aca254f2dc4dd1e89d0dfd1a494dac96b89b98034a8858445"
+    },
+    {
+      "quest_id": 2398,
+      "script": "quest/event/gujeong8.qst",
+      "field": "solve message",
+      "key": "solve_message_18915",
+      "base": "不使用",
+      "replacement": "很高兴你能来。既然都来了，就送你一份微薄的礼物吧。",
+      "native_korean": "이렇게 찾아오시다니 반갑군요. 어디보자 이렇게 찾아오셨는데 약소하나마 선물을 드리죠.",
+      "scriptCanonicalSha256": "6efd7267f570b18aca254f2dc4dd1e89d0dfd1a494dac96b89b98034a8858445"
+    },
+    {
+      "quest_id": 2399,
+      "script": "quest/event/gujeong9.qst",
+      "field": "name",
+      "key": "name_18920",
+      "base": "不使用",
+      "replacement": "新年快乐 9 (重复)",
+      "native_korean": "새해 복 많이 받으세요 9(반복)",
+      "scriptCanonicalSha256": "e3aaf9bc44d44ab48a46092c2bc839bf9cbc8df2a40053e32390ce4b9f351e27"
+    },
+    {
+      "quest_id": 2399,
+      "script": "quest/event/gujeong9.qst",
+      "field": "depend message",
+      "key": "depend_message_18925",
+      "base": "不使用",
+      "replacement": "只要冒险家愿意来访，我们的淘金热随时欢迎。",
+      "native_korean": "모험가 분께서 찾아주신다면 저희 골드 러시는 언제나 환영입니다.",
+      "scriptCanonicalSha256": "e3aaf9bc44d44ab48a46092c2bc839bf9cbc8df2a40053e32390ce4b9f351e27"
+    },
+    {
+      "quest_id": 2399,
+      "script": "quest/event/gujeong9.qst",
+      "field": "condition message",
+      "key": "condition_message_18930",
+      "base": "不使用",
+      "replacement": "收集5个福笊篱，交给罗杰·莱文 (重复)",
+      "native_korean": "복조리 5개를 모아서 로저레빈에게 가기(반복)",
+      "scriptCanonicalSha256": "e3aaf9bc44d44ab48a46092c2bc839bf9cbc8df2a40053e32390ce4b9f351e27"
+    },
+    {
+      "quest_id": 2399,
+      "script": "quest/event/gujeong9.qst",
+      "field": "solve message",
+      "key": "solve_message_18935",
+      "base": "不使用",
+      "replacement": "你又来了？祝你新年快乐。",
+      "native_korean": "또 오셨군요? 새해 복 많이 받으시길 바랍니다.",
+      "scriptCanonicalSha256": "e3aaf9bc44d44ab48a46092c2bc839bf9cbc8df2a40053e32390ce4b9f351e27"
+    },
+    {
+      "quest_id": 2400,
+      "script": "quest/event/whiteday1.qst",
+      "field": "name",
+      "key": "name_19160",
+      "base": "不使用",
+      "replacement": "糖果承载着爱",
+      "native_korean": "캔디는 사랑을 싣고",
+      "scriptCanonicalSha256": "76db5310913250a474d0c40e254942abc5030a6d9af3b968c5234314a5d962a8"
+    },
+    {
+      "quest_id": 2400,
+      "script": "quest/event/whiteday1.qst",
+      "field": "depend message",
+      "key": "depend_message_19165",
+      "base": "不使用",
+      "replacement": "哎呀，已经是白色情人节了。\\n这是全世界恋人互赠糖果的幸福日子。\\n冒险家该不会是为了送我糖果才来的吧？",
+      "native_korean": "어머 벌써 화이트 데이네요.\\n 세상의 모든 연인들이 캔디를 주고 받는 행복한 날이죠.\\n 설마 모험가님은 저에게 캔디를 주려고 찾아 오신건가요?",
+      "scriptCanonicalSha256": "76db5310913250a474d0c40e254942abc5030a6d9af3b968c5234314a5d962a8"
+    },
+    {
+      "quest_id": 2400,
+      "script": "quest/event/whiteday1.qst",
+      "field": "condition message",
+      "key": "condition_message_19170",
+      "base": "不使用",
+      "replacement": "收集5个白色情人节糖果，带给赛丽亚",
+      "native_korean": "세리아에게 화이트데이 캔디 5개를 모아서 가져가기",
+      "scriptCanonicalSha256": "76db5310913250a474d0c40e254942abc5030a6d9af3b968c5234314a5d962a8"
+    },
+    {
+      "quest_id": 2400,
+      "script": "quest/event/whiteday1.qst",
+      "field": "solve message",
+      "key": "solve_message_19175",
+      "base": "不使用",
+      "replacement": "哎呀……真的非常感谢你。\\n这是我对冒险家心意的回报。",
+      "native_korean": "어머.. 정말로 감사드려요.\\n 이건 모험가님의 마음에 대한 저의 보답이에요.",
+      "scriptCanonicalSha256": "76db5310913250a474d0c40e254942abc5030a6d9af3b968c5234314a5d962a8"
+    },
+    {
+      "quest_id": 2401,
+      "script": "quest/event/whiteday2.qst",
+      "field": "name",
+      "key": "name_19180",
+      "base": "不使用",
+      "replacement": "愉快的白色情人节",
+      "native_korean": "즐거운 화이트데이",
+      "scriptCanonicalSha256": "e90910681c2c641a7532a053c5849957e9fe759a1eff95f68b89fa544ac8318f"
+    },
+    {
+      "quest_id": 2401,
+      "script": "quest/event/whiteday2.qst",
+      "field": "depend message",
+      "key": "depend_message_19185",
+      "base": "不使用",
+      "replacement": "甜甜的糖果，随时欢迎~",
+      "native_korean": "달콤한 캔디라면 언제든지 환영이에요.",
+      "scriptCanonicalSha256": "e90910681c2c641a7532a053c5849957e9fe759a1eff95f68b89fa544ac8318f"
+    },
+    {
+      "quest_id": 2401,
+      "script": "quest/event/whiteday2.qst",
+      "field": "condition message",
+      "key": "condition_message_19190",
+      "base": "不使用",
+      "replacement": "收集5个白色情人节糖果，带给赛丽亚",
+      "native_korean": "세리아에게 화이트데이 캔디 5개를 모아서 가져가기",
+      "scriptCanonicalSha256": "e90910681c2c641a7532a053c5849957e9fe759a1eff95f68b89fa544ac8318f"
+    },
+    {
+      "quest_id": 2401,
+      "script": "quest/event/whiteday2.qst",
+      "field": "solve message",
+      "key": "solve_message_19195",
+      "base": "不使用",
+      "replacement": "你又来了。祝你度过一个幸福的白色情人节~。",
+      "native_korean": "또 오셨군요. 행복한 화이트 데이 되세요~.",
+      "scriptCanonicalSha256": "e90910681c2c641a7532a053c5849957e9fe759a1eff95f68b89fa544ac8318f"
+    }
+  ],
+  "disabled": [
+    {
+      "quest_id": 1,
+      "script": "quest/epic/1-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "5f5e890b4b7e09a7d6de14b50635c1121abac5742e688003d324d2abe66921f2"
+    },
+    {
+      "quest_id": 2,
+      "script": "quest/epic/1-2.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "c5a33103640c0142c00c85df511a5e309aa8d6c0fba1ca5daf5cb5e51db6f5db"
+    },
+    {
+      "quest_id": 3,
+      "script": "quest/epic/1-3.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "27ce0a3c8f37988b5917dbda936355df8d213d535b4515cc2fbfe873eaf41a3f"
+    },
+    {
+      "quest_id": 4,
+      "script": "quest/epic/1-4.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "05ff3c77028792e4155f3abfeeeb1eec47f00c6f3ee6bfd95eb72e1dc6cfe205"
+    },
+    {
+      "quest_id": 5,
+      "script": "quest/epic/1-5.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "4ad2eba48bd1d58b9e0a0168b00d8c6e40edaa21e05a92fc68660d59741837fd"
+    },
+    {
+      "quest_id": 223,
+      "script": "quest/value/1-7-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "ca2c27b7133501ddd2d363cb265a3a52fed5f28c5a459ffce39e85ce36609b78"
+    },
+    {
+      "quest_id": 232,
+      "script": "quest/value/1-8-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "d8e0cdd209fb12a43cbe3579b7ee77b9508fa197114e87c1bf152614853c0c6d"
+    },
+    {
+      "quest_id": 241,
+      "script": "quest/value/1-9-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "ec2f6bb46205ed09a8912595ea955b4b4ebbda9e017f02d60c70d3cf717dc43c"
+    },
+    {
+      "quest_id": 370,
+      "script": "quest/value/1-10-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "aaf1119f19bb99c4b2f14460278abd367c871ed51e549d41b7f375de38d27eda"
+    },
+    {
+      "quest_id": 455,
+      "script": "quest/value/1-11-1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "cd32305472778f7c7785ae60003f01fb6c957c9a5b34e8bc8cdd41f9404c57ba"
+    },
+    {
+      "quest_id": 1004,
+      "script": "quest/linus/4.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "215aa4fb6b4e5547b32629e46d90fa3735b376713fd74e2f5318bd33ce45c289"
+    },
+    {
+      "quest_id": 1033,
+      "script": "quest/kanna/children2.qst",
+      "reason": "explicitly_ended_event",
+      "scriptCanonicalSha256": "c2a410c2fd3d5065744479ac31cd659560d1d30c8811f84b7c4c7e82435bf172"
+    },
+    {
+      "quest_id": 1034,
+      "script": "quest/kanna/children3.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "d0a5d4914f332b64c0f85cdcc43da4cf63e59e73c05f6d480da8ee22e01fd70c"
+    },
+    {
+      "quest_id": 1041,
+      "script": "quest/sinda/1.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "b35f8a6f5815332aad5cd7eef6daf4e4a5cacc10186ba2251d9780c3690ca099"
+    },
+    {
+      "quest_id": 1042,
+      "script": "quest/sinda/2.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "76d7223c33289489a5656d535166c712ef97f0e294900b39dcb6edb5746c5be4"
+    },
+    {
+      "quest_id": 1043,
+      "script": "quest/sinda/3.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "4f609bcc58dbf126576fa2fb964ca02fea2df6bdda75059b4427c8a3c7492e5c"
+    },
+    {
+      "quest_id": 1052,
+      "script": "quest/sinda/12.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "06856b89c4e4f1202cd0394e59d119b15f31a9e36b65336b70c470526083e7af"
+    },
+    {
+      "quest_id": 1055,
+      "script": "quest/sinda/15.qst",
+      "reason": "explicitly_retired",
+      "scriptCanonicalSha256": "73b64d4c33e9dbce5f5d5042b4d1547925211ca5b33146ac1eca68a343bfb9b8"
+    },
+    {
+      "quest_id": 2390,
+      "script": "quest/event/happybean.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "7b87ff859aea6223f4acce4a35a27604e4b6ea7fb98c6ae9f6793d6c72c2a7a7"
+    },
+    {
+      "quest_id": 2391,
+      "script": "quest/event/gujeong1.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "31f7fe7c04a3d90b62582f95edd6a8391632fdc836e91beb236447ca9daab3c2"
+    },
+    {
+      "quest_id": 2392,
+      "script": "quest/event/gujeong2.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "b036783765075f87c7ee846a1a3ad40793416a8f9375187d42c20832a6ef4efa"
+    },
+    {
+      "quest_id": 2393,
+      "script": "quest/event/gujeong3.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "546ee63ca6e0ec713fee284043bf5be805adeb91a2e5283b4768bc087aae3257"
+    },
+    {
+      "quest_id": 2394,
+      "script": "quest/event/gujeong4.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "7fbfa33e5077679f7fada1cf2b28f9e1addb83da3294b380b965b9668bb02877"
+    },
+    {
+      "quest_id": 2395,
+      "script": "quest/event/gujeong5.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "e04b921214455e421665f65ca6e3a22149c6f98f707a1d6fa92667f08af75587"
+    },
+    {
+      "quest_id": 2396,
+      "script": "quest/event/gujeong6.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "053e89a3185c0193b63b04b273ddbc5b52e08ab1b51b3d4df0823de841f44c05"
+    },
+    {
+      "quest_id": 2397,
+      "script": "quest/event/gujeong7.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "9b4129309313068977e1133a3c487fc79f4046ed3a7460e43446c086271962f2"
+    },
+    {
+      "quest_id": 2398,
+      "script": "quest/event/gujeong8.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "6efd7267f570b18aca254f2dc4dd1e89d0dfd1a494dac96b89b98034a8858445"
+    },
+    {
+      "quest_id": 2399,
+      "script": "quest/event/gujeong9.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "e3aaf9bc44d44ab48a46092c2bc839bf9cbc8df2a40053e32390ce4b9f351e27"
+    },
+    {
+      "quest_id": 2400,
+      "script": "quest/event/whiteday1.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "76db5310913250a474d0c40e254942abc5030a6d9af3b968c5234314a5d962a8"
+    },
+    {
+      "quest_id": 2401,
+      "script": "quest/event/whiteday2.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "e90910681c2c641a7532a053c5849957e9fe759a1eff95f68b89fa544ac8318f"
+    },
+    {
+      "quest_id": 2402,
+      "script": "quest/event/sea-1.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "733c9bd146b58f9579338e71f6fc7059c6bd6a422a323943a7a0098b865f86bc"
+    },
+    {
+      "quest_id": 2403,
+      "script": "quest/event/sea-1-1.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "f1ec61bd895cbe77b9a84a6ea6edcf762f3d4a1ea4b556a9113b02a597d429c0"
+    },
+    {
+      "quest_id": 2404,
+      "script": "quest/event/sea-2.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "296f5585d0ee56cc94ca636c6f3c3fe265678b3807e260ddb1df670effd1a076"
+    },
+    {
+      "quest_id": 2405,
+      "script": "quest/event/sea-2-1.qst",
+      "reason": "event_enablement_unproven",
+      "scriptCanonicalSha256": "c13177dc8348421bb6fc82ecf0ea5da2fae775c2891e22fb5a6c0fbf9b82ac7a"
+    }
+  ]
+}

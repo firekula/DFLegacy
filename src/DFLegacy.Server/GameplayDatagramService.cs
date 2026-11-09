@@ -439,6 +439,7 @@ public sealed partial class GameplayDatagramService(
         var secondaryEndpoint = new IPEndPoint(
             address,
             options.GameplayDatagram.SecondaryPort);
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         try
         {
             _primary = DualStackUdp.Bind(primaryEndpoint);
@@ -451,14 +452,14 @@ public sealed partial class GameplayDatagramService(
 
             var loops = new List<Task>
             {
-                ReceiveLoopAsync(_primary, "primary", stoppingToken),
-                ReceiveLoopAsync(_secondary, "secondary", stoppingToken),
+                OwnLoopAsync("primary", token => ReceiveLoopAsync(_primary, "primary", token), lifetime),
+                OwnLoopAsync("secondary", token => ReceiveLoopAsync(_secondary, "secondary", token), lifetime),
             };
             if (_auditEnabled)
             {
                 logger.LogInformation(
                     "Gameplay UDP audit enabled (DFLEGACY_UDP_AUDIT=1): logging only, no forwarding.");
-                loops.Add(AuditLoopAsync(stoppingToken));
+                loops.Add(OwnLoopAsync("audit", AuditLoopAsync, lifetime));
             }
 
             if (_relayEnabled)
@@ -493,12 +494,32 @@ public sealed partial class GameplayDatagramService(
         }
         finally
         {
+            lifetime.Cancel();
             readiness?.MarkStopped("gameplay");
             _primary?.Dispose();
             _secondary?.Dispose();
             _primary = null;
             _secondary = null;
             _sessions.Clear();
+        }
+    }
+
+    private async Task OwnLoopAsync(string listenerName, Func<CancellationToken, Task> loop,
+        CancellationTokenSource lifetime)
+    {
+        try { await loop(lifetime.Token); }
+        catch (Exception ex) when (lifetime.IsCancellationRequested
+            && ex is OperationCanceledException or SocketException or ObjectDisposedException) { }
+        catch (Exception ex)
+        {
+            // A failed listener must not leave its sibling or the audit timer
+            // keeping WhenAll pending while readiness still advertises service.
+            lifetime.Cancel();
+            readiness?.MarkStopped("gameplay");
+            _primary?.Dispose();
+            _secondary?.Dispose();
+            logger.LogError(ex, "Gameplay UDP {Listener} loop failed; stopping gameplay datagram listeners.", listenerName);
+            throw;
         }
     }
 

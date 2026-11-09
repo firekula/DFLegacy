@@ -39,7 +39,7 @@ class Metadata(unittest.TestCase):
     def test_windows_build_passes_matching_native_paths_and_both_flavors(self):
         calls = []
         with tempfile.TemporaryDirectory() as temporary, patch.object(ci, 'REPO', Path(temporary)), patch.dict(os.environ), patch.object(ci, 'os', SimpleNamespace(name='nt', environ=os.environ)):
-            with patch.object(ci, 'run', side_effect=lambda *args: calls.append(args)), patch.object(ci, 'legacy_patch_fixture', return_value=Path(temporary) / 'prior.zip'), patch.object(ci, 'build_client_assets', return_value=Path(temporary) / 'assets') as assets, patch.object(ci, 'make_archive'), patch.object(ci, 'publish', return_value=(None, Path(temporary) / 'win.zip')), patch.object(ci, 'smoke_archive'), patch.object(ci, 'build_client_packages') as packages:
+            with patch.object(ci, 'run', side_effect=lambda *args: calls.append(args)), patch.object(ci, 'legacy_patch_fixture', return_value=Path(temporary) / 'prior.zip'), patch.object(ci, 'build_client_assets', return_value=Path(temporary) / 'assets') as assets, patch.object(ci, 'make_archive'), patch.object(ci, 'publish', return_value=(None, Path(temporary) / 'win.zip')), patch.object(ci, 'smoke_archive'), patch.object(ci, 'build_client_packages') as packages, patch.object(ci.shutil, 'copy2') as copy_helper:
                 ci.windows('v1.2.3', 'a' * 40)
                 launcher_run = next(call for call in calls if 'src/DFLegacy.Launcher/tests/DFLegacy.Launcher.Tests.csproj' in call)
                 self.assertTrue(any(str(arg).endswith('DFLegacy.Client.dll') and str(arg).startswith('-p:ClientPatchPrebuiltPath=') for arg in launcher_run))
@@ -49,6 +49,12 @@ class Metadata(unittest.TestCase):
                     publish_call = next(call for call in calls if 'src/DFLegacy.Launcher/DFLegacy.Launcher.csproj' in call and rid in call)
                     self.assertTrue(any(str(arg).startswith('-p:ClientBootstrapPrebuiltPath=') for arg in publish_call))
                     self.assertEqual(publish_call[-1], assets.call_args.kwargs['launcher_x86'] if rid == 'win-x86' else assets.call_args.args[0])
+                self.assertEqual(copy_helper.call_count,2)
+                self.assertEqual(assets.call_args.kwargs['capture_helper'].name,'DFLegacy.CrashCapture.exe')
+                for rid in ('win-x64','win-x86'):
+                    helper_call=next(call for call in calls if 'src/DFLegacy.Diagnostics/DFLegacy.Diagnostics.csproj' in call and rid in call)
+                    self.assertIn('true',helper_call)
+                    self.assertIn('-p:PublishSingleFile=true',helper_call)
                 packages.assert_called_once()
 
     def test_metadata_exports_qualified_version_variables_that_allow_real_dotnet_restore(self):

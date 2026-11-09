@@ -55,6 +55,8 @@ internal static class ChapterTwoClient
         options.DisableGitHubUpdates = true;
         options.UpdateServiceUrl = "";
         options.UpdateRepository = "";
+        options.Diagnostics.Enabled = false;
+        options.Diagnostics.ServiceUrl = "";
     }
 
     internal const string CredentialHint = "第二章账号需要 4–16 位英文字母或数字，密码需要 6–16 位英文字母或数字。";
@@ -67,7 +69,9 @@ internal static class ChapterTwoClient
         var root = Path.GetDirectoryName(clientPath)!;
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory, root);
         VerifyFile(clientPath, "4E59EE7346D92DC3E3374E171269CBC4EE4E97807013B18306EAD160829AB7E6");
-        VerifyFile(Path.Combine(root, "Script.pvf"), "0CB607B9502084ECB9E8CD45A67087E1E96F58F4AC5420D3FC673ADC73788AE0");
+        VerifyFile(Path.Combine(root, "Script.pvf"),
+            "0CB607B9502084ECB9E8CD45A67087E1E96F58F4AC5420D3FC673ADC73788AE0",
+            "FB0EEF35483852E0689D037FA6B5018B750940B0E35FD8A73FD35395C0396144");
         var images = Path.Combine(root, "ImagePacks2");
         if (!Directory.Exists(images) || ClientLogPaths.HasLink(images))
             throw new InvalidDataException("请将第二章启动器放在原版 DNFS1C2 客户端目录，与 DNF.exe 和 ImagePacks2 同层。");
@@ -254,12 +258,13 @@ internal static class ChapterTwoClient
         if (Hash(source) != hash) throw new InvalidDataException($"第二章启动组件校验失败。{name}");
     }
 
-    private static void VerifyFile(string path, string hash)
+    private static void VerifyFile(string path, params string[] hashes)
     {
         if (ClientLogPaths.HasLink(path) || !File.Exists(path))
             throw new InvalidDataException($"第二章客户端文件不存在或路径是链接。{path}");
         using var file = File.OpenRead(path);
-        if (Hash(file) != hash) throw new InvalidDataException($"第二章客户端文件与构建版本不匹配。{path}");
+        if (!hashes.Contains(Hash(file), StringComparer.Ordinal))
+            throw new InvalidDataException($"第二章客户端文件与构建版本不匹配。{path}");
     }
 
     private static void EnsureExtracted(string name, string path, string hash)

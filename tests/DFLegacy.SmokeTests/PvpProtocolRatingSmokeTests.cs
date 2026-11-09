@@ -8,10 +8,20 @@ internal static class PvpProtocolRatingSmokeTests
 {
     internal static Task RunAsync(Action<bool, string> check)
     {
+        ExpandedModes(check);
         Protocol(check);
         Parsers(check);
         RatingAndMaps(check);
         return Task.CompletedTask;
+    }
+
+    private static void ExpandedModes(Action<bool, string> check)
+    {
+        check(GameProtocolEngine.TryReadPvpMode([0,0,1], out var team) && team == 1
+            && GameProtocolEngine.TryReadPvpMode([0,0,2], out var relay) && relay == 2,
+            "ACT1 accepts team1 and relay2 mode commands");
+        check(GameProtocolEngine.TryReadPvpSeat([0,0,7,2], out var seat, out var state) && seat == 7 && state == 2,
+            "ACT1 accepts eighth seat and blue team");
     }
 
     private static void Protocol(Action<bool, string> check)
@@ -40,10 +50,18 @@ internal static class PvpProtocolRatingSmokeTests
         Vector(GameProtocolEngine.CreatePvpResult(1, 17, 10, -899,
             [new(0x1234, 9, 10, 240001, 240000, 275000)], 0x1234, false), 0, 47,
             "01110000000A7DFCFFFF013412090000000A81A9030080A903003832040000000000000000003412FFFF0000000000");
+        Vector(GameProtocolEngine.CreatePvpStart(3,2),0,45,"0302");
+        Vector(GameProtocolEngine.CreatePvpSeatState(9,[new(7,2,0x5678)],1),0,43,"0900010107027856");
+        Vector(GameProtocolEngine.CreatePvpRelayTurn([
+            new(0,[new(0,4),new(2,2)]),new(255,[new(1,3),new(7,1)])]),0,124,"020002000400020200FF02010300070100");
+        Vector(GameProtocolEngine.CreatePvpFightRequest(7),0,125,"07");
+        check(Throws(()=>GameProtocolEngine.CreatePvpRelayTurn([new(8,[]),new(0,[])]))
+            && Throws(()=>GameProtocolEngine.CreatePvpSeatState(1,[new(7,2,65535)],1)),
+            "malformed relay/seat packets are rejected before serialization");
         check(Throws(() => GameProtocolEngine.CreatePvpLoginSuccess(7, "localhost", 9, 10))
             && Throws(() => GameProtocolEngine.CreatePvpLoginSuccess(7, "127.0.0.1", 0, 10))
             && Throws(() => GameProtocolEngine.CreatePvpStart(0))
-            && Throws(() => GameProtocolEngine.CreatePvpStart(3, 1))
+            && Throws(() => GameProtocolEngine.CreatePvpStart(3, 3))
             && Throws(() => GameProtocolEngine.CreatePvpEnterReply([true]))
             && Throws(() => GameProtocolEngine.CreatePvpResult(0, 0, 0, 0, [], 0, true)),
             "PvP builders reject incomplete relay, unsupported mode/map and empty native result rows");
@@ -67,12 +85,12 @@ internal static class PvpProtocolRatingSmokeTests
             && !GameProtocolEngine.TryReadPvpEnter([0, 0, 9, 0, 1], out _)
             && !GameProtocolEngine.TryReadPvpEnter([0, 0, 9, 0, 0, 0], out _), "join accepts only the exact unlocked ACT1 layout");
         check(GameProtocolEngine.TryReadPvpSeat([0, 0, 1, 254], out var seat, out var state) && seat == 1 && state == 254
-            && !GameProtocolEngine.TryReadPvpSeat([0, 0, 2, 0], out _, out _)
+            && !GameProtocolEngine.TryReadPvpSeat([0, 0, 8, 0], out _, out _)
             && !GameProtocolEngine.TryReadPvpSeat([0, 0, 1, 3], out _, out _), "seat requests bound individual seats and disallow observer roles");
         check(GameProtocolEngine.TryReadPvpReady([0, 0, 1], out var ready) && ready
             && !GameProtocolEngine.TryReadPvpReady([0, 0, 2], out _)
             && GameProtocolEngine.TryReadPvpMode([0, 0, 0], out _)
-            && !GameProtocolEngine.TryReadPvpMode([0, 0, 1], out _)
+            && !GameProtocolEngine.TryReadPvpMode([0, 0, 3], out _)
             && GameProtocolEngine.TryReadPvpMap([0, 0, 3, 0], out var map) && map == 3
             && !GameProtocolEngine.TryReadPvpMap([0, 0, 3, 0, 0], out _)
             && GameProtocolEngine.TryReadPvpDeath([0, 0, 255, 255], out var killer) && killer == 65535,

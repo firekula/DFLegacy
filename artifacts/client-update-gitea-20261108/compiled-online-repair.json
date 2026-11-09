@@ -1,0 +1,22 @@
+[
+  {
+    "architecture": "x86",
+    "flavor": "normal",
+    "exitCode": 0,
+    "version": "v0.1.8-giteatest.2",
+    "configurationPreserved": true,
+    "allFilesVerified": true,
+    "gameExecuted": false,
+    "updateReportCount": 1
+  },
+  {
+    "architecture": "x64",
+    "flavor": "normal",
+    "exitCode": 0,
+    "version": "v0.1.8-giteatest.2",
+    "configurationPreserved": true,
+    "allFilesVerified": true,
+    "gameExecuted": false,
+    "updateReportCount": 1
+  }
+]

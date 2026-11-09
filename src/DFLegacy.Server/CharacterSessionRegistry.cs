@@ -27,7 +27,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<GameMessageType, ushort, byte[]>? messageNotification = null,
         Action<byte[]>? popupNotification = null,
         Action<byte>? weaknessRecovery = null,
-        Action<ushort, byte>? dungeonPermission = null) =>
+        Action<ushort, byte>? dungeonPermission = null,
+        Action? victoryPointsChanged = null) =>
         ClaimCoreAsync(
             CharacterSessionKey.ForStorageId(characterId),
             characterId,
@@ -42,7 +43,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             messageNotification,
             popupNotification,
             weaknessRecovery,
-            dungeonPermission);
+            dungeonPermission,
+            victoryPointsChanged);
 
     public Task<CharacterSessionLease> ClaimAsync(
         uint characterNo,
@@ -56,7 +58,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<GameMessageType, ushort, byte[]>? messageNotification = null,
         Action<byte[]>? popupNotification = null,
         Action<byte>? weaknessRecovery = null,
-        Action<ushort, byte>? dungeonPermission = null)
+        Action<ushort, byte>? dungeonPermission = null,
+        Action? victoryPointsChanged = null)
         => ClaimAsync(
             characterNo,
             storageId: Guid.Empty,
@@ -70,7 +73,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             messageNotification,
             popupNotification,
             weaknessRecovery,
-            dungeonPermission);
+            dungeonPermission,
+            victoryPointsChanged);
 
     public Task<CharacterSessionLease> ClaimAsync(
         uint characterNo,
@@ -85,7 +89,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<GameMessageType, ushort, byte[]>? messageNotification = null,
         Action<byte[]>? popupNotification = null,
         Action<byte>? weaknessRecovery = null,
-        Action<ushort, byte>? dungeonPermission = null)
+        Action<ushort, byte>? dungeonPermission = null,
+        Action? victoryPointsChanged = null)
     {
         if (characterNo == 0)
         {
@@ -106,7 +111,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             messageNotification,
             popupNotification,
             weaknessRecovery,
-            dungeonPermission);
+            dungeonPermission,
+            victoryPointsChanged);
     }
 
     private async Task<CharacterSessionLease> ClaimCoreAsync(
@@ -123,7 +129,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<GameMessageType, ushort, byte[]>? messageNotification,
         Action<byte[]>? popupNotification,
         Action<byte>? weaknessRecovery,
-        Action<ushort, byte>? dungeonPermission)
+        Action<ushort, byte>? dungeonPermission,
+        Action? victoryPointsChanged = null)
     {
         var candidate = new CharacterSessionLease(
             key,
@@ -138,7 +145,8 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             messageNotification,
             popupNotification,
             weaknessRecovery,
-            dungeonPermission);
+            dungeonPermission,
+            victoryPointsChanged);
         while (true)
         {
             if (_activeCharacters.TryAdd(key, candidate))
@@ -279,6 +287,15 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         return true;
     }
 
+    public bool NotifyVictoryPointsChanged(Guid characterId)
+    {
+        var lease = _activeCharacters.TryGetValue(CharacterSessionKey.ForStorageId(characterId), out var storage)
+            ? storage : _activeCharacters.Values.FirstOrDefault(candidate => candidate.CharacterId == characterId);
+        if (lease is null) return false;
+        lease.NotifyVictoryPointsChanged();
+        return true;
+    }
+
     public bool NotifyFatigueReset(Guid characterId)
     {
         if (_activeCharacters.TryGetValue(
@@ -298,6 +315,12 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
 
         numericLease.NotifyFatigueReset();
         return true;
+    }
+
+    internal void NotifyDailyFatigueReset()
+    {
+        foreach (var lease in _activeCharacters.Values)
+            lease.NotifyFatigueReset();
     }
 
     public bool NotifyWeaknessRecovery(Guid characterId, byte recovery)
@@ -449,6 +472,7 @@ public sealed class CharacterSessionLease
     private readonly Action<byte[]>? _popupNotification;
     private readonly Action<byte>? _weaknessRecovery;
     private readonly Action<ushort, byte>? _dungeonPermission;
+    private readonly Action? _victoryPointsChanged;
     private readonly TaskCompletionSource _released =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _kickIssued;
@@ -466,7 +490,8 @@ public sealed class CharacterSessionLease
         Action<GameMessageType, ushort, byte[]>? messageNotification,
         Action<byte[]>? popupNotification,
         Action<byte>? weaknessRecovery,
-        Action<ushort, byte>? dungeonPermission)
+        Action<ushort, byte>? dungeonPermission,
+        Action? victoryPointsChanged = null)
     {
         Key = key;
         CharacterId = characterId;
@@ -481,6 +506,7 @@ public sealed class CharacterSessionLease
         _popupNotification = popupNotification;
         _weaknessRecovery = weaknessRecovery;
         _dungeonPermission = dungeonPermission;
+        _victoryPointsChanged = victoryPointsChanged;
     }
 
     public Guid CharacterId { get; }
@@ -518,6 +544,8 @@ public sealed class CharacterSessionLease
         _premiumInfo?.Invoke(serviceType, remainSeconds);
 
     internal void NotifyCera(uint value) => _ceraInfo?.Invoke(value);
+
+    internal void NotifyVictoryPointsChanged() => _victoryPointsChanged?.Invoke();
 
     internal void NotifyFatigueReset() => _fatigueReset?.Invoke();
 

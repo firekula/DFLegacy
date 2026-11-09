@@ -36,6 +36,9 @@ add_library(ijl15 SHARED
     src/client_debug_state.h
     src/boss_room_death.cpp
     src/boss_room_death.h
+    src/loot_gather.cpp
+    src/loot_gather.h
+    src/loot_gather_hooks.cpp
     src/creature_gift_row.cpp
     src/creature_gift_row.h
     src/countdown_coin.cpp
@@ -68,6 +71,10 @@ add_library(ijl15 SHARED
     src/d3d8_scaler.h
     src/d3d8_hooks.cpp
     src/d3d8_hooks.h
+    src/native_incidents.cpp
+    src/native_incidents.h
+    src/native_capture.cpp
+    src/native_capture.h
     src/diagnostic_delivery.h
     src/pe_import.h
     src/window_input_scaling.cpp
@@ -151,7 +158,7 @@ target_sources(ijl15 PRIVATE ../DFLegacy.Client/player_runtime.cpp ../DFLegacy.C
     ../DFLegacy.Debug/src/client_town_route_contract.cpp
     ../DFLegacy.Debug/src/client_town_route_runtime.cpp
 )
-target_link_libraries(ijl15 PRIVATE bcrypt)
+target_link_libraries(ijl15 PRIVATE bcrypt detours)
 
 get_target_property(client_sources ijl15 SOURCES)
 list(REMOVE_ITEM client_sources src/ijl15.cpp src/ijl15.def src/ijl15_entry.cpp)
@@ -171,6 +178,40 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(loot_gather_tests tests/loot_gather_tests.cpp src/loot_gather.cpp)
+    target_compile_options(loot_gather_tests PRIVATE /W4 /WX /permissive- /EHsc)
+    add_test(NAME loot_gather COMMAND loot_gather_tests)
+    add_executable(loot_gather_hook_tests tests/loot_gather_hook_tests.cpp src/loot_gather.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_compile_options(loot_gather_hook_tests PRIVATE /W4 /WX /permissive- /EHsc)
+    target_link_options(loot_gather_hook_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    add_test(NAME loot_gather_hook_abi COMMAND loot_gather_hook_tests)
+endif()
+if(BUILD_TESTING)
+    add_executable(native_incident_tests tests/incident_tests.cpp src/native_incidents.cpp src/native_capture.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_link_libraries(native_incident_tests PRIVATE detours bcrypt ws2_32)
+    target_include_directories(native_incident_tests PRIVATE src)
+    target_compile_options(native_incident_tests PRIVATE /W4 /WX /EHsc)
+    target_link_options(native_incident_tests PRIVATE /BASE:0x10000000 /DYNAMICBASE:NO)
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_test(NAME native_incidents COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_incidents.py" "$<TARGET_FILE:native_incident_tests>")
+    add_subdirectory(../../tools/debug/crash_capture "${CMAKE_CURRENT_BINARY_DIR}/crash_capture")
+    add_library(native_fault_module SHARED tests/fault_module.cpp)
+    set_target_properties(native_fault_module PROPERTIES OUTPUT_NAME "DFLegacy.Client" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/fault-module/$<CONFIG>" ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/fault-module/$<CONFIG>" PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/fault-module/$<CONFIG>")
+    target_compile_options(native_fault_module PRIVATE /O2 /Zi /W4 /WX)
+    target_link_options(native_fault_module PRIVATE /DEBUG:FULL /OPT:REF /OPT:ICF /INCREMENTAL:NO /PDBALTPATH:DFLegacy.Client.pdb)
+    add_dependencies(native_incident_tests native_fault_module)
+    add_executable(native_capture_helper_fixture tests/capture_helper_fixture.cpp ../../tools/debug/crash_capture/local_capture.cpp)
+    target_compile_definitions(native_capture_helper_fixture PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(native_capture_helper_fixture PRIVATE /W4 /WX)
+    target_link_libraries(native_capture_helper_fixture PRIVATE psapi shell32 ole32 advapi32 bcrypt)
+    add_library(original_game_probe SHARED tests/original_game_probe.cpp tests/original_game_probe.def src/native_capture.cpp)
+    target_include_directories(original_game_probe PRIVATE src)
+    target_compile_options(original_game_probe PRIVATE /W4 /WX)
+    target_link_libraries(original_game_probe PRIVATE detours bcrypt)
+    add_executable(original_game_host tests/original_game_host.cpp)
+    target_compile_options(original_game_host PRIVATE /W4 /WX)
+    target_link_libraries(original_game_host PRIVATE detours)
+    add_test(NAME native_capture COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_native_capture.py" "$<TARGET_FILE:native_incident_tests>" "$<TARGET_FILE:native_capture_helper_fixture>")
     add_executable(payment_window_layout_tests tests/payment_window_layout_tests.cpp)
     target_compile_options(payment_window_layout_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     add_test(NAME payment_window_layout COMMAND payment_window_layout_tests)
@@ -302,6 +343,8 @@ if(BUILD_TESTING)
         tests/mage_skill_contact_tests.cpp
         src/boss_room_death.cpp
         src/boss_room_death.h
+        src/loot_gather.cpp
+        src/loot_gather_hooks.cpp
         tests/boss_room_death_tests.cpp
         src/creature_gift_row.cpp
         src/creature_gift_row.h
@@ -449,3 +492,10 @@ if(BUILD_TESTING)
     endforeach()
     target_sources(ijl15_tests PRIVATE ../DFLegacy.Client/bootstrap_runtime.cpp)
 endif()
+
+# Private production symbols for optimized Release. /DEBUG changes linker
+# optimization defaults, so restore REF/ICF explicitly after it.
+foreach(symbol_target IN ITEMS ijl15 client_patch df_debug client_bootstrap)
+    target_compile_options(${symbol_target} PRIVATE "$<$<CONFIG:Release>:/Zi>")
+    target_link_options(${symbol_target} PRIVATE "$<$<CONFIG:Release>:/DEBUG:FULL>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")
+endforeach()

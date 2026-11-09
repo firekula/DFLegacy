@@ -1,0 +1,11 @@
+{
+  "architecture": "x64",
+  "case": "offline-corrupt",
+  "exit": 1,
+  "expected": 1,
+  "networkFault": "per-process HTTP(S) proxy 127.0.0.1:9",
+  "files": [
+    null
+  ],
+  "configPreserved": true
+}

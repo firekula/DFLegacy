@@ -1,0 +1,12 @@
+{
+  "sourceSha256":"c2321f05953ae4484dc6d0b10db50f83c3251c4967cdd0859376d4f8acdf27f4",
+  "outputSha256":"69aa1a0338408fbcc3eff381924311ba42119a2cd2db4e8ffd2fab369bb9b34b",
+  "entriesChecked":48327,
+  "changedEntries":["itemshop/equipmentshop7.shp"],
+  "materialsWithPriceAdded":201,
+  "unpricedMaterialsExcluded":63,
+  "originalSlotsPreserved":98,
+  "resultSlotsIncludingEmpty":301,
+  "sourceUnchanged":true,
+  "inGameVerified":false
+}

@@ -19,6 +19,7 @@ services:
       - "${GAME_BIND:-0.0.0.0}:7001:7001/tcp"
       - "${GAME_BIND:-0.0.0.0}:8080:8080/tcp"
       - "${GAME_BIND:-0.0.0.0}:7004:7004/tcp" # Optional PvP; disabled in server configuration by default.
+      - "${GAME_BIND:-0.0.0.0}:7110-7112:7110-7112/tcp" # Intermediate, advanced and free PvP.
       - "${GAME_BIND:-0.0.0.0}:7005:7005/tcp"
       - "${GAME_BIND:-0.0.0.0}:2311:2311/udp"
       - "${GAME_BIND:-0.0.0.0}:7002:7002/udp"

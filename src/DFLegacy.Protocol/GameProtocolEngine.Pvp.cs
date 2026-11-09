@@ -9,6 +9,8 @@ public sealed record PvpCreateRequest(byte NameSelection, byte[] Name, ushort Re
 public sealed record PvpSeatInfo(byte Seat, byte State, ushort Uid);
 public sealed record PvpRoomInfo(ushort RoomId, byte NameSelection, byte[] Name, byte State,
     byte HostSeat, ushort RequestedMap, byte Mode, IReadOnlyList<PvpSeatInfo> Seats, bool PasswordProtected = false);
+public sealed record PvpRelayOrder(byte Seat, ushort Priority);
+public sealed record PvpRelayTeam(byte NextSeat, IReadOnlyList<PvpRelayOrder> Order);
 public sealed record PvpRankReport(ushort[] Stats, uint[] Scores, uint TotalScore);
 public sealed record PvpResultRankEntry(ushort Uid, uint TotalScore, byte Grade, uint TotalPvpExp,
     uint CurrentGradeThreshold, uint NextGradeThreshold);
@@ -27,6 +29,7 @@ public static partial class GameProtocolEngine
     public const byte SetPvpMapCommand = 62;
     public const byte PvpQuickJoinCommand = 101;
     public const byte PvpHeartbeatCommand = 120;
+    public const byte PvpRequestFightCommand = 122;
 
     // The bounded implementation supports the native 16 presets and short custom names.
     // The byte bound is local input hardening, not a claim about a later server's limit.
@@ -82,8 +85,8 @@ public static partial class GameProtocolEngine
 
     public static GameServerPacket CreatePvpSeatState(ushort roomId, IReadOnlyList<PvpSeatInfo> seats, byte mode = 0)
     {
-        if (mode != 0 || seats.Count is < 1 or > 8 || seats.Select(s => s.Seat).Distinct().Count() != seats.Count)
-            throw new ArgumentException("Invalid individual seat update.", nameof(seats));
+        if (mode > 2 || seats.Count is < 1 or > 8 || seats.Select(s => s.Seat).Distinct().Count() != seats.Count)
+            throw new ArgumentException("Invalid PvP seat update.", nameof(seats));
         foreach (var seat in seats) ValidatePvpSeat(seat);
         return PvpPacket(NotificationPacketType, 43, writer =>
         {
@@ -94,38 +97,61 @@ public static partial class GameProtocolEngine
 
     public static GameServerPacket CreatePvpReadyState(byte seat, bool ready)
     {
-        if (seat > 1) throw new ArgumentOutOfRangeException(nameof(seat));
+        if (seat > 7) throw new ArgumentOutOfRangeException(nameof(seat));
         return new(NotificationPacketType, 44, [seat, ready ? (byte)1 : (byte)0]);
     }
 
     public static GameServerPacket CreatePvpStart(byte selectedMap, byte mode = 0)
     {
-        if (selectedMap == 0 || mode != 0) throw new ArgumentException("Start requires a selected native map and individual mode.");
+        if (selectedMap == 0 || mode > 2) throw new ArgumentException("Start requires a selected native map and a supported mode.");
         return new(NotificationPacketType, 45, [selectedMap, mode]);
     }
 
     public static GameServerPacket CreatePvpDeath(byte deadSeat, byte killerSeat)
     {
-        if (deadSeat > 1 || (killerSeat > 1 && killerSeat != 255)) throw new ArgumentOutOfRangeException(nameof(deadSeat));
+        if (deadSeat > 7 || (killerSeat > 7 && killerSeat != 255)) throw new ArgumentOutOfRangeException(nameof(deadSeat));
         return new(NotificationPacketType, 46, [deadSeat, killerSeat]);
+    }
+
+    public static GameServerPacket CreatePvpRelayTurn(IReadOnlyList<PvpRelayTeam> teams)
+    {
+        if (teams.Count != 2 || teams.Any(t => (t.NextSeat > 7 && t.NextSeat != 255) || t.Order.Count > 4)
+            || teams.SelectMany(t => t.Order).Any(o => o.Seat > 7 || o.Priority == 0)
+            || teams.SelectMany(t => t.Order).Select(o => o.Seat).Distinct().Count() != teams.Sum(t => t.Order.Count))
+            throw new ArgumentException("Invalid ACT1 relay turn.", nameof(teams));
+        return PvpPacket(NotificationPacketType, 124, writer =>
+        {
+            writer.Write((byte)2);
+            foreach (var team in teams)
+            {
+                writer.Write(team.NextSeat); writer.Write((byte)team.Order.Count);
+                foreach (var order in team.Order) { writer.Write(order.Seat); writer.Write(order.Priority); }
+            }
+        });
+    }
+
+    public static GameServerPacket CreatePvpFightRequest(byte seat)
+    {
+        if (seat > 7) throw new ArgumentOutOfRangeException(nameof(seat));
+        return new(NotificationPacketType, 125, [seat]);
     }
 
     public static GameServerPacket CreatePvpRankRequest() => new(NotificationPacketType, 49, []);
 
     public static GameServerPacket CreatePvpEnterReply(IReadOnlyList<bool> ready)
     {
-        if (ready.Count != 8 || ready.Skip(2).Any(r => r)) throw new ArgumentException("Enter reply requires eight bounded ready flags.", nameof(ready));
+        if (ready.Count != 8) throw new ArgumentException("Enter reply requires eight ready flags.", nameof(ready));
         return new(CommandPacketType, EnterPvpRoomCommand, [(byte)1, ..ready.Select(r => r ? (byte)1 : (byte)0)]);
     }
 
-    /// <summary>Mode0 common result only: no later mission, seal or relay extensions.</summary>
+    /// <summary>ACT1 common result: winning representative seat for all three modes.</summary>
     public static GameServerPacket CreatePvpResult(byte winningSeat, uint recipientVictoryPoints,
-        byte recipientGrade, int recipientExpDelta, IReadOnlyList<PvpResultRankEntry> ranks, ushort aceUid, bool draw)
+        byte recipientGrade, int recipientExpDelta, IReadOnlyList<PvpResultRankEntry> ranks, ushort aceUid, bool draw, ushort allKillUid = ushort.MaxValue)
     {
-        if (winningSeat > 1 || recipientGrade > 30 || ranks.Count is < 1 or > 2
+        if (winningSeat > 7 || recipientGrade > 30 || ranks.Count is < 1 or > 8
             || ranks.Any(r => r.Uid == ushort.MaxValue || r.Grade > 30)
             || ranks.Select(r => r.Uid).Distinct().Count() != ranks.Count)
-            throw new ArgumentException("Invalid bounded individual result.");
+            throw new ArgumentException("Invalid PvP result.");
         return PvpPacket(NotificationPacketType, 47, writer =>
         {
             writer.Write(winningSeat); writer.Write(recipientVictoryPoints); writer.Write(recipientGrade); writer.Write(recipientExpDelta);
@@ -136,7 +162,7 @@ public static partial class GameProtocolEngine
                 writer.Write(rank.CurrentGradeThreshold); writer.Write(rank.NextGradeThreshold);
                 writer.Write(0u); writer.Write(0u); // Deathmatch counters are excluded in individual mode.
             }
-            writer.Write(aceUid); writer.Write(ushort.MaxValue); // All-kill belongs to relay mode only.
+            writer.Write(aceUid); writer.Write(allKillUid);
             writer.Write(0u); // Ordinary individual does not grant character EXP.
             writer.Write(draw ? (byte)1 : (byte)0);
         });
@@ -174,7 +200,7 @@ public static partial class GameProtocolEngine
     public static bool TryReadPvpSeat(byte[] body, out byte seat, out byte state)
     {
         seat = state = 0;
-        if (body.Length != 4 || body[2] > 1 || body[3] is not (0 or 254 or 255)) return false;
+        if (body.Length != 4 || body[2] > 7 || body[3] is not (0 or 1 or 2 or 254 or 255)) return false;
         seat = body[2]; state = body[3]; return true;
     }
 
@@ -188,7 +214,8 @@ public static partial class GameProtocolEngine
     public static bool TryReadPvpMode(byte[] body, out byte mode)
     {
         mode = 0;
-        return body.Length == 3 && body[2] == 0;
+        if (body.Length != 3 || body[2] > 2) return false;
+        mode = body[2]; return true;
     }
 
     public static bool TryReadPvpMap(byte[] body, out ushort requestedMap)
@@ -237,13 +264,13 @@ public static partial class GameProtocolEngine
 
     private static void ValidatePvpRoomState(byte state, byte hostSeat, byte mode)
     {
-        if (state > 2 || hostSeat > 1 || mode != 0) throw new ArgumentException("Invalid bounded individual room state.");
+        if (state > 2 || hostSeat > 7 || mode > 2) throw new ArgumentException("Invalid PvP room state.");
     }
 
     private static void ValidatePvpSeat(PvpSeatInfo seat)
     {
-        if (seat.Seat > 7 || (seat.Seat > 1 && (seat.State != 254 || seat.Uid != ushort.MaxValue))
-            || (seat.State == 0 ? seat.Uid == ushort.MaxValue : seat.State is not (254 or 255) || seat.Uid != ushort.MaxValue))
-            throw new ArgumentException("Invalid bounded individual seat.", nameof(seat));
+        if (seat.Seat > 7 || (seat.State <= 2 ? seat.Uid == ushort.MaxValue
+            : seat.State is not (254 or 255) || seat.Uid != ushort.MaxValue))
+            throw new ArgumentException("Invalid PvP seat.", nameof(seat));
     }
 }

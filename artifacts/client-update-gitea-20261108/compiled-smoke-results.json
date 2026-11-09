@@ -1,0 +1,98 @@
+[
+  {
+    "architecture": "x86",
+    "test": "actual-compiled-notices-with-broken-config",
+    "exitCode": 0,
+    "executableSha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57",
+    "stdoutBytes": 1384,
+    "writes": 0
+  },
+  {
+    "architecture": "x86",
+    "flavor": "normal",
+    "test": "offline-complete-receipt-verified",
+    "exitCode": 0,
+    "manifestSha256": "e1f56a63a4589893841346229cb0ac7efe33252c215c8913fea4db05f6f6cdf5",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x86",
+    "flavor": "normal",
+    "test": "offline-corrupt-native-blocked",
+    "exitCode": 1,
+    "manifestSha256": "e1f56a63a4589893841346229cb0ac7efe33252c215c8913fea4db05f6f6cdf5",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x86",
+    "flavor": "test",
+    "test": "offline-complete-receipt-verified",
+    "exitCode": 0,
+    "manifestSha256": "e9bee4d983e5515fcb1ea2504d201cf62acb5dd923b998c15e4eca79f5c0ba60",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x86",
+    "flavor": "test",
+    "test": "offline-corrupt-native-blocked",
+    "exitCode": 1,
+    "manifestSha256": "e9bee4d983e5515fcb1ea2504d201cf62acb5dd923b998c15e4eca79f5c0ba60",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x64",
+    "test": "actual-compiled-notices-with-broken-config",
+    "exitCode": 0,
+    "executableSha256": "63d0c07c3cf2d751ccbcf9ba7c12e813573e595ba566283cdbaf377f442d1f18",
+    "stdoutBytes": 1384,
+    "writes": 0
+  },
+  {
+    "architecture": "x64",
+    "flavor": "normal",
+    "test": "offline-complete-receipt-verified",
+    "exitCode": 0,
+    "manifestSha256": "26902ecb1c46061ba2dca68d7d1802d2af3b3d7f1b0868a77fc30297f23c502a",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x64",
+    "flavor": "normal",
+    "test": "offline-corrupt-native-blocked",
+    "exitCode": 1,
+    "manifestSha256": "26902ecb1c46061ba2dca68d7d1802d2af3b3d7f1b0868a77fc30297f23c502a",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x64",
+    "flavor": "test",
+    "test": "offline-complete-receipt-verified",
+    "exitCode": 0,
+    "manifestSha256": "510f4b36a61d6a65b4763058079804d4feffe4deb4c08b35c00c08fec9d07e89",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  },
+  {
+    "architecture": "x64",
+    "flavor": "test",
+    "test": "offline-corrupt-native-blocked",
+    "exitCode": 1,
+    "manifestSha256": "510f4b36a61d6a65b4763058079804d4feffe4deb4c08b35c00c08fec9d07e89",
+    "configurationUnchanged": true,
+    "networkDisabled": true,
+    "gameExecutablePresent": false
+  }
+]

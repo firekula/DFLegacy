@@ -1,0 +1,91 @@
+{
+  "scope": "Static native AI decision/execution and normal-player gate evidence; no live combat proof.",
+  "passed": 21,
+  "failures": 0,
+  "checks": [
+    {
+      "label": "ACT1 executable hash",
+      "actual": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5"
+    },
+    {
+      "label": "swordman primary AI flag vtable slot",
+      "actual": "00493870"
+    },
+    {
+      "label": "fighter primary AI flag vtable slot",
+      "actual": "00493870"
+    },
+    {
+      "label": "gunner primary AI flag vtable slot",
+      "actual": "00493870"
+    },
+    {
+      "label": "mage primary AI flag vtable slot",
+      "actual": "00493870"
+    },
+    {
+      "label": "priest primary AI flag vtable slot",
+      "actual": "00493870"
+    },
+    {
+      "label": "ordinary actor AI flag is constant false",
+      "actual": "32c0c3"
+    },
+    {
+      "label": "AI state allocation size push",
+      "actual": "6808090000"
+    },
+    {
+      "label": "AI state constructor opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI state constructor target",
+      "actual": "00492020"
+    },
+    {
+      "label": "AI character script loader opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI character script loader target",
+      "actual": "0071BC00"
+    },
+    {
+      "label": "AI target selection opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI target selection target",
+      "actual": "0048E770"
+    },
+    {
+      "label": "AI battle observation fill opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI battle observation fill target",
+      "actual": "0048D760"
+    },
+    {
+      "label": "AI action pattern evaluation opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI action pattern evaluation target",
+      "actual": "004E2A40"
+    },
+    {
+      "label": "AI key stream activation opcode",
+      "actual": 232
+    },
+    {
+      "label": "AI key stream activation target",
+      "actual": "0048DAD0"
+    },
+    {
+      "label": "network AI creation still defaults to return",
+      "actual": "00792127"
+    }
+  ]
+}

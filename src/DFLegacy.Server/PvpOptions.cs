@@ -17,11 +17,19 @@ public sealed class PvpOptions
     {
         if (!Enabled) return;
         if (options.Processes.Channel.Enabled) throw new InvalidOperationException("PvP requires the shared-store single process deployment.");
-        if (Port is < 1 or > 65535 || Port == options.Channel.Port || Port == options.Entrance.Port
-            || Port == options.Admin.Port || (options.GameProbe.Enabled && Port == options.GameProbe.Port))
+        var reserved = options.Entrance.AdditionalPorts.Append(options.Channel.Port).Append(options.Entrance.Port)
+            .Append(options.Admin.Port)
+            .Concat(options.Channel.RegionalChannelsEnabled ? Enumerable.Range(7100, 6) : [])
+            .Concat(options.GameProbe.Enabled ? [options.GameProbe.Port] : [])
+            .Concat(options.FallbackRelay.Enabled ? [options.FallbackRelay.TcpPort] : [])
+            .Concat(options.WebPanels.Gm.Enabled ? [options.WebPanels.Gm.Port] : [])
+            .Concat(options.WebPanels.Player.Enabled ? [options.WebPanels.Player.Port] : []);
+        var ports = PvpChannelCatalog.Profiles(this).Select(c => c.Port).ToArray();
+        if (ports.Any(p => p is < 1 or > 65535) || ports.Distinct().Count() != ports.Length || ports.Intersect(reserved).Any())
             throw new InvalidOperationException("PvP TCP port conflicts with another listener or is outside 1..65535.");
-        if (ChannelNumber != 51 || options.Channel.ChannelNumber == 51)
-            throw new InvalidOperationException("The verified ACT1 PvP category requires a dedicated channel 51.");
+        if (ChannelNumber != 51 || options.Channel.ServerNumber != 1
+            || PvpChannelCatalog.Profiles(this).Any(c => c.Number == options.Channel.ChannelNumber))
+            throw new InvalidOperationException("ACT1 PvP requires dedicated channels 51,52,53,55 in server group 1.");
         if (RelayHost.Length == 0)
         {
             if (RelayTcpPort != 0 || RelayUdpPort != 0) throw new InvalidOperationException("Fallback relay ports require an IPv4 host.");
@@ -54,7 +62,7 @@ internal static class PvpChannelConfiguration
         }
         else yield return (o.Channel.ChannelNumber, o.Channel.Name, o.Channel.Port);
 
-        if (o.Pvp.Enabled) yield return (o.Pvp.ChannelNumber, o.Pvp.Name, o.Pvp.Port);
+        foreach (var c in PvpChannelCatalog.Profiles(o.Pvp)) yield return (c.Number, c.Name, c.Port);
     }
 
     internal static int[] Ports(ServerOptions o) => GameplayChannels(o).Select(channel => channel.Port).ToArray();

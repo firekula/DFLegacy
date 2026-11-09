@@ -1,0 +1,52 @@
+{
+  "url": "http://127.0.0.4:18081/",
+  "isolated_local_only": true,
+  "batch": "73fd6d93-cc96-49e0-b6cb-9613673094b8",
+  "characters": [
+    {
+      "character": "LocalCheck",
+      "victory_before": 0,
+      "victory_after": 100,
+      "pvp_points_unchanged": true,
+      "matching_mail_count": 1,
+      "gold": 123,
+      "item_id": 3030,
+      "item_quantity": 10
+    },
+    {
+      "character": "SummonCheck",
+      "victory_before": 0,
+      "victory_after": 200,
+      "pvp_points_unchanged": true,
+      "matching_mail_count": 1,
+      "gold": 123,
+      "item_id": 3030,
+      "item_quantity": 10
+    }
+  ],
+  "preview_did_not_deliver": true,
+  "browser_refresh_recovery_no_duplicate": true,
+  "online_victory_points_user_acceptance": {
+    "date": "2026-11-08",
+    "source": "User-confirmed manual in-game test on the isolated local server",
+    "passed": true,
+    "grant_amount_recorded": false
+  },
+  "validation": {
+    "web_panels_regression": {
+      "red_failures": 1,
+      "green_failures": 0
+    },
+    "admin_reward_store_failures": 0,
+    "full_smoke": {
+      "exit_code": 0,
+      "result": "All DFLegacy protocol smoke tests passed.",
+      "prior_attempt": "External artifact-directory execution could not find checked-in MentorGold fixtures. The same built binaries passed after being copied under the source tree; no fixtures or assertions were modified.",
+      "local_log": ".tmp/gm-rewards-verification-20261108/full-smoke.log"
+    },
+    "http_acceptance_checks": 29,
+    "http_acceptance_exit_code": 0
+  },
+  "server_pid": 4160,
+  "server_sha256": "dc30eabd6c70d3d12b5403d1c2c32fed9950ca0fadc95f76306139a04f8e0fa8"
+}

@@ -35,7 +35,7 @@ internal static class BootstrapManagedTests
         if(Path.GetFileNameWithoutExtension(start.FileName)=="dotnet") start.ArgumentList.Add(typeof(BootstrapManagedTests).Assembly.Location);
         return start;
     }
-    internal static async Task Run(string parent,Action<bool,string> check,bool initialOnly=false)
+    internal static async Task Run(string parent,Action<bool,string> check,bool initialOnly=false,bool v4Only=false)
     {
         var root=Path.Combine(parent,"bootstrap 中文 𠮷 space"); Directory.CreateDirectory(root);
         var native=Environment.GetEnvironmentVariable("DFL_NATIVE_FIXTURES") ?? throw new InvalidOperationException("Set DFL_NATIVE_FIXTURES to the matching CMake build directory (Release native process fixtures required).");
@@ -58,6 +58,24 @@ internal static class BootstrapManagedTests
             process.Kill(true); await process.WaitForExitAsync();
         }
         check(original.All(p=>ClientIjlMigration.Hash(Path.Combine(root,p.Key))==p.Value),"bootstrap never writes EXE/IJL/PVF/NPK");
+        if(v4Only)
+        {
+            var legacyPath=Path.Combine(root,"client-package.json");
+            var files=manifest.Files.Select(f=>new DFLegacy.UpdateCore.ManagedFile(f.Path,f.Size,f.Sha256,[new(f.Sha256,f.Size,"v4-bootstrap",f.Sha256+".bin")])).ToArray();
+            var target=new DFLegacy.UpdateCore.ClientManifest(4,"v4-bootstrap",new string('a',40),"x64","normal","gitee-test",1,0,files,[],[]);
+            var raw=DFLegacy.UpdateCore.ManifestCodec.Serialize(target);
+            var release=new DFLegacy.UpdateCore.VerifiedRelease(new("gitee","firekula/DFLegacy","gitee-test","x64","normal"),target.Version,Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(raw)),raw);
+            DFLegacy.UpdateCore.InstallTransaction.Apply(root,new(release,Path.Combine(root,".dflegacy","v4","cache")));
+            foreach(var legacy in new[]{false,true})
+            {
+                if(legacy)File.WriteAllText(legacyPath,"{stale broken schema2");else File.Delete(legacyPath);
+                var current=ClientPackageManifest.LoadAndValidate(root);
+                using var p=await ClientBootstrapLauncher.StartCoreAsync(client,Path.Combine(root,"v4-"+legacy+".marker"),current,CancellationToken.None,Path.Combine(native,"Release/DFLegacy.Bootstrap32.exe"),TimeSpan.FromSeconds(20));
+                check(!p.HasExited,"pure V4 metadata reaches real native bootstrap; stale schema2="+legacy);
+                p.Kill();using var exit=new CancellationTokenSource(TimeSpan.FromSeconds(10));await DFLegacy.Launcher.Updates.FileLockOwners.WaitForExitConfirmedAsync(p,exit.Token);
+            }
+            return;
+        }
         if(initialOnly) return;
         using(var cancelled=new CancellationTokenSource(150))
         {

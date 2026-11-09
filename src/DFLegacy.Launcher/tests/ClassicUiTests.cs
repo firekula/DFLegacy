@@ -115,12 +115,14 @@ internal static class ClassicUiTests
                 try
                 {
                     var store = new LauncherAccountStore(Path.Combine(scratch, "launcher.json"));
-                    store.Save(new LauncherOptions { ClientPath = Path.Combine(scratch, "missing-client", "DNF.exe") });
+                    File.WriteAllText(Path.Combine(scratch,"launcher.json"),System.Text.Json.JsonSerializer.Serialize(new {ClientPath=Path.Combine(scratch,"missing-client","DNF.exe"),AccountServiceUrl="http://127.0.0.1:32203",Diagnostics=(object?)null}));
                     var settings = new ConfigWindow(store, trackMonitor: false) { Height = 360, WindowStartupLocation = WindowStartupLocation.Manual,
                         Left = -32000, Top = -32000, ShowActivated = false, ShowInTaskbar = false };
                     try
                     {
                         settings.Show(); settings.UpdateLayout();
+                        var diagnosticStatus=(PixelText)settings.FindName("DiagnosticStatusText");
+                        check(diagnosticStatus.Text.Contains("http://127.0.0.1:32203")&&diagnosticStatus.Text.Contains("待发送：0")&&diagnosticStatus.Text.Contains("尚未发送"),"null diagnostics settings view displays resolved receiver and actual empty queue/send state");
                         var error = (PixelText)settings.FindName("DisplayErrorText");
                         var save = (SkinButton)settings.FindName("DisplaySaveButton");
                         var reload = (SkinButton)settings.FindName("DisplayReloadButton");
@@ -141,6 +143,10 @@ internal static class ClassicUiTests
                         while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
                         check(parent is ScrollViewer { ScrollableHeight: > 0 }, "detailed save failures remain inside a scrollable viewport");
                         var tabs = (TabControl)settings.FindName("SettingsTabs");
+                        tabs.SelectedIndex=1;settings.UpdateLayout();
+                        var diagnosticSave=(SkinButton)settings.FindName("DiagnosticSaveButton");
+                        check(diagnosticSave.TranslatePoint(new Point(0,diagnosticSave.ActualHeight),settings).Y<=settings.ActualHeight,"diagnostic save remains visible at minimum settings height");
+                        tabs.SelectedIndex=2;settings.UpdateLayout();
                         foreach (TabItem tab in tabs.Items)
                         {
                             var hit = settings.InputHitTest(tab.TranslatePoint(new Point(4, 14), settings)) as DependencyObject;
@@ -379,11 +385,16 @@ internal static class ClassicUiTests
                         Descendants<SkinButton>(main).First(b => b.Tag is LocalServerChoice).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
                         check(confirm.IsEnabled, "reselection page remains usable after returning to login with an invalid target");
                         ConfirmB(); AssertRuntimeB("restored and reconfirmed profile");
+                        var intactConfiguration=File.ReadAllBytes(Path.Combine(scratch,"launcher.json"));
                         File.WriteAllText(Path.Combine(scratch, "launcher.json"), "{broken");
                         main.ReloadServerSelection(); main.UpdateLayout();
                         check(endpoint.Text.Contains("无法") && !confirm.IsEnabled,
                             "corrupt config shows failure on the visible first footer line without requiring a scroll");
                         check(File.ReadAllText(Path.Combine(scratch, "launcher.json")) == "{broken", "UI reload preserves corrupt bytes");
+                        try {store.Save(localOptions);check(false,"settings merge must preserve malformed current configuration");}
+                        catch(System.Text.Json.JsonException) {check(File.ReadAllText(Path.Combine(scratch,"launcher.json"))=="{broken","saving stale settings does not destroy malformed current configuration");}
+                        // Restore this fixture explicitly; production must not overwrite unreadable player configuration.
+                        File.WriteAllBytes(Path.Combine(scratch,"launcher.json"),intactConfiguration);
                         store.Save(localOptions);
                         var closeReceived = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                         var closeRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

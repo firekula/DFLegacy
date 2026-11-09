@@ -13,6 +13,9 @@
     <Filter Include="Build">
       <UniqueIdentifier>{9F2C41CE-222F-4822-BD09-8EF5751D582C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Detours">
+      <UniqueIdentifier>{1DCA3C35-6346-4BCD-818E-55B111C14EEA}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\d3d8_scaler.h">
@@ -30,6 +33,9 @@
     <ClInclude Include="src\d3d8_hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\native_incidents.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\native_capture.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="src\payment_window_scaling.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\diagnostic_delivery.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -125,6 +131,9 @@
     <ClCompile Include="src\inventory_tab.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\native_incidents.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\native_capture.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="src\payment_window_scaling.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\dnf_patches.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -176,6 +185,18 @@
     <ClCompile Include="src\dungeon_tooltip.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\third_party\detours\src\detours.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\modules.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disasm.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\image.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\creatwth.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disolx86.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disolx64.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disolia64.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disolarm.cpp"><Filter>Detours</Filter></ClCompile>
+    <ClCompile Include="..\..\third_party\detours\src\disolarm64.cpp"><Filter>Detours</Filter></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="tests\ijl15_tests.cpp">

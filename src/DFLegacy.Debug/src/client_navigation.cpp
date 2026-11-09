@@ -10,6 +10,10 @@ namespace dfl::client_navigation
 {
     namespace
     {
+        enum class MarkerPolicy { RequireBlank, AllowQuestIcons };
+        constexpr std::uint32_t QuestIconVtable=0xA84758,QuestIconHit=0x882E40;
+        constexpr std::uint32_t TownNpcVtable=0xA70BD0,TownNpcHit=0x882B40;
+
         struct Reads
         {
             const client_state::Reader& r;
@@ -30,6 +34,37 @@ namespace dfl::client_navigation
         {
             return GoodRect(r) && x>=r.x && y>=r.y && static_cast<std::int64_t>(x)<static_cast<std::int64_t>(r.x)+r.width
                 && static_cast<std::int64_t>(y)<static_cast<std::int64_t>(r.y)+r.height;
+        }
+        bool InsideMarker(std::int32_t px, std::int32_t py, std::int32_t mx, std::int32_t my,
+                          std::int64_t half, std::int64_t above, std::int64_t below) noexcept
+        {
+            const auto x=static_cast<std::int64_t>(px)-mx,y=static_cast<std::int64_t>(py)-my;
+            return x>=-half && x<=half && y>=-above && y<=below;
+        }
+        bool ReadQuestSpriteSize(const Reads& r, std::uint32_t quest, std::uint32_t& width, std::uint32_t& height) noexcept
+        {
+            std::uint32_t sprite=0;
+            return r.At(quest,0x1C,sprite) && r.At(sprite,0x24,width) && r.At(sprite,0x28,height)
+                && width<=8192 && height<=8192;
+        }
+        bool OwnedQuestOverlayContains(const Reads& r, std::uint32_t npc, std::uint32_t begin, std::uint32_t end,
+                                       std::int32_t px, std::int32_t py) noexcept
+        {
+            std::uint32_t quest=0,table=0,hit=0,owner=0,image=0,width=0,height=0;
+            std::int32_t mx=0,my=0;unsigned char visible=0;
+            // The NPC owns the quest marker and the quest marker links back to it.
+            if (!r.At(npc,0x28,quest) || !r.At(quest,0,table) || table!=QuestIconVtable || !r.At(table,4,hit) || hit!=QuestIconHit
+                || !r.At(quest,0x3C,owner) || owner!=npc || !r.At(quest,0x41,visible) || visible!=1
+                || !r.At(quest,0x10,image) || !image || !r.At(quest,8,mx) || !r.At(quest,12,my)
+                || !ReadQuestSpriteSize(r,quest,width,height) || !width || !height
+                || !InsideMarker(px,py,mx,my,width/5,height*2/5,0)) return false;
+            for (auto slot=begin;slot<end;slot+=4)
+            {
+                std::uint32_t marker=0;
+                if (!r.At(slot,0,marker)) return false;
+                if (marker==quest) return true;
+            }
+            return false;
         }
     }
     const char* ValidateRequest(const Request& r, const client_state::Snapshot& s, std::uint64_t now, std::uint64_t consumed) noexcept
@@ -83,7 +118,8 @@ namespace dfl::client_navigation
             && r.At(hash,12,finalTotal) && finalTotal==total && r.At(sentinel,0,first)
             && first==(count?seen[0]:sentinel) && r.At(sentinel,4,finalLast) && finalLast==last;
     }
-    bool BlankMarkers(const client_state::Reader& reader, std::uint32_t plane, std::int32_t px, std::int32_t py) noexcept
+    static bool MarkersAllowPoint(const client_state::Reader& reader, std::uint32_t plane,
+                                  std::int32_t px, std::int32_t py, MarkerPolicy policy) noexcept
     {
         Reads r{reader};std::uint32_t begin=0,end=0;
         if (!r.At(plane,0x14,begin) || !r.At(plane,0x18,end) || end<begin || (end-begin)%4 || (end-begin)/4>256) return false;
@@ -93,18 +129,18 @@ namespace dfl::client_navigation
             if (!r.At(begin,i*4,marker)) return false;
             if (!marker) continue;
             if (!r.At(marker,0,table) || !r.At(table,4,hit)
-                || (hit!=0x882A40 && hit!=0x882B40 && hit!=0x882BB0 && hit!=0x882C80 && hit!=0x882E40)
+                || (hit!=0x882A40 && hit!=TownNpcHit && hit!=0x882BB0 && hit!=0x882C80 && hit!=QuestIconHit)
                 || !r.At(marker,0x10,image)) return false;
             if (!image) continue; // All supported native hit functions return false without image.
             if (!r.At(marker,8,mx) || !r.At(marker,12,my)) return false;
             std::int64_t half=0,above=0,below=0;
             if (hit==0x882BB0) half=above=below=23;
-            else if (hit==0x882E40)
+            else if (hit==QuestIconHit)
             {
-                std::uint32_t sprite=0;
-                if (!r.At(marker,0x1C,sprite) || !r.At(sprite,0x24,width) || !r.At(sprite,0x28,height)
-                    || width>8192 || height>8192) return false;
-                // Native truncates 0.4f*sprite dimensions (X then halves). Round outward for exclusion.
+                if (!ReadQuestSpriteSize(r,marker,width,height)) return false;
+                // ACT1's town_mini_map::QuestIcon is a plane marker with no UI capture ID.
+                if (policy==MarkerPolicy::AllowQuestIcons && table==QuestIconVtable) continue;
+                // The legacy exclusion rounds outward from the native 0.2 width and 0.4 height.
                 half=static_cast<std::int64_t>(std::ceil(width*0.4000000059604645*0.5));
                 above=static_cast<std::int64_t>(std::ceil(height*0.4000000059604645));
             }
@@ -113,11 +149,16 @@ namespace dfl::client_navigation
                 if (!r.At(image,0x14,width) || !r.At(image,0x18,height) || !width || !height || width>8192 || height>8192) return false;
                 half=width/2;above=hit==0x882A40?height/2:height;below=hit==0x882A40?height/2:0;
             }
-            if (static_cast<std::int64_t>(px)>=static_cast<std::int64_t>(mx)-half && static_cast<std::int64_t>(px)<=static_cast<std::int64_t>(mx)+half
-                && static_cast<std::int64_t>(py)>=static_cast<std::int64_t>(my)-above && static_cast<std::int64_t>(py)<=static_cast<std::int64_t>(my)+below) return false;
+            if (InsideMarker(px,py,mx,my,half,above,below)
+                && (policy!=MarkerPolicy::AllowQuestIcons || table!=TownNpcVtable || hit!=TownNpcHit
+                    || !OwnedQuestOverlayContains(r,marker,begin,end,px,py))) return false;
         }
         std::uint32_t finalBegin=0,finalEnd=0;
         return r.At(plane,0x14,finalBegin) && finalBegin==begin && r.At(plane,0x18,finalEnd) && finalEnd==end;
+    }
+    bool BlankMarkers(const client_state::Reader& reader, std::uint32_t plane, std::int32_t px, std::int32_t py) noexcept
+    {
+        return MarkersAllowPoint(reader,plane,px,py,MarkerPolicy::RequireBlank);
     }
     bool ReadCanvasTarget(const client_state::Reader& reader, const client_state::Snapshot& s, std::uint32_t minimap, std::int32_t& x, std::int32_t& y) noexcept
     {
@@ -181,7 +222,7 @@ namespace dfl::client_navigation
         for (std::size_t i=0;i<rc;++i)
             if (reals[i].town==project->town && reals[i].area==project->area) real=&reals[i];
         CanvasGoal goal;
-        if (!real || !BlankMarkers(reader,plane,px,py)
+        if (!real || !MarkersAllowPoint(reader,plane,px,py,MarkerPolicy::AllowQuestIcons)
             || !InverseProject(project->rect,real->rect,px,py,goal.x,goal.y)) return false;
         goal.town=project->town;goal.area=project->area;
         goal.mapX=px;goal.mapY=py;goal.minimapToken=minimap;goal.planeToken=plane;

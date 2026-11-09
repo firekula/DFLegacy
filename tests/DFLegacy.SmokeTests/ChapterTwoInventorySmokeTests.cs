@@ -139,7 +139,7 @@ internal static class ChapterTwoInventorySmokeTests
             && MatchesExtendedMailbox(legacyMailbox[1], chapterTwoMailbox[1], packageCount: 2),
             "Chapter Two keeps attachment, gold-only, and archive mail rows aligned with the text records");
 
-        check(!EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand)
+        check(EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand)
             && EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand, chapterTwo: true)
             && !EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxExtractItemCommand, chapterTwo: true)
             && !EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxSendCommand, chapterTwo: true),
@@ -224,10 +224,9 @@ internal static class ChapterTwoInventorySmokeTests
                 [5] = new(5, itemId, 75),
                 [7] = new(7, itemId, 1, SealState: 1)
             };
-            var ordered = CharacterInventorySorter.SortWarehouse(warehouse, catalog, 8, mergeStacks: true);
+            var ordered = CharacterInventorySorter.SortWarehouse(warehouse, catalog, 8);
             check(ordered.Count == 3 && ordered[0].CountOrValue == 100 && ordered[1].CountOrValue == 75
-                && ordered[2] is { CountOrValue: 1, SealState: 1 }
-                && CharacterInventorySorter.SortWarehouse(warehouse, catalog, 8).Count == 4,
+                && ordered[2] is { CountOrValue: 1, SealState: 1 },
                 "Chapter Two warehouse sorting merges only compatible stacks up to the item cap");
             check(EntranceService.TryPlanReverseWarehouseMove(warehouse, 8, 0, 5, out var reordered)
                 && reordered[0] == (warehouse[5] with { Slot = 0 }) && !reordered.ContainsKey(5)
@@ -239,9 +238,9 @@ internal static class ChapterTwoInventorySmokeTests
             var inventory = new Dictionary<ushort, CharacterItemRecord>();
             check(EntranceService.TryPlanMailAttachment(inventory, inventory, inventory,
                     new CharacterMailAttachmentRecord(itemId, 245), catalog, uint.MaxValue,
-                    out var placed, out _, out _, out var destinationList, out _)
+                    out var placed, out _, out _, out var destinationList, out _, out var unclaimedCount)
                 && placed.Count == 3 && placed.Values.Select(item => item.CountOrValue).Order().SequenceEqual(new uint[] { 45, 100, 100 })
-                && destinationList == 0 && inventory.Count == 0,
+                && destinationList == 0 && inventory.Count == 0 && unclaimedCount == 0,
                 "a single oversized mail attachment is planned across multiple legal bag stacks");
         }
         finally { root.Delete(recursive: true); }

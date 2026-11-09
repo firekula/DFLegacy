@@ -1,0 +1,67 @@
+Update helper acquisition failure checks executed
+Installed-version startup checks executed
+Update controller lifecycle checks executed
+Update artifact ownership checks executed
+Update early helper WPF startup checks executed
+Update transport tests completed
+Update V2 tests completed
+Update V3 tests completed
+Recovery fixture: valid; parentExit=0; restored=True; journalRetained=False
+Recovery fixture: journal-tamper; parentExit=3; restored=False; journalRetained=True
+Recovery fixture: late-journal; parentExit=0; restored=False; journalRetained=True
+Recovery fixture: cancel; parentExit=3; restored=False; journalRetained=True
+Recovery fixture: unknown-image; parentExit=3; restored=False; journalRetained=True
+Update recovery tests completed
+Result receipt lock: restartRequested=True; Success=True; Restarted=True; restartCalls=1
+Result receipt lock: restartRequested=False; Success=True; Restarted=False; restartCalls=1
+Update installer tests completed
+Update helper process tests completed
+Update boundary tests completed
+Display configuration behavior checks executed
+Input tree: AccountText Border, origin=234,369, size=164,17, margin=0,0,0,0, padding=0,0,0,0
+Input tree: AccountText ScrollViewer, origin=234,370, size=164,15, margin=0,0,0,0, padding=3,0,3,0
+Input tree: AccountText Grid, origin=234,370, size=164,15, margin=0,0,0,0, padding=0,0,0,0
+Input tree: AccountText Rectangle, origin=398,385, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Input tree: AccountText ScrollContentPresenter, origin=237,370, size=158,15, margin=3,0,3,0, padding=0,0,0,0
+Input tree: AccountText TextBoxView, origin=239,370, size=154,15, margin=2,0,2,0, padding=0,0,0,0
+Input tree: AccountText AdornerLayer, origin=237,370, size=158,15, margin=0,0,0,0, padding=0,0,0,0
+Input tree: AccountText ScrollBar, origin=234,370, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Input tree: AccountText ScrollBar, origin=234,370, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText Border, origin=234,392, size=164,17, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText ScrollViewer, origin=234,393, size=164,15, margin=0,0,0,0, padding=3,0,3,0
+Input tree: PasswordText Grid, origin=234,393, size=164,15, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText Rectangle, origin=398,408, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText ScrollContentPresenter, origin=237,393, size=158,15, margin=3,0,3,0, padding=0,0,0,0
+Input tree: PasswordText TextBoxView, origin=239,393, size=154,15, margin=2,0,2,0, padding=0,0,0,0
+Input tree: PasswordText AdornerLayer, origin=237,393, size=158,15, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText ScrollBar, origin=234,393, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Input tree: PasswordText ScrollBar, origin=234,393, size=0,0, margin=0,0,0,0, padding=0,0,0,0
+Login hint: AccountHint empty blurred=Visible
+Login hint: PasswordHint empty blurred=Visible
+Login hint: AccountHint empty focused=Collapsed
+Login hint: AccountHint empty with child focused=Collapsed
+Login geometry: account empty caret=239,370, placeholder X=239
+Login hint: AccountHint nonempty focused=Collapsed
+Login geometry: account typed caret X=239
+Login geometry: AccountText rendered glyph origin X=239
+Login hint: AccountHint nonempty blurred=Collapsed
+Login hint: AccountHint cleared blurred=Visible
+Login hint: AccountHint cleared focused=Collapsed
+Login hint: AccountHint empty after focus leaves=Visible
+Login hint: PasswordHint empty focused=Collapsed
+Login hint: PasswordHint empty with child focused=Collapsed
+Login geometry: password empty insertion=239,393.08666666666664, placeholder X=239, view X=239
+Login hint: PasswordHint nonempty focused=Collapsed
+Login geometry: password typed insertion=239,393.08739583333335, placeholder X=239, view X=239
+Login geometry: PasswordText rendered glyph origin X=239
+Login hint: PasswordHint nonempty blurred=Collapsed
+Login hint: PasswordHint cleared blurred=Visible
+Login hint: PasswordHint cleared focused=Collapsed
+Login hint: PasswordHint empty after focus leaves=Visible
+Automatic compact startup flow checks executed
+Update WPF page and helper layout checks executed
+Launch migration ownership/cancel/confirm/error lifecycle checks executed
+Classic UI native raster and WPF layout checks executed
+Local server selection, preservation and real TCP latency checks executed
+不再支持覆盖安装 ijl15.dll。请将完整独立补丁工具包放入客户端根目录，并在登录器中确认原版恢复。
+Launcher configuration tests passed (2082 assertions)

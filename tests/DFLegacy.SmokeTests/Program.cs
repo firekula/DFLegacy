@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args is ["--chapter-two-pvf", var migratedPvf])
+{
+    ChapterTwoPvfMigrationSmokeTests.Run(migratedPvf, Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Chapter Two migrated PVF smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--chapter-two-quest-visibility"))
 {
     ChapterTwoQuestVisibilitySmokeTests.Run(Check);
@@ -32,6 +40,63 @@ if (args.Contains("--chapter-two-free-revival"))
     await ChapterTwoFreeRevivalSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine(failure);
     Console.WriteLine($"Chapter Two free revival smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Length == 0 || args.Contains("--client-diagnostics"))
+{
+    await ClientDiagnosticSmokeTests.RunAsync(Check);
+    if (args.Contains("--client-diagnostics"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Client diagnostics smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Contains("--pvp-admission-race"))
+{
+    await PvpMultiChannelSmokeTests.DisplacedAdmission(Check);
+    foreach(var failure in failures) Console.Error.WriteLine("FAIL: "+failure);
+    Console.WriteLine($"PvP admission race: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Length == 0 || args.Contains("--pvp-multichannel"))
+{
+    await PvpMultiChannelSmokeTests.RunAsync(Check);
+    if (args.Contains("--pvp-multichannel"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"PvP multichannel smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args.Contains("--admin-rewards"))
+{
+    await AdminRewardStoreSmokeTests.RunAsync(Check);
+    if (args.Contains("--admin-rewards"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Admin reward store smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Contains("--party-network"))
+{
+    await PartyNetworkFaultSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Party network fault smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--gameplay-datagram-lifecycle"))
+{
+    await GameplayDatagramLifecycleSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Gameplay datagram lifecycle smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
 }
 
@@ -64,6 +129,30 @@ if (args.Contains("--new-character-defaults"))
     await NewCharacterDefaultsSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"New-character defaults smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--item-spaces"))
+{
+    await ItemSpaceSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Item spaces smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--town-gold-discard"))
+{
+    await TownGoldDiscardSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Town gold discard smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--quest-map"))
+{
+    QuestMapSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Quest map smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
 }
 
@@ -155,6 +244,14 @@ if (args.Contains("--fallback-protocol"))
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Fallback protocol smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--pvp-team-relay-only"))
+{
+    await PvpTeamRelaySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"PvP team/relay smoke: {failures.Count} failures");
+    return failures.Count == 0 ? 0 : 1;
 }
 
 if (args.Contains("--pvp-individual-only"))
@@ -263,8 +360,17 @@ if (args.Contains("--pickup-removal"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--loot-gather"))
+{
+    await DungeonLootGatherSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Loot gather smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--boss-room-death"))
 {
+    await DungeonPartySmokeTests.RunAsync(Check);
     DungeonBossDeathSmokeTests.Run(Check);
     DungeonDebugOverlaySmokeTests.Run(Check);
     await TestControlSmokeTests.RunAsync(Check);
@@ -361,6 +467,8 @@ await DeploymentHostingSmokeTests.RunAsync(Check);
 ClientDiagnosticsSmokeTests.Run(Check);
 await FallbackRelayProtocolSmokeTests.RunAsync(Check);
 await FallbackRelaySmokeTests.RunAsync(Check);
+await PartyNetworkFaultSmokeTests.RunAsync(Check);
+await GameplayDatagramLifecycleSmokeTests.RunAsync(Check);
 await TestCeraSmokeTests.RunAsync(Check);
 await WebPanelsSmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
@@ -372,20 +480,24 @@ await PartySmokeTests.RunAsync(Check);
 await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await ActiveDropSmokeTests.RunAsync(Check);
+await TownGoldDiscardSmokeTests.RunAsync(Check);
 await SkillSlotPersistenceSmokeTests.RunAsync(Check);
 await ActiveDropFourClientSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
 await MentorGrowthSmokeTests.RunAsync(Check);
 await MentorMasterGoldSmokeTests.RunAsync(Check);
 await PvpIndividualSmokeTests.RunAsync(Check);
+await PvpTeamRelaySmokeTests.RunAsync(Check);
 await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);
+await ItemSpaceSmokeTests.RunAsync(Check);
 await AvatarPurchaseSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
 DungeonBossDeathSmokeTests.Run(Check);
+await DungeonLootGatherSmokeTests.RunAsync(Check);
 DungeonDebugOverlaySmokeTests.Run(Check);
     await TestControlSmokeTests.RunAsync(Check);
 await GameplayDatagramSmokeTests.RunAsync(Check);
@@ -7222,12 +7334,10 @@ Check(sortedMainInventory[3].ItemId == 1_055
     && sortedMainInventory[9].ItemId == 14_873
     && sortedMainInventory[10].ItemId == 10_000
     && sortedMainInventory[73].ItemId == 3_037
-    && sortedMainInventory[73].CountOrValue == 1
-    && sortedMainInventory[74].ItemId == 3_037
-    && sortedMainInventory[74].CountOrValue == 58
-    && sortedMainInventory[75].ItemId == 3_176
-    && sortedMainInventory.Count == unsortedMainInventory.Count,
-    "main-inventory sorting keeps quick slots, orders equipment by rarity/id, and does not merge stacks");
+    && sortedMainInventory[73].CountOrValue == 59
+    && sortedMainInventory[74].ItemId == 3_176
+    && sortedMainInventory.Count == unsortedMainInventory.Count - 1,
+    "main-inventory sorting keeps quick slots, orders equipment by rarity/id, and merges compatible stacks");
 
 var sortedWarehouse = CharacterInventorySorter.SortWarehouse(
     new Dictionary<ushort, CharacterItemRecord>
@@ -7240,15 +7350,13 @@ var sortedWarehouse = CharacterInventorySorter.SortWarehouse(
     },
     smokeItemCatalog!,
     capacity: 8);
-Check(sortedWarehouse.Keys.SequenceEqual(new ushort[] { 0, 1, 2, 3, 4 })
+Check(sortedWarehouse.Keys.SequenceEqual(new ushort[] { 0, 1, 2, 3 })
     && sortedWarehouse[0].ItemId == 10_000
     && sortedWarehouse[1].ItemId == 1_055
     && sortedWarehouse[2].ItemId == 3_037
-    && sortedWarehouse[2].CountOrValue == 1
-    && sortedWarehouse[3].ItemId == 3_037
-    && sortedWarehouse[3].CountOrValue == 58
-    && sortedWarehouse[4].ItemId == 3_176,
-    "character-warehouse sorting compacts by item category/id without changing stack boundaries");
+    && sortedWarehouse[2].CountOrValue == 59
+    && sortedWarehouse[3].ItemId == 3_176,
+    "character-warehouse sorting compacts by item category/id and combines compatible stacks");
 
 var nonFullStackAfterEmptySlot = new Dictionary<ushort, CharacterItemRecord>
 {

@@ -76,7 +76,10 @@ public sealed record CharacterInventoryPlacementPlan(
     ushort DestinationSlot,
     Dictionary<ushort, CharacterItemRecord> Inventory,
     IReadOnlyList<ushort> ChangedSlots,
-    ulong TotalWeight);
+    ulong TotalWeight)
+{
+    public uint UnplacedCount { get; init; }
+}
 
 public sealed record CharacterInventoryNormalizationPlan(
     Dictionary<ushort, CharacterItemRecord> Inventory,
@@ -148,7 +151,8 @@ public static class CharacterInventoryPlanner
         uint weightLimit,
         ushort? preferredEmptySlot,
         out CharacterInventoryPlacementPlan plan,
-        out InventoryPlacementFailure failure)
+        out InventoryPlacementFailure failure,
+        bool allowPartialStack = false)
     {
         plan = null!;
         failure = InventoryPlacementFailure.None;
@@ -292,7 +296,8 @@ public static class CharacterInventoryPlanner
             }
         }
 
-        if (remaining != 0 || changedSlots.Count == 0)
+        if (changedSlots.Count == 0
+            || (remaining != 0 && !(allowPartialStack && definition.IsStackable)))
         {
             failure = InventoryPlacementFailure.Full;
             return false;
@@ -302,7 +307,10 @@ public static class CharacterInventoryPlanner
             changedSlots[0],
             planned,
             changedSlots,
-            totalWeight);
+            totalWeight - MultiplyWeight(definition, remaining))
+        {
+            UnplacedCount = remaining
+        };
         return true;
     }
 

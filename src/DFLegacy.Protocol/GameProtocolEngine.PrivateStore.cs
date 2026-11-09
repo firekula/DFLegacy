@@ -13,8 +13,8 @@ public static partial class GameProtocolEngine
         CreatePrivateStoreCommand = 88, RemovePrivateStoreCommand = 89, DisplayPrivateStoreCommand = 90;
     public const byte PrivateStoreInfoNotification = 85;
     public const byte PrivateStoreServiceType = 8;
-    public const int ActOnePrivateStoreSlots = 7;
-    public const int ChapterTwoPrivateStoreSlots = 14;
+    // ACT1's CMD90 sender counts and writes occupied slots 0 through 13.
+    public const int PrivateStoreMaximumListings = 14;
 
     private static GameServerPacket StorePacket(byte type, byte id, Action<BinaryWriter> write)
     {
@@ -32,7 +32,7 @@ public static partial class GameProtocolEngine
     { w.Write(p.Town); w.Write(p.Area); w.Write(p.X); w.Write(p.Y); }
     private static void StoreGoods(BinaryWriter w, IReadOnlyList<PrivateStoreGoodsRow> goods)
     {
-        if (goods.Count > ChapterTwoPrivateStoreSlots) throw new ArgumentOutOfRangeException(nameof(goods));
+        if (goods.Count > PrivateStoreMaximumListings) throw new ArgumentOutOfRangeException(nameof(goods));
         w.Write((byte)goods.Count);
         foreach (var g in goods)
         { w.Write(g.Slot); w.Write(g.UnitPrice); w.Write(g.ItemId); w.Write(g.AddInfo); w.Write(g.State); w.Write(g.Durability); }
@@ -95,8 +95,7 @@ public static partial class GameProtocolEngine
         if (length is < 1 or > 40 || length > body.Length - 7) return false;
         var offset = 6 + (int)length;
         var count = body[offset++];
-        var capacity = chapterTwo ? ChapterTwoPrivateStoreSlots : ActOnePrivateStoreSlots;
-        if (count < 1 || count > capacity || !HasCommandBodyLength(body, offset + count * 13, chapterTwo)) return false;
+        if (count is < 1 or > PrivateStoreMaximumListings || !HasCommandBodyLength(body, offset + count * 13, chapterTwo)) return false;
         title = body.AsSpan(6, (int)length).ToArray();
         if (title.Contains((byte)0)) return false;
         var rows = new List<PrivateStoreDisplayRequest>();

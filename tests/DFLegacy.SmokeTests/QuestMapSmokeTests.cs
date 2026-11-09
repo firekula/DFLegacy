@@ -14,7 +14,16 @@ internal static class QuestMapSmokeTests
             {
                 Directory.CreateDirectory(Path.Combine(root, directory));
             }
-            File.WriteAllText(Path.Combine(root, "quest/quest.lst"), "10 `rescue.qst`\n");
+            File.WriteAllText(Path.Combine(root, "quest/quest.lst"),
+                "9 `retired.qst`\n10 `rescue.qst`\n11 `alternate.qst`\n12 `followup.qst`\n");
+            File.WriteAllText(Path.Combine(root, "quest/dflegacy-disabled-quests.lst"),
+                "// Disable new offers only.\n9 // Old chain step.\n");
+            const string meetNpc = "[type] `[meet npc]`\n[npc index] 10\n";
+            File.WriteAllText(Path.Combine(root, "quest/retired.qst"), meetNpc);
+            File.WriteAllText(Path.Combine(root, "quest/alternate.qst"), meetNpc);
+            File.WriteAllText(Path.Combine(root, "quest/followup.qst"), meetNpc
+                + "[pre required quest]\n9\n[/pre required quest]\n"
+                + "[pre required quest]\n11\n[/pre required quest]\n");
             File.WriteAllText(Path.Combine(root, "quest/rescue.qst"),
                 "[type] `[clear map]`\n[delete npc index] 10\n[complete npc index] 10\n"
                 + "[appear map] 14 -1 2224 100\n[int data]\n2224\n[/int data]\n");
@@ -37,6 +46,15 @@ internal static class QuestMapSmokeTests
             var options = new ServerOptions { ScriptPvfPath = "", SkillScriptPath = root };
             var scripts = new ScriptFileSystem(options, NullLogger<ScriptFileSystem>.Instance);
             var quests = new QuestCatalog(scripts, NullLogger<QuestCatalog>.Instance);
+            var character = new CharacterRecord(Guid.NewGuid(), "QuestOffers", 0, 0, 1, 0, 0);
+            var offered = quests.GetAcceptableQuestIds(character, [], []);
+            check(!offered.Contains((ushort)9) && offered.Contains((ushort)11)
+                    && !offered.Contains((ushort)12)
+                    && quests.TryGetDefinition(9, out _),
+                "retired quest is hidden from new offers while its definition and dependent gates are preserved");
+            check(quests.GetAcceptableQuestIds(character, [], [9]).Contains((ushort)12)
+                    && quests.GetAcceptableQuestIds(character, [], [11]).Contains((ushort)12),
+                "valid old and replacement prerequisite paths still unlock the follow-up quest");
             var catalog = new DungeonCatalog(scripts,
                 new ObjectDropGenerator(options,
                     new ObjectDropCatalog(scripts, NullLogger<ObjectDropCatalog>.Instance),

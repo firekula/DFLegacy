@@ -1,0 +1,1058 @@
+{
+  "schema": "dfl-skycastle-real-pvf-simulation/v1",
+  "captured_utc": "2026-11-08T05:16:14.2666001+00:00",
+  "scope": "Pure catalog and DungeonInstance model simulation against final Server DLL and unchanged actual PVF. No live client, socket server, UI, combat, animation, inventory grant or crash acceptance.",
+  "server_commit": "5193516",
+  "server_dll": "C:/codex-build/dungeon-server-final/bin/DFLegacy.Server/debug/DFLegacy.Server.dll",
+  "server_sha256": "482ea92b0648ab357bdeb4fc18133372c61e7b755fdc6583e9d75bf1b4ca33d0",
+  "pvf": "G:/dnf_local/DFLegacy_Bootstrap_Test_20261108/game-x64/Script.pvf",
+  "pvf_sha256": "09e5eefdee0777378a967704eb14c175383eef89ca0f4e27e00dd3409af728cb",
+  "pvf_unchanged": true,
+  "source": "C:/codex-build/skycastle-real-pvf-20261108/Program.cs",
+  "deterministic_seed_formula": "20261108 \u002B dungeon * 1000 \u002B trial (0..19)",
+  "difficulties": [
+    0
+  ],
+  "modes": [
+    "solo",
+    "two-member-party"
+  ],
+  "total_cases": 1120,
+  "passed_cases": 1120,
+  "checks": 63432,
+  "multiboss_first_death_cases": 40,
+  "multiboss_note": "Only actual sampled boss rooms with more than one boss were used for this positive transition check.",
+  "nonempty_fallback_cases": 1120,
+  "success": true,
+  "failures": [],
+  "dungeons": [
+    {
+      "dungeon": 11,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 6,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        1626,
+        1627,
+        1628
+      ],
+      "boss_templates": [
+        53
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 12,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 4,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        1830,
+        1831
+      ],
+      "boss_templates": [
+        40
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 13,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 5,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        2027,
+        2028
+      ],
+      "boss_templates": [
+        702
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 14,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 5,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        2221,
+        2222,
+        2223
+      ],
+      "boss_templates": [
+        71
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 15,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 6,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        2448,
+        2449
+      ],
+      "boss_templates": [
+        3001
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 16,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 4,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        2648,
+        2649,
+        2650
+      ],
+      "boss_templates": [
+        3000
+      ],
+      "multiboss_first_death_cases": 0,
+      "nonempty_fallback_cases": 160
+    },
+    {
+      "dungeon": 17,
+      "trials": 20,
+      "phase_cases": 160,
+      "passed_cases": 160,
+      "distinct_layouts": 1,
+      "normal_adjacent_returns": 40,
+      "boss_maps": [
+        4609
+      ],
+      "boss_templates": [
+        750
+      ],
+      "multiboss_first_death_cases": 40,
+      "nonempty_fallback_cases": 160
+    }
+  ],
+  "sample_layouts": [
+    {
+      "dungeon": 11,
+      "seed": 20272108,
+      "maze": 0,
+      "map": 1626,
+      "topology": "AJMALGJPEDOAALMBGC",
+      "route": [
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        53
+      ]
+    },
+    {
+      "dungeon": 11,
+      "seed": 20272109,
+      "maze": 0,
+      "map": 1626,
+      "topology": "AJMALGJPEDOAALMBGC",
+      "route": [
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        53
+      ]
+    },
+    {
+      "dungeon": 11,
+      "seed": 20272110,
+      "maze": 0,
+      "map": 1627,
+      "topology": "AJMALGJPEDOAALMBGC",
+      "route": [
+        [
+          0,
+          5
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "boss_ids": [
+        4
+      ],
+      "boss_templates": [
+        53
+      ]
+    },
+    {
+      "dungeon": 12,
+      "seed": 20273108,
+      "maze": 0,
+      "map": 1831,
+      "topology": "AAIABNOAILOIDODOBGJGAACA",
+      "route": [
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "boss_ids": [
+        6
+      ],
+      "boss_templates": [
+        40
+      ]
+    },
+    {
+      "dungeon": 12,
+      "seed": 20273109,
+      "maze": 0,
+      "map": 1830,
+      "topology": "AAIABNOAILOIDODOBGJGAACA",
+      "route": [
+        [
+          0,
+          4
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "boss_ids": [
+        6
+      ],
+      "boss_templates": [
+        40
+      ]
+    },
+    {
+      "dungeon": 12,
+      "seed": 20273110,
+      "maze": 0,
+      "map": 1830,
+      "topology": "AAIABNOAILOIDODOBGJGAACA",
+      "route": [
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ]
+      ],
+      "boss_ids": [
+        6
+      ],
+      "boss_templates": [
+        40
+      ]
+    },
+    {
+      "dungeon": 13,
+      "seed": 20274108,
+      "maze": 0,
+      "map": 2027,
+      "topology": "BMBMALNOBHOKBFGC",
+      "route": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          0,
+          3
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        702
+      ]
+    },
+    {
+      "dungeon": 13,
+      "seed": 20274109,
+      "maze": 0,
+      "map": 2028,
+      "topology": "BMBMALNOBHOKBFGC",
+      "route": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "boss_ids": [
+        5
+      ],
+      "boss_templates": [
+        702
+      ]
+    },
+    {
+      "dungeon": 13,
+      "seed": 20274110,
+      "maze": 0,
+      "map": 2027,
+      "topology": "BMBMALNOBHOKBFGC",
+      "route": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          2,
+          0
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        702
+      ]
+    },
+    {
+      "dungeon": 14,
+      "seed": 20275108,
+      "maze": 0,
+      "map": 2222,
+      "topology": "AAAAIJEIJODNHOCAKADEACAAA",
+      "route": [
+        [
+          4,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "boss_ids": [
+        2
+      ],
+      "boss_templates": [
+        71
+      ]
+    },
+    {
+      "dungeon": 14,
+      "seed": 20275109,
+      "maze": 0,
+      "map": 2221,
+      "topology": "AAAAIJEIJODNHOCAKADEACAAA",
+      "route": [
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "boss_ids": [
+        3
+      ],
+      "boss_templates": [
+        71
+      ]
+    },
+    {
+      "dungeon": 14,
+      "seed": 20275110,
+      "maze": 0,
+      "map": 2223,
+      "topology": "AAAAIJEIJODNHOCAKADEACAAA",
+      "route": [
+        [
+          4,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          4,
+          0
+        ]
+      ],
+      "boss_ids": [
+        8
+      ],
+      "boss_templates": [
+        71
+      ]
+    },
+    {
+      "dungeon": 15,
+      "seed": 20276108,
+      "maze": 0,
+      "map": 2449,
+      "topology": "AJMJEAACLOAABFOKAAAAKLFEAJPOIAACCDGA",
+      "route": [
+        [
+          4,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          3
+        ]
+      ],
+      "boss_ids": [
+        5
+      ],
+      "boss_templates": [
+        3001
+      ]
+    },
+    {
+      "dungeon": 15,
+      "seed": 20276109,
+      "maze": 0,
+      "map": 2448,
+      "topology": "AJMJEAACLOAABFOKAAAAKLFEAJPOIAACCDGA",
+      "route": [
+        [
+          1,
+          5
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        3001
+      ]
+    },
+    {
+      "dungeon": 15,
+      "seed": 20276110,
+      "maze": 0,
+      "map": 2448,
+      "topology": "AJMJEAACLOAABFOKAAAAKLFEAJPOIAACCDGA",
+      "route": [
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          0,
+          2
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        3001
+      ]
+    },
+    {
+      "dungeon": 16,
+      "seed": 20277108,
+      "maze": 0,
+      "map": 2650,
+      "topology": "AAAIAIAAABOJHEAIJHOAABPGJHFEAKJOAAAADOCAAAAADEAAA",
+      "route": [
+        [
+          6,
+          1
+        ],
+        [
+          5,
+          1
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          4,
+          3
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          6,
+          3
+        ]
+      ],
+      "boss_ids": [
+        7
+      ],
+      "boss_templates": [
+        3000
+      ]
+    },
+    {
+      "dungeon": 16,
+      "seed": 20277109,
+      "maze": 0,
+      "map": 2648,
+      "topology": "AAAIAIAAABOJHEAIJHOAABPGJHFEAKJOAAAADOCAAAAADEAAA",
+      "route": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          1,
+          4
+        ],
+        [
+          1,
+          5
+        ],
+        [
+          2,
+          5
+        ],
+        [
+          2,
+          4
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          5
+        ]
+      ],
+      "boss_ids": [
+        4
+      ],
+      "boss_templates": [
+        3000
+      ]
+    },
+    {
+      "dungeon": 16,
+      "seed": 20277110,
+      "maze": 0,
+      "map": 2649,
+      "topology": "AAAIAIAAABOJHEAIJHOAABPGJHFEAKJOAAAADOCAAAAADEAAA",
+      "route": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          2,
+          1
+        ]
+      ],
+      "boss_ids": [
+        5
+      ],
+      "boss_templates": [
+        3000
+      ]
+    },
+    {
+      "dungeon": 17,
+      "seed": 20278108,
+      "maze": 0,
+      "map": 4609,
+      "topology": "IKKKKKKKC",
+      "route": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "boss_ids": [
+        8,
+        9
+      ],
+      "boss_templates": [
+        750,
+        750
+      ]
+    },
+    {
+      "dungeon": 17,
+      "seed": 20278109,
+      "maze": 0,
+      "map": 4609,
+      "topology": "IKKKKKKKC",
+      "route": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "boss_ids": [
+        8,
+        9
+      ],
+      "boss_templates": [
+        750,
+        750
+      ]
+    },
+    {
+      "dungeon": 17,
+      "seed": 20278110,
+      "maze": 0,
+      "map": 4609,
+      "topology": "IKKKKKKKC",
+      "route": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "boss_ids": [
+        8,
+        9
+      ],
+      "boss_templates": [
+        750,
+        750
+      ]
+    }
+  ]
+}

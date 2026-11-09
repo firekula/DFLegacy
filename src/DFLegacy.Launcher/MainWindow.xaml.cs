@@ -169,6 +169,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             Program.WriteLauncherLog($"Launcher failed: {ex.GetType().Name}");
             Show();
             ClassicMessage.Show(this, $"启动失败：{ex.Message}");
@@ -208,6 +209,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"打开链接失败：{ex.Message}");
         }
     }
@@ -227,6 +229,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"打开服务条款失败：{ex.Message}");
         }
     }
@@ -249,6 +252,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"打开注册窗口失败：{ex.Message}");
             return;
         }
@@ -291,6 +295,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"打开找回密码窗口失败：{ex.Message}");
             return;
         }
@@ -307,6 +312,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"打开修改密码窗口失败：{ex.Message}");
             return;
         }
@@ -352,6 +358,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"加载本地账号列表失败：{ex.Message}");
             return;
         }
@@ -363,6 +370,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             // 重载失败时内存保留编辑前快照：提示用户但不崩溃，下次启动以磁盘为准。
             ClassicMessage.Show(this, $"重新加载本地账号列表失败：{ex.Message}");
         }
@@ -389,6 +397,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             ClassicMessage.Show(this, $"加载配置失败：{ex.Message}");
             return;
         }
@@ -401,6 +410,7 @@ public partial class MainWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("launcher-ui",ex);
             // 重载失败时内存保留打开设置前的快照：提示用户但不崩溃，下次启动以磁盘为准。
             ClassicMessage.Show(this, $"重新加载配置失败：{ex.Message}");
         }

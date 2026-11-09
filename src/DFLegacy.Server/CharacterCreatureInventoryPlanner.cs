@@ -92,7 +92,10 @@ public static class CharacterCreatureInventoryLayout
 public sealed record CharacterCreatureInventoryPlacementPlan(
     ushort DestinationSlot,
     Dictionary<ushort, CharacterItemRecord> Inventory,
-    IReadOnlyList<ushort> ChangedSlots);
+    IReadOnlyList<ushort> ChangedSlots)
+{
+    public uint UnplacedCount { get; init; }
+}
 
 public sealed record CharacterCreatureInventoryNormalizationPlan(
     Dictionary<ushort, CharacterItemRecord> Inventory,
@@ -316,7 +319,8 @@ public static class CharacterCreatureInventoryPlanner
         ItemCatalog catalog,
         ushort? preferredEmptySlot,
         out CharacterCreatureInventoryPlacementPlan plan,
-        out InventoryPlacementFailure failure)
+        out InventoryPlacementFailure failure,
+        bool allowPartialStack = false)
     {
         plan = null!;
         failure = InventoryPlacementFailure.None;
@@ -347,6 +351,7 @@ public static class CharacterCreatureInventoryPlanner
             bagStart,
             bagEnd).ToArray();
 
+        uint unplacedCount = 0;
         if (definition.IsStackable)
         {
             var remaining = item.CountOrValue;
@@ -402,11 +407,13 @@ public static class CharacterCreatureInventoryPlanner
                 remaining -= added;
             }
 
-            if (remaining != 0 || changedSlots.Count == 0)
+            if (changedSlots.Count == 0 || (remaining != 0 && !allowPartialStack))
             {
                 failure = InventoryPlacementFailure.Full;
                 return false;
             }
+
+            unplacedCount = remaining;
         }
         else
         {
@@ -438,7 +445,10 @@ public static class CharacterCreatureInventoryPlanner
         plan = new CharacterCreatureInventoryPlacementPlan(
             changedSlots[0],
             planned,
-            changedSlots);
+            changedSlots)
+        {
+            UnplacedCount = unplacedCount
+        };
         return true;
     }
 
