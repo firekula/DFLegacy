@@ -1,5 +1,5 @@
 """Real faults in test-owned children. Production paths, no debugger, no network."""
-import ctypes, json, os, pathlib, shutil, subprocess, sys, time, uuid, tempfile, socket, struct, argparse
+import hashlib, ctypes, json, os, pathlib, shutil, subprocess, sys, time, uuid, tempfile, socket, struct, argparse
 from ctypes import wintypes
 
 def control_own_capture_helper(game,helper,pause=False):
@@ -78,7 +78,7 @@ def main():
     helper=pathlib.Path(args.helper).resolve()
     temporary=tempfile.TemporaryDirectory(prefix='dflegacy-capture-fixtures-');root=pathlib.Path(temporary.name)
     failures=[];modes=['crash','overflow','recover','previous-exit','previous-block','block-recover','handled','normal','abnormal-exit','later','dialog','no-dump','dump-timeout','large-dump','wrong-capability','wrong-creation','wrong-pid','early-bind','helper-exit','linked-events','helper-dump-exit']
-    modes+=['delayed-recovery-twice','skip-provisional']
+    modes+=['delayed-recovery-twice','skip-provisional','signature-match','network-normal','module-crash']
     if args.original:
         source=pathlib.Path(args.original);copies=root/'original-modules';copies.mkdir()
         for name in ('BugTrap.dll','DumpReport.dll','MSVCR71.dll'):shutil.copyfile(source/name,copies/name)
@@ -93,6 +93,7 @@ def main():
         registration={'sessionId':sid,'capability':cap,'gamePid':0,'gameCreatedUtcTicks':0,'localSmallDumps':True}
         (folder/'session.json').write_text(json.dumps(registration))
         env={**os.environ,'DFL_TEST_CAPTURE_ROOT':str(root),'DFL_DIAGNOSTIC_SESSION_DIR':str(folder),'DFL_DIAGNOSTIC_SESSION_ID':sid,'DFL_DIAGNOSTIC_CAPABILITY':cap,'DFL_DIAGNOSTIC_CAPTURE_HELPER':str(helper),'DFL_DIAGNOSTIC_SMALL_DUMPS':'1'}
+        if mode=='module-crash':env['DFL_TEST_FAULT_MODULE']=str(exe.parent.parent/'fault-module'/exe.parent.name/'DFLegacy.Client.dll')
         if mode.startswith('original-'):env['DFL_TEST_ORIGINAL_DIR']=str(copies)
         if mode=='original-bug-badhash':env['DFL_TEST_ORIGINAL_DIR']=str(changed)
         if mode=='no-dump':env['DFL_DIAGNOSTIC_SMALL_DUMPS']='0'
@@ -141,7 +142,7 @@ def main():
                     assert records[0].name==incident['eventId']+'-confirmed.json','new sequence filename and incident ID must agree'
                     assert incident['eventId']!=json.loads(cancelled[0].read_text())['incident']['eventId']
                     assert incident['exceptionCode']=='0xC000001D','second fault must retain its own original context'
-                elif mode in ('crash','overflow','previous-exit','no-dump','dump-timeout','large-dump','early-bind') or (mode.startswith('original-') and '-bad' not in mode):
+                elif mode in ('crash','module-crash','overflow','previous-exit','no-dump','dump-timeout','large-dump','early-bind') or (mode.startswith('original-') and '-bad' not in mode):
                     records=wait_for(lambda:list((folder/'events').glob('*-confirmed.json')))
                     assert records, f'{mode}: original exception never confirmed'
                     record=json.loads(records[0].read_text());incident=record['incident']
@@ -149,6 +150,9 @@ def main():
                     assert incident['exceptionCode']==('0xC00000FD' if mode=='overflow' else '0xC0000005'),incident
                     assert incident['evidence']==('original-exception-context' if mode.startswith('original-') else 'confirmed-unhandled-exception'),incident
                     assert '\\' not in incident['module'] and incident['stack'],incident
+                    if mode in ('crash','module-crash'):
+                        faultfile=pathlib.Path(env['DFL_TEST_FAULT_MODULE']) if mode=='module-crash' else exe
+                        assert incident['module']==faultfile.name and incident['moduleHash']==hashlib.sha256(faultfile.read_bytes()).hexdigest(),('actual fault module SHA256 must be present',incident)
                     if mode in ('no-dump','dump-timeout','large-dump'):
                         assert not list((root/'captures').glob(incident['eventId']+'*')),'disabled/over-limit/timed-out dump must leave no partial'
                     else:
@@ -160,6 +164,10 @@ def main():
                     assert process.returncode==0
                     assert wait_for(lambda:list((folder/'events').glob('*-cancelled.json'))),'recovery was not cancelled'
                     assert not list((folder/'events').glob('*-confirmed.json'))
+                elif mode=='signature-match':
+                    records=wait_for(lambda:(lambda found:found if len(found)>=2 else None)(list((folder/'events').glob('*-confirmed.json'))))
+                    assert records and len(records)==2,('validated actual native hooks must hand off two structured network events',[(p.name,p.read_text()) for p in (folder/'events').glob('*.json')],list((folder/'rich').glob('*.log')))
+                    assert all(json.loads(p.read_text())['incident']['kind']=='networkerror' for p in records)
                 elif mode=='dialog':
                     records=wait_for(lambda:list((folder/'events').glob('*-confirmed.json')))
                     assert records and all(json.loads(p.read_text())['incident']['evidence']=='owned-crash-window' for p in records),'owned dialog needs window-only evidence'

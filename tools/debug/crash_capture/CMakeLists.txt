@@ -9,4 +9,7 @@ set_target_properties(crash_capture PROPERTIES OUTPUT_NAME DFLegacy.CrashCapture
 target_compile_features(crash_capture PRIVATE cxx_std_17)
 target_compile_definitions(crash_capture PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX _WIN32_WINNT=0x0601)
 target_compile_options(crash_capture PRIVATE /W4 /WX /Brepro)
-target_link_libraries(crash_capture PRIVATE psapi shell32 ole32 advapi32)
+target_link_libraries(crash_capture PRIVATE psapi shell32 ole32 advapi32 bcrypt)
+
+target_compile_options(crash_capture PRIVATE "$<$<CONFIG:Release>:/Zi>")
+target_link_options(crash_capture PRIVATE /Brepro /INCREMENTAL:NO /PDBALTPATH:DFLegacy.CrashCapture.pdb "$<$<CONFIG:Release>:/DEBUG:FULL>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")

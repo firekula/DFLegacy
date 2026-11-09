@@ -74,7 +74,7 @@ internal sealed class IncidentReporter
                         ExceptionCode=error is null?"unknown":$"0x{error.HResult:X8}"
                     };
                     // Freeze the first event identity even when the rich local file later aggregates occurrences.
-                    try { AutomaticReport?.Invoke(evidence with {EventId=eventId}); }
+                    try { AutomaticReport?.Invoke(evidence with {EventId=eventId,ClientPvfSha256=clientPvfSha256}); }
                     catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { }
                 }
                 ClientLogPaths.EnsureDirectory(directory);

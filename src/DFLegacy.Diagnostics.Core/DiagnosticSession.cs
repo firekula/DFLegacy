@@ -3,7 +3,8 @@ using System.Diagnostics;
 namespace DFLegacy.Diagnostics;
 
 public sealed record DiagnosticRegistration(string SessionId,string Capability,string UserRoot,string ClientRoot,string Site,string Installation,string Queue,
-    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown",bool LocalOnly=false,bool LocalSmallDumps=true);
+    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown",bool LocalOnly=false,bool LocalSmallDumps=true,string? ClientPvfSha256=null);
+internal sealed record DiagnosticCollection(string SessionId,int LauncherPid,long LauncherCreatedUtcTicks,string[] Ids);
 internal sealed record DiagnosticLocalEvent(string SessionId,string Capability,string State,DiagnosticIncident Incident,int ProducerPid,long ProducerCreatedUtcTicks);
 
 public sealed class DiagnosticSession
@@ -29,9 +30,20 @@ public sealed class DiagnosticSession
         {
             try {
                 var old=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(previous,"session.json"),16384);
-                if(old is not null&&old.StartedAt<DateTimeOffset.UtcNow.AddDays(-14)&&!Alive(old.LauncherPid,old.LauncherCreatedUtcTicks)&&!Alive(old.GamePid,old.GameCreatedUtcTicks))new DiagnosticSession(previous,old).CleanupManagedFiles();
+                if(old is not null&&!Alive(old.GamePid,old.GameCreatedUtcTicks)&&(!Alive(old.LauncherPid,old.LauncherCreatedUtcTicks)||DiagnosticFiles.Read<string>(Path.Combine(previous,"closed.json"),128)==old.Capability))new DiagnosticSession(previous,old).CleanupManagedFiles();
             }catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
         }
+        // Logical producer receipts survive registration replacement and helper
+        // cleanup. Reclaim only after every original owner is demonstrably dead.
+        try {
+            using var queueLease=DiagnosticFiles.Lease(settings.Root,"queue.lock");
+            var receipts=Path.Combine(settings.Root,"collections");DiagnosticFiles.NoLinks(receipts);
+            var liveGames=Directory.EnumerateDirectories(sessions).Take(101).Select(p=>DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(p,"session.json"),16384)).Where(r=>r is not null&&Alive(r.GamePid,r.GameCreatedUtcTicks)).Select(r=>r!.SessionId).ToHashSet(StringComparer.Ordinal);
+            if(Directory.Exists(receipts))foreach(var path in Directory.EnumerateFiles(receipts,"*.json").Take(101)) {
+                var receipt=DiagnosticFiles.Read<DiagnosticCollection>(path,16384);
+                if(receipt is not null&&DiagnosticProjection.Id(receipt.SessionId)&&Path.GetFileNameWithoutExtension(path)==receipt.SessionId&&!Alive(receipt.LauncherPid,receipt.LauncherCreatedUtcTicks)&&!liveGames.Contains(receipt.SessionId))File.Delete(path);
+            }
+        }catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
         if(Directory.EnumerateDirectories(sessions).Take(101).Count()>=100){settings.RecordDrop();throw new IOException("Diagnostic session budget exhausted.");}
         var directory=Path.Combine(settings.Root,"sessions",Guid.NewGuid().ToString("N"));DiagnosticFiles.Ensure(Path.Combine(directory,"events"));
         using var launcher=Process.GetCurrentProcess();var registration=new DiagnosticRegistration(sessionId,Guid.NewGuid().ToString("N"),settings.Root,Path.GetFullPath(clientRoot),site,scope.Installation,scope.Queue,DateTimeOffset.UtcNow,launcher.Id,launcher.StartTime.ToUniversalTime().Ticks,ClientVersion:clientVersion,LocalOnly:localOnly,LocalSmallDumps:settings.Read().LocalSmallDumps);
@@ -51,6 +63,31 @@ public sealed class DiagnosticSession
     {
         Registration=Registration with {GamePid=process.Id,GameCreatedUtcTicks=process.StartTime.ToUniversalTime().Ticks};
         DiagnosticFiles.Write(Path.Combine(DirectoryPath,"session.json"),Registration);
+    }
+    public void SetPvfIdentity(string? hash)
+    {
+        Registration=Registration with {ClientPvfSha256=hash is not null&&System.Text.RegularExpressions.Regex.IsMatch(hash,@"\A[a-f0-9]{64}\z")?hash:null};
+        try {DiagnosticFiles.Write(Path.Combine(DirectoryPath,"session.json"),Registration);}
+        catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ } // Optional identity must not block starting the game.
+    }
+    // The bounded receipt set outlives queue reclamation. Claim before writing a
+    // queue body: a failed write may lose this incident, never refreeze its ID.
+    private string CollectionPath=>Path.Combine(Registration.UserRoot,"collections",SessionId+".json");
+    internal bool WasCollected(string id) => ReadCollected().Contains(id,StringComparer.Ordinal);
+    private string[] ReadCollected()
+    {
+        var receipt=DiagnosticFiles.Read<DiagnosticCollection>(CollectionPath,16384);
+        if(receipt is null)return [];
+        if(receipt.SessionId!=SessionId||receipt.LauncherPid!=Registration.LauncherPid||receipt.LauncherCreatedUtcTicks!=Registration.LauncherCreatedUtcTicks||receipt.Ids is null||receipt.Ids.Length>256||receipt.Ids.Any(id=>!DiagnosticProjection.Id(id)))throw new InvalidDataException("Invalid collection receipts.");
+        return receipt.Ids;
+    }
+    internal bool ClaimCollection(string id)
+    {
+        var ids=ReadCollected();if(ids.Contains(id,StringComparer.Ordinal))return false;
+        if(ids.Length>=256)return false;
+        var directory=Path.GetDirectoryName(CollectionPath)!;DiagnosticFiles.Ensure(directory);
+        if(!File.Exists(CollectionPath)&&Directory.EnumerateFiles(directory,"*.json").Take(101).Count()>=100)return false;
+        DiagnosticFiles.Write(CollectionPath,new DiagnosticCollection(SessionId,Registration.LauncherPid,Registration.LauncherCreatedUtcTicks,ids.Append(id).ToArray()));return true;
     }
     public void ApplyEnvironment(ProcessStartInfo start)
     {
@@ -146,6 +183,8 @@ public sealed class DiagnosticSession
                 }
                 if(collected.Contains(incident.EventId)||queue.ContainsEvent(incident.EventId))continue;
                 if(incident.RelatedEventId is not null&&(queue.ContainsEvent(incident.RelatedEventId)||events.Any(e=>e.Incident.EventId==incident.RelatedEventId)))continue;
+                var current=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(DirectoryPath,"session.json"),16384)??Registration;
+                incident=incident with {ClientPvfSha256=incident.ClientPvfSha256??current.ClientPvfSha256};
                 system??=DiagnosticProjection.CollectSystem();
                 if(queue.Enqueue(DiagnosticProjection.Create(incident,SessionId,Registration.ClientVersion,system))){collected.Add(incident.EventId);count++;}
             } catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
@@ -165,7 +204,7 @@ public sealed class DiagnosticSession
             if(!Directory.EnumerateFileSystemEntries(events).Any())Directory.Delete(events);
         }
         DiagnosticFiles.NoLinks(DirectoryPath);
-        if(!Directory.EnumerateDirectories(DirectoryPath).Any()&&Directory.EnumerateFiles(DirectoryPath).All(p=>Path.GetFileName(p) is "session.json" or "closed.json" or "collect.lock")) {
+        if(!Directory.EnumerateDirectories(DirectoryPath).Any()&&Directory.EnumerateFiles(DirectoryPath).All(p=>Path.GetFileName(p) is "session.json" or "closed.json" or "collect.lock" or "collected.json")) {
             foreach(var path in Directory.EnumerateFiles(DirectoryPath)){DiagnosticFiles.NoLinks(path);File.Delete(path);}Directory.Delete(DirectoryPath);
         }
     }

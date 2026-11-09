@@ -36,7 +36,7 @@ public sealed class DiagnosticQueue(DiagnosticSession session)
     private string Storage=>Path.Combine(Registration.UserRoot,"queue");
     private string BackoffPath=>Path.Combine(Registration.Installation,"site-backoff.json");
     private string PathFor(string id)=>Path.Combine(Storage,id+".json");
-    internal bool ContainsEvent(string id)=>DiagnosticProjection.Id(id)&&File.Exists(PathFor(id))&&Read(PathFor(id))?.Scope==Registration.Queue;
+    internal bool ContainsEvent(string id)=>DiagnosticProjection.Id(id)&&(session.WasCollected(id)||(File.Exists(PathFor(id))&&Read(PathFor(id))?.Scope==Registration.Queue));
     public bool Enqueue(DiagnosticReport report)
     {
         try {
@@ -46,10 +46,12 @@ public sealed class DiagnosticQueue(DiagnosticSession session)
             if(!IsEligible)return false;
             DiagnosticFiles.Ensure(Storage);
             // Never delete a frozen body while another process is sending it.
-            try {using var upload=DiagnosticFiles.Lease(Registration.UserRoot,"upload.lock");Maintain();}catch(IOException){ }
-            var path=PathFor(report.EventId);if(File.Exists(path))return false;
+            try {using var upload=DiagnosticFiles.Lease(Registration.UserRoot,"upload.lock");Maintain(body.Length*2);}catch(IOException){ }
+            var path=PathFor(report.EventId);if(File.Exists(path)||session.WasCollected(report.EventId))return false;
             var files=Files();if(files.Length>=100||files.Sum(f=>new FileInfo(f).Length)+body.Length*2>MaxBytes){new DiagnosticSettings(Registration.UserRoot).RecordDrop();return false;}
-            DiagnosticFiles.Write(path,new FrozenDiagnostic(report.EventId,Registration.Queue,Convert.ToBase64String(body),Convert.ToHexStringLower(SHA256.HashData(body)),DateTimeOffset.UtcNow),false);return true;
+            if(!session.ClaimCollection(report.EventId)){new DiagnosticSettings(Registration.UserRoot).RecordDrop();return false;}
+            try {DiagnosticFiles.Write(path,new FrozenDiagnostic(report.EventId,Registration.Queue,Convert.ToBase64String(body),Convert.ToHexStringLower(SHA256.HashData(body)),DateTimeOffset.UtcNow),false);return true;}
+            catch(Exception error) when(DiagnosticFiles.Recoverable(error)){new DiagnosticSettings(Registration.UserRoot).RecordDrop();throw;}
         }catch(Exception error) when(DiagnosticFiles.Recoverable(error)){return false;}
     }
     private string[] Files()
@@ -57,12 +59,38 @@ public sealed class DiagnosticQueue(DiagnosticSession session)
         DiagnosticFiles.NoLinks(Storage);
         return Directory.Exists(Storage)?Directory.EnumerateFiles(Storage,"*.json").Where(p=>DiagnosticProjection.Id(Path.GetFileNameWithoutExtension(p))).Take(101).ToArray():[];
     }
-    private void Maintain()
+    private void Maintain(long admissionBytes=0)
     {
+        var remaining=new List<(string Path,FrozenDiagnostic Value,long Size)>();
         foreach(var path in Files()) {
             DiagnosticFiles.NoLinks(path);
             var value=DiagnosticFiles.Read<FrozenDiagnostic>(path,400000);
-            if(value is not null&&value.CreatedAt<DateTimeOffset.UtcNow.AddDays(-14))File.Delete(path);
+            if(value is null)continue;
+            if(value.CreatedAt<DateTimeOffset.UtcNow.AddDays(-14)) {
+                PreserveCollectionIdentity(value);File.Delete(path);
+                if(value.Status!="uploaded")new DiagnosticSettings(Registration.UserRoot).RecordDrop();
+            }else remaining.Add((path,value,new FileInfo(path).Length));
+        }
+        if(admissionBytes==0)return;
+        var count=remaining.Count;var bytes=remaining.Sum(f=>f.Size);
+        foreach(var sent in remaining.Where(f=>f.Value.Status=="uploaded").OrderBy(f=>f.Value.CreatedAt)) {
+            if(count<100&&bytes+admissionBytes<=MaxBytes)break;
+            PreserveCollectionIdentity(sent.Value);
+            File.Delete(sent.Path);count--;bytes-=sent.Size;
+        }
+    }
+    private void PreserveCollectionIdentity(FrozenDiagnostic frozen)
+    {
+        // Backfill receipts for registrations created by an earlier helper.
+        // No matching registration means there is no remaining event source.
+        var body=Body(frozen);if(body is null)return;
+        var report=JsonSerializer.Deserialize<DiagnosticReport>(body,DiagnosticJson.Options)!;
+        foreach(var directory in Directory.EnumerateDirectories(Path.Combine(Registration.UserRoot,"sessions")).Take(101)) {
+            var owner=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(directory,"session.json"),16384);
+            if(owner is not null&&owner.SessionId==report.SessionId&&owner.Queue==frozen.Scope) {
+                var source=DiagnosticSession.Open(directory,owner.Capability,Registration.UserRoot);
+                if(!source.WasCollected(report.EventId)&&!source.ClaimCollection(report.EventId))throw new IOException("Collection receipt budget exhausted.");
+            }
         }
     }
     private FrozenDiagnostic? Read(string path)

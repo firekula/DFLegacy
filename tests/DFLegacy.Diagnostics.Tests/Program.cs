@@ -18,11 +18,101 @@ void Check(bool ok,string text) { checks++; if(!ok) { failures++; Console.Error.
 var root=Path.Combine(Path.GetTempPath(),"dflegacy-diagnostic-tests-"+Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try {
- if(args.Contains("--native-integration-only"))await NativeIntegrationTests();else if(args.Contains("--status-only"))await StatusTests();else {await Run();await StatusTests();await NativeIntegrationTests();}
+ if(args.Contains("--final-pvf-failsoft"))PvfFailSoft();else if(args.Length==3&&args[0]=="--final-native-wire")await NativeWireTests(args[1],args[2]);else if(args.Contains("--final-fixes-only"))await FinalFixTests();else if(args.Contains("--native-integration-only"))await NativeIntegrationTests();else if(args.Contains("--status-only"))await StatusTests();else {await Run();await StatusTests();await NativeIntegrationTests();}
 } catch(Exception ex) { failures++; Console.Error.WriteLine("FAIL: "+ex); }
 finally { Directory.Delete(root,true); }
 Console.WriteLine($"Diagnostics tests: {checks} assertions, {failures} failures");
 return failures==0?0:1;
+
+void PvfFailSoft()
+{
+ var session=DiagnosticSession.Start(Path.Combine(root,"failsoft-client"),"",Guid.NewGuid().ToString("N"),Path.Combine(root,"failsoft-user"));
+ session.SetPvfIdentity("C:/private/not-a-hash");Check(session.Registration.ClientPvfSha256 is null,"invalid PVF identity stays unknown");
+ var path=Path.Combine(session.DirectoryPath,"session.json");File.SetAttributes(path,FileAttributes.ReadOnly);
+ try {session.SetPvfIdentity(new string('d',64));Check(true,"PVF diagnostic handoff IO failure remains fail-soft for game startup");}
+ catch(IOException){Check(false,"PVF diagnostic handoff IO failure remains fail-soft for game startup");}
+ catch(UnauthorizedAccessException){Check(false,"PVF diagnostic handoff IO failure remains fail-soft for game startup");}
+ finally {File.SetAttributes(path,FileAttributes.Normal);}
+}
+
+async Task FinalFixTests()
+{
+ PvfFailSoft();
+ var home=Path.Combine(root,"final-retention");var client=Path.Combine(root,"final-client");
+ using var endpoint=new Endpoint(async(ctx,n)=>{ctx.Response.StatusCode=201;await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{receiptId="11111111111111111111111111111111",eventId=ctx.EventId,status="stored"})));});
+ var session=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home,"1.0.0-test.1+aaaaaaaa");var queue=new DiagnosticQueue(session);
+ var first=new DiagnosticIncident{Stage="first"};session.WriteIncident(first,"confirmed");Check(session.CollectConfirmed()==1,"first coalesced incident freezes");
+ await queue.UploadPendingAsync();
+ for(var i=1;i<100;i++)queue.Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),session.SessionId,"1.0.0-test.1+aaaaaaaa"));
+ Check(queue.Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),session.SessionId,"1.0.0-test.1+aaaaaaaa")),"sent oldest report reclaimed at global 100-record cap");
+ Check(!File.Exists(Path.Combine(home,"queue",first.EventId+".json")),"only eligible sent record is reclaimed");
+ File.Delete(Path.Combine(home,"queue",first.EventId+".json"));
+ var reopened=DiagnosticSession.Open(session.DirectoryPath,session.Registration.Capability,home);
+ Check(reopened.CollectConfirmed()==0,"durable collection identity prevents refreezing pruned event after collector restart");
+ // Isolate replay from capacity: removing an owned fixture record simulates later queue reclamation.
+ File.Delete(Directory.GetFiles(Path.Combine(home,"queue"),"*.json").First());
+ Check(reopened.CollectConfirmed()==0,"old consumed ID stays consumed even when queue has free capacity");
+ var expired=Directory.GetFiles(Path.Combine(home,"queue"),"*.json").First();var node=System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(expired))!;node["createdAt"]=DateTimeOffset.UtcNow.AddDays(-15);File.WriteAllText(expired,node.ToJsonString());
+ var before=File.Exists(Path.Combine(home,"drops.json"))?long.Parse(File.ReadAllText(Path.Combine(home,"drops.json"))):0;
+ queue.Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),session.SessionId,"test"));
+ Check(long.Parse(File.ReadAllText(Path.Combine(home,"drops.json")))==before+1,"expired unsent report increments durable drop count");
+ // Reuse valid frozen records with legal JSON whitespace to approach the byte
+ // budget independently of count. All bodies/IDs/hashes remain intact.
+ foreach(var extra in Directory.GetFiles(Path.Combine(home,"queue"),"*.json").Skip(85))File.Delete(extra);
+ var byteFiles=Directory.GetFiles(Path.Combine(home,"queue"),"*.json");
+ var sentNode=System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(byteFiles[0]))!;sentNode["status"]="uploaded";File.WriteAllText(byteFiles[0],sentNode.ToJsonString());
+ foreach(var file in byteFiles){var raw=File.ReadAllText(file);File.WriteAllText(file,raw+new string(' ',394757-Encoding.UTF8.GetByteCount(raw)));}
+ Check(queue.Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),session.SessionId,"test")),"sent body reclaimed when byte capacity fills before count capacity");
+ Check(Directory.GetFiles(Path.Combine(home,"queue"),"*.json").Sum(p=>new FileInfo(p).Length)<=32L*1024*1024,"reclamation keeps total queue storage within 32 MiB");
+ session.Complete();var replacement=DiagnosticSession.Start(client,endpoint.Url,session.SessionId,home,"changed.build");replacement.WriteIncident(first,"confirmed");
+ Check(replacement.CollectConfirmed()==0,"same logical producer session retains consumed identity across registration replacement after queue prune");
+ var localHome=Path.Combine(root,"final-local");var settings=new DiagnosticSettings(localHome);settings.SetEnabled(false);
+ var capture=Path.Combine(localHome,"captures","preserved.dmp");Directory.CreateDirectory(Path.GetDirectoryName(capture)!);File.WriteAllText(capture,"local fixture");
+ var succeeded=0;
+ for(var i=0;i<115;i++) {try {var local=DiagnosticSession.Start(client,"",Guid.NewGuid().ToString("N"),localHome);local.WriteIncident(new DiagnosticIncident(),"confirmed");local.Complete();succeeded++;}catch(IOException){break;}}
+ Check(succeeded==115,"more than 100 completed local-only launches remain capturable without uploader");
+ settings.SetEnabled(true);
+ try {var enabled=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),localHome);Check(enabled.CollectConfirmed()==0&&new DiagnosticQueue(enabled).ReadPending().Count==0,"opt-in after local-only cleanup never replays historical events");}catch(IOException){Check(false,"opt-in recovers immediately after local-only launches");}
+ var live=DiagnosticSession.Start(client,"",Guid.NewGuid().ToString("N"),localHome);using(var self=Process.GetCurrentProcess())live.BindProcess(self);live.Complete();
+ var dead=DiagnosticSession.Start(client,"",Guid.NewGuid().ToString("N"),localHome);File.WriteAllText(Path.Combine(dead.DirectoryPath,"session.json"),JsonSerializer.Serialize(dead.Registration with{LauncherCreatedUtcTicks=1,GamePid=Environment.ProcessId,GameCreatedUtcTicks=1},new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ var rotations=0;for(var i=0;i<105;i++){settings.SetEnabled(i%2==0);var revoked=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),localHome);revoked.Complete();rotations++;}
+ Check(rotations==105&&Directory.Exists(live.DirectoryPath)&&!Directory.Exists(dead.DirectoryPath),"bounded cleanup reclaims dead and revoked sessions while preserving exact live game PID/creation identity");
+ Check(File.ReadAllText(capture)=="local fixture","session reclamation preserves separate local captures");
+ // The optional hash is frozen by collection, not read back from rich logs.
+ var identitySession=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),Path.Combine(root,"identity-wire"),"1.0.0-alpha.1+aaaaaaaa");identitySession.SetPvfIdentity(new string('a',64));
+ var identityIncident=new DiagnosticIncident();identitySession.WriteIncident(identityIncident,"confirmed");identitySession.CollectConfirmed();
+ var identityBytes=new DiagnosticQueue(identitySession).ReadPending().Single().Body;identitySession.SetPvfIdentity(new string('b',64));
+ Check(new DiagnosticQueue(identitySession).ReadPending().Single().Body.SequenceEqual(identityBytes),"PVF identity changes never mutate frozen retries");
+ Check(ClientDiagnosticReport.TryParse(identityBytes,out var identityReport)&&identityReport!.ClientPvfSha256==new string('a',64),"known session PVF reaches server-compatible bytes");
+ var changedPvf=DiagnosticProjection.Create(identityIncident with{ClientPvfSha256=new string('b',64)},identitySession.SessionId,identitySession.Registration.ClientVersion);
+ var changedBuild=changedPvf with{ClientVersion="1.0.0-alpha.2+bbbbbbbb"};
+ ClientDiagnosticReport.TryParse(DiagnosticJson.Serialize(changedPvf),out var otherPvf);ClientDiagnosticReport.TryParse(DiagnosticJson.Serialize(changedBuild),out var otherBuild);
+ Check(identityReport!.Fingerprint()!=otherPvf!.Fingerprint()&&otherPvf.Fingerprint()!=otherBuild!.Fingerprint(),"different PVF and prerelease/source builds split authoritative server fingerprints");
+ await ServerCompatibility(Path.Combine(root,"final-wire"),client,identityIncident with{ClientPvfSha256=new string('b',64)});
+}
+
+async Task NativeWireTests(string fixture,string helper)
+{
+ foreach(var mode in new[]{"signature-match","network-normal","module-crash"}) {
+  var home=Path.Combine(root,"wire-"+mode);var client=Path.Combine(root,"wire-client");var rich=Path.Combine(root,"rich-"+mode);Directory.CreateDirectory(rich);
+  using var endpoint=new Endpoint(async(ctx,n)=>{ctx.Response.StatusCode=201;await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{receiptId="11111111111111111111111111111111",eventId=ctx.EventId,status="stored"})));});
+  var session=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home,"2.0.0-test.native+source");session.SetPvfIdentity(new string('a',64));
+  var info=new ProcessStartInfo(fixture){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true};info.ArgumentList.Add(mode);info.ArgumentList.Add(rich);session.ApplyEnvironment(info);info.Environment["DFL_TEST_CAPTURE_ROOT"]=home;info.Environment["DFL_DIAGNOSTIC_CAPTURE_HELPER"]=helper;
+  var faultModule=Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(fixture))!,"fault-module",Path.GetFileName(Path.GetDirectoryName(fixture))!,"DFLegacy.Client.dll");if(mode=="module-crash")info.Environment["DFL_TEST_FAULT_MODULE"]=faultModule;
+  using var child=Process.Start(info)!;var ready=await child.StandardOutput.ReadLineAsync();Check(ready?.StartsWith("ready ")==true,"actual native fixture starts registered "+mode);session.BindProcess(child);await child.StandardInput.WriteLineAsync();await child.StandardInput.FlushAsync();await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+  for(var i=0;i<30;i++){session.CollectConfirmed();if(new DiagnosticQueue(session).ReadPending().Count>=(mode=="signature-match"?2:1))break;await Task.Delay(100);}
+  await new DiagnosticQueue(session).UploadPendingAsync();
+  Check(endpoint.Bodies.Count==(mode=="signature-match"?2:mode=="module-crash"?1:0),"native typed producer through managed collection sends expected wire count "+mode);
+  foreach(var body in endpoint.Bodies) {
+   var accepted=ClientDiagnosticReport.TryParse(body,out var report);Check(accepted,"real native automatic wire passes authoritative server validator "+mode);
+   if(!accepted)continue;
+   Check(report!.ClientPvfSha256==new string('a',64)&&report.ClientVersion=="2.0.0-test.native+source","native wire freezes current session PVF/build identity");
+   if(mode=="module-crash")Check(report.Module=="DFLegacy.Client.dll"&&report.ModuleHash==Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(faultModule))),"real native fault module SHA survives actual HTTP wire");
+   else Check(report.Kind=="networkerror"&&report.Context.StartsWith("protocol tcp; port 0; socket "),"validated hooks emit only typed bounded network fields");
+   await ServerCompatibility(Path.Combine(home,report.EventId),client,JsonSerializer.Deserialize<DiagnosticIncident>(JsonSerializer.Serialize(new {kind=report.Kind,stage=report.Stage,evidence=report.Evidence,module=report.Module,moduleHash=report.ModuleHash,moduleOffset=report.ModuleOffset,exceptionCode=report.ExceptionCode,clientPvfSha256=report.ClientPvfSha256}),new JsonSerializerOptions(JsonSerializerDefaults.Web))!);
+  }
+ }
+}
 
 async Task NativeIntegrationTests()
 {

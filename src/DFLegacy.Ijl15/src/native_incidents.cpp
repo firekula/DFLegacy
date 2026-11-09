@@ -183,6 +183,7 @@ namespace dfl::native_incidents
         if(!entry)for(auto& e:Entries)if(!e.Used){e.Used=true;e.Connect=connecting;e.Code=socketError;entry=&e;Name(e,L"networkerror");break;}
         if(entry&&entry->Count<1000)
         {
+            if(entry->Count==0)dfl::native_capture::NetworkNotification(entry->Id,connecting,socketError);
             ++entry->Count;Header(connecting?"native-connect-failure-notification":"native-disconnect-notification",*entry);
             Append("protocol=TCP\ndirection=server->client\nphase=%s\nsocketError=%u\nport=unknown\nconnectionId=unknown\nelapsedMs=unknown\nclientToServerBytes=unknown\nserverToClientBytes=unknown\ncontext=ACT1 validated native user-visible notification; no packet content captured\n",connecting?"connect":"disconnect",socketError);Save(*entry);
         }

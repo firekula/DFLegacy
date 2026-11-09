@@ -34,7 +34,7 @@ async function loadDiagnostics() {
   for (const group of result.items) {
     const section = document.createElement("section");
     const heading = document.createElement("p");
-    heading.textContent = `${group.kind} · ${group.module} · ${group.occurrences} 次 / ${group.reportCount} 份 · ${group.clientVersion} · ${group.evidence} · ${group.status} · ${new Date(group.lastSeen).toLocaleString()}`;
+    heading.textContent = `${group.kind} · ${group.module} · ${group.occurrences} 个合并事故 / ${group.reportCount} 份报告 · ${group.clientVersion} · ${group.evidence} · ${group.status} · ${new Date(group.lastSeen).toLocaleString()}`;
     section.append(heading);
     const fingerprint = document.createElement("code"); fingerprint.textContent = group.id; section.append(fingerprint);
     for (const [value, label] of [["new", "新问题"], ["investigating", "处理中"], ["resolved", "已处理"]]) {

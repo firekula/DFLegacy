@@ -129,6 +129,15 @@ void Finish(LONG slot,LONG disposition) noexcept
     // Only reuse a slot after cancellation has durably reached the helper.
     if(disposition==EXCEPTION_CONTINUE_EXECUTION&&Data->Acknowledged>=slot*2+2)InterlockedCompareExchange(&Busy,0,slot*2+1);
 }
+void NetworkNotification(const char* id,bool connecting,unsigned socketError) noexcept
+{
+    // Called under the existing notification producer lock, never the fault lock.
+    if(!Data||!Id(id)||socketError>65535)return;
+    const LONG slot=InterlockedCompareExchange(&Data->NetworkCount,0,0);
+    if(slot<0||slot>=16)return;
+    auto& record=Data->Network[slot];memcpy(record.Id,id,33);record.Connecting=connecting?1:0;record.SocketError=socketError;
+    InterlockedExchange(&Data->NetworkCount,slot+1);SetEvent(Request);
+}
 bool InstallOriginalHooks() noexcept
 {
     HMODULE bug=GetModuleHandleW(L"BugTrap.dll"),dump=GetModuleHandleW(L"DumpReport.dll");

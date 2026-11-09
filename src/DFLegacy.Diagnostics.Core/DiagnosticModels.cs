@@ -26,12 +26,13 @@ public sealed record DiagnosticIncident
     public string? RelatedEventId { get; init; }
     public string Protocol { get; init; } = "unknown";
     public int Port { get; init; }
+    public string? ClientPvfSha256 { get; init; }
     public int? SocketCode { get; init; }
 }
 
 public sealed record DiagnosticReport(string Format, string EventId, string SessionId, string Kind, DateTimeOffset OccurredAt,
     string ClientVersion, string Architecture, string Evidence, string Stage, string ExceptionCode, string Module,
-    string ModuleHash, string ModuleOffset, string[] Stack, int Occurrences, Dictionary<string,string> System, string Context);
+    string ModuleHash, string ModuleOffset, string[] Stack, int Occurrences, Dictionary<string,string> System, string Context, string? ClientPvfSha256=null);
 
 public static class DiagnosticJson
 {
@@ -58,6 +59,7 @@ public static class DiagnosticProjection
         &&report.Architecture is "x86" or "x64" or "arm64" or "unknown"&&report.ExceptionCode is not null&&(report.ExceptionCode=="unknown"||Hex.IsMatch(report.ExceptionCode))
         &&report.Module is not null&&Leaf.IsMatch(report.Module)&&!report.Module.Contains("..",StringComparison.Ordinal)
         &&report.ModuleHash is not null&&(report.ModuleHash=="unknown"||Hash.IsMatch(report.ModuleHash))
+        &&(report.ClientPvfSha256 is null||report.ClientPvfSha256=="unknown"||Hash.IsMatch(report.ClientPvfSha256))
         &&report.ModuleOffset is not null&&(report.ModuleOffset=="unknown"||Hex.IsMatch(report.ModuleOffset))
         &&report.Stack is not null&&report.Stack.Length<=32&&report.Stack.All(f=>f is not null&&f.Length<=160&&!f.Contains("..",StringComparison.Ordinal)&&Frame.IsMatch(f))
         &&report.Occurrences is >=1 and <=1000000&&report.System is not null&&report.System.Count<=18&&report.System.All(p=>SystemKeys.Contains(p.Key)&&SafeText(p.Value)==p.Value)
@@ -77,7 +79,7 @@ public static class DiagnosticProjection
             SafeToken(incident.Evidence,64),SafeToken(incident.Stage,64),incident.ExceptionCode is { } code&&Hex.IsMatch(code)?code:"unknown",
             incident.Module is { } module&&Leaf.IsMatch(module)&&!module.Contains("..",StringComparison.Ordinal)?module:"unknown",
             incident.ModuleHash is { } hash&&Hash.IsMatch(hash)?hash:"unknown",incident.ModuleOffset is { } offset&&Hex.IsMatch(offset)?offset:"unknown",
-            (incident.Stack??[]).Where(f=>f is not null&&f.Length<=160&&!f.Contains("..",StringComparison.Ordinal)&&Frame.IsMatch(f)).Take(32).ToArray(),1,hardware,context);
+            (incident.Stack??[]).Where(f=>f is not null&&f.Length<=160&&!f.Contains("..",StringComparison.Ordinal)&&Frame.IsMatch(f)).Take(32).ToArray(),1,hardware,context,incident.ClientPvfSha256 is { } pvf&&Hash.IsMatch(pvf)?pvf:null);
     }
 
     // Bounded framework/native queries; unavailable hardware values remain unknown.

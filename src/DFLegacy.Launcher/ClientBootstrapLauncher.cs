@@ -41,7 +41,9 @@ internal static class ClientBootstrapLauncher
             start.Environment["DFLEGACY_DIAGNOSTIC_SESSION"]=Program.Incidents.SessionId;
             Diagnostics.AutomaticDiagnostics.Session?.ApplyEnvironment(start);
             start.Environment["DFLEGACY_DIAGNOSTIC_VERSION"]=manifest.Version+"+"+manifest.Commit;
-            start.Environment["DFLEGACY_DIAGNOSTIC_PVF"]=Program.Incidents.CapturePvfIdentity(Path.Combine(manifest.DirectoryPath,"Script.pvf"));
+            var pvfIdentity=Program.Incidents.CapturePvfIdentity(Path.Combine(manifest.DirectoryPath,"Script.pvf"));
+            start.Environment["DFLEGACY_DIAGNOSTIC_PVF"]=pvfIdentity;
+            Diagnostics.AutomaticDiagnostics.Session?.SetPvfIdentity(pvfIdentity);
             if(fixtureStart is null)
                 foreach(var argument in new[]{"--client",ClientFileIdentity.Canonical(exe.SafeFileHandle),"--patch",patchPath,"--sha256",manifest.Files.Single(f=>f.Path=="DFLegacy.Client.dll").Sha256,"--mode",manifest.Flavor,"--nonce",nonce,"--",launcherData}) start.ArgumentList.Add(argument);
             helper=Process.Start(start) ?? throw Failure("create_failed");

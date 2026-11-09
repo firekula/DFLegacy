@@ -69,6 +69,12 @@ internal static class IncidentTests
         check(automatic.Count==autoCount,"normal cancellation and successful updates do not emit automatic reports");
         safe.ReportNetwork(eof with {Reason=DFLegacy.Relay.RelayTerminationReason.SocketError,SocketError=System.Net.Sockets.SocketError.ConnectionReset});
         check(automatic.Count==autoCount+1&&automatic[^1].Protocol=="tcp"&&automatic[^1].Port==7001&&automatic[^1].SocketCode==10054,"relay emits only typed protocol port and socket evidence");
+        var pvfFixture=Path.Combine(root,"known-pvf");File.WriteAllText(pvfFixture,"pvf version one");var pvfHash=safe.CapturePvfIdentity(pvfFixture);
+        safe.Report(IncidentKind.Error,"pvf-known");
+        using(var projected=System.Text.Json.JsonDocument.Parse(DFLegacy.Diagnostics.DiagnosticJson.Serialize(DFLegacy.Diagnostics.DiagnosticProjection.Create(automatic[^1],safe.SessionId,"test"))))
+            check(projected.RootElement.TryGetProperty("clientPvfSha256",out var wirePvf)&&wirePvf.GetString()==pvfHash,"already acquired PVF hash reaches sanitized automatic wire bytes");
+        var groupedId=automatic[^1].EventId;safe.Report(IncidentKind.Error,"pvf-known");
+        check(automatic[^1].EventId==groupedId&&DFLegacy.Diagnostics.DiagnosticProjection.Create(automatic[^1],safe.SessionId,"test").Occurrences==1,"minute coalescing preserves one immutable incident count despite repeated notifications");
         check(new LauncherOptions().Diagnostics.Enabled,"launcher default enables automatic reporting without consent prompt");
         var userSettings=new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"pregame-diagnostic-user"));
         AutomaticDiagnostics.Configure(new LauncherOptions {ClientPath=Path.Combine(root,"pregame-client","DNF.exe"),AccountServiceUrl="http://127.0.0.1:32196"},userSettings);

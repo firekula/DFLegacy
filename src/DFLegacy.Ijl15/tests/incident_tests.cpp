@@ -119,6 +119,8 @@ int wmain(int argc,wchar_t** argv)
 {
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
     if(argc!=3)return 2;
+    HMODULE faultModule=nullptr;
+    if(!wcscmp(argv[1],L"module-crash")){wchar_t path[1024]{};GetEnvironmentVariableW(L"DFL_TEST_FAULT_MODULE",path,1024);faultModule=LoadLibraryW(path);if(!faultModule)return 21;}
     HMODULE original=nullptr;
     if(!wcsncmp(argv[1],L"original-",9)){original=Original(argv[1],argv[2]);if(!original)return 13;}
     if(!wcscmp(argv[1],L"previous"))SetUnhandledExceptionFilter(Previous);
@@ -149,6 +151,7 @@ int wmain(int argc,wchar_t** argv)
         printf("ready %lu %llu\n",GetCurrentProcessId(),((static_cast<unsigned long long>(created.dwHighDateTime)<<32)|created.dwLowDateTime)+504911232000000000ULL);fflush(stdout);
         (void)getchar();
     }
+    if(faultModule){reinterpret_cast<void(__cdecl*)()>(GetProcAddress(faultModule,"FixtureFault"))();return 22;}
     if(!wcscmp(argv[1],L"recover")||!wcscmp(argv[1],L"previous-exit")||!wcscmp(argv[1],L"previous-block")||!wcscmp(argv[1],L"block-recover")){Fault();return 0;}
     if(!wcscmp(argv[1],L"delayed-recovery-twice")||!wcscmp(argv[1],L"skip-provisional")){Fault();puts("recovered");fflush(stdout);(void)getchar();SecondFault();return 20;}
     if(!wcscmp(argv[1],L"large-dump")){for(int i=0;i<24;++i){HANDLE thread=CreateThread(nullptr,2*1024*1024,LargeStack,nullptr,0,nullptr);if(!thread)return 15;CloseHandle(thread);}while(StackReady<24)Sleep(10);Fault();return 0;}
@@ -160,6 +163,7 @@ int wmain(int argc,wchar_t** argv)
     if(!wcscmp(argv[1],L"dialog")){auto window=CreateWindowExW(0,L"STATIC",L"CrashSender",WS_OVERLAPPEDWINDOW,0,0,200,100,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);if(!window)return 8;ShowWindow(window,SW_HIDE);Sleep(2000);DestroyWindow(window);return 93;}
     if(!wcscmp(argv[1],L"handled")) { __try { Fault(); } __except(EXCEPTION_EXECUTE_HANDLER) {} return 0; }
     if(!wcscmp(argv[1],L"crash")||!wcscmp(argv[1],L"previous")) { Fault(); return 4; }
+    if(!wcscmp(argv[1],L"network-normal")){dfl::native_incidents::NetworkNotification(true,0);dfl::native_incidents::NetworkNotification(false,0,false);Sleep(150);return 0;}
     if(!wcscmp(argv[1],L"network"))
     {
         dfl::native_incidents::NetworkNotification(false,0);

@@ -73,7 +73,7 @@ x86 上传助手 **69,183,411 字节（约 65.98 MiB）**，x64 **73,652,147 字
 | 完整协议 smoke | 最终通过；首次完整运行出现一次 skill-slot rename UnauthorizedAccessException，独立重跑通过，保留原记录；增加异常堆栈可观测性后的完整重跑通过，未推断其根因，未改游戏逻辑 |
 | 实际打包 x86／x64 CLI | 只执行无会话命令：精确完整 third-party-notices、无配置／日志写入；Diagnostics 无效参数返回 2 |
 
-CPU／内存及首个枚举显示适配器的有限查询可用；本机只读投影实际取得 GPU 驱动 `32.0.21030.2001` 和适配器报告容量 `17,163,091,968` 字节。游戏实际 renderer／分辨率／窗口／适配器／DPI 未被观察，保持 unknown。`system.processArchitecture` 是收集器架构，`uptimeSeconds` 是 OS uptime，顶层 architecture 才是事故生产者架构。本轮没有自动上传 PVF hash 的验收声明。
+CPU／内存及首个枚举显示适配器的有限查询可用；本机只读投影实际取得 GPU 驱动 `32.0.21030.2001` 和适配器报告容量 `17,163,091,968` 字节。游戏实际 renderer／分辨率／窗口／适配器／DPI 未被观察，保持 unknown。`system.processArchitecture` 是收集器架构，`uptimeSeconds` 是 OS uptime，顶层 architecture 才是事故生产者架构。后续最终修订接入已取得的 PVF SHA256：当前会话与结构化事件投影传递该可选字段，获取前保持 unknown/缺省，不读取共享丰富日志，不改变冻结重试字节。独立原生→托管→真实 HTTP 回归在最终修订报告记录。
 
 新接收器／上传助手不提供原始转储上传能力。已知 ACT1 BugTrap 历史外传抑制只适用于[明确验证的原版哈希](../../knowledge/decisions/2026-11-09-native-diagnostic-capture.md)，不向未知第三方模块推广该保证；历史战斗故障／旧 CrashSender 复现仍未验证。
 
@@ -86,3 +86,11 @@ CPU／内存及首个枚举显示适配器的有限查询可用；本机只读�
 真实用户 LocalAppData 已有历史数据，因此没有运行会创建真实用户会话的打包 `--repair-client`／`--self-test`；完整打包 CLI 会话端到端仍未验证。上述真实远端修复通过注入根的测试宿主调用生产路径完成，不能替代该范围的声明。
 
 交互式 GM 走查仍未验证：父任务启动隐藏本地服务并 POST 夹具的操作被自动审批检查以 generic blocked-by-policy 拒绝。没有用其他工具或脚本改道重试，没有伪造 UI 截图。上面的示意图和自动 HTTP 证据分别标明用途。
+
+## 最终评审修订的计数与符号合同
+
+GM 的“合并事故”表示持久化幂等报告中的事故数，不是原始通知次数。托管同类通知在一分钟内共享事件 ID，自动正文 occurrences 固定为 1；本地丰富日志仍可增加独立的重复计数。原生已验证连接失败/可见断线按当前会话类型和 socket 错误有界合并，成功连接、正常 EOF 和无提示切频道不进入自动队列。
+
+安装身份优先采用 V4 已安装收据中的版本与完整源提交；旧清单须验证文件后才采用；无清单开发构建退回 informational version，坏清单为 unknown。已知 PVF 身份和实际故障模块 SHA256 进入指纹；早期或不可用字段保持未知。模块摘要由外部捕获器独立有界工作线程缓存主 EXE 和自有 DLL，故障线程不读文件、不等待哈希。
+
+CMake 生产 Release 为自有 DLL、Bootstrap32 和捕获器生成 `/Zi`、`/DEBUG:FULL` 符号，并在 `/DEBUG` 后明确恢复 `/OPT:REF /OPT:ICF`；保持优化 Release 和叶名称 `/PDBALTPATH`。最终产物阶段须从最终提交重建全部变体，并运行 `tools/release/retain_native_symbols.py --source-sha <40位最终SHA> --private-dir <仓库外新建私有目录> --pair <DLL或EXE> <对应PDB>`（每个生产模块各一个 `--pair`）。该工具拒绝 GUID/Age 不符或公开 PE 中的完整 PDB 路径，私下复制匹配 PE/PDB 并记录双方 SHA256、GUID/Age、源 SHA；PDB 与 provenance.json 不进入公开资源、清单或 Gitea。当前源修订中的测试符号只能证明工具行为，不能替代后续最终生产产物证据。

@@ -40,8 +40,8 @@ internal static class AutomaticDiagnostics
                 if(identity==key&&Session is not null&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible)&&
                     (Session.Registration.LocalSmallDumps==preference.LocalSmallDumps||Session.GameAlive()))return;
                 Session?.Complete();
-                try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}
-                catch(ArgumentException) {Session=DiagnosticSession.Start(clientRoot,"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}
+                try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,ResolveInstalledIdentity(helperDirectory));}
+                catch(ArgumentException) {Session=DiagnosticSession.Start(clientRoot,"",Program.Incidents.SessionId,settings.Root,ResolveInstalledIdentity(helperDirectory));}
                 identity=key;
                 Program.Incidents.AutomaticReport=Record;
                 registered=true;
@@ -59,6 +59,23 @@ internal static class AutomaticDiagnostics
             if(!registered)lock(Gate){Session=null;identity=null;Program.Incidents.AutomaticReport=null;}
             Program.LogWarning="自动诊断暂不可用，仅保留本地记录。";
         }
+    }
+    internal static string ResolveInstalledIdentity(string directory)
+    {
+        static string Safe(string? value) => value is not null&&System.Text.RegularExpressions.Regex.IsMatch(value,@"\A[A-Za-z0-9_.+\-]{1,128}\z")?value:"unknown";
+        static string Build(string version,string commit) => Safe(version+"+"+commit) is var combined&&combined!="unknown"?combined:Safe("build."+commit);
+        try {
+            var installed=new DFLegacy.UpdateCore.InstallationStore(directory).ReadInstalled();
+            if(installed is not null)return Build(installed.Release.Manifest.Version,installed.Release.Manifest.Commit);
+            var path=Path.Combine(directory,"client-package.json");DFLegacy.UpdateCore.PathPolicy.NoLinks(path);
+            if(File.Exists(path)) {
+                using var file=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
+                if(file.Length is <=0 or >16384)return "unknown";
+                var bytes=new byte[(int)file.Length];file.ReadExactly(bytes);var legacy=ClientPackageManifest.Parse(bytes,directory);
+                legacy.ValidateFiles();return Build(legacy.Version,legacy.Commit);
+            }
+            return Safe(System.Reflection.CustomAttributeExtensions.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(Program).Assembly)?.InformationalVersion);
+        }catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or System.Text.Json.JsonException){return "unknown";}
     }
     // Retained Process handles bind the exact child identity. Never terminate by name/PID.
     internal static async Task SuspendForUpdateAsync(CancellationToken token)

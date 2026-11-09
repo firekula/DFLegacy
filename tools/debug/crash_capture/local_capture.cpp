@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <bcrypt.h>
+#include <mutex>
+#include <memory>
 #include "../../../src/DFLegacy.Ijl15/src/native_capture.h"
 std::wstring LocalCaptureRoot();
 decltype(&MiniDumpWriteDump) LocalCaptureDumpWriter();
@@ -94,7 +97,51 @@ std::string Module(HANDLE process,DWORD address,std::string& offset)
     while(*leaf&&result.size()<128){const wchar_t c=*leaf++;if(!((c>=L'a'&&c<=L'z')||(c>=L'A'&&c<=L'Z')||(c>=L'0'&&c<=L'9')||c==L'_'||c==L'.'||c==L'-')){offset="unknown";return "unknown";}result+=static_cast<char>(c);}
     if(*leaf||result.empty()){offset="unknown";return "unknown";}char hex[32]{};sprintf_s(hex,"0x%lX",address-static_cast<DWORD>(reinterpret_cast<std::uintptr_t>(memory.AllocationBase)));offset=hex;return result;
 }
-std::string Incident(const Shared& data,HANDLE process,const char* id,bool window=false)
+// Hash image files on a separate best-effort worker. Fault handling only
+// performs a try-lock lookup, so slow disk/AV cannot extend its 2s/5s budget.
+// The read handle denies replacement for the lifetime of the cached identity.
+struct CachedModule {DWORD Base;std::string Hash;std::wstring MappedPath;HANDLE File;};
+struct ModuleCache {std::mutex Gate;std::vector<CachedModule> Items;~ModuleCache(){for(const auto& item:Items)CloseHandle(item.File);}};
+struct HashWork {HANDLE Process;std::shared_ptr<ModuleCache> Cache;};
+DWORD WINAPI CacheModules(void* parameter)
+{
+    std::unique_ptr<HashWork> work(static_cast<HashWork*>(parameter));Handle process(work->Process);
+    HMODULE modules[128]{};DWORD bytes{};const auto until=GetTickCount64()+1500;ULONGLONG total=0;
+    if(!EnumProcessModules(process.value,modules,sizeof(modules),&bytes))return 0;
+    const auto count=std::min<DWORD>(bytes/sizeof(HMODULE),128);
+    for(DWORD i=0;i<count&&GetTickCount64()<until;++i) {
+        wchar_t path[1024]{};if(!GetModuleFileNameExW(process.value,modules[i],path,1024)||!Plain(path))continue;
+        // Own patch libraries and the main executable are sufficient to match
+        // our private symbols; never inventory unrelated modules on the wire.
+        const auto* leaf=wcsrchr(path,L'\\');leaf=leaf?leaf+1:path;
+        if(i!=0&&_wcsicmp(leaf,L"DFLegacy.Client.dll")&&_wcsicmp(leaf,L"ijl15.dll")&&_wcsicmp(leaf,L"debug.dll")&&_wcsicmp(leaf,L"original_game_probe.dll"))continue;
+        Handle file(CreateFileW(path,GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_FLAG_OPEN_REPARSE_POINT,nullptr));LARGE_INTEGER size{};
+        if(!file||!GetFileSizeEx(file.value,&size)||size.QuadPart<=0||size.QuadPart>32*1024*1024||total+size.QuadPart>64*1024*1024)continue;
+        total+=size.QuadPart;BCRYPT_ALG_HANDLE algorithm{};BCRYPT_HASH_HANDLE hash{};BYTE digest[32]{},buffer[65536]{};DWORD read{};ULONGLONG consumed=0;
+        bool ok=BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0&&BCryptCreateHash(algorithm,&hash,nullptr,0,nullptr,0,0)>=0;
+        while(ok&&consumed<static_cast<ULONGLONG>(size.QuadPart)) {
+            if(GetTickCount64()>=until||!ReadFile(file.value,buffer,sizeof(buffer),&read,nullptr)||!read){ok=false;break;}
+            consumed+=read;ok=BCryptHashData(hash,buffer,read,0)>=0;
+        }
+        if(ok)ok=consumed==static_cast<ULONGLONG>(size.QuadPart)&&BCryptFinishHash(hash,digest,sizeof(digest),0)>=0;
+        if(hash)BCryptDestroyHash(hash);if(algorithm)BCryptCloseAlgorithmProvider(algorithm,0);
+        if(ok) {
+            wchar_t mapped[1024]{};if(!GetMappedFileNameW(process.value,modules[i],mapped,1024))continue;
+            char hex[65]{};for(unsigned n=0;n<32;++n)sprintf_s(hex+n*2,3,"%02x",digest[n]);
+            std::lock_guard<std::mutex> guard(work->Cache->Gate);work->Cache->Items.push_back({static_cast<DWORD>(reinterpret_cast<std::uintptr_t>(modules[i])),hex,mapped,file.value});file.value=INVALID_HANDLE_VALUE;
+        }
+    }
+    return 0;
+}
+std::string ModuleHash(HANDLE process,DWORD address,const std::shared_ptr<ModuleCache>& cache)
+{
+    MEMORY_BASIC_INFORMATION memory{};if(!VirtualQueryEx(process,reinterpret_cast<void*>(address),&memory,sizeof(memory))||memory.Type!=MEM_IMAGE)return "unknown";
+    std::unique_lock<std::mutex> guard(cache->Gate,std::try_to_lock);if(!guard.owns_lock())return "unknown";
+    wchar_t mapped[1024]{};if(!GetMappedFileNameW(process,reinterpret_cast<void*>(address),mapped,1024))return "unknown";
+    for(const auto& item:cache->Items)if(item.Base==reinterpret_cast<std::uintptr_t>(memory.AllocationBase)&&item.MappedPath==mapped)return item.Hash;
+    return "unknown";
+}
+std::string Incident(const Shared& data,HANDLE process,const char* id,const std::shared_ptr<ModuleCache>& cache,bool window=false)
 {
     std::string offset,module=window?"unknown":Module(process,data.Context.Eip,offset);if(window)offset="unknown";
     char code[32]{};sprintf_s(code,"0x%08lX",data.Exception.ExceptionCode);
@@ -105,7 +152,7 @@ std::string Incident(const Shared& data,HANDLE process,const char* id,bool windo
         DWORD pair[2]{};SIZE_T read{};if(frame<data.Context.Esp||frame-data.Context.Esp>1024*1024||!ReadProcessMemory(process,reinterpret_cast<void*>(frame),pair,sizeof(pair),&read)||read!=sizeof(pair)||pair[0]<=frame)break;
         std::string relative;const auto name=Module(process,pair[1],relative);if(name!="unknown"){if(!stack.empty())stack+=",";stack+="\""+name+"+"+relative+"\"";}frame=pair[0];
     }
-    return "{\"eventId\":\""+std::string(id)+"\",\"kind\":\""+(window?"error":"crash")+"\",\"stage\":\"game\",\"evidence\":\""+(window?"owned-crash-window":data.OriginalEntry?"original-exception-context":"confirmed-unhandled-exception")+"\",\"architecture\":\"x86\",\"exceptionCode\":\""+(window?"unknown":code)+"\",\"module\":\""+module+"\",\"moduleHash\":\"unknown\",\"moduleOffset\":\""+offset+"\",\"stack\":["+stack+"],\"relatedEventId\":null,\"protocol\":\"unknown\",\"port\":0,\"socketCode\":null}";
+    return "{\"eventId\":\""+std::string(id)+"\",\"kind\":\""+(window?"error":"crash")+"\",\"stage\":\"game\",\"evidence\":\""+(window?"owned-crash-window":data.OriginalEntry?"original-exception-context":"confirmed-unhandled-exception")+"\",\"architecture\":\"x86\",\"exceptionCode\":\""+(window?"unknown":code)+"\",\"module\":\""+module+"\",\"moduleHash\":\""+(window?"unknown":ModuleHash(process,data.Context.Eip,cache))+"\",\"moduleOffset\":\""+offset+"\",\"stack\":["+stack+"],\"relatedEventId\":null,\"protocol\":\"unknown\",\"port\":0,\"socketCode\":null}";
 }
 bool Event(const Shared& data,const char* id,const char* state,const std::string& incident)
 {
@@ -220,12 +267,26 @@ int Monitor(HANDLE mapping,HANDLE request,HANDLE ack,HANDLE process)
     auto* data=static_cast<Shared*>(MapViewOfFile(mapping,FILE_MAP_ALL_ACCESS,0,0,sizeof(Shared)));if(!data)return 2;
     Shared identity=*data;std::wstring root;
     if(!Identity(identity,process)||!SameUser(process)||!Location(identity,root)){UnmapViewOfFile(data);return 3;}
+    auto cache=std::make_shared<ModuleCache>();HANDLE hashProcess{};
+    if(DuplicateHandle(GetCurrentProcess(),process,GetCurrentProcess(),&hashProcess,0,FALSE,DUPLICATE_SAME_ACCESS)) {
+        auto* work=new HashWork{hashProcess,cache};Handle thread(CreateThread(nullptr,0,CacheModules,work,0,nullptr));
+        if(!thread){CloseHandle(hashProcess);delete work;}
+        else WaitForSingleObject(thread.value,750); // Prewarm inside the existing 1s startup handshake, never on a fault.
+    }
     InterlockedExchange(&data->Ready,1);SetEvent(ack);
+    LONG networkSeen=0;
     LONG seen=0;unsigned activeSlot=8;Shared pending{};std::string incident;bool provisional=false,finished=false,windowSent=false;ULONGLONG exited=0;
     for(;;) {
         const bool dead=WaitForSingleObject(process,0)==WAIT_OBJECT_0;
         if(dead&&!exited)exited=GetTickCount64();
         const bool bound=Registration(identity,true);
+        const LONG notifications=InterlockedCompareExchange(&data->NetworkCount,0,0);
+        while(bound&&networkSeen<notifications&&networkSeen<16) {
+            const auto record=data->Network[networkSeen++];if(!Id(record.Id)||record.Connecting>1||record.SocketError>65535||(record.Connecting&&record.SocketError==0))continue;
+            const std::string evidence=record.Connecting?"native-connect-failure-notification":"native-disconnect-notification";
+            const std::string body="{\"eventId\":\""+std::string(record.Id)+"\",\"kind\":\"networkerror\",\"stage\":\"native-"+(record.Connecting?"connect":"disconnect")+"\",\"evidence\":\""+evidence+"\",\"architecture\":\"x86\",\"protocol\":\"tcp\",\"socketCode\":"+std::to_string(record.SocketError)+"}";
+            Event(identity,record.Id,"confirmed",body);
+        }
         const LONG sequence=InterlockedCompareExchange(&data->Sequence,0,0);
         if(bound&&sequence>seen&&sequence<=16) {
             const unsigned slot=static_cast<unsigned>(sequence-1)/2;
@@ -235,10 +296,10 @@ int Monitor(HANDLE mapping,HANDLE request,HANDLE ack,HANDLE process)
             if(slot!=activeSlot){activeSlot=slot;incident.clear();pending={};provisional=false;finished=false;}
             pending=*data;const LONG state=InterlockedCompareExchange(&data->StateValue,0,0);
             if(state==Provisional) {
-                incident=Incident(pending,process,pending.Ids[slot]);provisional=Event(pending,pending.Ids[slot],"provisional",incident);finished=false;
+                incident=Incident(pending,process,pending.Ids[slot],cache);provisional=Event(pending,pending.Ids[slot],"provisional",incident);finished=false;
                 if(provisional)SmallDump(pending,process,root,pending.Ids[slot]);
             }else if(state==Confirmed||state==Cancelled) {
-                if(incident.empty())incident=Incident(pending,process,pending.Ids[slot]);
+                if(incident.empty())incident=Incident(pending,process,pending.Ids[slot],cache);
                 Event(pending,pending.Ids[slot],state==Cancelled?"cancelled":"confirmed",incident);finished=true;
                 if(state==Cancelled){provisional=false;const auto path=root+L"\\captures\\"+Wide(pending.Ids[slot])+L".dmp";if(Plain(path))DeleteFileW(path.c_str());}
             }
@@ -254,7 +315,7 @@ int Monitor(HANDLE mapping,HANDLE request,HANDLE ack,HANDLE process)
             if(bound||GetTickCount64()-exited>=5000)break;
         }else if(bound&&!windowSent&&(data->StateValue==Idle||data->StateValue==Cancelled)) {
             WindowSearch search{identity.Pid,false};EnumWindows(Window,reinterpret_cast<LPARAM>(&search));
-            if(search.found){Event(identity,identity.Ids[7],"confirmed",Incident(identity,process,identity.Ids[7],true));windowSent=true;}
+            if(search.found){Event(identity,identity.Ids[7],"confirmed",Incident(identity,process,identity.Ids[7],cache,true));windowSent=true;}
         }
         WaitForSingleObject(request,50);
     }
