@@ -12,6 +12,7 @@
 #include "ijl15_config.h"
 #include "memory_patch.h"
 #include "performance_overlay.h"
+#include "../../DFLegacy.Client/player_runtime.h"
 
 namespace
 {
@@ -88,6 +89,7 @@ namespace
     int __fastcall DrawFpsAndMemory(void* performanceObject, void*) noexcept
     {
         dfl::debug_module::Pipeline timing;
+        dfl::player_runtime::OnFrame();
         if (dfl::auto_input::IsEnabled()) { dfl::auto_input::Pump(); }
 
         // The original call site checks [this + 0x2F0] before entering

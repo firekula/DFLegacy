@@ -183,6 +183,7 @@ public sealed class QuestCatalog
     private readonly ScriptFileSystem _scripts;
     private readonly ILogger<QuestCatalog> _logger;
     private readonly Lazy<IReadOnlyList<QuestDefinition>> _definitions;
+    private readonly Lazy<IReadOnlySet<ushort>> _disabledQuestOffers;
     private readonly Lazy<IReadOnlyDictionary<ushort, int>> _completionMapping;
 
     public IReadOnlyDictionary<ushort, int> CompletionMapping => _completionMapping.Value;
@@ -223,6 +224,7 @@ public sealed class QuestCatalog
         _scripts = scripts;
         _logger = logger;
         _completionMapping = new(LoadCompletionMapping, LazyThreadSafetyMode.ExecutionAndPublication);
+        _disabledQuestOffers = new(LoadDisabledQuestOffers, LazyThreadSafetyMode.ExecutionAndPublication);
         _definitions = new Lazy<IReadOnlyList<QuestDefinition>>(
             LoadDefinitions,
             LazyThreadSafetyMode.ExecutionAndPublication);
@@ -241,8 +243,9 @@ public sealed class QuestCatalog
     {
         var active = activeQuests.Select(quest => quest.QuestId).ToHashSet();
         var completed = completedQuestIds.ToHashSet();
+        var disabled = _disabledQuestOffers.Value;
         var eligible = _definitions.Value
-            .Where(definition => IsAcceptable(
+            .Where(definition => !disabled.Contains(definition.QuestId) && IsAcceptable(
                 definition,
                 character,
                 active,
@@ -367,6 +370,38 @@ public sealed class QuestCatalog
 
         return JobNames.TryGetValue(characterJob, out var jobName)
             && normalized == jobName;
+    }
+
+    private IReadOnlySet<ushort> LoadDisabledQuestOffers()
+    {
+        const string path = "quest/dflegacy-disabled-quests.lst";
+        var disabled = new HashSet<ushort>();
+        if (!_scripts.FileExists(path))
+        {
+            return disabled;
+        }
+
+        // Keep the original definitions available to existing quest progress.
+        foreach (var line in _scripts.ReadAllLines(path, Encoding.Latin1))
+        {
+            var entry = StripComment(line).Trim();
+            if (entry.Length == 0)
+            {
+                continue;
+            }
+
+            if (ushort.TryParse(entry, out var questId) && questId != 0)
+            {
+                disabled.Add(questId);
+            }
+            else
+            {
+                _logger.LogWarning("Ignored invalid disabled quest ID {Entry} in {Path}.", entry, path);
+            }
+        }
+
+        _logger.LogInformation("Loaded {Count} disabled quest offers from {Path}.", disabled.Count, path);
+        return disabled;
     }
 
     private IReadOnlyList<QuestDefinition> LoadDefinitions()

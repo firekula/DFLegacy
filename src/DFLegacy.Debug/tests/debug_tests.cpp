@@ -17,6 +17,8 @@
 
 namespace
 {
+    bool __stdcall SharedCopyFixture(dfl::client_state::Snapshot* value) noexcept {return value&&dfl::client_state::CopyLatest(*value);}
+    void __stdcall SharedTimingFixture(dfl::player_runtime::FrameTiming* value) noexcept {if(value)*value={};}
     int Failures = 0;
     void Check(bool value,const char* message);
     constexpr UINT ResizeFixtureMessage = WM_APP + 0x315;
@@ -215,12 +217,20 @@ int main(int argc, char** argv)
     swprintf_s(stateSettings, L"%s\\state-settings.ini", directory);
     swprintf_s(clientStateFile, L"%s\\dfdebug-client-%lu.json", directory, GetCurrentProcessId());
     WritePrivateProfileStringW(L"DebugOverlay", L"ExportState", L"1", stateSettings);
-    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw, nullptr, stateSettings};
+    client_state::Initialize(stateSettings,directory);
+    const player_runtime::SharedState shared{sizeof(player_runtime::SharedState),player_runtime::SharedStateVersion,sizeof(client_state::Snapshot),sizeof(client_state::Reader),client_state::NativeReader(),
+        &SharedCopyFixture,
+        &SharedTimingFixture};
+    debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &Draw, nullptr, stateSettings,&shared};
+    auto incompatible=host;incompatible.version=2;Check(!initialize(&incompatible,directory),"v2 ABI fails closed");
+    incompatible=host;incompatible.size--;Check(!initialize(&incompatible,directory),"short Host fails closed");
+    auto incompatibleState=shared;incompatibleState.snapshotSize--;incompatible=host;incompatible.sharedState=&incompatibleState;
+    Check(!initialize(&incompatible,directory),"different shared snapshot ABI fails closed");
     Check(initialize(&host, directory) == 1, "DLL initializes outside loader lock");
     debug_api::Frame frame{sizeof(debug_api::Frame), 3, 77, 0, 0};
     for (int i = 0; i < 15; ++i)
     {
-        Lines.clear(); RawLines.clear(); ExpectedLines.clear(); render(&frame);
+        Lines.clear(); RawLines.clear(); ExpectedLines.clear(); client_state::CaptureFrame(); client_state::ExportLatest(); render(&frame);
         if (Contains(L"BOSS房箱怪：有")) break;
         Sleep(50);
     }
@@ -229,7 +239,7 @@ int main(int argc, char** argv)
     for (std::size_t i = 0; i < RawLines.size(); ++i)
         stable = stable && std::strcmp(RawLines[i], ExpectedLines[i].c_str()) == 0;
     Check(stable, "every queued native text pointer remains valid after the render callback returns");
-    Lines.clear(); frame.userId = 78; render(&frame);
+    Lines.clear(); frame.userId = 78; client_state::CaptureFrame(); client_state::ExportLatest(); render(&frame);
     Check(!Contains(L"BOSS房箱怪：有"), "another player's snapshot is never shown");
     auto clientStateSequence = [&]() -> std::uint64_t
     {
@@ -240,7 +250,7 @@ int main(int argc, char** argv)
         return std::strtoull(value.c_str() + at + 11, nullptr, 10);
     };
     const auto priorClientStateSequence = clientStateSequence();
-    Lines.clear(); frame.scene = 1; render(&frame);
+    Lines.clear(); frame.scene = 1; client_state::CaptureFrame(); client_state::ExportLatest(); render(&frame);
     Check(Lines.empty(), "overlay does not render outside dungeon scene");
     // Publication is deliberately nonblocking and may skip a contended frame.
     // Drive later frames until the asynchronous worker publishes, with a bound.
@@ -248,14 +258,14 @@ int main(int argc, char** argv)
     const auto exportDeadline = GetTickCount64() + 2000;
     do
     {
-        render(&frame); Sleep(25);
+        client_state::CaptureFrame(); client_state::ExportLatest(); render(&frame); Sleep(25);
         std::ifstream state(clientStateFile, std::ios::binary);
         const std::string exported((std::istreambuf_iterator<char>(state)), {});
         exportedHiddenScene = exported.find("\"layout_supported\":false") != std::string::npos
             && clientStateSequence() > priorClientStateSequence;
     } while (!exportedHiddenScene && GetTickCount64() < exportDeadline);
     Check(exportedHiddenScene,
-        "real DLL captures and worker exports even when old Frame scene hides overlay");
+        "host captures and exports shared state even when diagnostic Frame scene hides overlay");
     Check(shutdown() == 1, "diagnostic worker stops before DLL unload");
 
     const HWND owner = CreateWindowExW(0, L"STATIC", L"DFLegacy Debug Overlay Preview", WS_OVERLAPPEDWINDOW,
@@ -269,7 +279,7 @@ int main(int argc, char** argv)
         const auto deadline = GetTickCount64() + milliseconds;
         do
         {
-            render(&frame);
+            client_state::CaptureFrame(); client_state::ExportLatest(); render(&frame);
             MSG message{};
             while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&message); DispatchMessageW(&message); }
             Sleep(10);

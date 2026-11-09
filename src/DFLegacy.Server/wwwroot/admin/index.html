@@ -18,10 +18,12 @@
       </div>
       <nav class="nav" aria-label="后台功能">
         <button class="nav-item active admin-only" type="button" data-view="mail">邮件</button>
+        <button class="nav-item admin-only" type="button" data-view="victory">胜点发放</button>
         <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
         <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
         <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
-        <button class="nav-item admin-only" type="button" data-view="users">用户角色</button>
+        <button class="nav-item admin-only" type="button" data-view="users">账号管理</button>
+        <button class="nav-item admin-only" type="button" data-view="diagnostics">客户端故障</button>
         <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
       </nav>
       <div class="sidebar-foot">
@@ -49,6 +51,29 @@
         </div>
       </header>
 
+      <section class="view admin-only" data-view-panel="diagnostics">
+        <form id="diagnosticFilters" class="surface form-layout">
+          <h2>客户端故障</h2>
+          <p>自动收集的脱敏基本报告。原始内存转储仅保存在玩家本机。</p>
+          <div class="form-grid two-column">
+            <label class="field"><span>类型</span><select name="kind"><option value="">全部</option><option>crash</option><option>error</option><option>networkerror</option></select></label>
+            <label class="field"><span>处理状态</span><select name="status"><option value="">全部</option><option value="new">新问题</option><option value="investigating">处理中</option><option value="resolved">已处理</option></select></label>
+            <label class="field"><span>客户端版本</span><input name="version" maxlength="128"></label>
+            <label class="field"><span>系统</span><input name="system" maxlength="256"></label>
+            <label class="field"><span>显卡</span><input name="gpu" maxlength="256"></label>
+            <label class="field"><span>开始时间</span><input name="from" type="datetime-local"></label>
+            <label class="field"><span>结束时间</span><input name="to" type="datetime-local"></label>
+          </div>
+          <button class="primary-button" type="submit">查询故障</button>
+        </form>
+        <section class="surface form-layout">
+          <p id="diagnosticSummary" role="status">点击查询故障以加载报告。</p>
+          <div id="diagnosticGroups"></div>
+          <div class="form-actions"><button id="diagnosticPrevious" class="secondary-button" type="button">上一页</button><button id="diagnosticNext" class="secondary-button" type="button">下一页</button></div>
+        </section>
+        <section class="surface form-layout"><h2>报告详情</h2><pre id="diagnosticDetail"></pre><div id="diagnosticActions" class="form-actions"></div></section>
+      </section>
+
       <section class="view active admin-only" data-view-panel="mail">
         <form id="mailForm" class="surface form-layout">
           <div class="section-heading">
@@ -57,6 +82,13 @@
           </div>
           <div class="form-grid two-column">
             <label class="field span-two">
+              <span>发送范围</span>
+              <select id="mailScope" name="scope">
+                <option value="single">指定角色</option>
+                <option value="all">全服现有角色（含离线）</option>
+              </select>
+            </label>
+            <label id="mailCharacterField" class="field span-two">
               <span>收件角色</span>
               <select class="character-select" name="characterId" required></select>
             </label>
@@ -101,8 +133,52 @@
             </div>
           </div>
           <div class="form-actions">
-            <button class="primary-button" type="submit">发送邮件</button>
+            <button id="mailSubmit" class="primary-button" type="submit">发送邮件</button>
           </div>
+        </form>
+        <section id="mailBatchPending" class="surface form-layout hidden" aria-live="polite">
+          <p>当前批次：<code id="mailPendingId"></code></p>
+          <p>响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
+          <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+        </section>
+        <section id="mailBatchPreview" class="surface form-layout hidden" aria-live="polite">
+          <h2>确认全服邮件</h2>
+          <p id="mailBatchPreviewText"></p>
+          <p>每个接收角色各一封，包含离线角色；之后新建的角色不补发。</p>
+          <div class="form-actions">
+            <button id="mailBatchConfirm" class="danger-button" type="button">确认发送</button>
+            <button id="mailBatchCancel" class="secondary-button" type="button">取消</button>
+          </div>
+        </section>
+        <section id="mailBatchResult" class="surface form-layout hidden" aria-live="polite">
+          <h2>全服邮件结果</h2>
+          <p id="mailBatchSummary"></p>
+          <p>批次：<code id="mailBatchId"></code></p>
+          <ul id="mailBatchFailures"></ul>
+          <div class="form-actions">
+            <button id="mailBatchRetry" class="secondary-button hidden" type="button">仅补发失败角色</button>
+            <button id="mailBatchNew" class="secondary-button" type="button">新建全服邮件批次</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="view admin-only" data-view-panel="victory">
+        <form id="victoryForm" class="surface form-layout">
+          <div class="section-heading">
+            <h2>发放决斗胜点</h2>
+            <p>在线、离线角色均可发放；只增加可消费胜点，不改变决斗段位和战绩。</p>
+          </div>
+          <label class="field">
+            <span>目标角色</span>
+            <select class="character-select" name="characterId" required></select>
+          </label>
+          <p id="victoryBalance" aria-live="polite">当前胜点：—</p>
+          <p id="victoryOperation" aria-live="polite"></p>
+          <label class="field">
+            <span>发放数量</span>
+            <input name="amount" type="number" min="1" max="4294967295" step="1" value="100" required>
+          </label>
+          <div class="form-actions"><button class="primary-button" type="submit">发放胜点</button></div>
         </form>
       </section>
 
@@ -218,8 +294,8 @@
       <section class="view admin-only" data-view-panel="users">
         <div class="surface form-layout">
           <div class="section-heading">
-            <h2>用户角色</h2>
-            <p>提升或降级账号的后台权限；角色变更会立即作废该账号已登录的 token。</p>
+            <h2>账号管理</h2>
+            <p>管理账号权限、账号类型、角色、密码和封禁状态。</p>
           </div>
           <div class="table-scroll">
             <table id="userTable" class="data-table">
@@ -229,6 +305,7 @@
                   <th>角色</th>
                   <th>角色数</th>
                   <th>UID 段</th>
+                  <th>封禁状态</th>
                   <th class="align-right">操作</th>
                 </tr>
               </thead>
@@ -259,14 +336,64 @@
             </table>
           </div>
           <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
-          <div class="form-actions">
-            <a class="secondary-button link-button" href="/admin/player.html">打开玩家页面 player.html</a>
-          </div>
         </div>
       </section>
 
     </main>
   </div>
+
+  <dialog id="gmAccountDialog" class="surface account-dialog" aria-labelledby="gmAccountTitle">
+    <div class="account-dialog-header">
+      <h2 id="gmAccountTitle">管理账号 <span id="gmAccountName"></span></h2>
+      <form method="dialog">
+        <button class="secondary-button small-button" type="submit">关闭</button>
+      </form>
+    </div>
+    <p id="gmActionStatus" class="account-action-status" role="status" aria-live="polite"></p>
+    <section class="account-section">
+      <h3>角色</h3>
+      <p id="managedCharacterHint">仅可删除离线角色。</p>
+      <ul id="managedCharacterList" class="managed-character-list"></ul>
+    </section>
+    <p id="gmProtectedAccount" class="empty-hint hidden">管理员账号受保护。</p>
+    <div id="gmPlayerActions">
+      <form id="gmPasswordForm" class="account-section">
+        <h3>重置密码</h3>
+        <label class="field">
+          <span>新密码（6–128 个字符）</span>
+          <input name="newPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <label class="field">
+          <span>确认新密码</span>
+          <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <button class="secondary-button small-button" type="submit">重置密码</button>
+      </form>
+      <section class="account-section">
+        <h3>封禁与解封</h3>
+        <p id="gmBanStatus"></p>
+        <form id="gmBanForm">
+          <label class="field">
+            <span>封禁期限</span>
+            <select id="gmBanMode" name="mode">
+              <option value="timed">限时封禁</option>
+              <option value="permanent">永久封禁</option>
+            </select>
+          </label>
+          <label id="gmBanHoursField" class="field">
+            <span>封禁时长（小时）</span>
+            <input id="gmBanHours" name="durationHours" type="number" value="24" min="1" max="8760" step="1" required>
+          </label>
+          <label class="field">
+            <span>封禁原因</span>
+            <input name="reason" maxlength="200" required>
+          </label>
+          <button class="secondary-button small-button" type="submit">保存封禁</button>
+          <button id="gmUnban" class="secondary-button small-button" type="button">解除封禁</button>
+        </form>
+      </section>
+    </div>
+  </dialog>
 
   <div id="loginOverlay" class="login-overlay hidden">
     <form id="loginForm" class="surface login-card">
@@ -294,5 +421,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/admin/admin.js" defer></script>
+  <script src="/admin/admin-rewards.js" defer></script>
+  <script src="/admin/admin-diagnostics.js" defer></script>
 </body>
 </html>

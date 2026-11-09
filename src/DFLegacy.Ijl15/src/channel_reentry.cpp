@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include "../../DFLegacy.Client/client_paths.h"
 
 #include <cstdio>
 #include <cstring>
@@ -48,13 +49,9 @@ namespace
     }
     void LogProbe(bool reused, int mtu, ULONGLONG elapsed) noexcept
     {
-        wchar_t executable[MAX_PATH]{};
-        if (GetModuleFileNameW(nullptr, executable, MAX_PATH) == 0) return;
-        auto* separator = std::wcsrchr(executable, L'\\');
-        if (separator == nullptr) return;
-        *separator = L'\0';
-        wchar_t path[MAX_PATH]{};
-        if (swprintf_s(path, L"%s\\channel-reentry-%lu.log", executable, GetCurrentProcessId()) < 0) return;
+        wchar_t path[MAX_PATH]{},leaf[100]{};
+        if(swprintf_s(leaf,L"channel-reentry-%lu.log",GetCurrentProcessId())<0
+            ||!dfl::client_paths::BuildLogPath(leaf,path,MAX_PATH))return;
         const auto file = CreateFileW(path, FILE_APPEND_DATA,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (file == INVALID_HANDLE_VALUE) return;

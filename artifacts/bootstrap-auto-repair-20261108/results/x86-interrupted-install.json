@@ -1,0 +1,25 @@
+{
+  "architecture": "x86",
+  "case": "interrupted-install",
+  "checkpoint": "DFLegacy.Launcher.App.exe",
+  "before": "v0.1.8-giteatest.3",
+  "after": {
+    "root": "G:\\dnf_local\\DFLegacy_Bootstrap_Test_20261108\\x86",
+    "version": "v0.1.8-giteatest.4",
+    "architecture": "x86",
+    "files": 7,
+    "valid": true,
+    "pending": false,
+    "problems": []
+  },
+  "durableJournalObserved": true,
+  "workerPid": 45296,
+  "repairStartedByOriginalShortcut": true,
+  "repairPid": 47260,
+  "initialHarnessTimeoutSeconds": 180,
+  "completedWithoutSecondLaunch": true,
+  "uiPid": 28372,
+  "uiTitle": "地下城与勇士",
+  "shortcutHash": "55E6D07530286505A51CA7BE47FB5D86919C8A30D276D5AAA1E6D5D06B3166D6",
+  "configPreserved": true
+}

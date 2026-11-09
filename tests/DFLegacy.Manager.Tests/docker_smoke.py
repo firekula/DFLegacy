@@ -4,6 +4,7 @@ Python 3.12+ standard library. Creates only disposable named containers/volumes.
 No private game resources, registry access or remote publication is used.
 """
 import argparse
+import hashlib
 import http.cookiejar
 import json
 from pathlib import Path
@@ -53,7 +54,8 @@ def exercise(image):
         try:
             def start(controlled=False):
                 nonlocal active
-                docker("run", "-d", "--name", identifier, "-p", "127.0.0.1::18080", "--mount", f"type=volume,source={volume},target=/app/data",
+                docker("run", "-d", "--name", identifier, "-p", "127.0.0.1::18080", "-p", "127.0.0.1::18083",
+                       "-e", "DFLEGACY_UPDATE_PUBLIC_URL=https://games.example.test:18443", "--mount", f"type=volume,source={volume},target=/app/data",
                        "--mount", f"type=bind,source={fixture / 'Script.pvf'},target=/pvf/Script.pvf,readonly",
                        *(["-e", "DFLegacy__ScriptPvfPath=/pvf/Script.pvf"] if controlled else []), image)
                 active = True
@@ -70,6 +72,18 @@ def exercise(image):
                 raise AssertionError("container Manager health did not become ready")
 
             base, opener = start()
+            image_info = json.loads(docker("image", "inspect", image))[0]
+            labels = image_info["Config"]["Labels"]
+            release = json.loads(docker("exec", identifier, "cat", "/app/release-manifest.json"))
+            assets = json.loads(docker("exec", identifier, "cat", "/app/client-assets/manifest.json"))
+            release_files = {row["path"]: row["sha256"] for row in release["files"]}
+            asset_files = {row["path"]: row["sha256"] for row in assets["files"]}
+            check(docker("inspect", "--format", "{{.Image}}", identifier) == image_info["Id"]
+                  and release["version"] == assets["version"] == labels["org.opencontainers.image.version"]
+                  and release["commit"] == assets["commit"] == labels["org.opencontainers.image.revision"],
+                  "installed client assets and container release identity match actual image OCI labels")
+            check(docker("exec", identifier, "sha256sum", "/app/client-assets/manifest.json").split()[0]
+                  == release_files["client-assets/manifest.json"], "installed client asset manifest is anchored to release SHA256")
             csrf = ""
             def request(path, data=None, method=None):
                 headers = {"Content-Type": "application/octet-stream" if isinstance(data, bytes) else "application/json"}
@@ -102,14 +116,92 @@ def exercise(image):
                 check(error.code == 503, "stopped game is not ready while Manager remains online")
             else:
                 raise AssertionError("stopped game readiness returned success")
-            req = urllib.request.Request(base + "/api/export/client", b"{}", {"Content-Type": "application/json", "X-CSRF-Token": csrf}, method="POST")
-            target = fixture / "client.zip"
-            with opener.open(req, timeout=180) as response, target.open("wb") as output:
-                shutil.copyfileobj(response, output)
-            with zipfile.ZipFile(target) as archive:
-                profile = json.loads(archive.read("launcher.json"))
-                check(profile["Accounts"] == [] and profile["Password"] == "" and not profile["StartServer"], "Linux container exports a complete Windows launcher without credentials")
-                check("SHA256SUMS" in archive.namelist() and "DFLegacy.Launcher.exe" in archive.namelist() and "ijl15.dll" in archive.namelist() and "Config.ini" not in archive.namelist() and not any("coreclr" in name or name.startswith("DFLegacyLauncher/") for name in archive.namelist()), "export includes a root single-file launcher and patch without overwriting client INI")
+            normal_files = None
+            for test_build in (False, True):
+                flavor = "test" if test_build else "normal"
+                req = urllib.request.Request(base + "/api/export/client", json.dumps({"testBuild": test_build}).encode(),
+                                             {"Content-Type": "application/json", "X-CSRF-Token": csrf}, method="POST")
+                target = fixture / (flavor + "-client.zip")
+                with opener.open(req, timeout=180) as response, target.open("wb") as output:
+                    shutil.copyfileobj(response, output)
+                with zipfile.ZipFile(target) as archive:
+                    binary_sources = {"DFLegacy.Launcher.exe": "launcher/DFLegacy.Launcher.exe",
+                                      "DFLegacy.Client.dll": "patch/DFLegacy.Client.dll",
+                                      "DFLegacy.Diagnostics.exe": "launcher/DFLegacy.Diagnostics.exe",
+                                      "DFLegacy.CrashCapture.exe": "patch/DFLegacy.CrashCapture.exe"}
+                    if test_build:
+                        binary_sources["debug.dll"] = "patch/debug.dll"
+                    sources = dict(binary_sources)
+                    if "launcher/Assets/Skin/fwtk.html" in asset_files:
+                        sources["Assets/Skin/fwtk.html"] = "launcher/Assets/Skin/fwtk.html"
+                    names = archive.namelist()
+                    expected = set(sources) | {"client-package.json", "SHA256SUMS", "launcher.json", "README.txt"}
+                    check(len(names) == len(expected) and set(names) == expected,
+                          flavor + " export has exact root player bundle inventory, no IJL, loose bootstrap, client INI, originals or runtime tree")
+                    profile = json.loads(archive.read("launcher.json"))
+                    check(profile["Accounts"] == [] and profile["Account"] == "" and profile["Password"] == "" and not profile["StartServer"],
+                          flavor + " Linux container export contains no player credentials or server autostart")
+                    package = json.loads(archive.read("client-package.json"))
+                    check(set(package) == {"schemaVersion", "version", "commit", "flavor", "files"}
+                          and type(package["schemaVersion"]) is int and package["schemaVersion"] == 2
+                          and package["flavor"] == flavor and package["version"] == release["version"]
+                          and package["commit"] == release["commit"], flavor + " installed schema2 manifest matches image release identity and selected flavor")
+                    rows = package["files"]
+                    check(isinstance(rows, list) and len(rows) == len(binary_sources)
+                          and all(isinstance(row, dict) and set(row) == {"path", "size", "sha256"} for row in rows)
+                          and {row["path"] for row in rows} == set(binary_sources), flavor + " manifest declares exactly the selected binaries")
+                    hashes = {}
+                    for name in expected - {"SHA256SUMS"}:
+                        with archive.open(name) as stream:
+                            hashes[name] = hashlib.file_digest(stream, "sha256").hexdigest()
+                    checksums = [line.split("  ") for line in archive.read("SHA256SUMS").decode("utf-8").splitlines()]
+                    check(len(checksums) == len(hashes) and all(len(row) == 2 for row in checksums)
+                          and {row[1]: row[0] for row in checksums} == hashes,
+                          flavor + " SHA256SUMS covers every exported payload exactly once with correct hashes")
+                    for row in rows:
+                        name = row["path"]
+                        check(type(row["size"]) is int and row["size"] > 0 and row["size"] == archive.getinfo(name).file_size
+                              and row["size"] == int(docker("exec", identifier, "stat", "-c", "%s", "/app/client-assets/" + binary_sources[name]))
+                              and row["sha256"] == hashes[name], flavor + " manifest binary size and SHA256 match exported and installed " + name)
+                    check(all(hashes[name] == asset_files[source] == release_files["client-assets/" + source]
+                              for name, source in sources.items()), flavor + " exported binaries and optional skin match release-anchored installed assets")
+                    instructions = archive.read("README.txt").decode("utf-8")
+                    check(release["version"] in instructions and release["commit"] in instructions
+                          and "DFLegacy.Launcher.exe" in instructions and "DFLegacy.Client.dll" in instructions,
+                          flavor + " generated installation instructions identify the release and independent client")
+                    identities = {row["path"]: row for row in rows}
+                    if test_build:
+                        check(all(identities[name] == row for name, row in normal_files.items()),
+                              "test export preserves normal Launcher and Client binary identities while adding same-release debug.dll")
+                    else:
+                        normal_files = identities
+            if "launcher-x86/DFLegacy.Launcher.exe" in asset_files:
+                update_base = "http://" + docker("port", identifier, "18083/tcp").splitlines()[0]
+                for private in ("/", "/health", "/api/setup/status"):
+                    try:
+                        opener.open(update_base + private, timeout=10)
+                    except urllib.error.HTTPError as error:
+                        check(error.code == 404, "update port isolates " + private)
+                    else:
+                        raise AssertionError("private route exposed on update port")
+                job = request("/api/exports", {"testBuild": False})
+                for _ in range(450):
+                    job = request("/api/exports/" + job["id"])
+                    if job["state"] == "ready":
+                        break
+                    if job["state"] == "failed":
+                        raise AssertionError(job["error"])
+                    time.sleep(.2)
+                else:
+                    raise AssertionError("dual-architecture export timed out")
+                for arch in ("x86", "x64"):
+                    route = f"{update_base}/v1/{arch}/normal"
+                    with opener.open(route + "/latest", timeout=10) as response:
+                        update = json.load(response)
+                    with opener.open(f"{route}/{update['sha256']}.zip", timeout=60) as response:
+                        digest = hashlib.file_digest(response, "sha256").hexdigest()
+                    check(update["version"] == release["version"] and digest == update["sha256"],
+                          f"{arch} hosted update matches installed image release and archive")
             request("/api/server/start", {})
             docker("stop", "--time", "40", identifier)
             check(docker("inspect", "--format", "{{.State.ExitCode}}", identifier) == "0", "container SIGTERM gracefully stops Manager and owned game")

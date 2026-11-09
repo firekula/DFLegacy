@@ -117,6 +117,8 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\DFLegacy.Client\client_paths.cpp" />
+    <ClCompile Include="..\..\DFLegacy.Client\bootstrap_runtime.cpp" />
     <ClCompile Include="..\src\auto_input.cpp" />
     <ClCompile Include="auto_input_drag_tests.cpp" />
     <ClCompile Include="..\src\external_string_table.cpp" />
@@ -137,6 +139,8 @@
     <ClCompile Include="..\src\mage_skill_contact.cpp" />
     <ClCompile Include="mage_skill_contact_tests.cpp" />
     <ClCompile Include="..\src\boss_room_death.cpp" />
+    <ClCompile Include="..\src\loot_gather.cpp" />
+    <ClCompile Include="..\src\loot_gather_hooks.cpp" />
     <ClCompile Include="boss_room_death_tests.cpp" />
     <ClCompile Include="..\src\channel_reentry.cpp" />
     <ClCompile Include="..\src\channel_switch.cpp" />

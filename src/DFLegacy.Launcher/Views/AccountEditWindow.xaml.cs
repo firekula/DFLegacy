@@ -80,6 +80,7 @@ public partial class AccountEditWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-store",ex);
             ClassicMessage.Show(this, $"保存本地账号列表失败：{ex.Message}");
             try
             {
@@ -88,6 +89,7 @@ public partial class AccountEditWindow : System.Windows.Window
             }
             catch (Exception loadEx)
             {
+                Program.ReportError("account-store-reload",loadEx);
                 // 磁盘也读不回来时只能提示；内存保留当前态，等下一次操作再试。
                 ClassicMessage.Show(this, $"重新读取本地账号列表失败：{loadEx.Message}");
             }

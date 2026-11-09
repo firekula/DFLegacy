@@ -63,7 +63,15 @@ if (hosting.InitializeAdmin)
     return;
 }
 
+try { WebPanelHosting.Validate(options); }
+catch (InvalidOperationException exception)
+{
+    Console.Error.WriteLine(exception.Message);
+    Environment.ExitCode = 2;
+    return;
+}
 options.Pvp.Validate(options);
+PvpChannelConfiguration.ValidateRegionalChannels(options);
 options.FallbackRelay.Validate(options);
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var clientTextEncoding = Encoding.GetEncoding(
@@ -71,7 +79,7 @@ var clientTextEncoding = Encoding.GetEncoding(
     EncoderFallback.ExceptionFallback,
     DecoderFallback.ExceptionFallback);
 builder.WebHost.ConfigureKestrel(kestrel =>
-    kestrel.Listen(IPAddress.Parse(options.Admin.Host), options.Admin.Port));
+    WebPanelHosting.Listen(kestrel, options));
 
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton<ListenerReadiness>();
@@ -81,6 +89,8 @@ builder.Services.AddSingleton<JsonGameStore>();
 // 8081 管理接口的 token 鉴权（内存 token + 滑动过期 + 登录失败限流）。
 // TimeProvider 显式注册，便于测试注入假时钟。
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ClientDiagnosticStore>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ClientDiagnosticStore>());
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
@@ -331,6 +341,8 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
     itemCatalog,
     skillCatalog: app.Services.GetRequiredService<SkillCatalog>());
 
+app.UseWebPanels(options);
+app.UseRouting();
 app.UseManagerControl(Environment.GetEnvironmentVariable(ManagerControl.TokenEnvironmentVariable));
 app.UseStaticFiles();
 
@@ -341,7 +353,8 @@ app.Use(async (context, next) =>
 {
     var decision = AdminAccessPolicy.Resolve(
         context.Request.Method,
-        context.Request.Path.Value ?? "/");
+        context.Request.Path.Value ?? "/",
+        options.EnableTestCeraTopUp);
     if (decision.Access == AdminAccess.Public)
     {
         await next(context);
@@ -384,6 +397,7 @@ app.MapGet("/client/client_diamond", () => Results.Redirect("/client/client_diam
 app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
+app.MapClientDiagnostics(options);
 
 app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink, FallbackRelayService fallbackRelay) => Results.Ok(new
 {
@@ -445,6 +459,7 @@ app.MapGet("/api/admin/characters", async (
                 character.Job,
                 character.GrowType,
                 character.Level,
+                character.VictoryPoints,
                 account.UserName,
                 account.AccountUid,
                 Online = sessions.IsOnline(character.Id),
@@ -566,6 +581,8 @@ app.MapPost("/api/admin/characters/{characterId:guid}/mail", async (
         $"/api/characters/{characterId}/mail/{result.Mail!.Id}",
         new { result.Mail, NotifiedOnlineCharacter = notifiedOnlineCharacter });
 });
+
+app.MapAdminRewardEndpoints();
 
 app.MapPost("/api/admin/broadcast/message", (
     AdminBroadcastMessageRequest request,
@@ -698,8 +715,10 @@ app.MapPut("/api/admin/characters/{characterId:guid}/dungeons/{dungeonId:int}", 
     });
 });
 
-// These client-pay mutations are intentionally on the loopback admin listener;
-// the embedded IE page uses the same origin and does not carry a separate login.
+// Test top-ups are explicitly opt-in; production payment mutations remain admin-only.
+app.MapGet("/client/client-pay-settings.js", TestCeraEndpoint.Settings);
+app.MapPost("/api/client-pay/test-cera", TestCeraEndpoint.HandleAsync);
+app.MapPost("/api/client-pay/test-diamond", TestCeraEndpoint.HandleDiamondAsync);
 app.MapPost("/api/client-pay/cera", async (
     ClientCeraTopUpRequest request,
     JsonGameStore store,
@@ -831,18 +850,16 @@ app.MapPost("/api/auth/login", async (
 
     auth.RegisterAttempt(source);
 
-    var account = await store.AuthenticateAsync(userName, request.Password, token);
-    if (account is null)
+    var login = await store.AuthenticateWebAsync(userName, request.Password, auth, token);
+    if (login is null)
     {
         auth.RegisterFailure(userName, source);
         return Results.Unauthorized();
     }
 
-    auth.ClearFailures(account.UserName);
-    var role = await store.GetRoleAsync(account.UserName, token);
     // token 不进任何缓存（含中间代理）。
     http.Response.Headers.CacheControl = "no-store";
-    return Results.Ok(auth.IssueToken(account.UserName, role));
+    return Results.Ok(login);
 });
 
 app.MapPost("/api/auth/logout", (AdminAuthService auth, HttpContext http) =>
@@ -865,6 +882,36 @@ app.MapGet("/api/accounts/{userName}/characters", async (
 
 app.MapGet("/api/admin/users", async (JsonGameStore store, CancellationToken token) =>
     Results.Ok(await store.GetAccountsAsync(token)));
+
+app.MapPut("/api/admin/users/{userName}/password", async (
+    string userName, AdminSetAccountPasswordRequest request, JsonGameStore store,
+    AdminAuthService auth, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.SetAccountPasswordByAdminAsync(userName, ModerationActor(http), request, auth, token)));
+
+app.MapPut("/api/admin/users/{userName}/ban", async (
+    string userName, AdminSetAccountBanRequest request, JsonGameStore store,
+    AdminAuthService auth, CharacterSessionRegistry sessions, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.SetAccountBanByAdminAsync(userName, ModerationActor(http), request, auth, sessions, token)));
+
+app.MapDelete("/api/admin/users/{userName}/ban", async (
+    string userName, JsonGameStore store, AdminAuthService auth, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.ClearAccountBanByAdminAsync(userName, ModerationActor(http), auth, token)));
+
+app.MapDelete("/api/admin/characters/{characterId:guid}", async (
+    Guid characterId, JsonGameStore store, CharacterSessionRegistry sessions, HttpContext http, CancellationToken token) =>
+    ModerationReply(await store.DeleteOfflineCharacterByAdminAsync(characterId, ModerationActor(http), sessions, token)));
+
+static string ModerationActor(HttpContext http) =>
+    ((AdminTokenInfo)http.Items[AdminAccessPolicy.TokenInfoKey]!).UserName;
+
+static IResult ModerationReply(ModerationResult result) => result.Status switch
+{
+    ModerationStatus.Success => Results.Ok(new { success = true, result.RevokedTokens, result.Ban }),
+    ModerationStatus.InvalidRequest => Results.BadRequest(new { error = result.Error }),
+    ModerationStatus.NotFound => Results.NotFound(new { error = result.Error }),
+    ModerationStatus.Conflict => Results.Conflict(new { error = result.Error }),
+    _ => Results.Json(new { error = result.Error }, statusCode: StatusCodes.Status503ServiceUnavailable)
+};
 
 app.MapPut("/api/admin/users/{userName}/role", async (
     string userName,
@@ -903,9 +950,29 @@ app.MapPut("/api/admin/users/{userName}/role", async (
     });
 });
 
+app.MapPut("/api/admin/users/{userName}/kind", async (
+    string userName, SetAccountKindRequest request, JsonGameStore store,
+    RuntimeState runtime, AdminAuthService auth, CancellationToken token) =>
+{
+    var kind = request.Kind?.Trim().ToLowerInvariant() switch
+    {
+        "test" => (AccountKind?)AccountKind.Test,
+        "normal" => AccountKind.Normal,
+        _ => null
+    };
+    if (kind is null) return Results.BadRequest(new { error = "账号类型仅支持 Test 或 Normal。" });
+    var result = await store.SetAccountKindAsync(userName, kind.Value, token,
+        () => runtime.Sessions().Any(session => session.Service.StartsWith("entrance:", StringComparison.Ordinal)
+            || session.Service.StartsWith("channel:", StringComparison.Ordinal)));
+    if (!result.Updated) return Results.BadRequest(new { error = result.Error });
+    var revoked = auth.RevokeUser(userName);
+    return Results.Ok(new { success = true, userName = result.Account!.UserName,
+        kind = result.Account.Kind.ToString(), accountUid = result.Account.AccountUid, revokedTokens = revoked });
+});
+
 app.MapPost("/api/accounts", async (CreateAccountRequest request, JsonGameStore store, CancellationToken token) =>
 {
-    var result = await store.CreateAccountAsync(request, token);
+    var result = await store.CreateAccountAsync(request with { TestAccount = false }, token);
     if (result.Created)
     {
         return Results.Created($"/api/accounts/{result.Account!.UserName}", result.Account);
@@ -989,23 +1056,25 @@ app.MapPut("/api/characters/{characterId:guid}/fatigue", async (
     Guid characterId,
     SetCharacterFatigueRequest request,
     JsonGameStore store,
+    CharacterSessionRegistry characterSessions,
     CancellationToken token) =>
 {
-    if (request.UsedFatigue > GameProtocolEngine.BlackDiamondMaximumFatigue)
+    try
     {
-        return Results.BadRequest(new
-        {
-            error = $"Used fatigue must be between 0 and {GameProtocolEngine.BlackDiamondMaximumFatigue}."
-        });
-    }
+        var character = await store.SetCharacterUsedFatigueAsync(
+            characterId,
+            request.UsedFatigue,
+            token);
+        if (character is null)
+            return Results.NotFound();
 
-    var character = await store.SetCharacterUsedFatigueAsync(
-        characterId,
-        request.UsedFatigue,
-        token);
-    return character is null
-        ? Results.NotFound()
-        : Results.Ok(character);
+        characterSessions.NotifyFatigueReset(characterId);
+        return Results.Ok(character);
+    }
+    catch (ArgumentOutOfRangeException exception) when (exception.ParamName == "usedFatigue")
+    {
+        return Results.BadRequest(new { error = exception.Message });
+    }
 });
 
 app.MapGet("/api/characters/{characterId:guid}/mail", async (

@@ -11,33 +11,36 @@ public sealed class UpdateHandoff
     internal UpdatePlan Plan { get; }
     public string HelperPath => Plan.HelperPath;
 }
-internal sealed record UpdatePlan(string Target, PreparedUpdate Update, int ParentId, long ParentStartTicks, string ParentPath, string HelperPath, string ExecutableHash);
+internal sealed record UpdatePlan(string Target, PreparedUpdate? Update, int ParentId, long ParentStartTicks, string ParentPath, string HelperPath, string ExecutableHash, UpdateRecovery? Recovery=null, V4InstallPlan? V4=null);
 public sealed record UpdateHelperHandle(int ProcessId);
 internal sealed record UpdateHelperOutcome(int ExitCode, UpdateApplyResult? Result=null, string? Target=null);
 public sealed partial class UpdateInstaller
 {
     public Task<UpdateHandoff> PrepareAsync(PreparedUpdate update,CancellationToken cancellationToken=default)
-        => Task.Run(()=>Prepare(update,cancellationToken),cancellationToken);
-    private UpdateHandoff Prepare(PreparedUpdate update,CancellationToken cancellationToken)
+        => Task.Run(()=>Prepare(update,null,cancellationToken),cancellationToken);
+    internal Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken cancellationToken)
+        => Task.Run(()=>Prepare(null,recovery,cancellationToken),cancellationToken);
+    private UpdateHandoff Prepare(PreparedUpdate? update,UpdateRecovery? recovery,CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         using var targetPin=UpdateSafety.PinDirectory(target);
-        using var stagePin=UpdateSafety.PinDirectory(update.Directory);
-        UpdateTransaction.ValidateStage(update);
+        using var stagePin=update!=null?UpdateSafety.PinDirectory(update.Directory):null;
+        if(update!=null) { UpdateTransaction.ValidateStage(update); UpdateSafety.ValidateInstalled(target,update.Manifest); }
         using var parent=Process.GetCurrentProcess();
         var executable=Path.GetFullPath(parent.MainModule!.FileName);
         if(!executable.Equals(Path.Combine(target,"DFLegacy.Launcher.exe"),StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("只能更新当前登录器所在目录。");
-        var state=ReadState();
-        if(state!=null && update.Release.Id<=state.ReleaseId) throw new InvalidDataException("不能安装旧版本。");
+        var state=update!=null?ReadState():null;
+        if(state!=null && update!.Release.Id<=state.ReleaseId) throw new InvalidDataException("不能安装旧版本。");
         var hash=UpdateSafety.Hash(executable);
+        if(recovery!=null) UpdateTransaction.ValidateRecovery(target,recovery,hash);
         var helper=CreateHelperCopy(executable,hash);
         try
         {
             // Preparation owns the copy until a complete handoff is returned to the caller.
             using var helperPin=UpdateSafety.PinDirectory(Path.GetDirectoryName(helper)!);
-            var snapshot=UpdateSafety.ReadJson<PreparedUpdate>(JsonSerializer.SerializeToUtf8Bytes(update,UpdateSafety.Json));
-            return new UpdateHandoff(new(target,snapshot,parent.Id,parent.StartTime.ToUniversalTime().Ticks,executable,helper,hash));
+            var snapshot=update!=null?UpdateSafety.ReadJson<PreparedUpdate>(JsonSerializer.SerializeToUtf8Bytes(update,UpdateSafety.Json)):null;
+            return new UpdateHandoff(new(target,snapshot,parent.Id,parent.StartTime.ToUniversalTime().Ticks,executable,helper,hash,recovery));
         }
         catch { UpdateArtifacts.DeleteUnstartedHelper(helper); throw; }
     }
@@ -66,7 +69,7 @@ public sealed partial class UpdateInstaller
         using var helperPin=UpdateSafety.PinDirectory(Path.GetDirectoryName(plan.HelperPath)!);
         using var helperFile=new FileStream(plan.HelperPath,FileMode.Open,FileAccess.Read,FileShare.Read);
         ValidateHelperPath(plan);
-        UpdateTransaction.ValidateStage(plan.Update);
+        ValidateInputs(plan);
         var pipeName="dflegacy-update-"+Guid.NewGuid().ToString("N");
         using var server=new NamedPipeServerStream(pipeName,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
         var info=new ProcessStartInfo(plan.HelperPath) { UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(plan.HelperPath)! };
@@ -76,7 +79,7 @@ public sealed partial class UpdateInstaller
         await server.WaitForConnectionAsync(timeout.Token).ConfigureAwait(false);
         if(!GetNamedPipeClientProcessId(server.SafePipeHandle,out var clientId) || clientId!=(uint)child.Id) throw new InvalidDataException("更新助手身份不匹配。");
         var bytes=JsonSerializer.SerializeToUtf8Bytes(plan,UpdateSafety.Json);
-        if(bytes.Length>65536) throw new InvalidDataException("更新交接过大。");
+        if(bytes.Length>32*1024*1024) throw new InvalidDataException("更新交接过大。");
         await server.WriteAsync(BitConverter.GetBytes(bytes.Length),timeout.Token).ConfigureAwait(false);
         await server.WriteAsync(bytes,timeout.Token).ConfigureAwait(false); await server.FlushAsync(timeout.Token).ConfigureAwait(false);
         var ready=new byte[1]; await server.ReadExactlyAsync(ready,timeout.Token).ConfigureAwait(false);
@@ -97,6 +100,13 @@ public sealed partial class UpdateInstaller
         UpdateSafety.NoLinks(plan.ParentPath);
         if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("原登录器文件已改变。");
     }
+    private static void ValidateInputs(UpdatePlan plan)
+    {
+        if(plan.V4!=null) { ValidateV4Inputs(plan); return; }
+        if((plan.Update==null)==(plan.Recovery==null)) throw new InvalidDataException("更新交接模式无效。");
+        if(plan.Recovery is {} recovery) UpdateTransaction.ValidateRecovery(plan.Target,recovery,plan.ExecutableHash);
+        else { UpdateTransaction.ValidateStage(plan.Update!); UpdateSafety.ValidateInstalled(plan.Target,plan.Update!.Manifest); }
+    }
     private static void ValidateHelperPath(UpdatePlan plan)
     {
         var directory=Path.GetDirectoryName(plan.HelperPath)!;
@@ -109,7 +119,7 @@ public sealed partial class UpdateInstaller
     }
     public static async Task<int> RunHelperAsync(string[] args)
         => (await RunHelperWithOutcomeAsync(args).ConfigureAwait(false)).ExitCode;
-    internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args)
+    internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args,IProgress<UpdateInstallProgress>? progress=null)
     {
         if(args.Length!=2 || args[0]!="--dflegacy-apply-update" || !args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal) || !Guid.TryParseExact(args[1][16..],"N",out _)) return new(2);
         UpdatePlan? plan=null; bool parentExited=false;
@@ -120,28 +130,29 @@ public sealed partial class UpdateInstaller
             await pipe.ConnectAsync(timeout.Token).ConfigureAwait(false);
             if(!GetNamedPipeServerProcessId(pipe.SafePipeHandle,out var parentId)) return new(2);
             var length=new byte[4]; await pipe.ReadExactlyAsync(length,timeout.Token).ConfigureAwait(false);
-            var size=BitConverter.ToInt32(length); if(size<=0 || size>65536) return new(2);
+            var size=BitConverter.ToInt32(length); if(size<=0 || size>32*1024*1024) return new(2);
             var bytes=new byte[size]; await pipe.ReadExactlyAsync(bytes,timeout.Token).ConfigureAwait(false);
             plan=UpdateSafety.ReadJson<UpdatePlan>(bytes);
             if(string.IsNullOrWhiteSpace(plan.Target) || string.IsNullOrWhiteSpace(plan.ParentPath) || string.IsNullOrWhiteSpace(plan.HelperPath) ||
-               plan.Update is null || plan.Update.Release is null || string.IsNullOrWhiteSpace(plan.Update.Directory) || !UpdateSafety.IsHash(plan.ExecutableHash))
+               !UpdateSafety.IsHash(plan.ExecutableHash))
                 throw new InvalidDataException("更新交接缺少字段。");
             ValidateParent(plan,checked((int)parentId));
             if(!Path.GetFullPath(Environment.ProcessPath!).Equals(plan.HelperPath,StringComparison.OrdinalIgnoreCase)) return new(2);
             ValidateHelperPath(plan);
             using var targetPin=UpdateSafety.PinDirectory(plan.Target);
-            using var stagePin=UpdateSafety.PinDirectory(plan.Update.Directory);
-            UpdateTransaction.ValidateStage(plan.Update);
+            using var stagePin=plan.Update!=null?UpdateSafety.PinDirectory(plan.Update.Directory):null;
+            ValidateInputs(plan);
             using var parent=Process.GetProcessById(plan.ParentId);
             // Hold the actual parent process handle, preventing PID reuse after readiness.
             _=parent.SafeHandle;
             await pipe.WriteAsync(new byte[]{1},timeout.Token).ConfigureAwait(false); await pipe.FlushAsync(timeout.Token).ConfigureAwait(false);
             var commit=new byte[1]; await pipe.ReadExactlyAsync(commit,timeout.Token).ConfigureAwait(false); if(commit[0]!=1) return new(2);
             using var exitTimeout=new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            await parent.WaitForExitAsync(exitTimeout.Token).ConfigureAwait(false);
+            await FileLockOwners.WaitForExitConfirmedAsync(parent,exitTimeout.Token).ConfigureAwait(false);
             parentExited=true;
+            UpdateInstallProgress.Report(progress,.86,"登录器已退出，正在校验更新…");
             if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("安装目标在交接后已改变。");
-            var result=UpdateTransaction.Apply(plan.Target,plan.Update,Restart);
+            var result=plan.V4!=null ? ApplyV4(plan,progress) : plan.Recovery is {} recovery ? UpdateTransaction.RecoverAndRestart(plan.Target,recovery,plan.ExecutableHash,Restart,progress) : UpdateTransaction.Apply(plan.Target,plan.Update!,Restart,progress);
             SaveResult(plan.Target,result);
             return new(result.Success && result.Restarted?0:1,result,plan.Target);
         }

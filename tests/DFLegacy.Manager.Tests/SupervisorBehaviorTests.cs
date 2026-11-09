@@ -23,6 +23,7 @@ internal static class SupervisorBehaviorTests
         var settings = config.Read().Saved with
         {
             ScriptPvfPath = pvf, AdminPort = Port(), EntrancePort = Port(), ChannelPort = Port(), AdditionalEntrancePort = Port(),
+            GmPanelPort = Port(), PlayerPanelPort = Port(),
             CharacterPort = Port(), GameplayPrimaryPort = Port(), GameplaySecondaryPort = Port(),
             FallbackRelayTcpPort = Port(), FallbackRelayUdpPort = Port()
         };

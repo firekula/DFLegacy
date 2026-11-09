@@ -7,6 +7,9 @@
 #include <cwchar>
 #include "client_debug_state.h"
 #include "debug_module.h"
+#include "../../DFLegacy.Client/player_runtime.h"
+#include "../../DFLegacy.Client/bootstrap_runtime.h"
+#include "../../DFLegacy.Client/client_paths.h"
 #include "ijl15_config.h"
 #include "performance_overlay.h"
 #include "memory_patch.h"
@@ -80,13 +83,9 @@ namespace
 
     void StartDiagnostics() noexcept
     {
-        wchar_t path[MAX_PATH]{};
-        const DWORD length = GetModuleFileNameW(nullptr, path, MAX_PATH);
-        if (length == 0 || length >= MAX_PATH) return;
-        wchar_t* separator = wcsrchr(path, L'\\');
-        if (separator == nullptr) return;
-        const auto remaining = static_cast<std::size_t>(MAX_PATH - (separator + 1 - path));
-        if (swprintf_s(separator + 1, remaining, L"debug-overlay-%lu.log", GetCurrentProcessId()) < 0) return;
+        wchar_t path[MAX_PATH]{},leaf[100]{};
+        if(swprintf_s(leaf,L"debug-overlay-%lu.log",GetCurrentProcessId())<0
+            ||!dfl::client_paths::BuildLogPath(leaf,path,MAX_PATH))return;
         Diagnostic = CreateFileW(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (Diagnostic != INVALID_HANDLE_VALUE)
@@ -242,7 +241,7 @@ namespace dfl::debug_module
         HWND gameWindow = nullptr;
         EnumWindows(&FindGameWindow, reinterpret_cast<LPARAM>(&gameWindow));
         if (gameWindow == nullptr) { FreeLibrary(candidate); return false; }
-        const debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &DrawText, gameWindow, config};
+        const debug_api::Host host{sizeof(debug_api::Host), debug_api::Version, &DrawText, gameWindow, config, player_runtime::GetSharedState()};
         if (initialize == nullptr || render == nullptr || !initialize(&host, directory))
         {
             FreeLibrary(candidate);
@@ -262,10 +261,12 @@ namespace dfl::debug_module
         // Intermediate/older debug modules lack the gate export. Keep their
         // observation path disabled while both native calls remain untouched.
         if(!GameplayProbesInstalled||!TraceObserve||!TraceGate){TraceObserve=nullptr;TraceGate=nullptr;}
-        Note("debug.dll loaded; ABI version=2; owned floating window\r\n");
+        Note("debug.dll loaded; ABI version=3; owned floating window\r\n");
+        HMODULE hostModule=nullptr;GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCWSTR>(&LoadModule),&hostModule);
         char bases[120]{};
-        _snprintf_s(bases, _TRUNCATE, "module bases debug=%p ijl15=%p\r\n",
-            reinterpret_cast<void*>(Module), reinterpret_cast<void*>(GetModuleHandleW(L"ijl15.dll")));
+        _snprintf_s(bases, _TRUNCATE, "module bases debug=%p host=%p\r\n",
+            reinterpret_cast<void*>(Module), reinterpret_cast<void*>(hostModule));
         Note(bases);
         OutputDebugStringA("DFLegacy.Ijl15: independent debug.dll overlay loaded.\n");
         return true;
@@ -275,7 +276,10 @@ namespace dfl::debug_module
     {
         // Apply runs in IJL15 DllMain. Load debug.dll on the first render,
         // outside the loader lock; never start or wait on workers in DllMain.
-        Enabled = ijl15_config::Get().EnableDebugOverlay;
+        // Standalone flavor is authenticated by bootstrap and never rewrites
+        // player configuration. The old IJL path retains its explicit opt-in.
+        Enabled = player_runtime::DiagnosticsAllowed()
+            && (client_bootstrap::IsStandalone() || ijl15_config::Get().EnableDebugOverlay);
         // All gameplay dispatch hooks are installed with the other IJL patches,
         // before the game starts. Never rewrite an executing dispatch call.
         if(Enabled&&ijl15_config::Get().ExportGameplayTrace&&!InstallGameplayProbe())

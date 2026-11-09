@@ -22,7 +22,6 @@ public partial class RegisterWindow : System.Windows.Window
         var pass = PasswordBox.Password;
         var confirm = ConfirmBox.Password;
         var oicq = string.IsNullOrWhiteSpace(OicqBox.Text) ? null : OicqBox.Text.Trim();
-        var test = TestAccountBox.IsChecked == true;
         if (pass != confirm) { ClassicMessage.Show(this, "两次密码不一致。"); return; }
         if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128
             || oicq is null || oicq.Length is < 5 or > 32)
@@ -31,15 +30,19 @@ public partial class RegisterWindow : System.Windows.Window
             return;
         }
 
+        Program.Incidents.RegisterSecret(user);
+        Program.Incidents.RegisterSecret(pass);
+        Program.Incidents.RegisterSecret(oicq);
         SubmitBtn.IsEnabled = false;
         RegistrationResult r;
         try
         {
             // try/catch 只包网络请求：本地持久化失败不能伪装成"请求失败"。
-            r = await _account.RegisterAsync(user, pass, oicq, test);
+            r = await _account.RegisterAsync(user, pass, oicq, testAccount: false);
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-register",ex);
             ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
@@ -64,6 +67,7 @@ public partial class RegisterWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-register",ex);
             // 服务端账号已创建，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
             ClassicMessage.Show(this, $"注册成功，但保存到本地账号列表失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;

@@ -1,0 +1,3 @@
+LIBRARY "DFLegacy.Client.dll"
+EXPORTS
+    DFLegacyBootstrapMarker=_DFLegacyBootstrapMarker@0 @1 NONAME

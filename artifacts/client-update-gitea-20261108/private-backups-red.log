@@ -1,0 +1,153 @@
+FFFFF                                                                    [100%]
+================================== FAILURES ===================================
+_ test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitee-powershell.exe] _
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-335/test_actual_opt_in_config_back0')
+shell = 'powershell.exe', provider = 'Gitee'
+
+    @pytest.mark.skipif(os.name != 'nt', reason='Windows opt-in scripts')
+    @pytest.mark.parametrize('shell', SHELLS)
+    @pytest.mark.parametrize('provider', ['Gitee', 'Gitea'])
+    def test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan(tmp_path, shell, provider):
+        source=tmp_path/'client'; source.mkdir()
+        (source/'client-package.json').write_text('{"flavor":"normal"}',encoding='utf-8')
+        before=json.dumps({'Account':'private-account','Password':'PRIVATE-CREDENTIAL-MARKER'}).encode()
+        (source/'launcher.json').write_bytes(before)
+        (source/'app.exe').write_bytes(b'public app bytes')
+        script=Path(__file__).resolve().parents[1]/f'Enable-{provider}-Test.ps1'
+        result=subprocess.run([shell,'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                               '-File',str(script),'-ClientDirectory',str(source)],capture_output=True,timeout=30)
+        assert result.returncode==0, result.stderr.decode(errors='replace')
+        backup,=source.glob('launcher.json.backup-*')
+        assert backup.read_bytes()==before
+        nested=source/'nested'; nested.mkdir()
+        shutil.copyfile(backup,nested/backup.name)
+        preview=v4.plan_resources(**options(source))
+>       assert [row['path'] for row in preview['manifest']['files']]==['app.exe']
+E       AssertionError: assert ['app.exe', '...c335f68104a7'] == ['app.exe']
+E         
+E         Left contains 2 more items, first extra item: 'launcher.json.backup-20261108-023515-3aa53f96d70f46ed9cc9c335f68104a7'
+E         Use -v to get more diff
+
+tools\release\tests\test_private_update_resources.py:39: AssertionError
+_ test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitee-pwsh] _
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-335/test_actual_opt_in_config_back1')
+shell = 'pwsh', provider = 'Gitee'
+
+    @pytest.mark.skipif(os.name != 'nt', reason='Windows opt-in scripts')
+    @pytest.mark.parametrize('shell', SHELLS)
+    @pytest.mark.parametrize('provider', ['Gitee', 'Gitea'])
+    def test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan(tmp_path, shell, provider):
+        source=tmp_path/'client'; source.mkdir()
+        (source/'client-package.json').write_text('{"flavor":"normal"}',encoding='utf-8')
+        before=json.dumps({'Account':'private-account','Password':'PRIVATE-CREDENTIAL-MARKER'}).encode()
+        (source/'launcher.json').write_bytes(before)
+        (source/'app.exe').write_bytes(b'public app bytes')
+        script=Path(__file__).resolve().parents[1]/f'Enable-{provider}-Test.ps1'
+        result=subprocess.run([shell,'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                               '-File',str(script),'-ClientDirectory',str(source)],capture_output=True,timeout=30)
+        assert result.returncode==0, result.stderr.decode(errors='replace')
+        backup,=source.glob('launcher.json.backup-*')
+        assert backup.read_bytes()==before
+        nested=source/'nested'; nested.mkdir()
+        shutil.copyfile(backup,nested/backup.name)
+        preview=v4.plan_resources(**options(source))
+>       assert [row['path'] for row in preview['manifest']['files']]==['app.exe']
+E       AssertionError: assert ['app.exe', '...679de43a2dc8'] == ['app.exe']
+E         
+E         Left contains 2 more items, first extra item: 'launcher.json.backup-20261108-023515-c2c020c614cc4cd494be679de43a2dc8'
+E         Use -v to get more diff
+
+tools\release\tests\test_private_update_resources.py:39: AssertionError
+_ test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitea-powershell.exe] _
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-335/test_actual_opt_in_config_back2')
+shell = 'powershell.exe', provider = 'Gitea'
+
+    @pytest.mark.skipif(os.name != 'nt', reason='Windows opt-in scripts')
+    @pytest.mark.parametrize('shell', SHELLS)
+    @pytest.mark.parametrize('provider', ['Gitee', 'Gitea'])
+    def test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan(tmp_path, shell, provider):
+        source=tmp_path/'client'; source.mkdir()
+        (source/'client-package.json').write_text('{"flavor":"normal"}',encoding='utf-8')
+        before=json.dumps({'Account':'private-account','Password':'PRIVATE-CREDENTIAL-MARKER'}).encode()
+        (source/'launcher.json').write_bytes(before)
+        (source/'app.exe').write_bytes(b'public app bytes')
+        script=Path(__file__).resolve().parents[1]/f'Enable-{provider}-Test.ps1'
+        result=subprocess.run([shell,'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                               '-File',str(script),'-ClientDirectory',str(source)],capture_output=True,timeout=30)
+        assert result.returncode==0, result.stderr.decode(errors='replace')
+        backup,=source.glob('launcher.json.backup-*')
+        assert backup.read_bytes()==before
+        nested=source/'nested'; nested.mkdir()
+        shutil.copyfile(backup,nested/backup.name)
+        preview=v4.plan_resources(**options(source))
+>       assert [row['path'] for row in preview['manifest']['files']]==['app.exe']
+E       AssertionError: assert ['app.exe', '...a405dfce708c'] == ['app.exe']
+E         
+E         Left contains 2 more items, first extra item: 'launcher.json.backup-20261108-023516-b4da6f96d468461c9e23a405dfce708c'
+E         Use -v to get more diff
+
+tools\release\tests\test_private_update_resources.py:39: AssertionError
+_ test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitea-pwsh] _
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-335/test_actual_opt_in_config_back3')
+shell = 'pwsh', provider = 'Gitea'
+
+    @pytest.mark.skipif(os.name != 'nt', reason='Windows opt-in scripts')
+    @pytest.mark.parametrize('shell', SHELLS)
+    @pytest.mark.parametrize('provider', ['Gitee', 'Gitea'])
+    def test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan(tmp_path, shell, provider):
+        source=tmp_path/'client'; source.mkdir()
+        (source/'client-package.json').write_text('{"flavor":"normal"}',encoding='utf-8')
+        before=json.dumps({'Account':'private-account','Password':'PRIVATE-CREDENTIAL-MARKER'}).encode()
+        (source/'launcher.json').write_bytes(before)
+        (source/'app.exe').write_bytes(b'public app bytes')
+        script=Path(__file__).resolve().parents[1]/f'Enable-{provider}-Test.ps1'
+        result=subprocess.run([shell,'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass',
+                               '-File',str(script),'-ClientDirectory',str(source)],capture_output=True,timeout=30)
+        assert result.returncode==0, result.stderr.decode(errors='replace')
+        backup,=source.glob('launcher.json.backup-*')
+        assert backup.read_bytes()==before
+        nested=source/'nested'; nested.mkdir()
+        shutil.copyfile(backup,nested/backup.name)
+        preview=v4.plan_resources(**options(source))
+>       assert [row['path'] for row in preview['manifest']['files']]==['app.exe']
+E       AssertionError: assert ['app.exe', '...bda2a1efaecc'] == ['app.exe']
+E         
+E         Left contains 2 more items, first extra item: 'launcher.json.backup-20261108-023516-0115fb49fab644f4acaebda2a1efaecc'
+E         Use -v to get more diff
+
+tools\release\tests\test_private_update_resources.py:39: AssertionError
+_ test_known_config_derivatives_and_atomic_save_files_are_private_at_every_depth _
+
+tmp_path = WindowsPath('C:/Users/Firekula/AppData/Local/Temp/pytest-of-Firekula/pytest-335/test_known_config_derivatives_0')
+
+    def test_known_config_derivatives_and_atomic_save_files_are_private_at_every_depth(tmp_path):
+        private_names=['launcher.json.backup-20261108-abcdef','LaUnChEr.JsOn.enable-abcd.tmp',
+                       'Config.ini.123456.tmp','Config.ini.bak','launcher.txt.old','launcher.json~',
+                       'server.json.backup','manager.json.tmp','account.json.bak','accounts.json.old',
+                       'credentials.json.copy','cookies.json.bak','client-package.json.old',
+                       'client-update-v4.json.tmp','.launcher-save-0123456789abcdef.tmp']
+        for parent in (tmp_path,tmp_path/'nested'/'deeper'):
+            parent.mkdir(parents=True,exist_ok=True)
+            for name in private_names: (parent/name).write_bytes(b'PRIVATE-CREDENTIAL-MARKER')
+        for name in ('app.exe','launcher.jsonx','Config.inifile'):
+            (tmp_path/name).write_bytes(b'public')
+        preview=v4.plan_resources(**options(tmp_path))
+>       assert [row['path'] for row in preview['manifest']['files']]==['app.exe','Config.inifile','launcher.jsonx']
+E       AssertionError: assert ['.launcher-s...son.tmp', ...] == ['app.exe', '...uncher.jsonx']
+E         
+E         At index 0 diff: '.launcher-save-0123456789abcdef.tmp' != 'app.exe'
+E         Left contains 30 more items, first extra item: 'app.exe'
+E         Use -v to get more diff
+
+tools\release\tests\test_private_update_resources.py:58: AssertionError
+=========================== short test summary info ===========================
+FAILED tools/release/tests/test_private_update_resources.py::test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitee-powershell.exe]
+FAILED tools/release/tests/test_private_update_resources.py::test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitee-pwsh]
+FAILED tools/release/tests/test_private_update_resources.py::test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitea-powershell.exe]
+FAILED tools/release/tests/test_private_update_resources.py::test_actual_opt_in_config_backup_cannot_enter_broad_resource_scan[Gitea-pwsh]
+FAILED tools/release/tests/test_private_update_resources.py::test_known_config_derivatives_and_atomic_save_files_are_private_at_every_depth
+5 failed in 3.01s

@@ -1,3 +1,5 @@
+using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 
@@ -21,8 +23,10 @@ internal sealed class TcpForwarder(
     IPAddress bindAddress,
     int port,
     IPAddress targetAddress,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
+    private static long _nextConnectionId;
     private readonly TcpListener _listener = new(bindAddress, port);
 
     public void Start() => _listener.Start();
@@ -34,81 +38,187 @@ internal sealed class TcpForwarder(
         log(
             RelayLogLevel.Info,
             $"TCP  {RelayHost.FormatEndpoint(bindAddress, port)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
-        while (!cancellationToken.IsCancellationRequested)
+        var connections = new List<Task>();
+        try
         {
-            TcpClient client;
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                client = await _listener.AcceptTcpClientAsync(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (SocketException exception)
-            {
-                log(RelayLogLevel.Warn, $"TCP {port}: accept failed: {exception.Message}");
-                continue;
-            }
+                TcpClient client;
+                try
+                {
+                    client = await _listener.AcceptTcpClientAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (SocketException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (SocketException exception)
+                {
+                    log(RelayLogLevel.Warn, $"TCP {port}: accept failed: {exception.Message}");
+                    continue;
+                }
 
-            _ = RelayAsync(client, cancellationToken);
+                connections.RemoveAll(task => task.IsCompleted);
+                connections.Add(RelayAsync(client, cancellationToken));
+            }
+        }
+        finally
+        {
+            // Host shutdown is complete only after accepted sockets are released
+            // and their terminal diagnostics have been delivered.
+            await Task.WhenAll(connections);
         }
     }
 
     private async Task RelayAsync(TcpClient client, CancellationToken cancellationToken)
     {
-        using (client)
-        using (var server = new TcpClient(targetAddress.AddressFamily))
-        {
-            try
-            {
-                await server.ConnectAsync(
-                    new IPEndPoint(targetAddress, port),
-                    cancellationToken);
-            }
-            catch (Exception exception)
-            {
-                log(
-                    RelayLogLevel.Warn,
-                    $"TCP {port}: cannot reach {RelayHost.FormatEndpoint(targetAddress, port)}: {exception.Message}");
-                return;
-            }
-
-            var clientStream = client.GetStream();
-            var serverStream = server.GetStream();
-            await Task.WhenAll(
-                PumpAsync(clientStream, serverStream, server.Client, cancellationToken),
-                PumpAsync(serverStream, clientStream, client.Client, cancellationToken));
-        }
-    }
-
-    // Copies one direction, then half-closes the far side so it observes EOF
-    // instead of waiting for a timeout.
-    private async Task PumpAsync(
-        NetworkStream from,
-        NetworkStream to,
-        Socket toSocket,
-        CancellationToken cancellationToken)
-    {
+        var connectionId = Interlocked.Increment(ref _nextConnectionId);
+        var started = Stopwatch.GetTimestamp();
+        var phase = "connect";
+        var end = new TransferResult(0, "eof");
+        long clientToServerBytes = 0;
+        long serverToClientBytes = 0;
         try
         {
-            await from.CopyToAsync(to, cancellationToken);
-        }
-        catch (Exception)
-        {
-            // A reset or a cancelled copy both simply end this direction.
+            using (client)
+            using (var server = new TcpClient(targetAddress.AddressFamily))
+            using (var connectionCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                LogConnection(
+                    RelayLogLevel.Info,
+                    $"TCP {port}: connection={connectionId} event=connection-start client={client.Client.RemoteEndPoint} target={RelayHost.FormatEndpoint(targetAddress, port)}");
+                try
+                {
+                    using(var connectDeadline=CancellationTokenSource.CreateLinkedTokenSource(connectionCancellation.Token))
+                    {
+                        connectDeadline.CancelAfter(TimeSpan.FromSeconds(15));
+                        try { await server.ConnectAsync(new IPEndPoint(targetAddress, port), connectDeadline.Token); }
+                        catch(OperationCanceledException) when(!connectionCancellation.IsCancellationRequested) { throw new TimeoutException("Relay connection deadline elapsed."); }
+                    }
+                    phase = "transfer";
+                    var clientStream = client.GetStream();
+                    var serverStream = server.GetStream();
+                    var results = await Task.WhenAll(
+                        PumpAsync(clientStream, serverStream, server.Client, connectionId, "client->server", connectionCancellation, cancellationToken),
+                        PumpAsync(serverStream, clientStream, client.Client, connectionId, "server->client", connectionCancellation, cancellationToken));
+                    clientToServerBytes = results[0].Bytes;
+                    serverToClientBytes = results[1].Bytes;
+                    // Preserve the initiating error instead of replacing it with
+                    // the opposite pump's cancellation during cleanup.
+                    end = results.FirstOrDefault(result => result.Reason is "socket-error" or "error")
+                        ?? results.FirstOrDefault(result => result.Reason == "cancelled")
+                        ?? results[0];
+                }
+                catch (Exception exception)
+                {
+                    end = DescribeFailure(exception, 0, connectionCancellation.Token, cancellationToken);
+                }
+            }
         }
         finally
         {
-            try
-            {
-                toSocket.Shutdown(SocketShutdown.Send);
-            }
-            catch (Exception)
-            {
-                // The far side is already gone.
-            }
+            var reason=end.Reason switch { "eof"=>RelayTerminationReason.Eof,"cancelled"=>RelayTerminationReason.Cancelled,"socket-error"=>RelayTerminationReason.SocketError,"timeout"=>RelayTerminationReason.Timeout,_=>RelayTerminationReason.Error };
+            RelayTermination.Deliver(terminated,new(reason,"TCP",phase,port,connectionId,end.Direction ?? "connect",clientToServerBytes,serverToClientBytes,Stopwatch.GetElapsedTime(started).TotalMilliseconds,end.SocketError,end.NativeError));
+            LogConnection(
+                end.IsError ? RelayLogLevel.Warn : RelayLogLevel.Info,
+                $"TCP {port}: connection={connectionId} event=connection-end phase={phase} {end.Details} clientToServerBytes={clientToServerBytes} serverToClientBytes={serverToClientBytes} elapsedMs={Stopwatch.GetElapsedTime(started).TotalMilliseconds:F0}");
         }
+    }
+
+    // A graceful EOF half-closes only the far side's send direction; a reply
+    // may still arrive. A failed copy cancels the paired pump so an idle read
+    // cannot retain both sockets indefinitely after a reset.
+    private async Task<TransferResult> PumpAsync(
+        NetworkStream from,
+        NetworkStream to,
+        Socket toSocket,
+        long connectionId,
+        string direction,
+        CancellationTokenSource connectionCancellation,
+        CancellationToken hostCancellation)
+    {
+        const int bufferSize = 81920;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        long bytes = 0;
+        TransferResult result;
+        try
+        {
+            var cancellationToken = connectionCancellation.Token;
+            while (true)
+            {
+                var count = await from.ReadAsync(buffer.AsMemory(0, bufferSize), cancellationToken);
+                if (count == 0) break;
+                await to.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
+                // Count only writes that completed; a failed write can have sent
+                // a partial buffer that NetworkStream does not report to us.
+                bytes += count;
+            }
+            toSocket.Shutdown(SocketShutdown.Send);
+            result = new TransferResult(bytes, "eof");
+        }
+        catch (Exception exception)
+        {
+            result = DescribeFailure(exception, bytes, connectionCancellation.Token, hostCancellation);
+            if (result.IsError) connectionCancellation.Cancel();
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+        result=result with { Direction=direction };
+        LogConnection(
+            result.IsError ? RelayLogLevel.Warn : RelayLogLevel.Info,
+            $"TCP {port}: connection={connectionId} event=direction-end direction={direction} bytes={result.Bytes} {result.Details}");
+        return result;
+    }
+
+    private void LogConnection(RelayLogLevel level, string message)
+    {
+        try { log(level, message); }
+        catch (Exception)
+        {
+            // A failed diagnostic sink must not change socket ownership, the
+            // bytes forwarded, or the result returned by either transfer pump.
+        }
+    }
+
+    internal static TransferResult DescribeFailure(
+        Exception exception,
+        long bytes,
+        CancellationToken connectionCancellation,
+        CancellationToken hostCancellation)
+    {
+        var socketException = exception.GetBaseException() as SocketException;
+        // A concrete reset/refusal can finish before cancellation, with its await
+        // continuation running afterwards. Keep that error instead of masking it
+        // merely because the token is now cancelled.
+        if (exception is OperationCanceledException
+            || (connectionCancellation.IsCancellationRequested
+                && (exception is ObjectDisposedException
+                    || socketException?.SocketErrorCode is SocketError.OperationAborted or SocketError.Interrupted)))
+            return new TransferResult(bytes, "cancelled", hostCancellation.IsCancellationRequested ? "host-stop" : "peer-error");
+        return new TransferResult(bytes, exception is TimeoutException ? "timeout" : socketException is null ? "error" : "socket-error", ExceptionType: exception.GetType().Name,
+            SocketError: socketException?.SocketErrorCode, NativeError: socketException?.NativeErrorCode);
+    }
+
+    internal sealed record TransferResult(
+        long Bytes,
+        string Reason,
+        string? Cancellation = null,
+        string? ExceptionType = null,
+        SocketError? SocketError = null,
+        int? NativeError = null,
+        string? Direction = null)
+    {
+        public bool IsError => Reason is "socket-error" or "error" or "timeout";
+        public string Details => $"reason={Reason}"
+            + (Cancellation is null ? "" : $" cancellation={Cancellation}")
+            + (ExceptionType is null ? "" : $" exception={ExceptionType}")
+            + (SocketError is null ? "" : $" socketError={SocketError} socketCode={(int)SocketError.Value} nativeError={NativeError}");
     }
 }
 
@@ -122,7 +232,8 @@ internal sealed class UdpForwarder(
     IPAddress bindAddress,
     int port,
     IPAddress targetAddress,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
     private const int MaxConsecutiveReceiveFailures = 10;
 
@@ -184,8 +295,11 @@ internal sealed class UdpForwarder(
                 // A persistent failure must not spin: log the first few, back off,
                 // and give up rather than flooding the log.
                 consecutiveFailures++;
+                if (cancellationToken.IsCancellationRequested) return;
                 if (consecutiveFailures > MaxConsecutiveReceiveFailures)
                 {
+                    var socket=exception.GetBaseException() as SocketException;
+                    RelayTermination.Deliver(terminated,new(RelayTerminationReason.Error,"UDP","receive",port,0,fromClient ? "client->server" : "server->client",0,0,0,socket?.SocketErrorCode,socket?.NativeErrorCode,consecutiveFailures));
                     log(
                         RelayLogLevel.Error,
                         $"UDP {port}: 连续 {consecutiveFailures} 次接收失败，停止该端口（{exception.Message}）。");
@@ -232,6 +346,9 @@ internal sealed class UdpForwarder(
             }
             catch (Exception exception)
             {
+                if(cancellationToken.IsCancellationRequested) return;
+                var socket=exception.GetBaseException() as SocketException;
+                RelayTermination.Deliver(terminated,new(RelayTerminationReason.SocketError,"UDP","send",port,0,fromClient ? "client->server" : "server->client",0,0,0,socket?.SocketErrorCode,socket?.NativeErrorCode));
                 log(RelayLogLevel.Warn, $"UDP {port}: send failed ({exception.Message})");
             }
         }
@@ -249,7 +366,8 @@ public sealed class RelayHost(
     IPAddress targetAddress,
     IReadOnlyCollection<int> tcpPorts,
     IReadOnlyCollection<int> udpPorts,
-    RelayLog log)
+    RelayLog log,
+    Action<RelayTermination>? terminated = null)
 {
     private readonly List<TcpForwarder> _tcp = [];
     private readonly List<UdpForwarder> _udp = [];
@@ -266,15 +384,17 @@ public sealed class RelayHost(
     {
         foreach (var port in tcpPorts)
         {
-            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log);
-            forwarder.Start();
+            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            try { forwarder.Start(); }
+            catch(SocketException ex) { RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"TCP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
             _tcp.Add(forwarder);
         }
 
         foreach (var port in udpPorts)
         {
-            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log);
-            forwarder.Start();
+            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            try { forwarder.Start(); }
+            catch(SocketException ex) { forwarder.Stop(); RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"UDP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
             _udp.Add(forwarder);
         }
 

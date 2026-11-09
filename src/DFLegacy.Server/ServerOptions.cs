@@ -3,6 +3,8 @@ namespace DFLegacy.Server;
 public sealed class ServerOptions
 {
     public AdminOptions Admin { get; set; } = new();
+    public WebPanelsOptions WebPanels { get; set; } = new();
+    public ClientDiagnosticsOptions ClientDiagnostics { get; set; } = new();
     public ProcessOptions Processes { get; set; } = new();
     public ListenerOptions Entrance { get; set; } = new() { Port = 8080 };
     public ListenerOptions CharacterDatagram { get; set; } = new() { Host = "127.0.0.1", Port = 2311 };
@@ -10,6 +12,7 @@ public sealed class ServerOptions
     public ListenerOptions GameProbe { get; set; } = new() { Port = 7001, Enabled = false };
     public string DataPath { get; set; } = "data/state.json";
     public bool SeedTestAccount { get; set; } = true;
+    public bool EnableTestCeraTopUp { get; set; } = false;
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
     public string SkillScriptPath { get; set; } = "";
     public string OriginalSkillScriptPath { get; set; } = "";
@@ -20,10 +23,13 @@ public sealed class ServerOptions
     public FallbackRelayOptions FallbackRelay { get; set; } = new();
     public DropOptions Drop { get; set; } = new();
     public ExperienceOptions Experience { get; set; } = new();
+    public FatigueOptions Fatigue { get; set; } = new();
     public DungeonOptions Dungeon { get; set; } = new();
     public int MaximumPacketLength { get; set; } = 4 * 1024 * 1024;
     public bool RejectBadCrc32 { get; set; } = false;
     public bool EnablePacketTracing { get; set; } = false;
+    // Bounded connection/relay summaries, without credentials or packet bodies.
+    public bool EnableConnectionDiagnostics { get; set; } = false;
     public int HexDumpLimit { get; set; } = 64;
 }
 
@@ -52,6 +58,12 @@ public sealed class DropOptions
     public double RatePercent { get; set; } = 100;
     public double EconomicRate { get; set; } = 1;
     public bool ForceDrops { get; set; }
+}
+
+public sealed class FatigueOptions
+{
+    // 双倍疲劳跟随每天北京时间 06:00 的刷新，周六 06:00 起至周一 06:00 止。
+    public bool WeekendDoubleEnabled { get; set; } = true;
 }
 
 public sealed class ExperienceOptions
@@ -86,6 +98,7 @@ public sealed class ChannelOptions
     public string Host { get; set; } = "127.0.0.1";
     public int Port { get; set; } = 7001;
     public int ChannelNumber { get; set; } = 1;
+    public bool RegionalChannelsEnabled { get; set; }
     public int MaximumUsers { get; set; } = 100;
     public int CurrentUsers { get; set; } = 1;
 }
@@ -234,4 +247,10 @@ public sealed class ClientOverlayOptions
 {
     public bool Enabled { get; set; }
     public string SnapshotDirectory { get; set; } = "debug-overlay";
+}
+
+public sealed class WebPanelsOptions
+{
+    public ListenerOptions Gm { get; set; } = new() { Host = "0.0.0.0", Port = 18081 };
+    public ListenerOptions Player { get; set; } = new() { Host = "0.0.0.0", Port = 18082 };
 }

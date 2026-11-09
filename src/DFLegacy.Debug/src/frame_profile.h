@@ -97,6 +97,7 @@ namespace dfl::frame_profile
     {
     public:
         explicit Frame(std::uint32_t scene) noexcept;
+        Frame(std::uint32_t scene,std::uint64_t captureUs,std::uint64_t navigationUs) noexcept;
         void Mark() noexcept;
         ~Frame() noexcept;
     private:

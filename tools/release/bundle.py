@@ -38,7 +38,8 @@ class Bundle:
 def _architecture(data, rid):
     if rid.startswith("win-"):
         pe = struct.unpack_from("<I", data, 0x3c)[0] if data[:2] == b"MZ" else 0
-        return pe > 0 and pe + 6 <= len(data) and data[pe:pe + 4] == b"PE\0\0" and struct.unpack_from("<H", data, pe + 4)[0] == 0x8664 and rid == "win-x64"
+        machine = {"win-x64": 0x8664, "win-x86": 0x014c}.get(rid)
+        return pe > 0 and pe + 6 <= len(data) and data[pe:pe + 4] == b"PE\0\0" and struct.unpack_from("<H", data, pe + 4)[0] == machine
     if rid.startswith("linux-"):
         machine = 62 if rid == "linux-x64" else 183 if rid == "linux-arm64" else -1
         return data[:6] == b"\x7fELF\x02\x01" and struct.unpack_from("<H", data, 18)[0] == machine

@@ -41,11 +41,7 @@ public static class CharacterInventorySorter
                 arranged.Remove((ushort)slot);
             }
 
-            for (var index = 0; index < sorted.Length; index++)
-            {
-                var targetSlot = checked((ushort)(section.Start + index));
-                arranged[targetSlot] = sorted[index].Item with { Slot = targetSlot };
-            }
+            AddSortedStacks(arranged, section.Start, sorted.Select(entry => entry.Item), catalog);
         }
 
         return arranged;
@@ -64,13 +60,50 @@ public static class CharacterInventorySorter
             .ThenBy(entry => entry.OldSlot)
             .ToArray();
         var arranged = new Dictionary<ushort, CharacterItemRecord>(sorted.Length);
-        for (var index = 0; index < sorted.Length; index++)
-        {
-            var targetSlot = checked((ushort)index);
-            arranged[targetSlot] = sorted[index].Item with { Slot = targetSlot };
-        }
-
+        AddSortedStacks(arranged, 0, sorted.Select(entry => entry.Item), catalog);
         return arranged;
+    }
+
+    private static void AddSortedStacks(
+        Dictionary<ushort, CharacterItemRecord> arranged,
+        ushort startSlot,
+        IEnumerable<CharacterItemRecord> sorted,
+        ItemCatalog catalog)
+    {
+        var partialStacks = new Dictionary<(ushort ItemId, byte State, ushort Durability, byte SealState), ushort>();
+        var nextSlot = (int)startSlot;
+        foreach (var item in sorted)
+        {
+            var stackLimit = catalog.TryGetDefinition(item.ItemId, out var definition)
+                && definition.IsStackable
+                ? CharacterInventoryPlanner.GetStackLimit(definition)
+                : 0;
+            var key = (item.ItemId, item.State, item.Durability, item.SealState);
+            var remaining = item.CountOrValue;
+            if (stackLimit != 0 && partialStacks.TryGetValue(key, out var partialSlot))
+            {
+                var partial = arranged[partialSlot];
+                var added = Math.Min(remaining, stackLimit - partial.CountOrValue);
+                arranged[partialSlot] = partial with { CountOrValue = partial.CountOrValue + added };
+                remaining -= added;
+                if (arranged[partialSlot].CountOrValue == stackLimit)
+                {
+                    partialStacks.Remove(key);
+                }
+
+                if (remaining == 0)
+                {
+                    continue;
+                }
+            }
+
+            var targetSlot = checked((ushort)nextSlot++);
+            arranged.Add(targetSlot, item with { Slot = targetSlot, CountOrValue = remaining });
+            if (remaining < stackLimit)
+            {
+                partialStacks[key] = targetSlot;
+            }
+        }
     }
 
     private static int GetRarity(ushort itemId, ItemCatalog catalog) =>

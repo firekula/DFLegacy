@@ -8,7 +8,7 @@
 #include "debug_model.h"
 #include "debug_window.h"
 #include "client_state.h"
-#include "client_navigation.h"
+#include "shared_state_bridge.h"
 #include "client_party.h"
 #include "client_test_control.h"
 #include "frame_profile.h"
@@ -61,8 +61,6 @@ namespace
             }
             // A busy paint/input queue must not postpone shutdown indefinitely.
             if (WaitForSingleObject(StopEvent, 0) == WAIT_OBJECT_0) break;
-            dfl::client_state::ExportLatest();
-            dfl::client_navigation::PumpWorker();
             dfl::client_party::PumpWorker();
             dfl::client_test_control::PumpWorker();
             dfl::frame_profile::Export();
@@ -166,6 +164,7 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (host == nullptr || host->size != sizeof(*host) || host->version != dfl::debug_api::Version
         || (host->drawText == nullptr && host->gameWindow == nullptr) || directory == nullptr
         || wcsnlen_s(directory, MAX_PATH) >= MAX_PATH - 32) return 0;
+    if(!dfl::client_state::BindShared(host->sharedState))return 0;
     Host = *host;
     wcscpy_s(Directory, directory);
     if (host->settingsPath != nullptr) wcsncpy_s(Settings, host->settingsPath, _TRUNCATE);
@@ -173,8 +172,6 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
     if (StopEvent == nullptr) return 0;
     ReadyEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (ReadyEvent == nullptr) { CloseHandle(StopEvent); StopEvent = nullptr; return 0; }
-    dfl::client_state::Initialize(host->settingsPath, directory);
-    dfl::client_navigation::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     dfl::client_party::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     dfl::client_test_control::Initialize(host->settingsPath, directory, dfl::client_state::NativeReader());
     dfl::frame_profile::Initialize(host->settingsPath, directory, host->gameWindow, dfl::client_state::NativeReader());
@@ -188,7 +185,6 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
         dfl::gameplay_trace::Shutdown();
         dfl::native_loop_profile::Shutdown();
         dfl::client_test_control::Shutdown();
-        dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(StopEvent); CloseHandle(ReadyEvent); StopEvent = ReadyEvent = nullptr; return 0;
     }
@@ -208,7 +204,6 @@ extern "C" int __stdcall DebugInitialize(const dfl::debug_api::Host* host, const
         dfl::gameplay_trace::Shutdown();
         dfl::native_loop_profile::Shutdown();
         dfl::client_test_control::Shutdown();
-        dfl::client_navigation::Shutdown();
         dfl::client_state::Shutdown();
         CloseHandle(Worker); CloseHandle(StopEvent); Worker = StopEvent = nullptr;
         return 0;
@@ -253,12 +248,8 @@ extern "C" void __stdcall DebugRecordPipeline(const dfl::debug_api::PipelineSamp
 extern "C" void __stdcall DebugRender(const dfl::debug_api::Frame* frame) noexcept
 {
     if (Worker == nullptr || frame == nullptr || frame->size != sizeof(*frame)) return;
-    dfl::frame_profile::Frame timing(frame->scene);
-    // Independent native capture precedes all old Frame.scene / visibility gates.
-    dfl::client_state::CaptureFrame();
-    timing.Mark();
-    dfl::client_navigation::OnFrame();
-    timing.Mark();
+    const auto coreTiming=dfl::client_state::SharedTiming();
+    dfl::frame_profile::Frame timing(frame->scene,coreTiming.captureUs,coreTiming.navigationUs);
     dfl::client_party::OnFrame();
     timing.Mark();
     dfl::client_test_control::OnFrame();
@@ -352,7 +343,6 @@ extern "C" int __stdcall DebugShutdown() noexcept
     dfl::native_loop_profile::Shutdown();
     dfl::client_party::Shutdown();
     dfl::client_test_control::Shutdown();
-    if (!dfl::client_navigation::Shutdown()) return 0;
     CloseHandle(Worker); CloseHandle(StopEvent);
     dfl::client_state::Shutdown();
     Worker = nullptr; StopEvent = nullptr;

@@ -243,13 +243,19 @@ public sealed record FatigueRecoveryItemUseResult(
     uint RemainingItemCount,
     ushort PreviousUsedFatigue,
     ushort UsedFatigue,
-    FatigueRecoveryItemUseFailure Failure);
+    FatigueRecoveryItemUseFailure Failure)
+{
+    public FatigueLimits Limits { get; init; }
+}
 
 public sealed record DungeonRoomFatigueConsumptionResult(
     CharacterRecord? Character,
     bool Consumed,
     ushort PreviousUsedFatigue,
-    ushort UsedFatigue);
+    ushort UsedFatigue)
+{
+    public FatigueLimits Limits { get; init; }
+}
 
 public enum WeaknessRecoveryFailure
 {
@@ -387,6 +393,8 @@ public sealed record AccountRecord(
     public int GiftReceiveYearMonth { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int GiftReceiveCount { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AccountBan? Ban { get; init; }
 }
 
 public sealed record ClientCeraTopUpRequest(string Account, int Amount);
@@ -448,7 +456,8 @@ public sealed record PublicAccountRecord(
     uint AccountUid = 0,
     AccountKind Kind = AccountKind.Invalid,
     int Cash = 0,
-    AccountRole Role = AccountRole.Player);
+    AccountRole Role = AccountRole.Player,
+    AccountBan? Ban = null);
 
 public sealed record CreateAccountRequest(
     string UserName,
@@ -644,6 +653,8 @@ public sealed partial class JsonGameStore(
     private uint _nextNormalAccountUid = AccountUidRules.NormalUidStart;
     private uint _nextTestAccountUid = 1;
     private int _fatigueDayKey;
+    // Readers outside the store gate see the day only once the reset is saved.
+    private int _activeFatigueDayKey;
     private List<DungeonRewardLedgerEntry> _dungeonRewardLedger = [];
 
     private sealed class JsonGameStoreState
@@ -656,6 +667,8 @@ public sealed partial class JsonGameStore(
         public List<DungeonRewardLedgerEntry> DungeonRewardLedger { get; set; } = [];
         public List<DungeonGoldLedgerEntry> DungeonGoldLedger { get; set; } = [];
         public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
+        public List<AdminVictoryPointReceipt> AdminVictoryPointGrants { get; set; } = [];
+        public List<AdminMailBatchReceipt> AdminMailBatches { get; set; } = [];
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -723,6 +736,8 @@ public sealed partial class JsonGameStore(
                     _dungeonRewardLedger = state.DungeonRewardLedger ?? [];
                     _dungeonGoldLedger = state.DungeonGoldLedger ?? [];
                     _pvpLedger = state.PvpLedger ?? [];
+                    _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
+                    _adminMailBatches = state.AdminMailBatches ?? [];
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
@@ -739,7 +754,7 @@ public sealed partial class JsonGameStore(
                 stateChanged |= MigrateItemInstanceIdsLocked();
                 await SettleAvatarLifetimesAtStartupLockedAsync(cancellationToken);
                 if (ResetFatigueForNewDayLocked(
-                        DateTimeOffset.Now,
+                        DateTimeOffset.UtcNow,
                         out var startupResetCharacterIds))
                 {
                     stateChanged = true;
@@ -757,17 +772,19 @@ public sealed partial class JsonGameStore(
                     logger.LogWarning("Startup migrations applied in memory but not persisted because reward store is quarantined; restart or rerun migrations after recovery.");
                 }
 
+                Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
                 return;
             }
 
             _nextCharacterNo = 1;
             _nextNormalAccountUid = AccountUidRules.NormalUidStart;
             _nextTestAccountUid = 1;
-            _fatigueDayKey = GetFatigueDayKey(DateTimeOffset.Now);
+            _fatigueDayKey = GetFatigueDayKey(DateTimeOffset.UtcNow);
             if (!options.SeedTestAccount)
             {
                 _accounts = [];
                 await SaveLockedAsync(cancellationToken);
+                Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
                 return;
             }
 
@@ -787,6 +804,7 @@ public sealed partial class JsonGameStore(
             _nextTestAccountUid = 2;
             _ = MigrateItemInstanceIdsLocked();
             await SaveLockedAsync(cancellationToken);
+            Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
         }
         finally
         {
@@ -1553,7 +1571,7 @@ public sealed partial class JsonGameStore(
         try
         {
             var account = FindAccountLocked(userName);
-            return account is not null && PasswordMatches(account, password)
+            return account is not null && !IsBanned(account) && PasswordMatches(account, password)
                 ? ToAuthenticatedAccount(account)
                 : null;
         }
@@ -1675,7 +1693,7 @@ public sealed partial class JsonGameStore(
         try
         {
             var account = FindAccountLocked(userName);
-            return account is null ? null : ToAuthenticatedAccount(account);
+            return account is null || IsBanned(account) ? null : ToAuthenticatedAccount(account);
         }
         finally
         {
@@ -1849,6 +1867,12 @@ public sealed partial class JsonGameStore(
             request.Level,
             Sp: 0,
             Cash: Math.Max(0, account.Cash ?? DefaultAccountCash),
+            Gold: 0,
+            Inventory: [new(CharacterInventoryLayout.RevivalCoinSlot, CharacterInventoryLayout.RevivalCoinItemId, 10)],
+            Equipment: [],
+            Warehouse: [],
+            AvatarInventory: [],
+            CreatureInventory: [],
             Experience: experienceCatalog?.GetMinimumCumulativeExperience(request.Level) ?? 0,
             CharacterNo: AllocateCharacterNoLocked(),
             AccountUid: account.AccountUid,
@@ -1911,7 +1935,7 @@ public sealed partial class JsonGameStore(
                 [],
                 accountUid,
                 PresetCharactersInitialized: !request.TestAccount,
-                Cash: DefaultAccountCash,
+                Cash: request.TestAccount ? DefaultAccountCash : 0,
                 OicqCode: oicqCode,
                 // 新账号一律是普通玩家。引导管理员【只在启动时】提升（ApplyBootstrapAdminsAsync）：
                 // 如果注册时就按名单提升，那么"名单里的账号尚未注册"的部署窗口里，
@@ -2046,21 +2070,7 @@ public sealed partial class JsonGameStore(
                 return (false, null, "Character slot is empty.");
             }
 
-            var character = account.Characters[slot];
-            account.Characters.RemoveAt(slot);
-            ReindexCharacterSlotsLocked(account);
-            var notices = PrepareRemovedMentorEdgesLocked(accounts);
-            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
-                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
-            PublishMentorRemovalNotices(notices);
-            logger.LogInformation(
-                "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
-                character.Name,
-                character.CharacterNo,
-                character.Id,
-                slot,
-                account.AccountUid);
-            return (true, character, null);
+            return await DeleteCharacterAtSlotLockedAsync(accounts, account, slot, cancellationToken);
         }
         finally
         {
@@ -2095,26 +2105,32 @@ public sealed partial class JsonGameStore(
                 return (false, null, "Character slot is empty.");
             }
 
-            var character = account.Characters[slot];
-            account.Characters.RemoveAt(slot);
-            ReindexCharacterSlotsLocked(account);
-            var notices = PrepareRemovedMentorEdgesLocked(accounts);
-            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
-                return (false, null, "Character deletion outcome is uncertain; store quarantined.");
-            PublishMentorRemovalNotices(notices);
-            logger.LogInformation(
-                "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
-                character.Name,
-                character.CharacterNo,
-                character.Id,
-                slot,
-                account.AccountUid);
-            return (true, character, null);
+            return await DeleteCharacterAtSlotLockedAsync(accounts, account, slot, cancellationToken);
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    private async Task<(bool Deleted, CharacterRecord? Character, string? Error)> DeleteCharacterAtSlotLockedAsync(
+        List<AccountRecord> accounts, AccountRecord account, int slot, CancellationToken cancellationToken)
+    {
+        var character = account.Characters[slot];
+        account.Characters.RemoveAt(slot);
+        ReindexCharacterSlotsLocked(account);
+        var notices = PrepareRemovedMentorEdgesLocked(accounts);
+        if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+            return (false, null, "Character deletion outcome is uncertain; store quarantined.");
+        PublishMentorRemovalNotices(notices);
+        logger.LogInformation(
+            "Deleted character {CharacterName} ({CharacterNo}, {StorageId}) from slot {Slot} on account {AccountUid}.",
+            character.Name,
+            character.CharacterNo,
+            character.Id,
+            slot,
+            account.AccountUid);
+        return (true, character, null);
     }
 
     public async Task<(bool Replaced, int CharacterCount, string? Error)> ReplaceAllCharactersAsync(
@@ -2890,7 +2906,9 @@ public sealed partial class JsonGameStore(
         IEnumerable<CharacterItemRecord>? avatarInventory = null,
         IEnumerable<CharacterItemRecord>? creatureInventory = null,
         ushort? warehouseCapacity = null,
-        ushort? expectedWarehouseCapacity = null)
+        ushort? expectedWarehouseCapacity = null,
+        CharacterMailRecord? expectedMail = null,
+        uint unclaimedCount = 0)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -2943,10 +2961,27 @@ public sealed partial class JsonGameStore(
                 return null;
             }
 
+            if (expectedMail is not null
+                && (expectedMail.Id != mailId || expectedMail.Gold != mail.Gold
+                    || expectedMail.Attachment != mail.Attachment))
+            {
+                return null;
+            }
+
+            var remainingAttachment = mail.Attachment;
+            if (unclaimedCount != 0
+                && (expectedMail is null || remainingAttachment is null
+                    || unclaimedCount >= remainingAttachment.CountOrValue))
+            {
+                return null;
+            }
+
             mailbox[mailIndex] = mail with
             {
                 Gold = 0,
-                Attachment = null,
+                Attachment = unclaimedCount == 0
+                    ? null
+                    : remainingAttachment! with { CountOrValue = unclaimedCount },
                 IsNew = false
             };
             var updated = character with
@@ -2963,7 +2998,18 @@ public sealed partial class JsonGameStore(
             };
             updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch when (!snapshotCommitted)
+            {
+                account.Characters[characterIndex] = character;
+                throw;
+            }
+
             return new CharacterMailClaimResult(updated, mail);
         }
         finally
@@ -2976,7 +3022,8 @@ public sealed partial class JsonGameStore(
         Guid characterId,
         uint mailId,
         ushort state,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool inboxReadOnly = false)
     {
         if (state is not (2 or 3))
         {
@@ -3005,6 +3052,11 @@ public sealed partial class JsonGameStore(
                 }
 
                 var mail = mailbox[mailIndex];
+                if (inboxReadOnly && (state != 2 || mail.State == 3))
+                {
+                    return false;
+                }
+
                 if (state == 3 && (mail.Gold != 0 || mail.Attachment is not null))
                 {
                     return false;
@@ -3414,8 +3466,11 @@ public sealed partial class JsonGameStore(
         _nextNormalAccountUid = state.NextNormalAccountUid;
         _nextTestAccountUid = state.NextTestAccountUid;
         _fatigueDayKey = state.FatigueDayKey;
+        Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
         _accounts = state.Accounts;
         _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger; _pvpLedger = state.PvpLedger ?? [];
+        _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
+        _adminMailBatches = state.AdminMailBatches ?? [];
         _rewardQuarantined = false;
     }
 
@@ -4922,7 +4977,7 @@ public sealed partial class JsonGameStore(
         Guid characterId,
         ushort sourceSlot,
         ushort expectedItemId,
-        ushort maximumFatigue,
+        ushort? maximumFatigue,
         ushort maximumRemainingFatigue,
         ushort recoveryAmount,
         CancellationToken cancellationToken = default)
@@ -4987,6 +5042,12 @@ public sealed partial class JsonGameStore(
                     FatigueRecoveryItemUseFailure.CharacterNotFound);
             }
 
+            var limits = maximumFatigue is { } maximum
+                ? new FatigueLimits(maximum, 0)
+                : GetAccountFatigueLimits(account);
+            if (maximumRemainingFatigue > limits.Maximum)
+                return new(false, null, 0, 0, 0, FatigueRecoveryItemUseFailure.InvalidRequest);
+
             var character = account.Characters[characterIndex];
             var inventory = (character.Inventory ?? []).ToList();
             var itemIndex = inventory.FindIndex(item => item.Slot == sourceSlot);
@@ -4998,15 +5059,15 @@ public sealed partial class JsonGameStore(
                     false,
                     character,
                     0,
-                    Math.Min(character.UsedFatigue, maximumFatigue),
-                    Math.Min(character.UsedFatigue, maximumFatigue),
-                    FatigueRecoveryItemUseFailure.ItemStateChanged);
+                    Math.Min(character.UsedFatigue, limits.Maximum),
+                    Math.Min(character.UsedFatigue, limits.Maximum),
+                    FatigueRecoveryItemUseFailure.ItemStateChanged) { Limits = limits };
             }
 
             var previousUsedFatigue = Math.Min(
                 character.UsedFatigue,
-                maximumFatigue);
-            var remainingFatigue = maximumFatigue - previousUsedFatigue;
+                limits.Maximum);
+            var remainingFatigue = limits.Maximum - previousUsedFatigue;
             if (remainingFatigue >= maximumRemainingFatigue)
             {
                 return new FatigueRecoveryItemUseResult(
@@ -5015,7 +5076,7 @@ public sealed partial class JsonGameStore(
                     inventory[itemIndex].CountOrValue,
                     previousUsedFatigue,
                     previousUsedFatigue,
-                    FatigueRecoveryItemUseFailure.FatigueNotLowEnough);
+                    FatigueRecoveryItemUseFailure.FatigueNotLowEnough) { Limits = limits };
             }
 
             var remainingItemCount = inventory[itemIndex].CountOrValue - 1;
@@ -5047,7 +5108,7 @@ public sealed partial class JsonGameStore(
                 remainingItemCount,
                 previousUsedFatigue,
                 usedFatigue,
-                FatigueRecoveryItemUseFailure.None);
+                FatigueRecoveryItemUseFailure.None) { Limits = limits };
         }
         finally
         {
@@ -5548,6 +5609,10 @@ public sealed partial class JsonGameStore(
         await _gate.WaitAsync(cancellationToken);
         try
         {
+            var maximum = GetFatigueLimits(hasBlackDiamond: true).Maximum;
+            if (usedFatigue > maximum)
+                throw new ArgumentOutOfRangeException(nameof(usedFatigue), $"Used fatigue must be between 0 and {maximum}.");
+
             foreach (var account in _accounts)
             {
                 var characterIndex = account.Characters.FindIndex(character =>
@@ -5806,7 +5871,7 @@ public sealed partial class JsonGameStore(
     public async Task<DungeonRoomFatigueConsumptionResult>
         ConsumeDungeonRoomFatigueAsync(
             Guid characterId,
-            ushort maximumFatigue,
+            ushort? maximumFatigue = null,
             CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
@@ -5821,19 +5886,22 @@ public sealed partial class JsonGameStore(
                     continue;
                 }
 
+                var limits = maximumFatigue is { } maximum
+                    ? new FatigueLimits(maximum, 0)
+                    : GetAccountFatigueLimits(account);
                 var character = account.Characters[characterIndex];
                 var previousUsedFatigue = character.UsedFatigue;
-                if (previousUsedFatigue >= maximumFatigue)
+                if (previousUsedFatigue >= limits.Maximum)
                 {
                     return new DungeonRoomFatigueConsumptionResult(
                         character,
                         Consumed: false,
                         previousUsedFatigue,
-                        previousUsedFatigue);
+                        previousUsedFatigue) { Limits = limits };
                 }
 
                 var usedFatigue = checked((ushort)Math.Min(
-                    maximumFatigue,
+                    limits.Maximum,
                     previousUsedFatigue + 1));
                 var updated = character with { UsedFatigue = usedFatigue };
                 account.Characters[characterIndex] = updated;
@@ -5842,7 +5910,7 @@ public sealed partial class JsonGameStore(
                     updated,
                     Consumed: true,
                     previousUsedFatigue,
-                    usedFatigue);
+                    usedFatigue) { Limits = limits };
             }
 
             return new DungeonRoomFatigueConsumptionResult(
@@ -5858,13 +5926,15 @@ public sealed partial class JsonGameStore(
     }
 
     public async Task<FatigueResetResult> ResetFatigueForCurrentDayAsync(
-        DateTimeOffset localNow,
+        DateTimeOffset now,
         CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
-            if (!ResetFatigueForNewDayLocked(localNow, out var characterIds))
+            var previousDayKey = _fatigueDayKey;
+            var previousAccounts = _accounts;
+            if (!ResetFatigueForNewDayLocked(now, out var characterIds))
             {
                 return new FatigueResetResult(
                     false,
@@ -5873,11 +5943,22 @@ public sealed partial class JsonGameStore(
                     _fatigueDayKey);
             }
 
-            await SaveLockedAsync(cancellationToken);
+            try
+            {
+                await SaveLockedAsync(cancellationToken, isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                _accounts = previousAccounts;
+                _fatigueDayKey = previousDayKey;
+                throw;
+            }
+
+            Volatile.Write(ref _activeFatigueDayKey, _fatigueDayKey);
             logger.LogInformation(
-                "Advanced fatigue day to {FatigueDayKey} at local time {LocalTime} and reset {CharacterCount} character(s).",
+                "Advanced fatigue day to {FatigueDayKey} at Beijing time {BeijingTime} and reset {CharacterCount} character(s).",
                 _fatigueDayKey,
-                localNow,
+                now.ToOffset(FatigueResetService.BeijingOffset),
                 characterIds.Length);
             return new FatigueResetResult(
                 true,
@@ -5891,11 +5972,39 @@ public sealed partial class JsonGameStore(
         }
     }
 
-    public static int GetFatigueDayKey(DateTimeOffset localNow)
+    internal int ActiveFatigueDayKey => Volatile.Read(ref _activeFatigueDayKey);
+
+    internal FatigueLimits GetFatigueLimits(bool hasBlackDiamond, int? fatigueDayKey = null) =>
+        DungeonFatigueRules.GetLimits(fatigueDayKey ?? ActiveFatigueDayKey, hasBlackDiamond, options.Fatigue.WeekendDoubleEnabled);
+
+    internal async Task<(int DayKey, ushort UsedFatigue)?> GetCharacterFatigueAsync(
+        string accountName,
+        Guid characterId,
+        CancellationToken cancellationToken)
     {
-        var fatigueDate = localNow.TimeOfDay < TimeSpan.FromHours(6)
-            ? localNow.Date.AddDays(-1)
-            : localNow.Date;
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            return TryFindCharacterLocked(accountName, characterId, out _, out _, out var character)
+                ? (_fatigueDayKey, character.UsedFatigue)
+                : null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private FatigueLimits GetAccountFatigueLimits(AccountRecord account) =>
+        GetFatigueLimits(GetServiceExpiry(account, GameProtocolEngine.BlackDiamondServiceType) is { } expiry
+            && expiry > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+    public static int GetFatigueDayKey(DateTimeOffset now)
+    {
+        var beijingTime = now.ToOffset(FatigueResetService.BeijingOffset);
+        var fatigueDate = beijingTime.TimeOfDay < FatigueResetService.ResetTime
+            ? beijingTime.Date.AddDays(-1)
+            : beijingTime.Date;
         return checked(
             fatigueDate.Year * 10_000
             + fatigueDate.Month * 100
@@ -6435,9 +6544,10 @@ public sealed partial class JsonGameStore(
 
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
     private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
-        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null)
+        CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null,
+        List<AdminVictoryPointReceipt>? adminVictoryPointGrants = null, List<AdminMailBatchReceipt>? adminMailBatches = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger, AdminVictoryPointGrants = adminVictoryPointGrants ?? _adminVictoryPointGrants, AdminMailBatches = adminMailBatches ?? _adminMailBatches }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
@@ -6461,7 +6571,9 @@ public sealed partial class JsonGameStore(
                     FatigueDayKey = _fatigueDayKey,
                     DungeonRewardLedger = _dungeonRewardLedger,
                     DungeonGoldLedger = _dungeonGoldLedger,
-                    PvpLedger = _pvpLedger
+                    PvpLedger = _pvpLedger,
+                    AdminVictoryPointGrants = _adminVictoryPointGrants,
+                    AdminMailBatches = _adminMailBatches
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);
@@ -6488,32 +6600,38 @@ public sealed partial class JsonGameStore(
     }
 
     private bool ResetFatigueForNewDayLocked(
-        DateTimeOffset localNow,
+        DateTimeOffset now,
         out Guid[] characterIds)
     {
-        var fatigueDayKey = GetFatigueDayKey(localNow);
-        if (_fatigueDayKey == fatigueDayKey)
+        var fatigueDayKey = GetFatigueDayKey(now);
+        if (_fatigueDayKey >= fatigueDayKey)
         {
             characterIds = [];
             return false;
         }
 
         var resetCharacterIds = new List<Guid>();
+        var updatedAccounts = new List<AccountRecord>(_accounts.Count);
         foreach (var account in _accounts)
         {
-            for (var index = 0; index < account.Characters.Count; index++)
+            var characters = new List<CharacterRecord>(account.Characters.Count);
+            foreach (var character in account.Characters)
             {
-                var character = account.Characters[index];
-                if (character.UsedFatigue == 0)
+                if (character.UsedFatigue != 0)
                 {
-                    continue;
+                    resetCharacterIds.Add(character.Id);
+                    characters.Add(character with { UsedFatigue = 0 });
                 }
-
-                account.Characters[index] = character with { UsedFatigue = 0 };
-                resetCharacterIds.Add(character.Id);
+                else
+                {
+                    characters.Add(character);
+                }
             }
+
+            updatedAccounts.Add(account with { Characters = characters });
         }
 
+        _accounts = updatedAccounts;
         _fatigueDayKey = fatigueDayKey;
         characterIds = resetCharacterIds.ToArray();
         return true;
@@ -6825,7 +6943,8 @@ public sealed partial class JsonGameStore(
             account.AccountUid,
             AccountUidRules.Classify(account.AccountUid),
             Math.Max(0, account.Cash ?? DefaultAccountCash),
-            account.Role);
+            account.Role,
+            IsBanned(account) ? account.Ban : null);
 
     private static AuthenticatedAccount ToAuthenticatedAccount(AccountRecord account) =>
         new(account.AccountUid, account.UserName, AccountUidRules.Classify(account.AccountUid));

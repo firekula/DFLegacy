@@ -21,8 +21,13 @@ internal static partial class CeraGiftSmokeTests
         {
             await store.CreateAccountAsync(new("sender", "password", OicqCode: "123456"));
             await store.CreateAccountAsync(new("target", "password", OicqCode: "123456"));
-            return ((await store.CreateCharacterAsync("sender", new("Buyer", Level: 1))).Character!,
+            var roster = ((await store.CreateCharacterAsync("sender", new("Buyer", Level: 1))).Character!,
                 (await store.CreateCharacterAsync("target", new("收礼", Job: 1, Level: 1))).Character!);
+            // Gift transactions need their own funded test wallets.
+            await store.GrantCeraToAccountAsync("sender", 50_000);
+            await store.GrantCeraToAccountAsync("target", 50_000);
+            return ((await store.GetCharacterAsync("sender", roster.Item1.Id))!,
+                (await store.GetCharacterAsync("target", roster.Item2.Id))!);
         }
         internal Task<CeraGiftResult> Gift(JsonGameStore store, CharacterRecord sender, string recipient, uint commodity = 105009) =>
             store.GiftCeraShopAsync("sender", sender.Id, recipient, [new(0xFF, 0, commodity)], Shop);
@@ -149,7 +154,7 @@ internal static partial class CeraGiftSmokeTests
         out Dictionary<ushort,CharacterItemRecord> creatures, out byte? list, out ushort? slot)
     {
         object?[] args = [ (target.Inventory??[]).ToDictionary(i=>i.Slot), (target.AvatarInventory??[]).ToDictionary(i=>i.Slot),
-            (target.CreatureInventory??[]).ToDictionary(i=>i.Slot), attachment, items, uint.MaxValue, null, null, null, null, null ];
+            (target.CreatureInventory??[]).ToDictionary(i=>i.Slot), attachment, items, uint.MaxValue, null, null, null, null, null, null ];
         var ok=(bool)typeof(EntranceService).GetMethod("TryPlanMailAttachment",BindingFlags.NonPublic|BindingFlags.Static)!.Invoke(null,args)!;
         main=(Dictionary<ushort,CharacterItemRecord>)args[6]!;
         avatar=(Dictionary<ushort,CharacterItemRecord>)args[7]!;

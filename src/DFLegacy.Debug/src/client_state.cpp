@@ -575,11 +575,12 @@ namespace dfl::client_state
         ReleaseSRWLockShared(&publication.lock); return have;
     }
 
+#ifndef DFL_DEBUG_STATE_CONSUMER
     namespace
     {
         Publication Published;
         History CaptureHistory;
-        bool Enabled = false, GateChecked = false, HaveCapture = false;
+        bool Enabled = false, ExportEnabled = false, GateChecked = false, HaveCapture = false;
         volatile LONG LayoutSupported = 0;
         std::uint64_t LastCapture = 0, LastExported = 0, Skipped = 0, Started = 0;
         wchar_t Directory[MAX_PATH]{};
@@ -643,11 +644,13 @@ namespace dfl::client_state
             return ReadNative(nullptr, 0x493DC0, level, sizeof(level)) && std::memcmp(level, Level, sizeof(level)) == 0;
         }
     }
-    void Initialize(const wchar_t* settingsPath, const wchar_t* directory) noexcept
+    void Initialize(const wchar_t* settingsPath, const wchar_t* directory, bool allowExport) noexcept
     {
-        Enabled = settingsPath && directory && GetPrivateProfileIntW(L"DebugOverlay", L"ExportState", 0, settingsPath) == 1;
-        if (!Enabled || wcsnlen_s(directory, MAX_PATH) >= MAX_PATH - 64) { Enabled = false; return; }
-        wcscpy_s(Directory, directory); CreateDirectoryW(Directory, nullptr);
+        Enabled = true;
+        ExportEnabled = allowExport && settingsPath && directory && GetPrivateProfileIntW(L"DebugOverlay", L"ExportState", 0, settingsPath) == 1;
+        Directory[0]=0;
+        if (!directory || wcsnlen_s(directory, MAX_PATH) >= MAX_PATH - 64) ExportEnabled=false;
+        else { wcscpy_s(Directory, directory); if(ExportEnabled)CreateDirectoryW(Directory, nullptr); }
         FILETIME creation{}, exit{}, kernel{}, user{};
         if (!GetProcessTimes(GetCurrentProcess(), &creation, &exit, &kernel, &user)) { Enabled = false; return; }
         Started = (static_cast<std::uint64_t>(creation.dwHighDateTime) << 32) | creation.dwLowDateTime;
@@ -680,6 +683,7 @@ namespace dfl::client_state
                 GateChecked = true;
                 InterlockedExchange(&LayoutSupported, OriginalImage() ? 1 : 0);
             }
+            if(!ExportEnabled)return;
             Snapshot snapshot;
             if (!TryCopy(Published, snapshot) || snapshot.sequence == LastExported) return;
             const auto json = ToJson(snapshot, FileTime(nullptr));
@@ -700,4 +704,5 @@ namespace dfl::client_state
         catch (...) { /* Export failure must never escape into the existing worker. */ }
     }
     void Shutdown() noexcept { Enabled = false; }
+#endif
 }

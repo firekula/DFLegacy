@@ -1,0 +1,60 @@
+{
+  "schema": "dflegacy-live-final-boss-room/v1",
+  "server_commit": "57f45506429363180e1386b510c3b3eff7a8a5b6",
+  "client_version": "v0.1.8-giteatest.4",
+  "client_pid": 53756,
+  "server_pid": 50948,
+  "dungeon_id": 11,
+  "dungeon_name": "亚蒙下层",
+  "map_id": 1626,
+  "boss_template_id": 53,
+  "boss_uid": 7,
+  "room_generation": 6,
+  "native_death_requested_at": "2026-11-08T15:31:20.432929+08:00",
+  "native_death_method": "gated test-control native HP/death entry; real game reporting and server cascade/settlement",
+  "initial_19_second_samples": 30,
+  "initial_attempt": "Holding left outside the door did not produce a room-move request; not counted as wire rejection.",
+  "actual_door_attempt": {
+    "method": "gated test-control position at (100,300) inside the observed left-door rectangle, then bounded native left-key input",
+    "protocol": 48,
+    "target_room": [
+      1,
+      2
+    ],
+    "reply_payload_hex": "0013",
+    "rejection_count": 22653,
+    "first_at": "15:32:24",
+    "last_at": "15:35:29",
+    "server_reason": "error=19, clear=True, generation=6, alive=True",
+    "map_unchanged": true,
+    "generation_unchanged": true,
+    "client_door_animation_still_open": true,
+    "repeated_client_requests_while_standing_in_door": true
+  },
+  "idle_observation": {
+    "end_at": "2026-11-08T15:35:30.049788+08:00",
+    "seconds_since_native_death": 249.62,
+    "hp_before": 3415,
+    "hp_after": 3415,
+    "max_hp": 3425,
+    "dead": false,
+    "scene": 3,
+    "boss_dead": true,
+    "observation_mode": "30 initial samples plus fresh door/idle snapshots and visible UI; not continuous HP sampling for the entire interval"
+  },
+  "return_town": {
+    "at": "2026-11-08T15:36:13.213721+08:00",
+    "scene": 1,
+    "run_removed": true,
+    "server_reason": "settlement-after-card",
+    "weakened": false,
+    "entered_weakness": false,
+    "ui_screenshot": "../boss-return-town.jpg"
+  },
+  "limits": [
+    "One x64-launcher real-client solo run on local Windows; not all Sky Tower maps or two real clients.",
+    "Native test controls were used for traversal and boss death; not a natural full combat run.",
+    "Client door animation/request suppression is not changed by the server guard.",
+    "No automatic death or crash observed within this bounded interval; the original reported crash has no dump/reproduction and is not declared eradicated."
+  ]
+}

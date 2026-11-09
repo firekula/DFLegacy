@@ -21,6 +21,7 @@ namespace dfl::client_navigation
         volatile LONG Enabled=0;
         volatile LONG HookPublished=0;
         bool Installed=false, HitInstalled=false, HookAttempted=false;
+        bool Diagnostics=false, Commands=false;
         DWORD GameThread=0;
         wchar_t Directory[MAX_PATH]{};
         SRWLOCK InboxLock=SRWLOCK_INIT, OutboxLock=SRWLOCK_INIT;
@@ -325,11 +326,15 @@ namespace dfl::client_navigation
             else DeleteFileW(temporary);
         }
     }
-    void Initialize(const wchar_t* settingsPath,const wchar_t* directory,client_state::Reader reader) noexcept
+    void Initialize(const wchar_t* settingsPath,const wchar_t* directory,client_state::Reader reader,bool allowDiagnostics,bool playerFeatures) noexcept
     {
+        if(IsEnabled())return;
         InterlockedExchange(&Enabled,0);
         if (!settingsPath || !directory || wcsnlen_s(directory,MAX_PATH)>=MAX_PATH-64
-            || GetPrivateProfileIntW(L"DebugOverlay",L"EnableTownNavigation",0,settingsPath)!=1) return;
+            || (playerFeatures ? GetPrivateProfileIntW(L"Features",L"EnableTownNavigation",1,settingsPath)!=1
+                : GetPrivateProfileIntW(L"DebugOverlay",L"EnableTownNavigation",0,settingsPath)!=1)) return;
+        Diagnostics=allowDiagnostics;
+        Commands=allowDiagnostics && GetPrivateProfileIntW(L"DebugOverlay",L"EnableTownNavigation",0,settingsPath)==1;
         Native=reader;wcscpy_s(Directory,directory);
         GameThread=0;Installed=HitInstalled=HookAttempted=HaveInbox=HaveFile=Tracking=false;
         InterlockedExchange(&HookPublished,0);
@@ -337,8 +342,8 @@ namespace dfl::client_navigation
         InterlockedExchange(&Enabled,Native.read && Native.pid && Native.processStartedFileTime?1:0);
         if(IsEnabled())
         {
-            client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute);
-            client_map_feedback::Initialize(reader,directory);
+            client_town_route::Initialize(settingsPath,directory,reader,&ApplyRouteStep,&SupersedeForRoute,Diagnostics,Commands);
+            client_map_feedback::Initialize(reader,Diagnostics?directory:nullptr);
         }
     }
     void OnFrame() noexcept
@@ -388,8 +393,8 @@ namespace dfl::client_navigation
         try
         {
             const auto now=Now();
-            if (now-LastPoll>=50) {LastPoll=now;ReadCommand();}
-            ExportResult();
+            if (Commands && now-LastPoll>=50) {LastPoll=now;ReadCommand();}
+            if(Diagnostics)ExportResult();
             client_town_route::PumpWorker();
             client_map_feedback::PumpWorker();
         }

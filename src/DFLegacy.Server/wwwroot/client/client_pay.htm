@@ -1,10 +1,19 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
 <title>D&F</title>
 <link href="css/commen.css" rel="stylesheet" type="text/css" />
-<script type="text/javascript" src="client-auth.js"></script><script type="text/javascript">
+<script type="text/javascript" src="client-pay-settings.js"></script><script type="text/javascript" src="client-auth.js"></script><script type="text/javascript">
+
+function configurePayMode() {
+ if (window.DFLegacyClientPay && window.DFLegacyClientPay.testCeraEnabled === true) {
+  document.getElementById("pay_identity_label").innerHTML = "\u89d2\u8272\u540d\u79f0\uff1a";
+  document.getElementById("pay_mode_heading").innerHTML = "\u6d4b\u8bd5\u70b9\u5238\u5145\u503c";
+  document.getElementById("pay_amount_hint").innerHTML = "\u8bf7\u8f93\u51651\u52301000000\u7684\u6574\u6570\u70b9\u5238";
+ }
+}
 function choosePayAmount(value) {
 	var wrap = document.getElementById("amount_other_wrap");
 	var input = document.getElementById("amount_other");
@@ -23,6 +32,8 @@ function updatePayAmount(value) {
 }
 function resetPayForm() {
 	document.forms["formMain"].reset();
+	document.getElementById("payResult").style.display = "none";
+	document.getElementById("pay_msg").innerHTML = "";
 	document.getElementById("amount_other_wrap").style.display = "none";
 	document.getElementById("amount_value").value = "500";
 	return false;
@@ -45,6 +56,22 @@ function submitPayForm() {
 	var form = document.forms["formMain"];
 	var account = form.elements["account"].value.replace(/^\s+|\s+$/g, "");
 	var amount = parseInt(document.getElementById("amount_value").value, 10);
+
+	if (window.DFLegacyClientPay && window.DFLegacyClientPay.testCeraEnabled === true) {
+		var quantity = document.getElementById("amount_value").value;
+		if (!account || !/^[0-9]+$/.test(quantity) || Number(quantity) < 1 || Number(quantity) > 1000000) {
+			setPayMessage("\u8bf7\u8f93\u5165\u89d2\u8272\u540d\u548c1\u52301000000\u7684\u6574\u6570\u70b9\u5238\u6570\u91cf\u3002", true);
+			return false;
+		}
+		form.elements["characterName"].value = account;
+		form.action = "/api/client-pay/test-cera";
+		form.method = "post";
+		form.target = "payResult";
+		document.getElementById("payResult").style.display = "block";
+		setPayMessage("", false);
+		form.submit();
+		return false;
+	}
 	if (!account) {
 		setPayMessage("请输入游戏账号。", true);
 		return false;
@@ -53,7 +80,11 @@ function submitPayForm() {
 		setPayMessage("充值点数必须为100的倍数。", true);
 		return false;
 	}
-		PayAuth.post("/api/client-pay/cera", { account: account, amount: amount }, function (ok, status) {
+	if (!window.PayAuth || typeof window.PayAuth.post != "function") {
+		setPayMessage("\u9274\u6743\u7ec4\u4ef6\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u8d26\u53f7\u670d\u52a1\u5730\u5740\u6216\u7f51\u7edc\u62e6\u622a\u540e\u5237\u65b0\u91cd\u8bd5\u3002", true);
+		return false;
+	}
+		window.PayAuth.post("/api/client-pay/cera", { account: account, amount: amount }, function (ok, status) {
 			if (ok) { setPayMessage("\u5145\u503c\u6210\u529f\uff0c\u8bf7\u70b9\u51fb\u70b9\u5238\u5237\u65b0\u6309\u94ae\u67e5\u770b\u6700\u65b0\u4f59\u989d\u3002", false); }
 			else if (status === 401 || status === 403) { setPayMessage("\u5145\u503c\u5931\u8d25\uff1a\u9700\u8981\u7ba1\u7406\u5458\u767b\u5f55\uff08\u70b9\u5238\u5145\u503c\u4ec5\u7ba1\u7406\u5458\u53ef\u7528\uff09\u3002", true); }
 			else { setPayMessage("\u64cd\u4f5c\u5931\u8d25\uff08HTTP " + status + "\uff09\u3002", true); }
@@ -62,7 +93,7 @@ function submitPayForm() {
 }
 </script>
 </head>
-<body oncontextmenu="return false;" ondragstart="return false;" scroll="no">
+<body onload="configurePayMode();" oncontextmenu="return false;" ondragstart="return false;" scroll="no">
 <div id="wrapper">
 <div id="navi" class="navi">
 	<ul id="swapNavi">
@@ -76,7 +107,7 @@ function submitPayForm() {
 	<div class="qpay" role="button" tabindex="0" title="账号充值" onclick="return false;"></div>
 </div>
 
-<form name="formMain" id="pay_form" method="get" action="#" onsubmit="return false;">
+<form accept-charset="UTF-8" name="formMain" id="pay_form" method="get" action="#" onsubmit="return false;">
 
 
 
@@ -90,10 +121,10 @@ function submitPayForm() {
         
 
     
-		<h2>网银充点券</h2>
+		<h2 id="pay_mode_heading">网银充点券</h2>
 		<ul>
 			<li>
-				<h3>游戏账号：</h3>
+				<h3 id="pay_identity_label">游戏账号：</h3>
 				<input type="text" name="account" maxlength="32"/>
 			</li>
 			<li class="radio amountSelect">
@@ -105,7 +136,7 @@ function submitPayForm() {
 					<label class="amountOption"><input type="radio" name="amountChoice" value="other" onclick="choosePayAmount(this.value);" />其他</label>
 					<div id="amount_other_wrap" class="amountOther" style="display: none;">
 						<input type="text" id="amount_other" name="amount_other" maxlength="9" onkeyup="updatePayAmount(this.value);" onchange="updatePayAmount(this.value);" />
-						<p>请填写充入的点数(必须为100的倍数)</p>
+						<p id="pay_amount_hint">请填写充入的点数(必须为100的倍数)</p>
 					</div>
 				</div>
 				<input type="hidden" id="amount_value" name="amount" value="500" />
@@ -115,11 +146,12 @@ function submitPayForm() {
 				<a href="#" onclick="return resetPayForm();">重置</a>
 			</li>
 		</ul>
-		<p class="notice" id="pay_msg"><a href="#" onclick="return false;">点券使用有期限，详情请参见《玩家条例》</a></p>
+		<iframe id="payResult" name="payResult" title="Top-up result" frameborder="0" allowtransparency="true" style="display:none;width:100%;height:36px;border:0;"></iframe><p class="notice" id="pay_msg"><a href="#" onclick="return false;">点券使用有期限，详情请参见《玩家条例》</a></p>
 	</div>
 </div>
-</form>
+<input type="hidden" name="characterName" value="" /></form>
 </div>
+<script type="text/javascript" src="client-layout.js"></script>
 </body>
 </html>
 <!--[if !IE]>|xGv00|5694c75030d9a1f3e476444e024a9758<![endif]-->

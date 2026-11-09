@@ -34,7 +34,8 @@ namespace
         }
         return bytes;
     }
-    Bytes Archive(const std::vector<std::pair<std::string, std::string>>& files)
+    Bytes Archive(const std::vector<std::pair<std::string, std::string>>& files,
+                  std::size_t treeAlignment = 4, std::size_t extraPadding = 0, unsigned char paddingByte = 0)
     {
         Bytes tree, body;
         for (std::size_t i = 0; i < files.size(); ++i)
@@ -46,6 +47,7 @@ namespace
             auto encrypted = Encrypt(Bytes(files[i].second.begin(), files[i].second.end()), 0x12340000U + static_cast<unsigned>(i));
             body.insert(body.end(), encrypted.begin(), encrypted.end());
         }
+        tree.resize(tree.size() + (treeAlignment - tree.size() % treeAlignment) % treeAlignment + extraPadding, paddingByte);
         tree = Encrypt(std::move(tree), 0x87654321U);
         const std::string magic = "DNF_SCRIPT_PACK";
         Bytes out(magic.begin(), magic.end()); U32(out, static_cast<unsigned>(tree.size()));
@@ -139,6 +141,13 @@ int RunTownRouteCatalogTests()
     Failures = Checks = 0; Catalog c; std::string error; std::vector<Waypoint> points;
     auto files = Files(Map("0 0 100 100"));
     Check(LoadFixture(Archive(files), c, error) && error.empty() && c.areas.size() == 1 && c.pvfSha256.size() == 64, "encrypted PVF parses and hashes");
+    for (unsigned suffix = 0; suffix < 8; ++suffix)
+    {
+        auto padded = files; padded.push_back({"unused/" + std::string(suffix + 1, 'x'), ""});
+        Check(LoadFixture(Archive(padded, 8), c, error) && c.Find({1, 0}), "eight-byte directory alignment supports every zero-padding length");
+        Check(!LoadFixture(Archive(padded, 8, 8), c, error) && error == "invalid_pvf", "excess directory padding still rejected");
+    }
+    Check(!LoadFixture(Archive(files, 8, 0, 1), c, error) && error == "invalid_pvf", "nonzero directory padding still rejected");
     files[0] = {"TOWN\\town.lst", "1 `\xB8\xB6\xC0\xBB.twn`\n"}; files[1].first = "town/\xB8\xB6\xC0\xBB.twn";
     Check(LoadFixture(Archive(files), c, error) && c.Find({1, 0}) != nullptr, "strict CP949 normalized directory paths");
     files[1].second = "[area]\n0 `test/\xB8\xB6\xC0\xBB.map` `[normal]`\n[/area]"; files[2].first = "map/test/\xB8\xB6\xC0\xBB.map";
