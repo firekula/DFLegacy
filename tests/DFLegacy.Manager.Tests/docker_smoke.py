@@ -126,7 +126,9 @@ def exercise(image):
                     shutil.copyfileobj(response, output)
                 with zipfile.ZipFile(target) as archive:
                     binary_sources = {"DFLegacy.Launcher.exe": "launcher/DFLegacy.Launcher.exe",
-                                      "DFLegacy.Client.dll": "patch/DFLegacy.Client.dll"}
+                                      "DFLegacy.Client.dll": "patch/DFLegacy.Client.dll",
+                                      "DFLegacy.Diagnostics.exe": "launcher/DFLegacy.Diagnostics.exe",
+                                      "DFLegacy.CrashCapture.exe": "patch/DFLegacy.CrashCapture.exe"}
                     if test_build:
                         binary_sources["debug.dll"] = "patch/debug.dll"
                     sources = dict(binary_sources)
