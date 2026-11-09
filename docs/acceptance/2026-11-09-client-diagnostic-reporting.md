@@ -141,3 +141,9 @@ GM 标记的是“合并后的事故／份报告”；一分钟内同类通知�
 最终 scoped re-review 的原 9 项已处理，但发现新的裸／嵌套 `collections/<sessionId>.json` 私人库存遗漏。父任务裁定在已经必需的最终 Task4 隐私门中做最小两处 path-set 修订和针对性回归，不另开第二个整体修订／独立审阅循环；另只把真实修复测试的 expectedVersion 改为明确输入。提交 `64f5ab5` 精确 5 文件。RED：Python 宽泛选择泄漏两路径；managed 46 项／2 失败。GREEN：Python 1 项通过，managed 46/0；父任务阅读精确 diff／日志后裁定 PASS。最终完整 Python151、Launcher2125 及公开资源隐私门也通过。
 
 成本：这项最小整合修订采用针对性行为验证和父任务裁定，而非第二轮独立 re-review；在裁定之前只允许构建，不允许发布。最终 `.6` 来源已包含该修订，生产符号、匿名下载和四变体真实修复门没有被豁免。
+
+## 收尾归档
+
+完整 48 份临时审阅材料已复制到 `G:/dnf_local/DFLegacy_Diagnostics_Private_20261109_v6/acceptance-archive/sdd-final`，逐文件 SHA256 校验一致，复制证明为同目录上级的 `sdd-final-copy-proof.json`。随后清理当前计划临时目录的命令在创建进程前被自动审批检查以通用 `blocked by policy` 拒绝，因此原临时目录保留，未改道重试。这只影响临时材料清理，不影响已完成的构建、发布和验收。
+
+隔离分支 `codex/client-diagnostic-reporting` 和工作区保留；没有合并或推送源码。最终检查未发现遗留的游戏、服务、诊断助手或测试宿主进程，仅保留可能由其他工作共用的构建宿主。
