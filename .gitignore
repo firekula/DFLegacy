@@ -25,3 +25,12 @@ DNF2008/
 tools/acceptance/**/__pycache__/
 tools/debug/**/__pycache__/
 tests/**/__pycache__/
+
+# Local acceptance notes, Python caches, and investigation output.
+__pycache__/
+*.py[cod]
+/ACT1_LOCAL_ACCEPTANCE.md
+/.recon/
+/.zcodeignore
+/measure-invite-window/
+/tools/.superpowers/
