@@ -26,6 +26,8 @@ return failures==0?0:1;
 
 async Task NativeIntegrationTests()
 {
+ var hardware=DiagnosticProjection.CollectSystem();
+ Check(hardware.ContainsKey("gpuDriverVersion")&&hardware.ContainsKey("gpuMemoryBytes"),"bounded adapter collection explicitly returns driver and memory or unknown");
  var home=Path.Combine(root,"native-user");var client=Path.Combine(root,"native-client");
  var settings=new DiagnosticSettings(home);settings.SetEnabled(false);
  var oldEpoch=settings.Read().Epoch;

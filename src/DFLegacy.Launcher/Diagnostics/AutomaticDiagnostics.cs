@@ -8,8 +8,13 @@ internal static class AutomaticDiagnostics
     private static readonly object Gate=new();
     internal static DiagnosticSession? Session { get; private set; }
     private static string? identity;
+    private static readonly List<(DiagnosticSession Session,Process Process)> helpers=[];
+    private static LauncherOptions? configuredOptions;
+    private static DiagnosticSettings? configuredSettings;
+    private static Func<DiagnosticSession,Process?>? helperFactory;
+    private static bool suspended;
 
-    internal static void Configure(LauncherOptions options,DiagnosticSettings? settings=null)
+    internal static void Configure(LauncherOptions options,DiagnosticSettings? settings=null,Func<DiagnosticSession,Process?>? startHelper=null)
     {
         var registered=false;
         try
@@ -21,6 +26,9 @@ internal static class AutomaticDiagnostics
             var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId+"|"+preference.Enabled;
             lock(Gate)
             {
+                configuredOptions=options;configuredSettings=settings;helperFactory=startHelper;
+                if(suspended)return;
+                foreach(var owned in helpers.Where(h=>h.Process.HasExited).ToArray()){owned.Process.Dispose();helpers.Remove(owned);}
                 // A durable current-user preference is authoritative over copied launcher.json defaults.
                 options.Diagnostics.Enabled=preference.Enabled;
                 // Dump preferences apply to the next game. Keep the live game's
@@ -34,7 +42,12 @@ internal static class AutomaticDiagnostics
                 Program.Incidents.AutomaticReport=Record;
                 registered=true;
                 var helper=Path.Combine(AppContext.BaseDirectory,"DFLegacy.Diagnostics.exe");
-                if(!Session.Registration.LocalOnly&&File.Exists(helper)) { DFLegacy.UpdateCore.PathPolicy.NoLinks(helper);using var process=Process.Start(CreateHelperStartInfo(helper,Session)); }
+                if(!Session.Registration.LocalOnly&&(startHelper is not null||File.Exists(helper)))
+                {
+                    DFLegacy.UpdateCore.PathPolicy.NoLinks(helper);
+                    var process=startHelper is null?Process.Start(CreateHelperStartInfo(helper,Session)):startHelper(Session);
+                    if(process is not null)helpers.Add((Session,process));
+                }
             }
         }
         catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
@@ -42,6 +55,28 @@ internal static class AutomaticDiagnostics
             if(!registered)lock(Gate){Session=null;identity=null;Program.Incidents.AutomaticReport=null;}
             Program.LogWarning="自动诊断暂不可用，仅保留本地记录。";
         }
+    }
+    // Retained Process handles bind the exact child identity. Never terminate by name/PID.
+    internal static async Task SuspendForUpdateAsync(CancellationToken token)
+    {
+        (DiagnosticSession Session,Process Process)[] owned;
+        lock(Gate)
+        {
+            if(Session?.GameAlive()==true)throw new IOException("请先退出游戏再更新；本地现场助手仍在使用客户端文件。");
+            suspended=true;identity=null;
+            Session?.Complete();owned=helpers.ToArray();
+            foreach(var child in owned)child.Session.Complete();
+        }
+        using var bound=CancellationTokenSource.CreateLinkedTokenSource(token);bound.CancelAfter(TimeSpan.FromSeconds(12));
+        try {foreach(var child in owned)await child.Process.WaitForExitAsync(bound.Token).ConfigureAwait(false);}
+        catch(OperationCanceledException) when(!token.IsCancellationRequested){throw new IOException("自动诊断助手尚未退出，请稍后重试更新。");}
+        lock(Gate)foreach(var child in owned){if(helpers.Remove(child))child.Process.Dispose();}
+    }
+    internal static void ResumeAfterUpdate()
+    {
+        LauncherOptions? options;DiagnosticSettings? settings;Func<DiagnosticSession,Process?>? factory;
+        lock(Gate){if(!suspended)return;suspended=false;options=configuredOptions;settings=configuredSettings;factory=helperFactory;}
+        if(options is not null)Configure(options,settings,factory);
     }
     internal static ProcessStartInfo CreateHelperStartInfo(string helper,DiagnosticSession session)
     {

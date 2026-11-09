@@ -11,6 +11,7 @@ public sealed class DiagnosticSession
     public string DirectoryPath { get; }
     public DiagnosticRegistration Registration { get; private set; }
     private readonly HashSet<string> collected=new(StringComparer.Ordinal);
+    private readonly object completionGate=new();
     public string SessionId=>Registration.SessionId;
     private DiagnosticSession(string directory,DiagnosticRegistration registration) {DirectoryPath=directory;Registration=registration;}
     internal static string NormalizeSite(string serviceUrl)
@@ -71,7 +72,18 @@ public sealed class DiagnosticSession
         var current=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(DirectoryPath,"session.json"),16384)??Registration;
         return Alive(current.GamePid,current.GameCreatedUtcTicks);
     }
-    public void Complete() => DiagnosticFiles.Write(Path.Combine(DirectoryPath,"closed.json"),Registration.Capability);
+    public void Complete()
+    {
+        // A valid own-session marker is immutable. Replacing it a second time
+        // can collide with a reader during update coordinator/controller handoff.
+        lock(completionGate)
+        {
+            var complete=false;
+            try {complete=IsClosed;}
+            catch(Exception error) when(error is System.Text.Json.JsonException or InvalidDataException){ }
+            if(!complete)DiagnosticFiles.Write(Path.Combine(DirectoryPath,"closed.json"),Registration.Capability);
+        }
+    }
     public bool IsClosed => DiagnosticFiles.Read<string>(Path.Combine(DirectoryPath,"closed.json"),128)==Registration.Capability;
     private static bool Alive(int pid,long created)
     {

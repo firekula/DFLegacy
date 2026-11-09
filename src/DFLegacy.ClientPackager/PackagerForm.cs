@@ -254,7 +254,7 @@ internal sealed class V4ResourcesForm : Form
         Row("不可变版本 / Tag", version); Row("源构建 Commit (40 位)", commit);
         Row("架构", architecture); Row("类型", flavor); Row("发布顺序", sequence); Row("最小支持顺序", minimum);
         Row("旧清单（每行一个）", Browse(previous, false)); Row("复用清单（每行一个）", Browse(reuse, false));
-        includes.Text = "DFLegacy.Launcher.exe\r\nDFLegacy.Client.dll\r\nScript.pvf\r\nImagePacks2/**";
+        includes.Text = "DFLegacy.Launcher.exe\r\nDFLegacy.Client.dll\r\nDFLegacy.Diagnostics.exe\r\nDFLegacy.CrashCapture.exe\r\nScript.pvf\r\nImagePacks2/**";
         excludes.Text = "*.pdb\r\n*.tmp"; migrations.Text = "[]"; retired.Text = "[]";
         Row("包含规则（每行一个）", includes); Row("排除规则（优先）", excludes);
         Row("配置迁移 JSON 数组", migrations); Row("退役 JSON 数组", retired);

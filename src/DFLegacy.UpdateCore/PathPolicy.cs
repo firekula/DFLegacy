@@ -6,7 +6,7 @@ namespace DFLegacy.UpdateCore;
 public static class PathPolicy
 {
     private static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase)
-    { "launcher.json", "launcher.txt", "Config.ini", "client-package.json", "client-update-v4.json", ".dflegacy", "Logs", "Screenshot", "Screenshots", "Save", "Saves", "Accounts", "CrashReports" };
+    { "launcher.json", "launcher.txt", "Config.ini", "client-package.json", "client-update-v4.json", ".dflegacy", "Logs", "Screenshot", "Screenshots", "Save", "Saves", "Accounts", "CrashReports", "Diagnostics", "sessions", "captures", "queue", "events", "installations", "preference.json", "settings.json", "active.json", "preferences.json", "session.json", "closed.json", "drops.json" };
     public static void Validate(string relative, bool allowConfiguration = false)
     {
         if (string.IsNullOrEmpty(relative) || relative.Length > 1024 || !relative.IsNormalized(NormalizationForm.FormC)
@@ -19,7 +19,9 @@ public static class PathPolicy
                 || Regex.IsMatch(part, @"\A(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|\z)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
                 throw new InvalidDataException("更新路径包含 Windows 别名或无效分量。");
         }
-        if (Protected.Contains(parts[0]) && !(allowConfiguration && relative == "launcher.json"))
+        if (parts.Any(p => Protected.Contains(p) || p.EndsWith(".dmp", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".log", StringComparison.OrdinalIgnoreCase)
+                || Protected.Any(n => n.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && (p.StartsWith(n+".", StringComparison.OrdinalIgnoreCase) || p.StartsWith(n+"~", StringComparison.OrdinalIgnoreCase))))
+            && !(allowConfiguration && relative == "launcher.json"))
             throw new InvalidDataException("更新不能覆盖玩家配置、日志或运行数据：" + relative);
     }
     public static string Resolve(string root, string relative, bool allowConfiguration = false)

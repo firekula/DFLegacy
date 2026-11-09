@@ -75,6 +75,7 @@ internal sealed class ClientPackageManifest
             var expected = new HashSet<string>(["DFLegacy.Launcher.exe","DFLegacy.Client.dll"],StringComparer.Ordinal);
             if(flavor=="test") expected.Add("debug.dll");
             expected.Add(ScriptPvfName);
+            expected.Add("DFLegacy.Diagnostics.exe");expected.Add("DFLegacy.CrashCapture.exe");
             foreach(var entry in root.GetProperty("files").EnumerateArray())
             {
                 ExactKeys(entry,"path","size","sha256");
@@ -84,6 +85,9 @@ internal sealed class ClientPackageManifest
                 files.Add(new(name,size,hash));
             }
             expected.Remove(ScriptPvfName);
+            // Keep old schema-2 releases readable; new packages carry both helpers.
+            if(expected.Contains("DFLegacy.Diagnostics.exe")&&expected.Contains("DFLegacy.CrashCapture.exe"))
+            {expected.Remove("DFLegacy.Diagnostics.exe");expected.Remove("DFLegacy.CrashCapture.exe");}
             if(expected.Count!=0) throw new InvalidDataException();
             return new(directory,version,commit,flavor,files);
         }

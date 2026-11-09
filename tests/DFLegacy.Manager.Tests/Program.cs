@@ -146,6 +146,8 @@ try
     var assetFiles = new Dictionary<string, string>
     {
         ["launcher/DFLegacy.Launcher.exe"] = "fake self-contained launcher host",
+        ["launcher/DFLegacy.Diagnostics.exe"] = "x64 diagnostic fixture",
+        ["patch/DFLegacy.CrashCapture.exe"] = "x86 capture fixture",
         ["launcher/launcher.json"] = "{\"Account\":\"private-user\",\"Password\":\"do not export\"}",
         ["launcher/Config.ini"] = "[Features]\nEnableDebugOverlay=1\n[Network]\nClientServiceUrl=http://old-host\n",
         ["launcher/DFLegacy.Client.dll"] = "native patch",
@@ -216,6 +218,8 @@ try
     Directory.CreateDirectory(Path.Combine(paths.AssetsDirectory, "launcher-x86"));
     File.WriteAllText(Path.Combine(paths.AssetsDirectory, x86Asset), "x86 launcher fixture");
     assetFiles.Add(x86Asset, "x86 launcher fixture");
+    File.WriteAllText(Path.Combine(paths.AssetsDirectory,"launcher-x86/DFLegacy.Diagnostics.exe"),"x86 diagnostic fixture");
+    assetFiles.Add("launcher-x86/DFLegacy.Diagnostics.exe","x86 diagnostic fixture");
     WriteAssets(commit);
     var updateStore = new ClientUpdateStore(paths, "http://games.example.test:18083");
     var dualPath = await exporter.ExportPairAsync(edited with { PvpEnabled = true }, false, updateStore, default, null);
@@ -224,6 +228,9 @@ try
         foreach (var architecture in new[] { "x86", "x64" })
         {
             using var inner = new ZipArchive(dual.GetEntry($"DFLegacy-client-win-{architecture}.zip")!.Open(), ZipArchiveMode.Read);
+            using(var helperReader=new StreamReader(inner.GetEntry("DFLegacy.Diagnostics.exe")!.Open()))
+                Check(helperReader.ReadToEnd()==(architecture=="x86"?"x86 diagnostic fixture":"x64 diagnostic fixture"),architecture+" exports correct architecture helper");
+            Check(inner.GetEntry("DFLegacy.CrashCapture.exe") is not null,architecture+" exports native x86 capture helper");
             using var configReader = new StreamReader(inner.GetEntry("launcher.json")!.Open());
             var dualConfig = JsonDocument.Parse(configReader.ReadToEnd()).RootElement;
             Check(dualConfig.GetProperty("Relay").GetProperty("TcpPorts").GetString()!.Split(',')
@@ -235,7 +242,7 @@ try
             Check(current.Version == "v1.2.3" && current.Size == new FileInfo(package).Length
                 && current.Sha256 == Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(package))), $"{architecture} update metadata matches immutable archive");
             using var update = ZipFile.OpenRead(package);
-            Check(update.Entries.Select(e => e.FullName).Order().SequenceEqual(new[] { "DFLegacy.Client.dll", "DFLegacy.Launcher.exe", "update-manifest.json" }),
+            Check(update.Entries.Select(e => e.FullName).Order().SequenceEqual(new[] { "DFLegacy.Client.dll", "DFLegacy.CrashCapture.exe", "DFLegacy.Diagnostics.exe", "DFLegacy.Launcher.exe", "update-manifest.json" }),
                 $"{architecture} update omits installer configuration");
         }
     }
@@ -262,7 +269,7 @@ try
         Check(archive.GetEntry("debug.dll") is not null && archive.GetEntry("ijl15.dll") is null, "test export includes debug but never IJL");
         using var reader = new StreamReader(archive.GetEntry("client-package.json")!.Open());
         var installed = JsonNode.Parse(reader.ReadToEnd())!;
-        Check(installed["schemaVersion"]!.GetValue<int>() == 2 && installed["flavor"]!.GetValue<string>() == "test" && installed["files"]!.AsArray().Count == 3, "test manifest records exact schema2 flavor and files");
+        Check(installed["schemaVersion"]!.GetValue<int>() == 2 && installed["flavor"]!.GetValue<string>() == "test" && installed["files"]!.AsArray().Count == 5, "test manifest records exact schema2 flavor and files");
     }
     var debugPath = Path.Combine(paths.AssetsDirectory, "patch/debug.dll");
     File.Delete(debugPath);

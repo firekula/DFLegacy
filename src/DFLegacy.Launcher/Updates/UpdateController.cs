@@ -99,6 +99,7 @@ internal sealed class UpdateController(IUpdateSession session, string installati
                 {
                     Set(UpdatePhase.Installing,recovery!=null?"正在准备安全恢复助手…":"正在准备安全安装助手…",recovery?.Version??prepared!.Release.Version,
                         isRecovery:recovery!=null,replacesScriptPvf:prepared?.Manifest.HasScriptPvf==true);
+                    await Diagnostics.AutomaticDiagnostics.SuspendForUpdateAsync(token).ConfigureAwait(false);
                     artifacts??=UpdateArtifacts.Create(installation);
                     var handoff=recovery!=null?await session.PrepareRecoveryAsync(recovery,token).ConfigureAwait(false):await session.PrepareAsync(prepared!,token).ConfigureAwait(false); artifacts.TrackHelper(handoff);
                     var helper=await session.StartAsync(handoff,token).ConfigureAwait(false);
@@ -107,7 +108,8 @@ internal sealed class UpdateController(IUpdateSession session, string installati
                     lock(gate) { if(!disposed) shutdown(); }
                 }
                 catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消安装，可返回登录。"); }
-                catch(Exception ex) { Program.ReportError("update-install",ex); Cleanup(); Set(UpdatePhase.Error,"暂时无法安装，请关闭游戏后重试。\n"+ex.Message); }
+                catch(Exception ex) { Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); Program.ReportError("update-install",ex); Cleanup(); Set(UpdatePhase.Error,"暂时无法安装，请关闭游戏后重试。\n"+ex.Message); }
+                finally { if(!handedOff)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
             }); return operation;
         }
     }

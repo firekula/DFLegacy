@@ -199,3 +199,17 @@ Gitee 适配仍保留：先从指定仓库／Release 的 `attach_files` 列表�
 旧客户端先通过相应 V3 桥接包升级登录器，再使用 V4 管理资源；原 `release.py build-client-packages --updates-only --script-pvf ...` 与 `github_publish.py` 未改写。本次也交付四个 `starter-clients` 手动替换工具包，需在隔离游戏副本解压后执行包内 `Enable-Gitea-Test.ps1`，才会切到 Gitea 测试源；脚本备份现有配置并保留其他字段。四包通过生产清单解析器验证，实际程序和资源完成本地与 Gitea 远端更新验收。旧版正式 GitHub 桥接仍未发布或远端验收。
 
 本轮 `.2` 只更新测试资源，二进制及 starter 的 `client-package.json` 仍为 `.1`。实际 V4 安装版本查看 `.dflegacy/v4/installed.json` 中的 `release.tag`；不能仅根据旧安装包清单判断资源版本。现在最新测试版本是 `.2`，新启动会直接安装它，A→B 流程已由自动验收完成。
+
+## 自动基本故障报告（Unreleased）
+
+普通版／测试版、x86／x64 都必须包含对应架构的 `DFLegacy.Diagnostics.exe` 与 Win32 `DFLegacy.CrashCapture.exe`，以及既有固定入口、登录器、更新器和补丁；测试版另含 `debug.dll`。上传助手采用独立自包含单文件，避免依赖机器上安装的 .NET，代价是增加下载体积；V4 仍按实际变化的文件下载。固定原生入口保持前次字节身份。旧 schema-2 读取兼容不含助手的旧包；新资源生成器要求完整助手对。
+
+基本上报默认开启，无首次同意弹窗。当前用户开关保存在 `%LOCALAPPDATA%/DFLegacy/Diagnostics/preference.json`，优先于复制的 `launcher.json` 默认值。更换接收站点或关闭／重新开启都会隔离旧队列；复制客户端目录不会上传另一用户旧记录。设置显示实际接收源、HTTP「未加密」、待发／保留／已发送数及最后回执。`Diagnostics.ServiceUrl` 留空时使用实际选中服务器的账号 API 地址；配置不得指向 GM 或玩家 HTTP 端口。
+
+`Logs/DFLegacy/Incidents` 仍是本地详细事故记录，不作为上传来源。自动队列只包含有界结构化基本 JSON：事件、版本、模块相对位置及有限系统字段；无账号、密码、令牌、聊天、截图、完整配置、路径或内存附件。GPU 驱动／容量仅查询首个枚举显示适配器的有限注册表值，缺失为 unknown；不代表实际游戏渲染器。`system.processArchitecture` 是收集进程架构、`uptimeSeconds` 是操作系统启动时间；顶层 architecture 是事故生产者架构。未观察到的游戏分辨率／窗口／渲染器保持 unknown。
+
+原始小型转储默认仅保存在当前用户 `captures`，独立设置下次游戏启动生效，最多两份、每份 16 MiB；新接收器和上传助手没有转储上传接口。原版 BugTrap 历史外传抑制仅对[已验证 ACT1 原版哈希](knowledge/decisions/2026-11-09-native-diagnostic-capture.md)成立，未知第三方模块不作同等保证。正常退出、恢复异常、正常 EOF、用户取消不算 crash；现场、事后快照、未知异常退出分别标记。
+
+启动时助手可能已占用待更新的程序。更新／修复交接前只向本次拥有的会话发送 capability 验证的关闭标记，保留创建所得 Process 句柄并最多等待 12 秒（助手最终收尾最多 10 秒），再执行原有文件锁预检；不按进程名杀进程。安装失败或取消时重新建立上报会话。游戏仍存活时不停止其原生捕获助手，需先退出游戏。有效安装中的运行时助手不可用保持游戏启动容错；离线缺失／损坏受管理助手则继续阻止启动，联网按可信清单修复，二者边界不混淆。
+
+发布资源只接受固定公共助手文件名。诊断目录、会话／capability、偏好、队列、转储和原有私人配置全部排除；即使误复制到游戏目录，也不能通过宽泛 V4 包选择进入清单。Manager、client-assets 和离线打包器导出的客户端均包含同架构上传助手及 x86 捕获器。

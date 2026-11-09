@@ -42,7 +42,7 @@ class UpdatePackageTests(unittest.TestCase):
             test = '-test-' in package.name
             manifest = release.verify_client_package(package, VERSION, COMMIT, package.name)
             self.assertEqual((manifest['schemaVersion'], manifest['flavor']), (2, 'test' if test else 'normal'))
-            binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'Script.pvf'}
+            binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'DFLegacy.Diagnostics.exe', 'DFLegacy.CrashCapture.exe', 'Script.pvf'}
             if test:
                 binaries.add('debug.dll')
             self.assertEqual({row['path'] for row in manifest['files']}, binaries)
@@ -127,7 +127,7 @@ class UpdatePackageTests(unittest.TestCase):
         assets = self.assets()
         archive = release.build_client_update(assets, self.root / 'out', VERSION, COMMIT)
         with zipfile.ZipFile(archive) as z:
-            self.assertEqual(z.namelist(), ['DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'update-manifest.json'])
+            self.assertEqual(z.namelist(), ['DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'DFLegacy.Diagnostics.exe', 'DFLegacy.CrashCapture.exe', 'update-manifest.json'])
             manifest = json.loads(z.read('update-manifest.json'))
             self.assertEqual(set(manifest), {'schemaVersion', 'version', 'commit', 'flavor', 'files'})
             self.assertEqual((manifest['schemaVersion'], manifest['version'], manifest['commit']), (2, VERSION, COMMIT))
@@ -153,7 +153,7 @@ class UpdatePackageTests(unittest.TestCase):
             test = '-test-' in package.name
             self.assertEqual(data['flavor'], 'test' if test else 'normal')
             with zipfile.ZipFile(package) as z:
-                binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll'} | ({'debug.dll'} if test else set())
+                binaries = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'DFLegacy.Diagnostics.exe', 'DFLegacy.CrashCapture.exe'} | ({'debug.dll'} if test else set())
                 metadata = {'client-package.json', 'SHA256SUMS', 'README.txt'} if '-tools-' in package.name else {'update-manifest.json'}
                 self.assertEqual(set(z.namelist()), binaries | metadata)
                 for info in z.infolist(): self.assertEqual(info.external_attr >> 16, 0o100644)

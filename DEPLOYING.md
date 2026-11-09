@@ -196,3 +196,11 @@ V4 不整文件覆盖 `launcher.json` 或 `Config.ini`。`Relay.TcpPorts`／`Udp
 Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
 
 本地 Launcher 全套测试也需要上述两个显式环境变量及同版本原生预构建路径。只验证发布包解析可运行 `python -m unittest discover -s tools/release/tests -p test_github_publish.py -k real_client_parser -v`，它调用真实 Launcher 的安装清单和更新解析器检查四种合成包，不启动游戏或操作界面。完整发布工具测试为 `python -m unittest discover -s tools/release/tests -v`。
+
+## 客户端基本故障报告（Unreleased）
+
+无需新端口。`POST /api/client-diagnostics/reports` 只在账号 API `Admin.Port`（本地默认 8081）接收，GM 管理仅在独立 GM 口（本地默认 18081）且需 Admin 身份；玩家 HTTP 口不提供接收／查看。GM 后台新增故障报告页，支持类型、版本、状态、系统、GPU、时间筛选、分页、状态维护、基本 JSON 下载及删除。交互式页面操作本轮尚未完成，自动 HTTP 权限／筛选／下载／删除回归见[验收报告](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。
+
+在 `server.json` 的 `ClientDiagnostics` 中可设置 `Enabled`（默认 true）、`StoragePath`（空则存档同级 diagnostics 独立目录）、`RetentionDays`（最多 14）、`MaxStorageBytes`（最多 268435456）、`MaxReportCount`（最多 2000）、`MaxDeduplicationEntries`（最多 50000）、`SourcePerMinute`（5）、`SourcePerHour`（30）、`GlobalPerMinute`（10）、`GlobalPerHour`（120）。两个并发接收，上行压缩 256 KiB／展开 1 MiB、15 秒请求界限；容量不足返回 503，不通过提前删除幂等摘要腾空间。删除正文后保留 30 天去重摘要，重试返回 410，防止报告复活。诊断存储不持有游戏存档锁。
+
+HTTP 基本 JSON 兼容现有公网入口，设置明确显示未加密；建议部署 HTTPS。HTTPS 不允许降级或忽略证书，不允许跨源重定向。自动队列按当前用户保存，100 份／32 MiB／14 天、单并发约 64 KiB/s，每次登录器运行每事件最多三次尝试；丢失响应／重启重复发送保持相同正文和事件 ID。该服务没有原始转储上传接口。

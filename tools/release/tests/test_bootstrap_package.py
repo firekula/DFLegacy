@@ -54,6 +54,8 @@ class BootstrapPackages(unittest.TestCase):
             'DFLegacy.Launcher.App.exe': pe(architecture, b'managed-app'),
             'DFLegacy.Updater.exe': pe(architecture, b'managed-app'),
             'DFLegacy.Client.dll': pe('x86', b'unchanged-game-patch'),
+            'DFLegacy.Diagnostics.exe': pe(architecture, b'self-contained-helper'),
+            'DFLegacy.CrashCapture.exe': pe('x86', b'local-capture-helper'),
             'UpdateTestAssets/probe.npk': b'public unused resource',
             'UpdateTestAssets/probe.pvf': b'public unused static resource',
         }
@@ -106,7 +108,7 @@ class BootstrapPackages(unittest.TestCase):
 
     def test_all_fixed_files_are_required_before_output_is_created(self):
         inputs = self.inputs()
-        for missing in ('DFLegacy.Launcher.exe', 'DFLegacy.Launcher.App.exe', 'DFLegacy.Updater.exe', 'DFLegacy.Client.dll'):
+        for missing in ('DFLegacy.Launcher.exe', 'DFLegacy.Launcher.App.exe', 'DFLegacy.Updater.exe', 'DFLegacy.Client.dll', 'DFLegacy.Diagnostics.exe', 'DFLegacy.CrashCapture.exe'):
             with self.subTest(missing=missing), self.assertRaises(v4.ReleaseError):
                 self.build(inputs=[row for row in inputs if row['path'] != missing])
             self.assertFalse((self.root / 'release').exists())
@@ -120,10 +122,10 @@ class BootstrapPackages(unittest.TestCase):
         self.assertFalse((self.root / 'release').exists())
 
     def test_every_executable_has_its_expected_architecture_including_x86_game_patch(self):
-        for target in ('DFLegacy.Launcher.exe', 'DFLegacy.Launcher.App.exe', 'DFLegacy.Updater.exe', 'DFLegacy.Client.dll'):
+        for target in ('DFLegacy.Launcher.exe', 'DFLegacy.Launcher.App.exe', 'DFLegacy.Updater.exe', 'DFLegacy.Client.dll', 'DFLegacy.Diagnostics.exe', 'DFLegacy.CrashCapture.exe'):
             inputs = self.inputs('x64')
             row = next(row for row in inputs if row['path'] == target)
-            bad = pe('x64' if target == 'DFLegacy.Client.dll' else 'x86')
+            bad = pe('x64' if target in ('DFLegacy.Client.dll', 'DFLegacy.CrashCapture.exe') else 'x86')
             Path(row['source']).write_bytes(bad)
             row.update(sha256=hashlib.sha256(bad).hexdigest(), size=len(bad))
             with self.subTest(target=target), self.assertRaisesRegex(v4.ReleaseError, 'architecture'):
@@ -146,7 +148,8 @@ class BootstrapPackages(unittest.TestCase):
     def test_secrets_configs_and_recovery_inputs_are_rejected_not_silently_packaged(self):
         inputs = self.inputs()
         for name in ('launcher.json', 'launcher.txt', 'nested/launcher.json.backup-1', '.dflegacy/bootstrap/recovery.ini',
-                     'cache/a.bin', 'accounts.json', 'nested/private.key', 'DFLegacy.Bootstrap.ini'):
+                     'cache/a.bin', 'Diagnostics/session.json', 'nested/sessions/session.json', 'captures/crash.dmp',
+                     'nested/preference.json', 'queue/body.json', 'nested/closed.json', 'accounts.json', 'nested/private.key', 'DFLegacy.Bootstrap.ini'):
             with self.subTest(name=name), self.assertRaises(v4.ReleaseError):
                 self.build(inputs=inputs + [dict(inputs[0], path=name)])
         # Source names themselves cannot launder a private cache into a public destination.

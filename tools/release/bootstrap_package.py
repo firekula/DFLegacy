@@ -25,7 +25,10 @@ LAUNCHER = 'DFLegacy.Launcher.App.exe'
 UPDATER = 'DFLegacy.Updater.exe'
 DESCRIPTOR = 'DFLegacy.Bootstrap.ini'
 CLIENT = 'DFLegacy.Client.dll'
-REQUIRED = {ENTRY, LAUNCHER, UPDATER, DESCRIPTOR, CLIENT}
+DIAGNOSTICS = 'DFLegacy.Diagnostics.exe'
+CAPTURE = 'DFLegacy.CrashCapture.exe'
+BASE_REQUIRED = {ENTRY, LAUNCHER, UPDATER, DESCRIPTOR, CLIENT}
+REQUIRED = BASE_REQUIRED | {DIAGNOSTICS, CAPTURE}
 
 
 def _source(architecture, flavor, provider, repository, channel, origin):
@@ -94,9 +97,10 @@ def _inputs(inputs, architecture):
         parts = name.split('/')
         v4.require(not any('/'.join(parts[:i]) in names for i in range(1, len(parts))),
                    'public file/directory path collision')
-    for name in (ENTRY, LAUNCHER, UPDATER):
+    for name in (ENTRY, LAUNCHER, UPDATER, DIAGNOSTICS):
         _pe_architecture(rows[name]['source'], architecture)
     _pe_architecture(rows[CLIENT]['source'], 'x86')
+    _pe_architecture(rows[CAPTURE]['source'], 'x86')
     if 'debug.dll' in rows:
         _pe_architecture(rows['debug.dll']['source'], 'x86')
     return rows
@@ -106,9 +110,9 @@ def _manifest(value):
     return v4.validate_manifest(v4.load_json(value) if isinstance(value, (str, Path)) else copy.deepcopy(value))
 
 
-def _layout(manifest):
+def _layout(manifest, historical=False):
     rows = {row['path']: row for row in manifest['files']}
-    v4.require(REQUIRED <= rows.keys(), 'manifest is missing the fixed bootstrap layout')
+    v4.require((BASE_REQUIRED if historical else REQUIRED) <= rows.keys(), 'manifest is missing the fixed bootstrap layout')
     for path in rows: _public_path(path)
     return rows
 
@@ -116,7 +120,7 @@ def _layout(manifest):
 def assert_stable_entry(previous_manifest, current_manifest):
     """Require identical fixed-entry bytes for two bootstrap release manifests."""
     previous = _manifest(previous_manifest); current = _manifest(current_manifest)
-    old = _layout(previous); new = _layout(current)
+    old = _layout(previous, historical=True); new = _layout(current)
     v4.require(all(previous[key] == current[key] for key in ('architecture', 'flavor', 'channel')),
                'fixed entry comparison requires matching variant/source')
     v4.require((old[ENTRY]['sha256'], old[ENTRY]['size']) == (new[ENTRY]['sha256'], new[ENTRY]['size']),
@@ -139,8 +143,9 @@ def _verify_tree(root, manifest):
             _identity(path, (rows[relative]['sha256'], rows[relative]['size']))
             actual.add(relative)
     v4.require(actual == set(rows), 'bootstrap source is missing managed files')
-    for name in (ENTRY, LAUNCHER, UPDATER): _pe_architecture(root / name, manifest['architecture'])
+    for name in (ENTRY, LAUNCHER, UPDATER, DIAGNOSTICS): _pe_architecture(root / name, manifest['architecture'])
     _pe_architecture(root / CLIENT, 'x86')
+    _pe_architecture(root / CAPTURE, 'x86')
     if 'debug.dll' in rows: _pe_architecture(root / 'debug.dll', 'x86')
     expected = _descriptor(manifest['architecture'], rows[LAUNCHER]['sha256'], rows[UPDATER]['sha256'])
     v4.require((root / DESCRIPTOR).read_bytes() == expected, 'bootstrap descriptor hash/architecture layout differs')

@@ -75,7 +75,7 @@ Wire format `DFLegacy-client-diagnostic-1`，JSON UTF-8，服务器可选接收 
 
 **Files:** tools/release 中实际 client-assets/V4 打包路径及测试，离线打包器/Manager 的已有客户端配置导出接线，README.md、CHANGELOG.md、CLIENT_UPDATES_V4.md、DEPLOYING.md、图文验收报告。
 
-**Interfaces:** 两架构包都含对应 Diagnostics.exe 及共享依赖和 x86 捕获器，受 V4 清单校验。LocalAppData 数据、旧预留诊断目录、报告、转储与本地开关不进入发布资源。
+**Interfaces:** 两架构包都含对应架构的自包含单文件 Diagnostics.exe 和 x86 捕获器（按 Task4 集成裁定放宽共享运行时优化，保持单文件修复且无需全局 .NET），受 V4 清单校验。LocalAppData 数据、旧预留诊断目录、报告、转储与本地开关不进入发布资源。
 
 - [ ] 写失败测试：四变体包组件齐全、配置迁移不覆盖已关闭选择、任何运行时报告/凭证不进入 client-assets；故障助手缺失能经 V4 修复。
 - [ ] 实现打包接线和服务端参数文档；本地配置保持同一 8081/18081 端口。

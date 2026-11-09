@@ -45,6 +45,7 @@ internal sealed class UpdateCoordinator : IDisposable
             {
                 try
                 {
+                    await Diagnostics.AutomaticDiagnostics.SuspendForUpdateAsync(CancellationToken.None);
                     var owners=await session.InspectLocksAsync(CancellationToken.None);
                     if(owners.Count>0)
                     {
@@ -55,9 +56,10 @@ internal sealed class UpdateCoordinator : IDisposable
                         if(confirmed) await FileLockOwners.CloseAsync(owners,true,CancellationToken.None);
                     }
                 }
-                catch(Exception ex) { Program.ReportError("update-lock-inspection",ex); notify("无法处理文件占用，请关闭相关程序后重试。\n"+ex.Message); confirmed=false; }
+                catch(Exception ex) { Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); Program.ReportError("update-lock-inspection",ex); notify("无法处理文件占用，请关闭相关程序后重试。\n"+ex.Message); confirmed=false; }
             }
-            await controller.InstallAsync(confirmed);
+            try { await controller.InstallAsync(confirmed); }
+            finally { if(controller.State.Phase!=UpdatePhase.Installing)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
         }
         if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
         ShowLogin();

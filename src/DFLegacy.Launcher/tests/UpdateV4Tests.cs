@@ -20,7 +20,7 @@ internal static class UpdateV4Tests
             return new(name,bytes.Length,hash,[new(hash,bytes.Length,"v4-test",hash+".bin")]);
         }
         var m = new Core.ClientManifest(4,"v4-test",new string('a',40),source.Architecture,"normal","gitee-test",1,0,
-            [Entry("DFLegacy.Launcher.exe","launcher"),Entry("DFLegacy.Client.dll","dll"),Entry("ImagePacks2/test.npk","npk")],[],[]);
+            [Entry("DFLegacy.Launcher.exe","launcher"),Entry("DFLegacy.Client.dll","dll"),Entry("DFLegacy.Diagnostics.exe","helper"),Entry("ImagePacks2/test.npk","npk")],[],[]);
         var raw=Core.ManifestCodec.Serialize(m); var release=new Core.VerifiedRelease(source,m.Version,Hash(raw),raw);
         var provider=new Provider(source,release,blobs);
         var options=new LauncherOptions { UpdateProvider="gitee",UpdateChannel="gitee-test",UpdateServiceUrl="http://127.0.0.1:1" };
@@ -36,7 +36,21 @@ internal static class UpdateV4Tests
             check(await session.CheckAsync(0,default)==null && session.StatusMessage.Contains("完整校验"),"V4 adapter reports actual complete verification");
         }
         var manifest=ClientPackageManifest.LoadAndValidate(root);
-        check(manifest.Files.Count==3 && manifest.Files.Any(f=>f.Path.EndsWith(".npk")),"launch validation includes arbitrary managed resources");
+        check(manifest.Files.Count==4 && manifest.Files.Any(f=>f.Path.EndsWith(".npk")),"launch validation includes arbitrary managed resources");
+        foreach(var privatePath in new[]{"Diagnostics/session.json","nested/sessions/session.json","captures/x.dmp","nested/preference.json","queue/body.json","nested/closed.json"})
+        {
+            try {Core.PathPolicy.Validate(privatePath);check(false,"managed reader must reject diagnostic private path "+privatePath);}catch(InvalidDataException){check(true,"private diagnostic path rejected: "+privatePath);}
+        }
+        var diagnosticHelper=Path.Combine(root,"DFLegacy.Diagnostics.exe");File.Delete(diagnosticHelper);
+        provider.Offline=true;
+        using(var offline=new V4UpdateSession(root,options,provider))
+        {
+            try {await offline.CheckAsync(0,default);check(false,"offline missing managed helper cannot weaken integrity");}catch(InvalidDataException){check(true,"offline missing helper retains trusted-manifest launch block");}
+        }
+        provider.Offline=false;
+        using(var repair=new V4UpdateSession(root,options,provider))check(await repair.CheckAsync(0,default)!=null,"online missing helper selects same-version V4 repair");
+        var helperEngine=new Core.UpdateEngine(root,provider);Core.InstallTransaction.Apply(root,await helperEngine.DownloadAsync(await helperEngine.CheckAsync()));
+        check(File.ReadAllText(diagnosticHelper)=="helper","V4 repair restores hash-verified helper bytes");
         File.WriteAllText(Path.Combine(root,"ImagePacks2/test.npk"),"bad");
         try { ClientPackageManifest.LoadAndValidate(root); check(false,"launch blocks changed managed NPK"); } catch(InvalidDataException) { }
         using(var session=new V4UpdateSession(root,options,provider)) check(await session.CheckAsync(0,default)!=null,"same version damage stays repairable through UI session");
