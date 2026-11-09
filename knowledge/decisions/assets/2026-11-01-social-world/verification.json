@@ -1,0 +1,366 @@
+{
+  "scope": "Static integrity and control-flow checks only. No live companion, UI or combat validation.",
+  "checks": [
+    {
+      "name": "ACT1 client SHA256",
+      "actual": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5"
+    },
+    {
+      "name": "client PVF SHA256",
+      "actual": "288d58aace8ed4724a0a94aaa4cd0957b1d52c633771132ede2f96363c1b506f"
+    },
+    {
+      "name": "server PVF SHA256",
+      "actual": "bc397d1463f1f0f749bbd169400b640d0c8a5d1f6e6e97cfda797099f995ac27"
+    },
+    {
+      "name": "native disjoint command",
+      "actual": "ENUM_CMDPACKET_DISJOINT_ITEM"
+    },
+    {
+      "name": "native UDP AI creation name",
+      "actual": "UDPPACKET_CREATE_AI_CHARACTER"
+    },
+    {
+      "name": "IDA default AI creation target",
+      "actual": "00792127"
+    },
+    {
+      "name": "PE jump table AI creation default",
+      "actual": "00792127"
+    },
+    {
+      "name": "PE default epilogue with no object creation call",
+      "actual": "8b4df45f5e64890d000000005b8be55dc20c00"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 4",
+      "actual": "0078F12D"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 5",
+      "actual": "0078F244"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 12",
+      "actual": "0078FEA4"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 13",
+      "actual": "0078FF58"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 19",
+      "actual": "00790616"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 20",
+      "actual": "00790A24"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 24",
+      "actual": "007915CB"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 25",
+      "actual": "007916B1"
+    },
+    {
+      "name": "PE jump table ordinary actor operation 30",
+      "actual": "007919F3"
+    },
+    {
+      "name": "ordinary movement, state, HP, MP, hit, damage, item, skill and coin targets are non-default",
+      "actual": true
+    },
+    {
+      "name": "enchant command names in this ACT1 name table",
+      "actual": []
+    },
+    {
+      "name": "client AI definition files",
+      "actual": [
+        "aicharacter/cuwaki/cuwaki.aic"
+      ]
+    },
+    {
+      "name": "OperatingValue file in client archive",
+      "actual": false
+    }
+  ],
+  "passed": 21,
+  "failures": 0,
+  "native_switch": {
+    "at": "0078EF40",
+    "default": "00792127",
+    "table": "0079213C",
+    "count": 42,
+    "cases": [
+      {
+        "values": [
+          0
+        ],
+        "target": "0078EF47"
+      },
+      {
+        "values": [
+          2
+        ],
+        "target": "0078F00B"
+      },
+      {
+        "values": [
+          3
+        ],
+        "target": "0078F0E5"
+      },
+      {
+        "values": [
+          4
+        ],
+        "target": "0078F12D"
+      },
+      {
+        "values": [
+          5
+        ],
+        "target": "0078F244"
+      },
+      {
+        "values": [
+          6
+        ],
+        "target": "0078F512"
+      },
+      {
+        "values": [
+          32
+        ],
+        "target": "0078F640"
+      },
+      {
+        "values": [
+          7
+        ],
+        "target": "0078F6FB"
+      },
+      {
+        "values": [
+          29
+        ],
+        "target": "0078F77C"
+      },
+      {
+        "values": [
+          8
+        ],
+        "target": "0078F7FD"
+      },
+      {
+        "values": [
+          9
+        ],
+        "target": "0078F8F3"
+      },
+      {
+        "values": [
+          10
+        ],
+        "target": "0078FA4B"
+      },
+      {
+        "values": [
+          11
+        ],
+        "target": "0078FE04"
+      },
+      {
+        "values": [
+          12
+        ],
+        "target": "0078FEA4"
+      },
+      {
+        "values": [
+          13
+        ],
+        "target": "0078FF58"
+      },
+      {
+        "values": [
+          14
+        ],
+        "target": "0078FFED"
+      },
+      {
+        "values": [
+          15
+        ],
+        "target": "00790235"
+      },
+      {
+        "values": [
+          16
+        ],
+        "target": "007903C3"
+      },
+      {
+        "values": [
+          17
+        ],
+        "target": "00790463"
+      },
+      {
+        "values": [
+          18
+        ],
+        "target": "00790507"
+      },
+      {
+        "values": [
+          19
+        ],
+        "target": "00790616"
+      },
+      {
+        "values": [
+          20
+        ],
+        "target": "00790A24"
+      },
+      {
+        "values": [
+          21
+        ],
+        "target": "00790EB7"
+      },
+      {
+        "values": [
+          22
+        ],
+        "target": "007911AA"
+      },
+      {
+        "values": [
+          23
+        ],
+        "target": "00791540"
+      },
+      {
+        "values": [
+          24
+        ],
+        "target": "007915CB"
+      },
+      {
+        "values": [
+          25
+        ],
+        "target": "007916B1"
+      },
+      {
+        "values": [
+          26
+        ],
+        "target": "00791789"
+      },
+      {
+        "values": [
+          27
+        ],
+        "target": "00791832"
+      },
+      {
+        "values": [
+          28
+        ],
+        "target": "00791925"
+      },
+      {
+        "values": [
+          30
+        ],
+        "target": "007919F3"
+      },
+      {
+        "values": [
+          31
+        ],
+        "target": "00791AE5"
+      },
+      {
+        "values": [
+          33
+        ],
+        "target": "00791B86"
+      },
+      {
+        "values": [
+          34
+        ],
+        "target": "00791C0F"
+      },
+      {
+        "values": [
+          35
+        ],
+        "target": "00791C43"
+      },
+      {
+        "values": [
+          36
+        ],
+        "target": "00791C61"
+      },
+      {
+        "values": [
+          37
+        ],
+        "target": "00791C96"
+      },
+      {
+        "values": [
+          39
+        ],
+        "target": "00791D44"
+      },
+      {
+        "values": [
+          38
+        ],
+        "target": "00791F25"
+      },
+      {
+        "values": [
+          41
+        ],
+        "target": "00791FA8"
+      },
+      {
+        "values": [
+          1,
+          40
+        ],
+        "target": "00792127"
+      }
+    ]
+  },
+  "client_pvf_ai": [
+    "aicharacter/aicharacter.chn.str",
+    "aicharacter/aicharacter.kor.str",
+    "aicharacter/aicharacter.lst",
+    "aicharacter/cuwaki/ai/action.ai",
+    "aicharacter/cuwaki/ai/destinationselect.ai",
+    "aicharacter/cuwaki/ai/event.ai",
+    "aicharacter/cuwaki/ai/movemethod.ai",
+    "aicharacter/cuwaki/cuwaki.aic",
+    "aicharacter/cuwaki/key/a.key",
+    "aicharacter/cuwaki/key/d.key",
+    "aicharacter/cuwaki/key/f.key",
+    "aicharacter/cuwaki/key/g.key",
+    "aicharacter/cuwaki/key/h.key",
+    "aicharacter/cuwaki/key/s.key",
+    "aicharacter/cuwaki/key/triple attack.key"
+  ],
+  "source_idb_used": false
+}

@@ -520,6 +520,53 @@ $character.id
 
 ## 5. 邮件接口
 
+### GM 单角色多物品邮件
+
+```http
+POST /api/admin/characters/{characterId}/mail
+Authorization: Bearer <管理员 token>
+```
+
+后台单次可填写最多 **10 个物品格**，每格独立指定物品和数量。ACT1／DF2008 原生客户端每封邮件仍只支持 **1 个物品附件**；服务端按物品格顺序生成多封邮件，发件人、正文一致，金币只附在第一封。10 格是后台操作限制，不是原生每封附件数。
+
+```json
+{
+  "sender": "GM",
+  "text": "维护补偿",
+  "gold": 1000,
+  "attachments": [
+    {"attachmentKind": 1, "itemId": 3037, "quantity": 50},
+    {"attachmentKind": 1, "itemId": 3176, "quantity": 20}
+  ]
+}
+```
+
+`sender` 为 1～20 个 .NET 字符，`text` 最多 255 个字符且不能为 `null`，`gold` 为 0～2147483647。此 GM 接口拒绝 CP936 无法编码的发件人或正文。每个 `attachments` 元素使用以下字段：
+
+| 字段 | 规则 |
+|---|---|
+| `attachmentKind` | `1` 普通物品／装备、`2` 装扮、`3` 宠物蛋；必须与 PVF 分类匹配，列表内不接受 `0` 或 `null` 元素 |
+| `itemId` | 1～65535，必须存在于加载的 PVF；已孵化宠物不能邮寄 |
+| `quantity` | 默认 `1`，范围 1～4294967295；非堆叠装备、装扮和宠物蛋只能为 `1` |
+| `avatarAbilityIndex` | 默认 `0`，装扮能力索引；普通物品和宠物蛋不使用此字段 |
+
+`attachments: []` 生成一封文字／金币邮件，金币为零时也保留正文邮件。相同物品可占多个格；可堆叠物品的一格数量会保留在单封邮件中，领取时按背包堆叠规则处理。装备、装扮和宠物蛋在每个物品格生成独立实例。
+
+全部物品验证通过后，服务端先检查该角色是否有足够的邮箱容量，再以一次存档快照保存整组邮件。有效邮箱仍以 255 封为上限，包含归档邮件；例如已有 254 封时，两个物品格会整体返回 `mailbox-full`，不会先投递第一封。成功后才通知在线角色，离线角色下次登录或打开邮箱时同步；玩家仍逐封领取。
+
+成功返回 `201`，`Location` 指向第一封的 `/api/characters/{characterId}/mail/{mailId}`，JSON 字段如下：
+
+| 字段 | 含义 |
+|---|---|
+| `mail` | 第一封完整邮件对象，保留旧调用方兼容；结构见 §5.1 |
+| `mails` | 按物品格顺序生成的全部邮件对象；空列表请求也有一封 |
+| `mailIds` | 与 `mails` 顺序一致的全部邮件 ID；`mail.id == mailIds[0]`，请求金币只在这一封中 |
+| `notifiedOnlineCharacter` | 是否已向在线角色会话排队通知，不表示已领取附件 |
+
+非法字段、未知角色或邮箱容量不足返回 `400 {"error":"…"}`。写入结果不确定返回 `503 {"status":"Unknown","error":"write-outcome-unknown"}`，后续写入返回 `store-quarantined`，不发出成功通知。此单角色接口没有 `operationId` 幂等语义，每次成功 POST 都会新建邮件；收到超时或 `Unknown` 时应先查询邮件、核对存档，不能直接把同一请求视作未发送并重试。
+
+旧请求仍可省略 `attachments` 或传 `null`，继续使用顶层 `attachmentKind`、`itemId`、`quantity`、`avatarAbilityIndex` 发送一封邮件。提供数组（包括空数组）时，应省略这些旧字段；若提供，其值必须分别为 `0`、`null`、`1`、`0`，任何非默认值都会因歧义被拒绝。下方 §5.2 的低层 `/api/characters/{characterId}/mail` 接口仍接收单个 `attachment` 对象。
+
 ### GM 胜点与全服邮件（待发布）
 
 新增接口均要求管理员 Bearer token；匿名返回 401，普通玩家返回 403。胜点接口正文为 `{"operationId":"<新 UUID>","amount":100}`，数量为 1～4294967295 的整数，余额溢出拒绝。只增加 VictoryPoints，不改变 PvpPoints、段位或胜负记录；返回 `status`、`operationId`、`characterId`、`amount`、`balance` 和 `replayed`。在线角色由所属会话读取新余额并刷新。
@@ -529,15 +576,25 @@ $character.id
 ```json
 {
   "operationId": "<新 UUID>",
-  "mail": {"sender":"GM","text":"维护补偿","gold":1000,"attachmentKind":0,"itemId":0,"quantity":1}
+  "mail": {
+    "sender": "GM",
+    "text": "维护补偿",
+    "gold": 1000,
+    "attachments": [
+      {"attachmentKind": 1, "itemId": 3037, "quantity": 50},
+      {"attachmentKind": 1, "itemId": 3176, "quantity": 20}
+    ]
+  }
 }
 ```
 
-`mail` 使用既有后台 `AdminSendMailRequest` 字段与附件校验；全服邮件额外拒绝 CP936 无法编码的文字。预览返回 `Prepared`，持久化此时所有现有角色 ID（含离线），不发送邮件。随后 POST `/api/admin/mail/broadcast/<operationId>/send`，正文可为空，才实际发送。之后新建角色不加入该批次或补发范围。装备、时装、宠物蛋按接收角色生成独立实例。
+`mail` 使用上面的 `AdminSendMailRequest` 多格或旧单附件字段，执行相同的附件和 CP936 编码校验。预览返回 `Prepared`，持久化全部物品格及此时所有现有角色 ID（含离线），不发送邮件。随后 POST `/api/admin/mail/broadcast/<operationId>/send`，正文可为空，才实际发送。之后新建角色不加入该批次或补发范围。每个角色获得一整组原生邮件，金币只在每组第一封；装备、时装、宠物蛋按接收角色及物品格分别生成独立实例。
 
-结果含 `targetCount`、`sentCount`、`failedCount`、`skippedCount`、`deliveries`，每项有 `characterId`、`name`、`success`、`mailId`、`error`、`alreadyDelivered`。满邮箱返回该角色 `mailbox-full`，已删除角色为 `character-not-found`；不清空邮箱，其他可投递角色仍成功。邮箱上限 255，附件领取仍受背包空间、堆叠与负重约束。
+结果含 `targetCount`、`sentCount`、`failedCount`、`skippedCount`、`deliveries`，计数单位始终是角色。每项有 `characterId`、`name`、`success`、`mailId`、`error`、`alreadyDelivered`；新成功回执另含该角色整组的 `mailIds`，`mailId` 保持为第一封。邮箱不足以容纳整组时，该角色返回 `mailbox-full` 且整组不投递，已删除角色为 `character-not-found`；其他可投递角色仍成功。整批邮件和逐角色回执在一次存档快照中保存。邮箱上限 255，附件领取仍受背包空间、堆叠与负重约束。
 
-仅补发失败角色：使用新 `operationId` 调用同一预览接口，附上 `retryOf`（已完成原批次 ID）和相同 `mail`，预览会排除该原批次及其所有补发中已成功的角色。确认时再次核对，防止同时准备的补发重复投递。重复同一确认仅返回持久化回执，重启后也不重复发送。
+仅补发失败角色：使用新 `operationId` 调用同一预览接口，附上 `retryOf`（已完成原批次 ID）和相同 `mail`，预览会排除该原批次及其所有补发中已成功的角色。确认时再次核对，防止同时准备的补发重复投递。成功角色的整组附件及金币均不会补发；重复同一确认仅返回持久化回执，重启后也不重复发送。
+
+旧单附件群发请求的持久化指纹保持不变，升级前已保存的预览仍可确认。旧已完成回执可以只有 `mailId` 而没有 `mailIds`，读取和重放继续兼容；调用方可将该 `mailId` 视作单元素邮件列表。恢复旧预览时应沿用保存的原始请求，不要改写成数组后复用原 `operationId`。
 
 状态为 `Prepared/Completed/Rejected/Unknown`。同一操作 ID 只属于同一管理员和请求内容，改变内容或跨功能重用返回 409；数量/附件非法返回 400，角色或批次不存在返回 404。写入结果不确定返回 503/`Unknown`，不发送成功通知，不应新建操作 ID 盲目重试；先检查存档恢复状态并保留原 ID。该状态与仅因邮箱已满而部分失败的 `Completed` 不同。
 
@@ -617,9 +674,9 @@ POST /api/characters/{characterId}/mail
   发包为 `sender` 预留 29 字节、为 `text` 预留 511 字节，较长中文发送人名称会被截断。
 - `gold` 为 `0～2147483647`。
 - `attachment` 可以为 `null`；金币和附件可以同时存在。
-- DF2008 每封邮件最多一个物品附件，因此 `attachment` 是单个对象，不是数组。要发送
-  多种物品必须调用多次接口；同一种可堆叠物品则用一个附件的 `countOrValue` 表示总数量，
-  不要为 100 个同类消耗品发送 100 封邮件。
+- DF2008 每封邮件最多一个物品附件，因此此接口的 `attachment` 是单个对象，不是数组。
+  一次发送多种物品可使用上面的 GM `/api/admin/characters/{characterId}/mail`，由服务端原子拆成多封。
+  同一种可堆叠物品用一个附件的 `countOrValue` 表示总数量，无须为 100 个同类消耗品发送 100 封邮件。
 - 当前有效邮件总数最多 255 封；归档邮件也计入该上限。到期且未归档的邮件会在创建新邮件
   时清理。
 - 邮件创建成功后有效期固定为 30 天，并持久化为 `isNew=true`、`state=1`。

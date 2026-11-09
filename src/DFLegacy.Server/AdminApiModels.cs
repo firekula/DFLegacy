@@ -1,4 +1,5 @@
 using DFLegacy.Protocol;
+using System.Text.Json.Serialization;
 
 namespace DFLegacy.Server;
 
@@ -10,6 +11,12 @@ public enum AdminMailAttachmentKind : byte
     CreatureEgg = 3
 }
 
+public sealed record AdminMailAttachmentRequest(
+    AdminMailAttachmentKind AttachmentKind,
+    ushort ItemId,
+    uint Quantity = 1,
+    ushort AvatarAbilityIndex = 0);
+
 public sealed record AdminSendMailRequest(
     string Sender,
     string Text,
@@ -17,7 +24,9 @@ public sealed record AdminSendMailRequest(
     AdminMailAttachmentKind AttachmentKind = AdminMailAttachmentKind.None,
     ushort? ItemId = null,
     uint Quantity = 1,
-    ushort AvatarAbilityIndex = 0);
+    ushort AvatarAbilityIndex = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<AdminMailAttachmentRequest>? Attachments = null);
 
 public sealed record AdminBroadcastMessageRequest(
     string Message,
@@ -30,7 +39,77 @@ public sealed record AdminSetDungeonDifficultyRequest(byte MaximumDifficulty);
 
 public static class AdminMailComposer
 {
+    public const int MaximumAttachmentSlots = 10;
+
     public static bool TryCompose(
+        AdminSendMailRequest request,
+        ItemCatalog catalog,
+        out CreateCharacterMailRequest mail,
+        out string? error)
+    {
+        mail = null!;
+        if (!TryComposeMany(request, catalog, out var mails, out error)) return false;
+        if (mails.Length != 1)
+        {
+            error = "Multiple attachment slots require a complete mail bundle.";
+            return false;
+        }
+        mail = mails[0];
+        return true;
+    }
+
+    public static bool TryComposeMany(
+        AdminSendMailRequest request,
+        ItemCatalog catalog,
+        out CreateCharacterMailRequest[] mails,
+        out string? error)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(catalog);
+        mails = [];
+        error = ValidateEnvelope(request);
+        if (error is not null) return false;
+        if (request.Attachments is null)
+        {
+            if (!TryComposeSingle(request, catalog, out var legacy, out error)) return false;
+            mails = [legacy];
+            return true;
+        }
+        if (request.AttachmentKind != AdminMailAttachmentKind.None || request.ItemId is not null
+            || request.Quantity != 1 || request.AvatarAbilityIndex != 0)
+        {
+            error = "Attachments cannot be combined with legacy attachment fields.";
+            return false;
+        }
+        if (request.Attachments.Count > MaximumAttachmentSlots)
+        {
+            error = $"At most {MaximumAttachmentSlots} attachment slots can be sent at once.";
+            return false;
+        }
+        if (request.Attachments.Count == 0)
+        {
+            mails = [new(request.Sender, request.Text, request.Gold)];
+            return true;
+        }
+        var composed = new List<CreateCharacterMailRequest>(request.Attachments.Count);
+        foreach (var slot in request.Attachments)
+        {
+            if (slot is null || slot.AttachmentKind == AdminMailAttachmentKind.None)
+            {
+                error = "Each attachment slot requires an item and attachment kind.";
+                return false;
+            }
+            var single = new AdminSendMailRequest(request.Sender, request.Text,
+                composed.Count == 0 ? request.Gold : 0,
+                slot.AttachmentKind, slot.ItemId, slot.Quantity, slot.AvatarAbilityIndex);
+            if (!TryComposeSingle(single, catalog, out var mail, out error)) return false;
+            composed.Add(mail);
+        }
+        mails = composed.ToArray();
+        return true;
+    }
+
+    private static bool TryComposeSingle(
         AdminSendMailRequest request,
         ItemCatalog catalog,
         out CreateCharacterMailRequest mail,

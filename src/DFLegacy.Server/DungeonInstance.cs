@@ -557,14 +557,14 @@ internal sealed partial class DungeonInstance(
 
     internal ushort? BossDeathCascadeBossId
     {
-        get { lock (Gate) { return _roomMonsters.FirstOrDefault(monster => monster.Type == GameDungeonMonsterTypes.Boss)?.UniqueId; } }
+        get { lock (Gate) { return _roomMonsters.FirstOrDefault(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss)?.UniqueId; } }
     }
 
     internal HashSet<ushort> SnapshotRoomBossIds()
     {
         lock (Gate)
         {
-            return _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss)
+            return _roomMonsters.Where(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss)
                 .Select(monster => monster.UniqueId).ToHashSet();
         }
     }
@@ -627,7 +627,7 @@ internal sealed partial class DungeonInstance(
                 return false;
             }
 
-            var bosses = _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+            var bosses = _roomMonsters.Where(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
             if (bosses.Length == 0 || bosses.Any(monster => AliveMonsters.Contains(monster.UniqueId))
                 && !bosses.All(monster => ReportedBossDeaths.Contains(monster.UniqueId)))
             {
@@ -645,7 +645,7 @@ internal sealed partial class DungeonInstance(
         lock (Gate)
         {
             return !_bossDeathCascadeStarted ? [] : _roomMonsters
-                .Where(monster => monster.Type != GameDungeonMonsterTypes.Boss
+                .Where(monster => monster.IsHostile && monster.Type != GameDungeonMonsterTypes.Boss
                     && AliveMonsters.Contains(monster.UniqueId)
                     && (monster.IsBoxMonster == 0 || DestroyedPassiveObjects.Contains(monster.BoxIndex)))
                 .Select(monster => monster.UniqueId).Order().ToArray();
@@ -1408,7 +1408,7 @@ internal sealed partial class DungeonInstance(
         // BOSS_DIE_CHECK precedes native all-die, and TryBeginMonsterDeath removes
         // a boss before awaited reward work can start the cascade. Either report
         // is enough for that boss, but every boss must be finished before blocking.
-        var bosses = _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+        var bosses = _roomMonsters.Where(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
         return bosses.Length > 0 && bosses.All(monster =>
             !AliveMonsters.Contains(monster.UniqueId) || ReportedBossDeaths.Contains(monster.UniqueId));
     }
@@ -1512,8 +1512,10 @@ internal sealed partial class DungeonInstance(
             allBossesReported = roomBossIds.All(ReportedBossDeaths.Contains);
             if (firstReport && allBossesReported)
             {
-                BossCascadeMonsterDeaths.UnionWith(
-                    AliveMonsters.Where(monsterId => !roomBossIds.Contains(monsterId)));
+                BossCascadeMonsterDeaths.UnionWith(_roomMonsters
+                    .Where(monster => monster.IsHostile && AliveMonsters.Contains(monster.UniqueId)
+                        && !roomBossIds.Contains(monster.UniqueId))
+                    .Select(monster => monster.UniqueId));
             }
 
             if (firstReport)

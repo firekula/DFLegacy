@@ -28,12 +28,22 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         if(provider==null) { ownedHttp=Core.ReleaseProvider.CreateHttpClient(); provider=new Core.ReleaseProvider(ownedHttp,source); }
         if(provider.Source!=source) throw new InvalidDataException("测试或更新来源与登录器配置不一致。");
         this.provider=provider; engine=new(root,provider);
-        legacyActive=options.UpdateProvider=="github" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
+        legacyActive=source.Provider=="github" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
     }
     internal static Core.ReleaseSource SourceFor(string installation,LauncherOptions options)
     {
         var arch=RuntimeInformation.ProcessArchitecture==Architecture.X86?"x86":"x64";
         var flavor=options.UpdateFlavor;
+        Core.ReleaseSource? installedSource=null;
+        try { installedSource=new Core.InstallationStore(installation).ReadInstalled()?.Release.Source; }catch(InvalidDataException) { }
+        var explicitKeys=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var configPath=Path.Combine(installation,"launcher.json");Core.PathPolicy.NoLinks(configPath);
+        if(File.Exists(configPath))
+        {
+            if(new FileInfo(configPath).Length>4*1024*1024)throw new InvalidDataException("配置文件超过更新来源读取上限。");
+            using var json=JsonDocument.Parse(File.ReadAllBytes(configPath),new JsonDocumentOptions{CommentHandling=JsonCommentHandling.Skip,MaxDepth=32});
+            foreach(var property in json.RootElement.EnumerateObject())explicitKeys.Add(property.Name);
+        }
         if(string.IsNullOrWhiteSpace(flavor))
         {
             try { flavor=new Core.InstallationStore(installation).ReadInstalled()?.Release.Manifest.Flavor; } catch(InvalidDataException) { }
@@ -52,7 +62,11 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
                 catch(Exception ex) when(ex is JsonException or KeyNotFoundException or InvalidOperationException) { }
             }
         }
-        var source=new Core.ReleaseSource(options.UpdateProvider,options.UpdateRepository,options.UpdateChannel,arch,string.IsNullOrWhiteSpace(flavor)?"normal":flavor);
+        // A starter may deliberately omit launcher.json. Preserve its installed
+        // source when runtime options contain only defaults; explicit keys win.
+        var provider=installedSource!=null&&options.UpdateProvider=="github"&&!explicitKeys.Contains("UpdateProvider")?installedSource.Provider:options.UpdateProvider;
+        var channel=installedSource!=null&&options.UpdateChannel=="stable"&&!explicitKeys.Contains("UpdateChannel")?installedSource.Channel:options.UpdateChannel;
+        var source=new Core.ReleaseSource(provider,options.UpdateRepository,channel,arch,string.IsNullOrWhiteSpace(flavor)?"normal":flavor);
         source.Validate(); return source;
     }
     private UpdateSession Legacy=>legacy??=new UpdateSession(root,options);
@@ -94,7 +108,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
                 if(!result.CanLaunch) throw new InvalidDataException(result.Message);
             }
             else ClientPackageManifest.LoadAndValidate(root);
-            StatusMessage="已停用联网更新；本地受管理文件已校验，未确认线上最新版本。"; ShowStatusNotice=true; return null;
+            StatusMessage="已停用联网更新；使用已校验安装记录，未确认线上最新版本。"; ShowStatusNotice=true; return null;
         }
         using var report=Program.Incidents.BeginUpdate("v4-check");
         pending=await engine.CheckAsync(Forward(checkProgress),token).ConfigureAwait(false);

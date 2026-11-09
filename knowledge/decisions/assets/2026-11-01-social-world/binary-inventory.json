@@ -1,0 +1,1644 @@
+{
+  "client": "G:\\Game\\DNF_ACT1\\DF\\DNF.exe",
+  "sha256": "6b4850beaf67ec61adb04ae17f119f16278dd05e97b8ffca871a9bdb547de0d5",
+  "image_base": "00400000",
+  "strings": [
+    {
+      "va": "00999BFC",
+      "text": "Sprite/Interface/PrivateStoreWindow.img"
+    },
+    {
+      "va": "0099A294",
+      "text": "Sprite/Interface/DisjointShopWindow.img"
+    },
+    {
+      "va": "0099AC1C",
+      "text": "[summoned monster status up rate]"
+    },
+    {
+      "va": "0099C4D4",
+      "text": "Etc/Disjoint.etc"
+    },
+    {
+      "va": "0099C7AC",
+      "text": "Character/Common/PrivateStore/Donkey/Store.img"
+    },
+    {
+      "va": "0099C7E0",
+      "text": "Character/Common/PrivateStore/Donkey/Donkey_Run.ani"
+    },
+    {
+      "va": "0099C814",
+      "text": "Character/Common/PrivateStore/Donkey/Donkey_Walk.ani"
+    },
+    {
+      "va": "0099C84C",
+      "text": "Character/Common/PrivateStore/Donkey/Donkey_Bite.ani"
+    },
+    {
+      "va": "0099C884",
+      "text": "Character/Common/PrivateStore/Donkey/Donkey_Eat.ani"
+    },
+    {
+      "va": "0099C8B8",
+      "text": "Character/Common/PrivateStore/Donkey/Donkey_Stay.ani"
+    },
+    {
+      "va": "0099C8F0",
+      "text": "Character/Common/PrivateStore/Donkey/Store.ani"
+    },
+    {
+      "va": "0099DF50",
+      "text": "Common/CommonEffect/Animation/Disenchanted.ani"
+    },
+    {
+      "va": "0099E264",
+      "text": "ERROR : AI CHARACTER CREATE FAIL! INDEX %d"
+    },
+    {
+      "va": "0099E2E4",
+      "text": "character/mage/growtype/summoner.equ"
+    },
+    {
+      "va": "0099FA34",
+      "text": "Monster/SummonMonsterMark.img"
+    },
+    {
+      "va": "0099FA77",
+      "text": "<Monster/Common/Animation/Unsummon.ani"
+    },
+    {
+      "va": "009A1326",
+      "text": "#<[ai pattern]"
+    },
+    {
+      "va": "009A1338",
+      "text": "AICharacter/OperatingValue.lst"
+    },
+    {
+      "va": "009A16A0",
+      "text": "ROBOT_SUMMON_MONSTER"
+    },
+    {
+      "va": "009ABF78",
+      "text": "Character/Mage/Effect/Animation/SummonMonsterAura2.ani"
+    },
+    {
+      "va": "009ABFB0",
+      "text": "Character/Mage/Effect/Animation/SummonMonsterAura1.ani"
+    },
+    {
+      "va": "009AC7C4",
+      "text": "KEIGA_SUMMON"
+    },
+    {
+      "va": "009ACAB0",
+      "text": "KEIGA_SHIELD_SUMMON"
+    },
+    {
+      "va": "009AD190",
+      "text": "Character/Mage/Effect/Animation/SummonMonsterAuraArea.ani"
+    },
+    {
+      "va": "009F39C0",
+      "text": "TRANSMISSION_SUMMON"
+    },
+    {
+      "va": "009F71D0",
+      "text": "Monster/Bantu/BMLAnimation/summon/AuraObject.ani"
+    },
+    {
+      "va": "009F7204",
+      "text": "Monster/Bantu/BMLAnimation/summon/magic.ani"
+    },
+    {
+      "va": "009F7230",
+      "text": "Monster/Spirit/LightAnimation/Summon.ani"
+    },
+    {
+      "va": "009F725C",
+      "text": "Monster/Spirit/DarkAnimation/Summon.ani"
+    },
+    {
+      "va": "009F7284",
+      "text": "Monster/Spirit/WaterAnimation/Summon.ani"
+    },
+    {
+      "va": "009F72B0",
+      "text": "Monster/Spirit/FireAnimation/Summon.ani"
+    },
+    {
+      "va": "009F72D8",
+      "text": "Common/CommonEffect/Animation/SummonCircleFront.ani"
+    },
+    {
+      "va": "009F730C",
+      "text": "Common/CommonEffect/Animation/SummonCircle.ani"
+    },
+    {
+      "va": "009F733C",
+      "text": "Common/CommonEffect/Animation/SummonCircleBack.ani"
+    },
+    {
+      "va": "009FD5AC",
+      "text": "Effect/Animation/SummonSpirit%d.ani"
+    },
+    {
+      "va": "009FD6A8",
+      "text": "SUMMON_WISP"
+    },
+    {
+      "va": "009FD6B4",
+      "text": "SUMMON_STALKER"
+    },
+    {
+      "va": "009FD6C4",
+      "text": "SUMMON_NIAS"
+    },
+    {
+      "va": "009FD6D0",
+      "text": "SUMMON_ADOR"
+    },
+    {
+      "va": "009FD730",
+      "text": "WZ_SUMMON_WISP"
+    },
+    {
+      "va": "009FD740",
+      "text": "WZ_SUMMON_STALKER"
+    },
+    {
+      "va": "009FD754",
+      "text": "WZ_SUMMON_NIAS"
+    },
+    {
+      "va": "009FD764",
+      "text": "WZ_SUMMON_ADOR"
+    },
+    {
+      "va": "009FD8FC",
+      "text": "Effect/Animation/DisenchantArea%d.ani"
+    },
+    {
+      "va": "009FD924",
+      "text": "Effect/Animation/DisenchantCast2.ani"
+    },
+    {
+      "va": "009FD94C",
+      "text": "DISENCHANT"
+    },
+    {
+      "va": "009FD958",
+      "text": "WZ_DISENCHANT"
+    },
+    {
+      "va": "009FD968",
+      "text": "Effect/Animation/DisenchantCast1.ani"
+    },
+    {
+      "va": "00A00FC8",
+      "text": "KALA_SUMMON"
+    },
+    {
+      "va": "00A56B50",
+      "text": "/Effect_SummonBoneLoop.ani"
+    },
+    {
+      "va": "00A56B6C",
+      "text": "/Effect_SummonBoneFloor.ani"
+    },
+    {
+      "va": "00A5A844",
+      "text": "DOLL_SUMMON"
+    },
+    {
+      "va": "00A5A954",
+      "text": "Monster/Soceress/Effect/Summon.ani"
+    },
+    {
+      "va": "00A643DC",
+      "text": "Common/CommonEffect/Animation/Enchant.ani"
+    },
+    {
+      "va": "00A64804",
+      "text": "Monster/Bantu/BMLAnimation/Summon/Shout.ani"
+    },
+    {
+      "va": "00A64830",
+      "text": "Monster/Bantu/BMLAnimation/Summon/AuraObject.ani"
+    },
+    {
+      "va": "00A64864",
+      "text": "Monster/Bantu/BMLAnimation/Summon/Magic.ani"
+    },
+    {
+      "va": "00A64A38",
+      "text": "LOOGER_SUMMON"
+    },
+    {
+      "va": "00A64A5C",
+      "text": "R_LOOGER_SUMMON_VOICE"
+    },
+    {
+      "va": "00A65320",
+      "text": "Monster/CosmoFiend/Animation_Overgrowth/EF_CastingSummonMonsterFlower.ani"
+    },
+    {
+      "va": "00A6BAD8",
+      "text": "[key stream]"
+    },
+    {
+      "va": "00A6BB24",
+      "text": "[destination change term]"
+    },
+    {
+      "va": "00A6BB40",
+      "text": "[think term]"
+    },
+    {
+      "va": "00A6F2AC",
+      "text": "[summon monster]"
+    },
+    {
+      "va": "00A6F330",
+      "text": "[disenchant]"
+    },
+    {
+      "va": "00A6F4B4",
+      "text": "[monster summons]"
+    },
+    {
+      "va": "00A70180",
+      "text": "[disjoint shop]"
+    },
+    {
+      "va": "00A70298",
+      "text": "[ai character]"
+    },
+    {
+      "va": "00A70CE8",
+      "text": "[disjoint item]"
+    },
+    {
+      "va": "00A70E74",
+      "text": "SummonMonsterBaseParameter.tbl"
+    },
+    {
+      "va": "00A71DC4",
+      "text": "[summon term]"
+    },
+    {
+      "va": "00A71E08",
+      "text": "[summon]"
+    },
+    {
+      "va": "00A723B0",
+      "text": "[summon skill status up rate]"
+    },
+    {
+      "va": "00A72C78",
+      "text": "[summon skill status up rate]"
+    },
+    {
+      "va": "00A73FB8",
+      "text": "[Enchant-Dark]"
+    },
+    {
+      "va": "00A73FC8",
+      "text": "[Enchant-Light]"
+    },
+    {
+      "va": "00A73FD8",
+      "text": "[Enchant-Water]"
+    },
+    {
+      "va": "00A73FE8",
+      "text": "[Enchant-Fire]"
+    },
+    {
+      "va": "00A7C06C",
+      "text": "CREATE_AI_CHARACTER"
+    },
+    {
+      "va": "00A7C4F4",
+      "text": "UDPPACKET_CREATE_AI_CHARACTER"
+    },
+    {
+      "va": "00A7DBD6",
+      "text": "#<CNRDPrivateStoreWindow_Display::keepFocus"
+    },
+    {
+      "va": "00A7DC04",
+      "text": "CNRDPrivateStoreWindow_Display::releaseFocus"
+    },
+    {
+      "va": "00A83498",
+      "text": "//assault"
+    },
+    {
+      "va": "00A834E0",
+      "text": "AICharacter/"
+    },
+    {
+      "va": "00A84846",
+      "text": "#<CNRDCapcharPad::Proc"
+    },
+    {
+      "va": "00A84860",
+      "text": "CNRDCapcharPad::setState"
+    },
+    {
+      "va": "00A84AA8",
+      "text": "CNAssaultModule::setState"
+    },
+    {
+      "va": "00A84AC4",
+      "text": "CNAssaultModule::procSTATE_PREPAREBATTLE"
+    },
+    {
+      "va": "00A84AF0",
+      "text": "CNAssaultModule::Proc"
+    },
+    {
+      "va": "00A86DB8",
+      "text": "ENUM_CMDPACKET_REVIVAL_ASSAULT_PLAYER"
+    },
+    {
+      "va": "00A86DE0",
+      "text": "ENUM_CMDPACKET_DIE_ASSAULT_PLAYER"
+    },
+    {
+      "va": "00A86E04",
+      "text": "ENUM_CMDPACKET_COMPLETE_ASSAULT_READY"
+    },
+    {
+      "va": "00A86E2C",
+      "text": "ENUM_CMDPACKET_DIE_AI_CHARACTER"
+    },
+    {
+      "va": "00A87EC0",
+      "text": "ENUM_CMDPACKET_DISJOINT_ITEM"
+    },
+    {
+      "va": "00A882C4",
+      "text": "ENUM_NOTIPACKET_CLOSE_ASSAULT"
+    },
+    {
+      "va": "00A88300",
+      "text": "ENUM_NOTIPACKET_LEAVE_ASSAULT_PLACE"
+    },
+    {
+      "va": "00A88324",
+      "text": "ENUM_NOTIPACKET_VIEW_ASSAULT_ICON"
+    },
+    {
+      "va": "00A88348",
+      "text": "ENUM_NOTIPACKET_REVIVAL_ASSAULT_PLAYER"
+    },
+    {
+      "va": "00A88370",
+      "text": "ENUM_NOTIPACKET_END_ASSAULT"
+    },
+    {
+      "va": "00A8838C",
+      "text": "ENUM_NOTIPACKET_DIE_ASSAULT_PLAYER"
+    },
+    {
+      "va": "00A883B0",
+      "text": "ENUM_NOTIPACKET_START_ASSAULT"
+    },
+    {
+      "va": "00A883D0",
+      "text": "ENUM_NOTIPACKET_MOVE_ASSAULT_PLACE"
+    },
+    {
+      "va": "00AFD7FC",
+      "text": ".?AVCNRDItemDisjointResultWindow@@"
+    },
+    {
+      "va": "00AFD890",
+      "text": ".?AVCNAssaultRoom@@"
+    },
+    {
+      "va": "00B0E3E8",
+      "text": ".?AVIRDAICharacter@@"
+    },
+    {
+      "va": "00B0E6BC",
+      "text": ".?AUSTAICharacterCommonScript@@"
+    },
+    {
+      "va": "00B0E718",
+      "text": ".?AUSTAICharacterClientScript@@"
+    },
+    {
+      "va": "00B0E8D0",
+      "text": ".?AVCNSummon@@"
+    },
+    {
+      "va": "00B0E974",
+      "text": ".?AVCNEnchantWeapon@@"
+    },
+    {
+      "va": "00B0E9B8",
+      "text": ".?AVCNRDAssaultIcon@@"
+    },
+    {
+      "va": "00B0FB6C",
+      "text": ".?AVCNEquipmentAssaultAttackerCoat@@"
+    },
+    {
+      "va": "00B10FE0",
+      "text": ".?AVCNSummonMonsterWithEffect@@"
+    },
+    {
+      "va": "00B12658",
+      "text": ".?AVCNMonsterFlowerSummoner@@"
+    },
+    {
+      "va": "00B12B40",
+      "text": ".?AVCNTrapCage@@"
+    },
+    {
+      "va": "00B1346C",
+      "text": ".?AVCNCircleAppendageENCHANTWEAPON@@"
+    },
+    {
+      "va": "00B13500",
+      "text": ".?AVCNCircleAppendageDISENCHANT@@"
+    },
+    {
+      "va": "00B13E1C",
+      "text": ".?AVCNEnchantActiveStatus@@"
+    },
+    {
+      "va": "00B14144",
+      "text": ".?AVCNSummonMonsterAura@@"
+    },
+    {
+      "va": "00B148C0",
+      "text": ".?AVCNGoblinAssaulter@@"
+    },
+    {
+      "va": "00B14B64",
+      "text": ".?AVCNTauAssaulter@@"
+    },
+    {
+      "va": "00B51DFC",
+      "text": ".?AVCNRDPrivateStoreWindow@@"
+    },
+    {
+      "va": "00B51FC0",
+      "text": ".?AVCNRDPrivateStoreWindow_Display@@"
+    },
+    {
+      "va": "00B51FF0",
+      "text": ".?AVCNRDPrivateStoreWindow_Sell@@"
+    },
+    {
+      "va": "00B5201C",
+      "text": ".?AVCNRDPrivateStoreWindow_Buy@@"
+    },
+    {
+      "va": "00B52048",
+      "text": ".?AVCNRDCapcharPad@@"
+    },
+    {
+      "va": "00B52AB8",
+      "text": ".?AVCNRDKeyRemapConfirmWindow@@"
+    },
+    {
+      "va": "00B52C20",
+      "text": ".?AVCNRDPrivateStoreItemBuyConfirmWindow@@"
+    },
+    {
+      "va": "00B5317C",
+      "text": ".?AVCNRDItemDisjointConfirmWindow@@"
+    },
+    {
+      "va": "00D6EC10",
+      "text": "yOApC"
+    },
+    {
+      "va": "00EF3FB0",
+      "text": "NtQueueApcThread"
+    },
+    {
+      "va": "00F39EFD",
+      "text": "HeapCreate"
+    }
+  ],
+  "commands": [
+    {
+      "id": 0,
+      "name": "ENUM_CMDPACKET_CHECK_CONNECTION"
+    },
+    {
+      "id": 1,
+      "name": "ENUM_CMDPACKET_LOGIN"
+    },
+    {
+      "id": 2,
+      "name": "ENUM_CMDPACKET_SET_UDP_IP_PORT"
+    },
+    {
+      "id": 3,
+      "name": "ENUM_CMDPACKET_EXIT"
+    },
+    {
+      "id": 4,
+      "name": "ENUM_CMDPACKET_SELECT_CHARACTER"
+    },
+    {
+      "id": 5,
+      "name": "ENUM_CMDPACKET_CREATE_CHARACTER"
+    },
+    {
+      "id": 6,
+      "name": "ENUM_CMDPACKET_DELETE_CHARACTER"
+    },
+    {
+      "id": 7,
+      "name": "ENUM_CMDPACKET_RETURN_SELECT_CHARACTER"
+    },
+    {
+      "id": 8,
+      "name": "ENUM_CMDPACKET_GET_USERINFO"
+    },
+    {
+      "id": 9,
+      "name": "ENUM_CMDPACKET_RECOVER_STAMINA"
+    },
+    {
+      "id": 10,
+      "name": "ENUM_CMDPACKET_REQUEST_PEER"
+    },
+    {
+      "id": 11,
+      "name": "ENUM_CMDPACKET_RESPONSE_PEER"
+    },
+    {
+      "id": 12,
+      "name": "ENUM_CMDPACKET_SET_PARTY_INFO"
+    },
+    {
+      "id": 13,
+      "name": "ENUM_CMDPACKET_LEAVE_PARTY"
+    },
+    {
+      "id": 14,
+      "name": "ENUM_CMDPACKET_WALKOUT_PARTY_MEMBER"
+    },
+    {
+      "id": 15,
+      "name": "ENUM_CMDPACKET_START_GAME"
+    },
+    {
+      "id": 16,
+      "name": "ENUM_CMDPACKET_SELECT_DUNGEON"
+    },
+    {
+      "id": 17,
+      "name": "ENUM_CMDPACKET_SEND_MESSAGE"
+    },
+    {
+      "id": 18,
+      "name": "ENUM_CMDPACKET_DELETE_ITEM"
+    },
+    {
+      "id": 19,
+      "name": "ENUM_CMDPACKET_MOVE_ITEMSPACE"
+    },
+    {
+      "id": 20,
+      "name": "ENUM_CMDPACKET_SORT_ITEM"
+    },
+    {
+      "id": 21,
+      "name": "ENUM_CMDPACKET_BUY_ITEM"
+    },
+    {
+      "id": 22,
+      "name": "ENUM_CMDPACKET_RENT_AVATAR"
+    },
+    {
+      "id": 23,
+      "name": "ENUM_CMDPACKET_EXTEND_AVATAR"
+    },
+    {
+      "id": 24,
+      "name": "ENUM_CMDPACKET_SELL_ITEM"
+    },
+    {
+      "id": 25,
+      "name": "ENUM_CMDPACKET_REPAIR_EQUIPMENT"
+    },
+    {
+      "id": 26,
+      "name": "ENUM_CMDPACKET_SET_ITEMTRADE_STATE"
+    },
+    {
+      "id": 27,
+      "name": "ENUM_CMDPACKET_COMPOUND_ITEM"
+    },
+    {
+      "id": 28,
+      "name": "ENUM_CMDPACKET_DISJOINT_ITEM"
+    },
+    {
+      "id": 29,
+      "name": "ENUM_CMDPACKET_USE_LOTTERY_ITEM"
+    },
+    {
+      "id": 30,
+      "name": "ENUM_CMDPACKET_CHANGE_SKILLSLOT"
+    },
+    {
+      "id": 31,
+      "name": "ENUM_CMDPACKET_BUY_SKILL"
+    },
+    {
+      "id": 32,
+      "name": "ENUM_CMDPACKET_INCREASE_STATUS"
+    },
+    {
+      "id": 33,
+      "name": "ENUM_CMDPACKET_ACCEPT_QUEST"
+    },
+    {
+      "id": 34,
+      "name": "ENUM_CMDPACKET_GIVEUP_QUEST"
+    },
+    {
+      "id": 35,
+      "name": "ENUM_CMDPACKET_SET_QUEST_TRIGGER"
+    },
+    {
+      "id": 36,
+      "name": "ENUM_CMDPACKET_FINISH_QUEST"
+    },
+    {
+      "id": 37,
+      "name": "ENUM_CMDPACKET_SET_USER_POSITION"
+    },
+    {
+      "id": 38,
+      "name": "ENUM_CMDPACKET_SET_USER_AREA"
+    },
+    {
+      "id": 39,
+      "name": "ENUM_CMDPACKET_FISHING"
+    },
+    {
+      "id": 40,
+      "name": "ENUM_CMDPACKET_FINISH_LOADING"
+    },
+    {
+      "id": 41,
+      "name": "ENUM_CMDPACKET_USE_SKILL"
+    },
+    {
+      "id": 42,
+      "name": "ENUM_CMDPACKET_DIE_MONSTER"
+    },
+    {
+      "id": 43,
+      "name": "ENUM_CMDPACKET_DIE_CHARACTER"
+    },
+    {
+      "id": 44,
+      "name": "ENUM_CMDPACKET_USE_COIN"
+    },
+    {
+      "id": 45,
+      "name": "ENUM_CMDPACKET_GIVEUP_GAME"
+    },
+    {
+      "id": 46,
+      "name": "ENUM_CMDPACKET_GET_ITEM"
+    },
+    {
+      "id": 47,
+      "name": "ENUM_CMDPACKET_USE_STACKABLE"
+    },
+    {
+      "id": 48,
+      "name": "ENUM_CMDPACKET_MOVE_MAP"
+    },
+    {
+      "id": 49,
+      "name": "ENUM_CMDPACKET_SET_PLAY_RESULT"
+    },
+    {
+      "id": 50,
+      "name": "ENUM_CMDPACKET_DROP_ITEM"
+    },
+    {
+      "id": 51,
+      "name": "ENUM_CMDPACKET_DECREASE_DURABILITY"
+    },
+    {
+      "id": 52,
+      "name": "ENUM_CMDPACKET_REPORT_BAD_P2P_USER"
+    },
+    {
+      "id": 53,
+      "name": "ENUM_CMDPACKET_MAKE_PVP_ROOM"
+    },
+    {
+      "id": 54,
+      "name": "ENUM_CMDPACKET_ENTER_PVP_ROOM"
+    },
+    {
+      "id": 55,
+      "name": "ENUM_CMDPACKET_SET_PVP_SEAT_STATE"
+    },
+    {
+      "id": 56,
+      "name": "ENUM_CMDPACKET_SET_PVP_READY_STATE"
+    },
+    {
+      "id": 57,
+      "name": "ENUM_CMDPACKET_SET_PVP_TEAM_MODE"
+    },
+    {
+      "id": 58,
+      "name": "ENUM_CMDPACKET_DIE_PVP_CHARACTER"
+    },
+    {
+      "id": 59,
+      "name": "ENUM_CMDPACKET_PVP_TIME_OUT"
+    },
+    {
+      "id": 60,
+      "name": "ENUM_CMDPACKET_END_PVP_RESULT"
+    },
+    {
+      "id": 61,
+      "name": "ENUM_CMDPACKET_RES_PVP_RANK"
+    },
+    {
+      "id": 62,
+      "name": "ENUM_CMDPACKET_SET_PVP_MAP_INDEX"
+    },
+    {
+      "id": 63,
+      "name": "ENUM_CMDPACKET_ADD_FRIEND"
+    },
+    {
+      "id": 64,
+      "name": "ENUM_CMDPACKET_REMOVE_FRIEND"
+    },
+    {
+      "id": 65,
+      "name": "ENUM_CMDPACKET_DEBUG_COMMAND"
+    },
+    {
+      "id": 66,
+      "name": "ENUM_CMDPACKET_CERA"
+    },
+    {
+      "id": 67,
+      "name": "ENUM_CMDPACKET_BUY_CERASHOP_ITEM"
+    },
+    {
+      "id": 68,
+      "name": "ENUM_CMDPACKET_GEN_CERATICKET"
+    },
+    {
+      "id": 69,
+      "name": "ENUM_CMDPACKET_REQUEST_PVPEXP_OF_WEEK"
+    },
+    {
+      "id": 70,
+      "name": "ENUM_CMDPACKET_GUILD_MEMER_LIST"
+    },
+    {
+      "id": 71,
+      "name": "ENUM_CMDPACKET_CALL_GUILD_CREATE_RIGHT"
+    },
+    {
+      "id": 72,
+      "name": "ENUM_CMDPACKET_SCORE_SCROLL_STATE"
+    },
+    {
+      "id": 73,
+      "name": "ENUM_CMDPACKET_CARD_SELECT_RIGHT_STATE"
+    },
+    {
+      "id": 74,
+      "name": "ENUM_CMDPACKET_SELECT_CARD"
+    },
+    {
+      "id": 75,
+      "name": "ENUM_CMDPACKET_EPLP_COMMAND"
+    },
+    {
+      "id": 76,
+      "name": "ENUM_CMDPACKET_CALL_GUILD_LEVEL_UP"
+    },
+    {
+      "id": 77,
+      "name": "ENUM_CMDPACKET_GUILD_INFO"
+    },
+    {
+      "id": 78,
+      "name": "ENUM_CMDPACKET_REQUEST_GUILD_ENTER"
+    },
+    {
+      "id": 79,
+      "name": "ENUM_CMDPACKET_REQUEST_MEMBER_ENTER"
+    },
+    {
+      "id": 80,
+      "name": "ENUM_CMDPACKET_MEMBER_ENTER_REPLY"
+    },
+    {
+      "id": 81,
+      "name": "ENUM_CMDPACKET_MEMBER_SECEDE"
+    },
+    {
+      "id": 82,
+      "name": "ENUM_CMDPACKET_CALL_MEMER_LIST"
+    },
+    {
+      "id": 83,
+      "name": "ENUM_CMDPACKET_UPGRADE_ITEM"
+    },
+    {
+      "id": 84,
+      "name": "ENUM_CMDPACKET_RESET_ITEM_ATTR"
+    },
+    {
+      "id": 85,
+      "name": "ENUM_CMDPACKET_BUY_PRIVATE_STORE_ITEM"
+    },
+    {
+      "id": 86,
+      "name": "ENUM_CMDPACKET_ENTER_PRIVATE_STORE"
+    },
+    {
+      "id": 87,
+      "name": "ENUM_CMDPACKET_EXIT_PRIVATE_STORE"
+    },
+    {
+      "id": 88,
+      "name": "ENUM_CMDPACKET_CREATE_PRIVATE_STORE"
+    },
+    {
+      "id": 89,
+      "name": "ENUM_CMDPACKET_REMOVE_PRIVATE_STORE"
+    },
+    {
+      "id": 90,
+      "name": "ENUM_CMDPACKET_COMPLETE_DISPLAY"
+    },
+    {
+      "id": 91,
+      "name": "ENUM_CMDPACKET_MOVE_TO_GATE"
+    },
+    {
+      "id": 92,
+      "name": "ENUM_CMDPACKET_MAKE_WARROOM_TEMP"
+    },
+    {
+      "id": 93,
+      "name": "ENUM_CMDPACKET_ENTER_WARROOM"
+    },
+    {
+      "id": 94,
+      "name": "ENUM_CMDPACKET_SET_WARROOM_SEAT_STATE"
+    },
+    {
+      "id": 95,
+      "name": "ENUM_CMDPACKET_DIE_WARROOM_CHARACTER"
+    },
+    {
+      "id": 96,
+      "name": "ENUM_CMDPACKET_START_WARROOM_TEMP"
+    },
+    {
+      "id": 97,
+      "name": "ENUM_CMDPACKET_MAILBOX_SEND"
+    },
+    {
+      "id": 98,
+      "name": "ENUM_CMDPACKET_MAILBOX_EXTRACT_ITEM"
+    },
+    {
+      "id": 99,
+      "name": "ENUM_CMDPACKET_MAILBOX_OPEN"
+    },
+    {
+      "id": 100,
+      "name": "ENUM_CMDPACKET_PEER_CONNECT_RESULT"
+    },
+    {
+      "id": 101,
+      "name": "ENUM_CMDPACKET_QUICK_JOIN_ROOM"
+    },
+    {
+      "id": 102,
+      "name": "ENUM_CMDPACKET_COMPOUND_AVATAR"
+    },
+    {
+      "id": 103,
+      "name": "ENUM_CMDPACKET_RENAME_CREATURE"
+    },
+    {
+      "id": 104,
+      "name": "ENUM_CMDPACKET_RESPONSE_CREATURE"
+    },
+    {
+      "id": 105,
+      "name": "ENUM_CMDPACKET_HATCH_CREATURE"
+    },
+    {
+      "id": 106,
+      "name": "ENUM_CMDPACKET_CHAOS_BUY_FP_ITEM"
+    },
+    {
+      "id": 107,
+      "name": "ENUM_CMDPACKET_CHAOS_ZONE_OWNERSHIP"
+    },
+    {
+      "id": 108,
+      "name": "ENUM_CMDPACKET_GATHERING_PARTY_STATUS"
+    },
+    {
+      "id": 109,
+      "name": "ENUM_CMDPACKET_WORLD_CUP_HIT_COUNT"
+    },
+    {
+      "id": 110,
+      "name": "ENUM_CMDPACKET_MAKE_CHAOSROOM"
+    },
+    {
+      "id": 111,
+      "name": "ENUM_CMDPACKET_ENTER_CHAOSROOM"
+    },
+    {
+      "id": 112,
+      "name": "ENUM_CMDPACKET_SET_CHAOSROOM_SEAT_STATE"
+    },
+    {
+      "id": 113,
+      "name": "ENUM_CMDPACKET_SET_CHAOSROOM_READY_STATE"
+    },
+    {
+      "id": 114,
+      "name": "ENUM_CMDPACKET_DIE_CHAOSROOM_CHARACTER"
+    },
+    {
+      "id": 115,
+      "name": "ENUM_CMDPACKET_START_CHAOSROOM"
+    },
+    {
+      "id": 116,
+      "name": "ENUM_CMDPACKET_CHAOS_GAME_CLEAR"
+    },
+    {
+      "id": 117,
+      "name": "ENUM_CMDPACKET_GM_COMMAND"
+    },
+    {
+      "id": 118,
+      "name": "ENUM_CMDPACKET_RESTART_CHAOSROOM"
+    },
+    {
+      "id": 119,
+      "name": "ENUM_CMDPACKET_GUILD_WAR_INFO"
+    },
+    {
+      "id": 120,
+      "name": "ENUM_CMDPACKET_PVP_HEART_BEAT"
+    },
+    {
+      "id": 121,
+      "name": "ENUM_CMDPACKET_CODE_CHECKSUM"
+    },
+    {
+      "id": 122,
+      "name": "ENUM_CMDPACKET_PVP_REQUEST_FIGHT"
+    },
+    {
+      "id": 123,
+      "name": "ENUM_CMDPACKET_MOUSEREGISTER"
+    },
+    {
+      "id": 124,
+      "name": "ENUM_CMDPACKET_CREATURE_SEND_MESSAGE"
+    },
+    {
+      "id": 125,
+      "name": "ENUM_CMDPACKET_TRACE_ERROR"
+    },
+    {
+      "id": 126,
+      "name": "ENUM_CMDPACKET_OTHER_USER_INFO"
+    },
+    {
+      "id": 127,
+      "name": "ENUM_CMDPACKET_BOSS_DIE_CHECK"
+    },
+    {
+      "id": 128,
+      "name": "ENUM_CMDPACKET_REGISITER_TO_BLACKLIST"
+    },
+    {
+      "id": 129,
+      "name": "ENUM_CMDPACKET_DELETE_TO_BLACKLIST"
+    },
+    {
+      "id": 130,
+      "name": "ENUM_CMDPACKET_REQUEST_BLACKLIST"
+    },
+    {
+      "id": 131,
+      "name": "ENUM_CMDPACKET_CHANGE_HOST"
+    },
+    {
+      "id": 132,
+      "name": "ENUM_CMDPACKET_CREATURE_SCRIPT_MESSAGE"
+    },
+    {
+      "id": 133,
+      "name": "ENUM_CMDPACKET_CHARACTER_STATISTIC"
+    },
+    {
+      "id": 134,
+      "name": "ENUM_CMDPACKET_REPORT_CLIENT_SPEC"
+    },
+    {
+      "id": 135,
+      "name": "ENUM_CMDPACKET_GUILDMEMBER_NAMING"
+    },
+    {
+      "id": 136,
+      "name": "ENUM_CMDPACKET_SET_SUB_GUILD_MASTER"
+    },
+    {
+      "id": 137,
+      "name": "ENUM_CMDPACKET_EXCHANGE_SERVER_INFO"
+    },
+    {
+      "id": 138,
+      "name": "ENUM_CMDPACKET_EXCHANGE_SERVER_INFO_RET"
+    },
+    {
+      "id": 139,
+      "name": "ENUM_CMDPACKET_EXCHANGE_SERVER_CHARAC_INFO"
+    },
+    {
+      "id": 140,
+      "name": "ENUM_CMDPACKET_EXCHANGE_SERVER_CHARAC_INFO_RET"
+    },
+    {
+      "id": 141,
+      "name": "ENUM_CMDPACKET_TIME_CHECK"
+    },
+    {
+      "id": 142,
+      "name": "ENUM_CMDPACKET_BACK_2_VILLAGE"
+    },
+    {
+      "id": 143,
+      "name": "ENUM_CMDPACKET_DNF_RADIO_LISTEN"
+    },
+    {
+      "id": 144,
+      "name": "ENUM_CMDPACKET_CHANGE_LETTER_STAT"
+    },
+    {
+      "id": 145,
+      "name": "ENUM_CMDPACKET_CHANGE_CHARAC_NAME"
+    },
+    {
+      "id": 146,
+      "name": "ENUM_CMDPACKET_QUERY_CHARAC_INFO"
+    },
+    {
+      "id": 147,
+      "name": "ENUM_CMDPACKET_REPORT_MANNERLESS_USER"
+    },
+    {
+      "id": 148,
+      "name": "ENUM_CMDPACKET_ALLDIE_MONSTER"
+    },
+    {
+      "id": 149,
+      "name": "ENUM_CMDPACKET_GUILD_MEMER_LIST_NEXT"
+    },
+    {
+      "id": 150,
+      "name": "ENUM_CMDPACKET_GUILD_ALL_MEMBER_LIST"
+    },
+    {
+      "id": 151,
+      "name": "ENUM_CMDPACKET_GUILD_ALL_MEMBER_LIST_NEXT"
+    },
+    {
+      "id": 152,
+      "name": "ENUM_CMDPACKET_RPY_HUMAN_CERTIFY"
+    },
+    {
+      "id": 153,
+      "name": "ENUM_CMDPACKET_CHANGE_TUTORIAL_FLAG"
+    },
+    {
+      "id": 154,
+      "name": "ENUM_CMDPACKET_DIE_AI_CHARACTER"
+    },
+    {
+      "id": 155,
+      "name": "ENUM_CMDPACKET_COMPLETE_ASSAULT_READY"
+    },
+    {
+      "id": 156,
+      "name": "ENUM_CMDPACKET_DIE_ASSAULT_PLAYER"
+    },
+    {
+      "id": 157,
+      "name": "ENUM_CMDPACKET_REVIVAL_ASSAULT_PLAYER"
+    },
+    {
+      "id": 158,
+      "name": "ENUM_CMDPACKET_CHANGE_HP"
+    },
+    {
+      "id": 159,
+      "name": "ENUM_CMDPACKET_BIO_VISUAL"
+    },
+    {
+      "id": 160,
+      "name": "ENUM_CMDPACKET_SDC_DAMAGE_CHECK"
+    },
+    {
+      "id": 161,
+      "name": "ENUM_CMDPACKET_ANTIBOT"
+    },
+    {
+      "id": 162,
+      "name": "ENUM_CMDPACKET_DPROTO"
+    }
+  ],
+  "relevant_notices": [
+    {
+      "id": 140,
+      "name": "ENUM_NOTIPACKET_MOVE_ASSAULT_PLACE"
+    },
+    {
+      "id": 141,
+      "name": "ENUM_NOTIPACKET_START_ASSAULT"
+    },
+    {
+      "id": 142,
+      "name": "ENUM_NOTIPACKET_DIE_ASSAULT_PLAYER"
+    },
+    {
+      "id": 143,
+      "name": "ENUM_NOTIPACKET_END_ASSAULT"
+    },
+    {
+      "id": 144,
+      "name": "ENUM_NOTIPACKET_REVIVAL_ASSAULT_PLAYER"
+    },
+    {
+      "id": 145,
+      "name": "ENUM_NOTIPACKET_VIEW_ASSAULT_ICON"
+    },
+    {
+      "id": 146,
+      "name": "ENUM_NOTIPACKET_LEAVE_ASSAULT_PLACE"
+    },
+    {
+      "id": 148,
+      "name": "ENUM_NOTIPACKET_CLOSE_ASSAULT"
+    }
+  ],
+  "raw_pointer_references": {
+    "00A7C06C": [
+      "00B51BD8"
+    ],
+    "00A7C4F4": [
+      "00B51CA8"
+    ],
+    "00B0E3E0": [
+      "0045EACB",
+      "0045FB73",
+      "00460AFD",
+      "0047F51E",
+      "004999B6",
+      "0049C430",
+      "0049F9C7",
+      "0078F605"
+    ],
+    "004DEB50": [],
+    "0099E170": [
+      "00491863",
+      "00491EFF"
+    ]
+  },
+  "nearby_name_tables": [
+    {
+      "va": "00B51B38",
+      "name": "CHECK_CONNECT"
+    },
+    {
+      "va": "00B51B3C",
+      "name": "DUMMY_SIGNAL"
+    },
+    {
+      "va": "00B51B40",
+      "name": "DUNGEON_LIST"
+    },
+    {
+      "va": "00B51B44",
+      "name": "SELECT_DUNGEON"
+    },
+    {
+      "va": "00B51B48",
+      "name": "SET_MOVE_INFO"
+    },
+    {
+      "va": "00B51B4C",
+      "name": "SET_STATE"
+    },
+    {
+      "va": "00B51B50",
+      "name": "SET_MONSTER_MASTER"
+    },
+    {
+      "va": "00B51B54",
+      "name": "SET_MONSTER_AI_INFO"
+    },
+    {
+      "va": "00B51B58",
+      "name": "SET_PASSIVEOBJECT_PARENT"
+    },
+    {
+      "va": "00B51B5C",
+      "name": "SET_PARTICLE"
+    },
+    {
+      "va": "00B51B60",
+      "name": "SET_EQUIPMENT"
+    },
+    {
+      "va": "00B51B64",
+      "name": "CHECK_EQUIPMENT"
+    },
+    {
+      "va": "00B51B68",
+      "name": "SET_HP"
+    },
+    {
+      "va": "00B51B6C",
+      "name": "SET_MP"
+    },
+    {
+      "va": "00B51B70",
+      "name": "SET_ACTIVE_STATUS"
+    },
+    {
+      "va": "00B51B74",
+      "name": "SET_LEVEL"
+    },
+    {
+      "va": "00B51B78",
+      "name": "CHANGE_DAMAGE"
+    },
+    {
+      "va": "00B51B7C",
+      "name": "CHANGE_ATTACK_BONUS_RATE"
+    },
+    {
+      "va": "00B51B80",
+      "name": "ADD_ATTACK_ACTIVE_STATUS"
+    },
+    {
+      "va": "00B51B84",
+      "name": "HIT_OBJECT"
+    },
+    {
+      "va": "00B51B88",
+      "name": "HP_DAMAGE"
+    },
+    {
+      "va": "00B51B8C",
+      "name": "CREATE_PASSIVEOBJECT"
+    },
+    {
+      "va": "00B51B90",
+      "name": "CREATE_MONSTER"
+    },
+    {
+      "va": "00B51B94",
+      "name": "DESTROY_OBJECT"
+    },
+    {
+      "va": "00B51B98",
+      "name": "USE_STACKABLE"
+    },
+    {
+      "va": "00B51B9C",
+      "name": "USE_SKILL"
+    },
+    {
+      "va": "00B51BA0",
+      "name": "CHANGE_SKILL_EFFECT"
+    },
+    {
+      "va": "00B51BA4",
+      "name": "PAUSE_OBJECT"
+    },
+    {
+      "va": "00B51BA8",
+      "name": "DECREASE_DURABILITY"
+    },
+    {
+      "va": "00B51BAC",
+      "name": "MONSTER_COMMAND"
+    },
+    {
+      "va": "00B51BB0",
+      "name": "USE_COIN"
+    },
+    {
+      "va": "00B51BB4",
+      "name": "CHANGE_EQUIPMENT_DATA"
+    },
+    {
+      "va": "00B51BB8",
+      "name": "UPDATE_MONSTER_TARGET"
+    },
+    {
+      "va": "00B51BBC",
+      "name": "INPUT_SHAKE"
+    },
+    {
+      "va": "00B51BC0",
+      "name": "MONSTER_AI_CONDITION"
+    },
+    {
+      "va": "00B51BC4",
+      "name": "GAMESCORE_SYNC"
+    },
+    {
+      "va": "00B51BC8",
+      "name": "PVP_MAP_LOAD_COMPLETE"
+    },
+    {
+      "va": "00B51BCC",
+      "name": "WARROOM_PLAY_MODE_CHANGE"
+    },
+    {
+      "va": "00B51BD0",
+      "name": "CREATURE_STATE"
+    },
+    {
+      "va": "00B51BD4",
+      "name": "EQUIPMENT_EVENT_ACTION"
+    },
+    {
+      "va": "00B51BD8",
+      "name": "CREATE_AI_CHARACTER"
+    },
+    {
+      "va": "00B51BDC",
+      "name": "CHARACTER_AV_MAP_START"
+    },
+    {
+      "va": "00B51BE0",
+      "name": "DPROTO"
+    },
+    {
+      "va": "00B51BE4",
+      "name": "UDPPACKET_END"
+    },
+    {
+      "va": "00B51BE8",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51BEC",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51BF0",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51BF4",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51BF8",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51BFC",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51C00",
+      "name": "UDPPACKET_NONAME"
+    },
+    {
+      "va": "00B51C08",
+      "name": "UDPPACKET_CHECK_CONNECT"
+    },
+    {
+      "va": "00B51C0C",
+      "name": "UDPPACKET_DUMMY_SIGNAL"
+    },
+    {
+      "va": "00B51C10",
+      "name": "UDPPACKET_DUNGEON_LIST"
+    },
+    {
+      "va": "00B51C14",
+      "name": "UDPPACKET_SELECT_DUNGEON"
+    },
+    {
+      "va": "00B51C18",
+      "name": "UDPPACKET_SET_MOVE_INFO"
+    },
+    {
+      "va": "00B51C1C",
+      "name": "UDPPACKET_SET_STATE"
+    },
+    {
+      "va": "00B51C20",
+      "name": "UDPPACKET_SET_MONSTER_MASTER"
+    },
+    {
+      "va": "00B51C24",
+      "name": "UDPPACKET_SET_MONSTER_AI_INFO"
+    },
+    {
+      "va": "00B51C28",
+      "name": "UDPPACKET_SET_PASSIVEOBJECT_PARENT"
+    },
+    {
+      "va": "00B51C2C",
+      "name": "UDPPACKET_SET_PARTICLE"
+    },
+    {
+      "va": "00B51C30",
+      "name": "UDPPACKET_SET_EQUIPMENT"
+    },
+    {
+      "va": "00B51C34",
+      "name": "UDPPACKET_CHECK_EQUIPMENT"
+    },
+    {
+      "va": "00B51C38",
+      "name": "UDPPACKET_SET_HP"
+    },
+    {
+      "va": "00B51C3C",
+      "name": "UDPPACKET_SET_MP"
+    },
+    {
+      "va": "00B51C40",
+      "name": "UDPPACKET_SET_ACTIVE_STATUS"
+    },
+    {
+      "va": "00B51C44",
+      "name": "UDPPACKET_SET_LEVEL"
+    },
+    {
+      "va": "00B51C48",
+      "name": "UDPPACKET_CHANGE_DAMAGE"
+    },
+    {
+      "va": "00B51C4C",
+      "name": "UDPPACKET_CHANGE_ATTACK_BONUS_RATE"
+    },
+    {
+      "va": "00B51C50",
+      "name": "UDPPACKET_ADD_ATTACK_ACTIVE_STATUS"
+    },
+    {
+      "va": "00B51C54",
+      "name": "UDPPACKET_HIT_OBJECT"
+    },
+    {
+      "va": "00B51C58",
+      "name": "UDPPACKET_HP_DAMAGE"
+    },
+    {
+      "va": "00B51C5C",
+      "name": "UDPPACKET_CREATE_PASSIVEOBJECT"
+    },
+    {
+      "va": "00B51C60",
+      "name": "UDPPACKET_CREATE_MONSTER"
+    },
+    {
+      "va": "00B51C64",
+      "name": "UDPPACKET_DESTROY_OBJECT"
+    },
+    {
+      "va": "00B51C68",
+      "name": "UDPPACKET_USE_STACKABLE"
+    },
+    {
+      "va": "00B51C6C",
+      "name": "UDPPACKET_USE_SKILL"
+    },
+    {
+      "va": "00B51C70",
+      "name": "UDPPACKET_CHANGE_SKILL_EFFECT"
+    },
+    {
+      "va": "00B51C74",
+      "name": "UDPPACKET_PAUSE_OBJECT"
+    },
+    {
+      "va": "00B51C78",
+      "name": "UDPPACKET_DECREASE_DURABILITY"
+    },
+    {
+      "va": "00B51C7C",
+      "name": "UDPPACKET_MONSTER_COMMAND"
+    },
+    {
+      "va": "00B51C80",
+      "name": "UDPPACKET_USE_COIN"
+    },
+    {
+      "va": "00B51C84",
+      "name": "UDPPACKET_CHANGE_EQUIPMENT_DATA"
+    },
+    {
+      "va": "00B51C88",
+      "name": "UDPPACKET_UPDATE_MONSTER_TARGET"
+    },
+    {
+      "va": "00B51C8C",
+      "name": "UDPPACKET_INPUT_SHAKE"
+    },
+    {
+      "va": "00B51C90",
+      "name": "UDPPACKET_MONSTER_AI_CONDITION"
+    },
+    {
+      "va": "00B51C94",
+      "name": "UDPPACKET_GAMESCORE_SYNC"
+    },
+    {
+      "va": "00B51C98",
+      "name": "UDPPACKET_PVP_MAP_LOAD_COMPLETE"
+    },
+    {
+      "va": "00B51C9C",
+      "name": "UDPPACKET_WARROOM_PLAY_MODE_CHANGE"
+    },
+    {
+      "va": "00B51CA0",
+      "name": "UDPPACKET_CREATURE_STATE"
+    },
+    {
+      "va": "00B51CA4",
+      "name": "UDPPACKET_EQUIPMENT_EVENT_ACTION"
+    },
+    {
+      "va": "00B51CA8",
+      "name": "UDPPACKET_CREATE_AI_CHARACTER"
+    },
+    {
+      "va": "00B51CAC",
+      "name": "UDPPACKET_CHARACTER_ABILITY_VALIDATION"
+    },
+    {
+      "va": "00B51CB0",
+      "name": "UDPPACKET_DPROTO"
+    },
+    {
+      "va": "00B51CB4",
+      "name": "UDPPACKET_END"
+    },
+    {
+      "va": "00B51CC4",
+      "name": "MSG"
+    },
+    {
+      "va": "00B51CC8",
+      "name": "P_MSG"
+    },
+    {
+      "va": "00B51CCC",
+      "name": "ACK"
+    },
+    {
+      "va": "00B51CD0",
+      "name": "HDR"
+    },
+    {
+      "va": "00B51CD4",
+      "name": "R_HDR"
+    }
+  ]
+}

@@ -1,5 +1,9 @@
 # Stable native startup entry
 
+Release note: v0.1.9 deliberately reuses the published v0.1.8 entry bytes. The
+`startup.dat` fast path described below is a source experiment, not part of the
+v0.1.9 binary delivery. Its managed updater still reuses validated receipts.
+
 `DFLegacy.Launcher.exe` is the fixed shortcut target. It has a static C++ runtime,
 uses the existing launcher icon, and needs no .NET runtime or external client
 assets to validate and start the separate updater. The managed application is
@@ -26,7 +30,41 @@ length is at most 4096 bytes, and LF/CRLF with an optional final newline is
 accepted. BOMs, blank lines, unknown/duplicate fields and incompatible
 architectures are rejected. It checks the actual updater PE architecture as
 well as its hash. The UI hash is passed on as recovery metadata; the managed
-worker validates and repairs the complete installation before opening that UI.
+worker validates and repairs the complete installation before opening that UI
+on the recovery path.
+
+After a successful worker run the entry writes a separate `startup.dat`, protected
+with Windows DPAPI for the current user. It binds the absolute installation root,
+process architecture, and file IDs, lengths, creation and write times of the app,
+updater, descriptor, `installed.json` and `validated.json`. Normal startup reads
+this small receipt and file attributes, then opens the app directly using the
+existing readiness event. It does not hash or copy executables or game resources.
+The managed app checks its completed V4 receipt and critical EXE/DLL attributes,
+then discovers new releases in the background while login remains visible.
+
+Missing or invalid receipts, changed identities, missing critical executables,
+either pending transaction journal, or an app which exits before acknowledging
+readiness return to the verified worker path. An unconfirmed child is terminated
+and its exit confirmed before recovery starts. Explicit bootstrap rechecks also
+use the worker. Headless commands wait for their actual exit and are never retried
+after completion. DPAPI receipt creation failure leaves successful UI startup
+intact; the next launch uses full verification again.
+
+The V4 completion record is flushed and replaced atomically only after complete
+post-install verification and receipt commit; a pending journal always overrides
+it, and rollback invalidates it. Old installations verify once before creating
+the completion record. Ordinary startup intentionally trusts resource state
+between installations; attribute-preserving modifications are outside this fast
+path's guarantee. Explicit repair and actual game-launch validation retain full
+content checks. Offline or current-version results do not create modal notices.
+The independent Diagnostics.exe authorization check still hashes that helper
+before executing it; it does not scan the installation's resource contents.
+
+This new native entry has different bytes from the historical `.3`/`.4` entry.
+Those versions cannot receive it through ordinary V4 updates: the existing
+publisher and runtime stable-entry guards remain enforced. Deliver a new full
+starter or an explicit entry migration before claiming this native fast path is
+deployed to those installations.
 
 All installation and temporary paths must be absolute local drive paths.
 Directory components and files reject reparse points; executable, descriptor,

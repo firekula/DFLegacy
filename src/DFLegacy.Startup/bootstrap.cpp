@@ -1,6 +1,7 @@
 #include "bootstrap.h"
 #include <windows.h>
 #include <bcrypt.h>
+#include <wincrypt.h>
 #include <algorithm>
 #include <array>
 #include <map>
@@ -259,6 +260,95 @@ public:
     const fs::path& executable() const { return executable_; }
 };
 struct Attempt { int exitCode; bool mayRetry; };
+// This user-protected receipt is issued only after the verified worker succeeds.
+// Attribute-only identities avoid reading executable or game resource contents.
+std::string StartupIdentity(const fs::path& root) {
+    for (const auto* pending : {L".dflegacy/v4/pending.json", L".dflegacy/pending.json"})
+        Check(GetFileAttributesW((root / pending).c_str()) == INVALID_FILE_ATTRIBUTES &&
+            (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND));
+    std::string bytes = "DFLegacy completed startup receipt 1";
+    const auto text = root.native();
+    bytes.append(reinterpret_cast<const char*>(text.data()), text.size() * sizeof(wchar_t));
+    const auto append = [&](DWORD value) { bytes.append(reinterpret_cast<const char*>(&value), sizeof(value)); };
+    append(sizeof(void*));
+    for (const auto* name : {L"DFLegacy.Launcher.App.exe", L"DFLegacy.Updater.exe", L"DFLegacy.Bootstrap.ini",
+        L".dflegacy/v4/installed.json", L".dflegacy/v4/validated.json"}) {
+        Handle file(CreateFileW((root / name).c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
+        Check(static_cast<bool>(file)); Regular(file); const auto info = Information(file);
+        append(info.dwVolumeSerialNumber); append(info.nFileIndexHigh); append(info.nFileIndexLow);
+        append(info.nFileSizeHigh); append(info.nFileSizeLow);
+        append(info.ftLastWriteTime.dwHighDateTime); append(info.ftLastWriteTime.dwLowDateTime);
+        append(info.ftCreationTime.dwHighDateTime); append(info.ftCreationTime.dwLowDateTime);
+    }
+    return bytes;
+}
+class ProtectedBytes {
+public:
+    DATA_BLOB value{};
+    ~ProtectedBytes() { if (value.pbData) LocalFree(value.pbData); }
+};
+void CommitStartup(const fs::path& root, const fs::path& state) {
+    // Re-read current metadata: the worker may have upgraded its own installed binaries.
+    const auto descriptor = ReadDescriptor(root / L"DFLegacy.Bootstrap.ini");
+    { auto app = ReadFileHandle(root / L"DFLegacy.Launcher.App.exe"); Verify(app, descriptor.launcherSha256); }
+    const auto identity = StartupIdentity(root);
+    DATA_BLOB plain{static_cast<DWORD>(identity.size()), reinterpret_cast<BYTE*>(const_cast<char*>(identity.data()))};
+    ProtectedBytes encrypted;
+    Check(CryptProtectData(&plain, L"DFLegacy completed startup", nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &encrypted.value) != FALSE);
+    const auto target = state / L"startup.dat"; ValidateReplacement(target);
+    PendingFile pending{state / ("startup." + Nonce() + ".tmp")};
+    { auto file = NewFile(pending.path); WriteExact(file, encrypted.value.pbData, encrypted.value.cbData); Check(FlushFileBuffers(file.get()) != FALSE); }
+    Check(MoveFileExW(pending.path.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != FALSE);
+    pending.path.clear();
+}
+std::optional<Attempt> FastStartup(const fs::path& root, const fs::path& state, const std::vector<std::wstring>& arguments) {
+    try {
+        // Explicit recheck/repair requests must execute the worker, including its parent wait.
+        for (const auto& argument : arguments) if (argument.starts_with(L"--bootstrap-") || argument == L"--repair-client") return std::nullopt;
+        auto receipt = ReadFileHandle(state / L"startup.dat");
+        LARGE_INTEGER size{}; Check(GetFileSizeEx(receipt.get(), &size) && size.QuadPart > 0 && size.QuadPart <= 65536);
+        std::vector<BYTE> bytes(static_cast<size_t>(size.QuadPart)); ReadExact(receipt, bytes.data(), static_cast<DWORD>(bytes.size()));
+        DATA_BLOB encrypted{static_cast<DWORD>(bytes.size()), bytes.data()}; ProtectedBytes plain;
+        Check(CryptUnprotectData(&encrypted, nullptr, nullptr, nullptr, nullptr, CRYPTPROTECT_UI_FORBIDDEN, &plain.value) != FALSE);
+        const auto identity = StartupIdentity(root);
+        Check(plain.value.cbData == identity.size() && memcmp(plain.value.pbData, identity.data(), identity.size()) == 0);
+        const auto app = root / L"DFLegacy.Launcher.App.exe";
+        Handle heldApp(CreateFileW(app.c_str(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr));
+        Check(static_cast<bool>(heldApp)); Regular(heldApp);
+        std::wstring command = QuoteArgument(app.wstring()) + L" --bootstrap-verified --";
+        for (const auto& argument : arguments) { Check(argument.find(L'\0') == std::wstring::npos); command += L' '; command += QuoteArgument(argument); }
+        Check(command.size() < 32767);
+        const auto nonce = Nonce();
+        const auto eventName = L"Local\\DFLegacy.Startup." + std::wstring(nonce.begin(), nonce.end());
+        Handle ready(CreateEventW(nullptr, TRUE, FALSE, eventName.c_str())); Check(static_cast<bool>(ready));
+        // Launches are serialized by entry.lock; do not leak the private event to later children.
+        wchar_t previous[32768]{}; const auto length = GetEnvironmentVariableW(L"DFLEGACY_BOOTSTRAP_READY_EVENT", previous, 32768);
+        Check(length < 32768); Check(SetEnvironmentVariableW(L"DFLEGACY_BOOTSTRAP_READY_EVENT", eventName.c_str()) != FALSE);
+        STARTUPINFOW startup{}; startup.cb = sizeof(startup); PROCESS_INFORMATION process{};
+        const auto started = CreateProcessW(app.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, root.c_str(), &startup, &process);
+        SetEnvironmentVariableW(L"DFLEGACY_BOOTSTRAP_READY_EVENT", length ? previous : nullptr);
+        Check(started != FALSE); Handle child(process.hProcess), thread(process.hThread);
+        bool headless = false;
+        for (const auto& argument : arguments) for (const auto* flag : {L"--headless", L"--account", L"--account-index", L"--self-test", L"--install-ijl15", L"--check-d3d9", L"--no-dialog", L"--third-party-notices"})
+            if (CompareStringOrdinal(argument.c_str(), -1, flag, -1, TRUE) == CSTR_EQUAL) headless = true;
+        if (headless) {
+            Check(WaitForSingleObject(child.get(), INFINITE) == WAIT_OBJECT_0);
+            DWORD code = 1; Check(GetExitCodeProcess(child.get(), &code) != FALSE);
+            // The app signals only after receipt validation and before executing
+            // a command. Recover a rejected receipt, never repeat a completed command.
+            if (WaitForSingleObject(ready.get(), 0) != WAIT_OBJECT_0) return std::nullopt;
+            return Attempt{code == 0 ? 0 : 1, false};
+        }
+        HANDLE waits[]{ready.get(), child.get()}; const auto result = WaitForMultipleObjects(2, waits, FALSE, 30000);
+        if (result == WAIT_OBJECT_0) return Attempt{0, false};
+        // Never run recovery alongside an unconfirmed app.
+        if (result != WAIT_OBJECT_0 + 1) {
+            if (!TerminateProcess(child.get(), 1) || WaitForSingleObject(child.get(), 10000) != WAIT_OBJECT_0) return Attempt{1, false};
+        }
+        return std::nullopt;
+    } catch (const Failure&) { return std::nullopt; }
+}
 Attempt Execute(const Candidate& candidate, bool cache, const fs::path& root, const fs::path& state,
     const std::vector<std::wstring>& arguments) {
     try {
@@ -351,6 +441,10 @@ Result Run(const fs::path& input, const std::vector<std::wstring>& arguments) {
         bool busy = false; auto entryLock = Lock(state / L"entry.lock", busy);
         if (busy) return {0, true, {}};
         { auto appLock = Lock(state / L"app.lock", busy); if (busy) return {0, true, {}}; }
+        if (const auto fast = FastStartup(root, state, arguments)) {
+            Log(state, fast->exitCode == 0 ? "Completed receipt opened app.\r\n" : "Receipt app command failed.\r\n");
+            return {fast->exitCode, false, fast->exitCode == 0 ? L"" : L"登录器命令未成功完成，请查看登录器日志后重试。"};
+        }
         const auto old = Recovery(state); const auto primary = Primary(root);
         if (!primary && !old) {
             Log(state, "No verified updater available.\r\n");
@@ -361,7 +455,11 @@ Result Run(const fs::path& input, const std::vector<std::wstring>& arguments) {
             Log(state, "Primary failed; trying prior verified recovery once.\r\n");
             attempt = Execute(*old, false, root, state, arguments);
         }
-        if (attempt.exitCode == 0) { Log(state, "Verified updater completed.\r\n"); return {0, false, {}}; }
+        if (attempt.exitCode == 0) {
+            // Failure to save an optimization must never launch a second UI.
+            try { CommitStartup(root, state); } catch (const Failure&) { Log(state, "Startup receipt unavailable; next start verifies.\r\n"); }
+            Log(state, "Verified updater completed.\r\n"); return {0, false, {}};
+        }
         if (attempt.exitCode == 2) { Log(state, "Update cancelled.\r\n"); return {2, false, {}}; }
         Log(state, "Verified updater failed.\r\n");
         return {1, false, L"更新或自动修复未完成。请查看更新程序提示后重试；本地恢复副本已保留。"};

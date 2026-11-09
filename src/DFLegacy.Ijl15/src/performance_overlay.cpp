@@ -30,6 +30,7 @@ namespace
     using FpsFunction = double(__cdecl*)();
     using OriginalPerformanceFunction = int(__thiscall*)(void*);
     using BeginTextFunction = void(__thiscall*)(void*, const void*);
+    using EndTextFunction = void(__thiscall*)(void*);
     using DrawTextFunction = int(__thiscall*)(
         void*,
         int,
@@ -50,6 +51,26 @@ namespace
         std::uint32_t font;
     };
     static_assert(sizeof(TextState) == 12, "Unexpected client text state size");
+
+    class TextBatch
+    {
+    public:
+        TextBatch(void* renderer, const TextState& state,
+            BeginTextFunction begin, EndTextFunction end) noexcept
+            : renderer_(renderer), end_(end), owned_(
+                *reinterpret_cast<const unsigned char*>(
+                    static_cast<const unsigned char*>(renderer) + 0x2D) == 0)
+        {
+            if (owned_) begin(renderer_, &state);
+        }
+        ~TextBatch() noexcept { if (owned_) end_(renderer_); }
+        TextBatch(const TextBatch&) = delete;
+        TextBatch& operator=(const TextBatch&) = delete;
+    private:
+        void* renderer_;
+        EndTextFunction end_;
+        bool owned_;
+    };
 
     double ReadFps() noexcept
     {
@@ -125,7 +146,9 @@ namespace
             vtable[0x4C / sizeof(void*)]);
         const auto drawText = reinterpret_cast<DrawTextFunction>(
             vtable[0x54 / sizeof(void*)]);
-        if (beginText == nullptr || drawText == nullptr)
+        const auto endText = reinterpret_cast<EndTextFunction>(
+            vtable[0x50 / sizeof(void*)]);
+        if (beginText == nullptr || drawText == nullptr || endText == nullptr)
         {
             return 0;
         }
@@ -135,7 +158,13 @@ namespace
         state.color = -1;
         state.mode = 1;
         state.font = *reinterpret_cast<const std::uint32_t*>(0x00B5B384);
-        beginText(renderer, &state);
+        // Native BeginText (0x8D5210) retains this pointer, rather than copying
+        // it, and ignores subsequent BeginText while +0x2D is set. Always end
+        // our batch before state leaves scope, including the hidden-overlay
+        // return below. Otherwise the next UI message reads expired stack data
+        // and can fault in the font renderer at 0x8D5745. Borrowed batches remain
+        // owned by their native caller.
+        TextBatch batch(renderer, state, beginText, endText);
         timing.Mark();
         // Share the original frame's initialized text state with the plugin.
         // Do not begin/reset a native text batch separately for every line.

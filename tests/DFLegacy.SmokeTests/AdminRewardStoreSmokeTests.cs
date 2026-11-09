@@ -44,6 +44,7 @@ internal static class AdminRewardStoreSmokeTests
 
     public static async Task RunAsync(Action<bool, string> check)
     {
+        await AdminMailAttachmentSmokeTests.RunAsync(check);
         await CheckSessionAsync(check);
         using var f = new Fixture();
         var writer = new Writer();

@@ -11,12 +11,13 @@ internal static class UpdateSessionVersionTests
         var target=UpdateInstallerTests.Installation(root);
         UpdateV2Tests.InstallMetadata(target,version:"dev-test");
         var tag="dev-test"; long releaseId=7; var requests=0;
+        var assetName=Environment.Is64BitProcess?"DFLegacy-client-update-v2-win-x64.zip":"DFLegacy-client-update-v2-win-x86.zip";
         using var http=new HttpClient(new UpdateTransportTests.Handler((request,_)=>
         {
             requests++;
             if(request.RequestUri!.Host!="api.github.com") throw new Exception("Same-version startup must never download an archive");
             var feed=new[]{new {id=releaseId,tag_name=tag,published_at="2026-11-01T00:00:00Z",draft=false,prerelease=true,
-                assets=new[]{new {name=GitHubUpdateClient.AssetName,size=100,digest="sha256:"+new string('a',64),browser_download_url="https://github.com/firekula/DFLegacy/releases/download/"+tag+"/"+GitHubUpdateClient.AssetName}}}};
+                assets=new[]{new {name=assetName,size=100,digest="sha256:"+new string('a',64),browser_download_url="https://github.com/firekula/DFLegacy/releases/download/"+tag+"/"+assetName}}}};
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) {Content=new ByteArrayContent(JsonSerializer.SerializeToUtf8Bytes(feed))});
         }));
         using var session=new UpdateSession(target,new LauncherOptions(),http);

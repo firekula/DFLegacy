@@ -302,7 +302,10 @@ internal static class TransactionTests
             var crash = Path.Combine(temporary, "crash-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(crash); Cache(cache, "stable"); Apply(crash, a, cache);
             var config = TestRun.Bytes("""{"Accounts":[{"Password":"secret"}]}"""); File.WriteAllBytes(ConfigPath(crash), config);
             await Interrupt(crash, c, cache, checkpoint);
+            var interruptedStore = new InstallationStore(crash);
+            TestRun.Check(!interruptedStore.HasValidatedReceipt(interruptedStore.ReadInstalled()!), "pending transaction overrides completion evidence at " + checkpoint);
             TestRun.Check(Recover(crash) && !Pending(crash), "recovery clears only fully restored journal");
+            TestRun.Check(!interruptedStore.HasValidatedReceipt(interruptedStore.ReadInstalled()!), "rollback invalidates completion evidence until full baseline verification");
             TestRun.Check((await FileVerifier.VerifyAsync(crash, a.Manifest)).IsValid && Read(crash)?.ManifestSha256 == a.ManifestSha256 && File.ReadAllBytes(ConfigPath(crash)).SequenceEqual(config) && !File.Exists(Path.Combine(crash, "empty.dat")), "interruption restores old files/config/receipt and removes new file");
         }
         var mixedCaseRoot = Path.Combine(temporary, "MiXeD-Recovery"); Directory.CreateDirectory(mixedCaseRoot); Apply(mixedCaseRoot, a, cache);

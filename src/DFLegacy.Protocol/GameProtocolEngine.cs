@@ -108,7 +108,13 @@ public sealed record GameDungeonMonster(
     byte BoxIndex = 0,
     bool IsHellHidden = false,
     ushort X = 0,
-    ushort Y = 0);
+    ushort Y = 0)
+{
+    // PVF [monster team], indexed by the map's monster rows. The client reads
+    // this from its map script; it is not an extra field in NOTI29's wire row.
+    public int Team { get; init; } = 100;
+    public bool IsHostile => Team == 100;
+}
 
 public static class GameDungeonMonsterTypes
 {

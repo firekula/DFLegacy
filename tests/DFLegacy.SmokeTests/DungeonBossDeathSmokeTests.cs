@@ -112,6 +112,58 @@ internal static class DungeonBossDeathSmokeTests
         CheckSettlementBarrier(check, fixture, boss, normal);
         CheckCompletedRunRoomGate(check, fixture);
         CheckFinalBossDeathRoomGate(check);
+        CheckFriendlyProtectionTarget(check);
+    }
+
+    private static void CheckFriendlyProtectionTarget(Action<bool, string> check)
+    {
+        // Iceheart's real map distinguishes Charlie (team 100) from the heart
+        // (team 0). A third allied row and a missing team entry exercise the
+        // per-row mapping and the legacy enemy default through the real parser.
+        using var fixture = new DungeonFixture(
+            "1030 1 0 286 469 0 20 1 `[fixed]` `[boss]`\n"
+            + "1034 0 20 1159 837 0 1 1 `[fixed]` `[normal]`\n"
+            + "2 1 0 300 400 0 1 1 `[fixed]` `[normal]`\n"
+            + "3 1 0 400 400 0 1 1 `[fixed]` `[normal]`\n",
+            "100\n0 // protection target\n1");
+        foreach (var party in new[] { false, true })
+        {
+            var instance = party ? fixture.CreatePartyInstance(2010) : fixture.CreateInstance();
+            check(instance.TryStartRun(fixture.Layout, 0, 0, out _)
+                && instance.TryMoveRoom(1, 0, out _) && instance.TryMoveRoom(2, 0, out _),
+                "protection-target fixture reaches the boss room through PVF parsing");
+            var room = instance.RunCurrentRoom!;
+            var boss = room.Monsters[0];
+            var heart = room.Monsters[1];
+            var enemy = room.Monsters[3];
+            var noBoss = room with { Monsters = [heart, enemy with { IsBoxMonster = 1, BoxIndex = 5 }] };
+            check(!DungeonRoomClearRules.Evaluate(noBoss, enemy,
+                    new HashSet<ushort> { heart.UniqueId, enemy.UniqueId }, new HashSet<byte>()).ShouldEnableClear,
+                "a boss-marked map without a boss still waits for its unopened hostile box monster");
+            var promoted = DungeonCatalog.PromoteChampions(room.Monsters, 100, fixture.Random);
+            check(promoted[1].Type == 0 && promoted[2].Type == 0 && promoted[3].Type == 1,
+                "champion promotion leaves protection targets and allies unchanged but promotes an omitted-team enemy");
+            instance.TryReportBossDeath(boss.UniqueId, [boss.UniqueId], out _);
+            instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+            instance.TryStartBossDeathCascade(out _);
+            var sweep = new DungeonBossDeathSweep();
+            var now = DateTimeOffset.UtcNow;
+            check(sweep.Schedule(instance, now) == 1
+                && sweep.TakeDue(instance, now.AddSeconds(5)).SequenceEqual([enemy.UniqueId]),
+                $"{(party ? "party" : "solo")} boss fallback never kills a living protection target or ally");
+            check(!instance.EvaluateRoomClear(boss).ShouldEnableClear,
+                "the hostile survivor must still complete normal death settlement");
+            instance.TryBeginMonsterDeath(enemy.UniqueId, instance.RoomGeneration, out _, out _);
+            instance.CompleteMonsterDeath(instance.RoomGeneration);
+            check(instance.EvaluateRoomClear(enemy).ShouldEnableClear && instance.TryEnableClear()
+                && instance.SnapshotAliveMonsters().SetEquals([heart.UniqueId, (ushort)2])
+                && instance.SnapshotBossDeathCascadeTargets().Length == 0,
+                "normal clear and card settlement can begin with the heart and ally still alive");
+            check(DungeonRunState.IsRoomCleared(room, new HashSet<ushort> { boss.UniqueId, enemy.UniqueId }, new HashSet<byte>()),
+                "map-clear quest evidence requires hostile deaths, not destruction of protected allies");
+            check(instance.TryTakeMonsterDeath(heart.UniqueId, out var cascadeDeath) && !cascadeDeath,
+                "a genuine protection-target death remains reportable and is never marked as boss cleanup");
+        }
     }
 
     private static void CheckFinalBossDeathRoomGate(Action<bool, string> check)

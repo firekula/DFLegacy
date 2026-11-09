@@ -23,6 +23,16 @@ internal static class GiteaSourceTests
     }
     internal static async Task RunV4(string scratch,Action<bool,string> check)
     {
+        await Case("background source inherits installed starter identity",check,async()=>
+        {
+            var root=Root(scratch,"background-inherited-source");var provider=FixtureProvider.Create();await Install(root,provider);
+            using(var session=new V4UpdateSession(root,new LauncherOptions(),provider))
+                check(await session.CheckAsync(0,default)==null&&provider.FindCalls>0,"starter without update settings keeps discovering its installed Gitea channel");
+            using(var session=new V4UpdateSession(root,new LauncherOptions{UpdateServiceUrl="invalid inherited hosted URL"},provider))
+                check(await session.CheckAsync(0,default)==null,"inherited Gitea source keeps precedence over leftover hosted URL");
+            File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"github\",\"UpdateChannel\":\"stable\"}");
+            check(V4UpdateSession.SourceFor(root,new LauncherOptions()).Provider=="github","explicit default-valued source overrides installed starter fallback");
+        });
         await Case("explicit Gitea overrides inherited hosted source",check,async()=>
         {
             var root=Root(scratch,"explicit");var provider=FixtureProvider.Create();
@@ -52,8 +62,10 @@ internal static class GiteaSourceTests
             var options=Options("invalid inherited hosted URL");options.DisableGitHubUpdates=true;provider.FindCalls=0;provider.OpenCalls=0;
             using var session=new V4UpdateSession(root,options,provider);
             check(await session.CheckAsync(0,default)==null&&session.ShowStatusNotice&&session.StatusMessage.Contains("已停用联网更新")
-                &&provider.FindCalls==0&&provider.OpenCalls==0,"disabled Gitea startup fully validates local files without discovery or downloads");
+                &&provider.FindCalls==0&&provider.OpenCalls==0,"disabled Gitea startup uses completed receipt without discovery or downloads");
             File.WriteAllText(Path.Combine(root,"Script.pvf"),"damaged");
+            check(await session.CheckAsync(0,default)==null,"disabled Gitea startup trusts completed asset record");
+            File.Delete(Path.Combine(root,".dflegacy/v4/validated.json"));
             try {await session.CheckAsync(0,default);check(false,"disabled Gitea startup must reject a damaged managed file");}
             catch(InvalidDataException) {check(provider.FindCalls==0&&provider.OpenCalls==0,"disabled Gitea rejects corrupt local files without contacting any provider");}
         });
