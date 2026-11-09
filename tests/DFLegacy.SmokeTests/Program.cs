@@ -9,6 +9,23 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--idle-cera-refresh"))
+{
+    await IdleCeraRefreshSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Idle Cera refresh smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Length > 0 && args[0] == "--chapter-two-item-names")
+{
+    ChapterTwoItemNamesSmokeTests.Run(Check);
+    if (args.Length > 1) ChapterTwoItemNamesSmokeTests.RunActual(args[1], Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Chapter Two item names smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--chapter-two-pvf", var migratedPvf])
 {
     ChapterTwoPvfMigrationSmokeTests.Run(migratedPvf, Check);
@@ -465,11 +482,13 @@ AccountClientSmokeTests.Run(Check);
 ScriptFileSystemCaseSmokeTests.Run(Check);
 await DeploymentHostingSmokeTests.RunAsync(Check);
 ClientDiagnosticsSmokeTests.Run(Check);
+ChapterTwoItemNamesSmokeTests.Run(Check);
 await FallbackRelayProtocolSmokeTests.RunAsync(Check);
 await FallbackRelaySmokeTests.RunAsync(Check);
 await PartyNetworkFaultSmokeTests.RunAsync(Check);
 await GameplayDatagramLifecycleSmokeTests.RunAsync(Check);
 await TestCeraSmokeTests.RunAsync(Check);
+await IdleCeraRefreshSmokeTests.RunAsync(Check);
 await WebPanelsSmokeTests.RunAsync(Check);
 await AdminAuthSmokeTests.RunAsync(Check);
 await TownSyncSmokeTests.RunAsync(Check);

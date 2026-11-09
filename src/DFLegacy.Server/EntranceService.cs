@@ -4816,6 +4816,21 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, greeting);
                 }
 
+                async Task RefreshPendingCeraAsync()
+                {
+                    var canonicalCera = activeCharacter is null ? null
+                        : await ceraCashInvalidation.ConsumeAsync(store, accountName, serverToken);
+                    if (canonicalCera is not { } queuedCeraValue || activeCharacter is null)
+                        return;
+                    currentCash = queuedCeraValue;
+                    activeCharacter = activeCharacter with { Cash = currentCash };
+                    var ceraNotification = GameProtocolEngine.CreateCeraUpdate(
+                        success: true, value: (uint)queuedCeraValue);
+                    await ceraNotification.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, ceraNotification);
+                }
+
                 Task<PacketFrame?>? pendingPacketRead = null;
                 // "短 tick 到点但一个包都没有"（终审 P2）：流程不落进解码/镜像（那是"有包"路径的
                 // 事），只把信箱取走就回到循环顶部。每轮重置。
@@ -4857,6 +4872,12 @@ public sealed class EntranceService(
                     var partyMembershipChanged = partyMembershipWake.Capture();
                     await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
                     await SendPendingMailAlarmAsync();
+                    // An external cash invalidation can wake an idle read, or arrive
+                    // before this Capture. Drain it before waiting again, after the
+                    // same economic installs used by the decoded-packet safe point.
+                    await InstallPendingTradeAsync();
+                    await InstallPendingDungeonGoldAsync();
+                    await RefreshPendingCeraAsync();
                     var sweepInstance = dungeonInstance;
                     var sweepGeneration = sweepInstance?.RoomGeneration;
                     foreach (var monsterId in bossDeathSweep.TakeDue(sweepInstance, DateTimeOffset.UtcNow))
@@ -5381,19 +5402,7 @@ public sealed class EntranceService(
                         }
                     }
 
-                    var canonicalCera = activeCharacter is null ? null
-                        : await ceraCashInvalidation.ConsumeAsync(store, accountName, serverToken);
-                    if (canonicalCera is { } queuedCeraValue && activeCharacter is not null)
-                    {
-                        currentCash = queuedCeraValue;
-                        activeCharacter = activeCharacter with { Cash = currentCash };
-                        var ceraNotification = GameProtocolEngine.CreateCeraUpdate(
-                            success: true,
-                            value: (uint)queuedCeraValue);
-                        await ceraNotification.WriteAsync(stream, serverToken);
-                        Interlocked.Increment(ref runtimeSession.SentPackets);
-                        LogPacket("TX", runtimeSession, ceraNotification);
-                    }
+                    await RefreshPendingCeraAsync();
 
                     if (await RefreshPendingFatigueResetAsync())
                         await SendFatigueStateAsync(initializeTownHud: currentDungeonId == 0);

@@ -219,6 +219,13 @@ public sealed class ItemCatalog
         @"^\s*(?<id>\d+)\s+`(?<path>[^`]+)`",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex NamePattern = CreateStringTagPattern("name");
+    private static readonly Regex NameReferencePattern = new(
+        @"^\s*\[name\]\s+<(?<table>\d+)::(?<key>[a-zA-Z0-9_.-]+)>[ \t]*\r?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline |
+        RegexOptions.IgnoreCase);
+    private static readonly Regex NameCommentPattern = new(
+        @"`[^`]*`|//[^\r\n]*|/\*[\s\S]*?\*/",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex AttachTypePattern = CreateTokenTagPattern("attach type");
     private static readonly Regex EquipmentTypePattern = CreateTokenTagPattern("equipment type");
     private static readonly Regex StackableTypePattern = CreateTokenTagPattern("stackable type");
@@ -275,6 +282,8 @@ public sealed class ItemCatalog
     private readonly ILogger<ItemCatalog> _logger;
     private readonly Lazy<CatalogState> _state;
     private readonly bool _skipUnsupportedChapterTwoCashContainers;
+    private readonly Lazy<IReadOnlyDictionary<int, string>> _nameTablePaths;
+    private readonly Dictionary<int, IReadOnlyDictionary<string, string>> _nameTables = [];
 
     public ItemCatalog(
         ScriptFileSystem scripts,
@@ -284,6 +293,8 @@ public sealed class ItemCatalog
         _scripts = scripts;
         _logger = logger;
         _skipUnsupportedChapterTwoCashContainers = options?.SkipUnsupportedChapterTwoCashContainers == true;
+        _nameTablePaths = new Lazy<IReadOnlyDictionary<int, string>>(
+            LoadNameTablePaths, LazyThreadSafetyMode.ExecutionAndPublication);
         _state = new Lazy<CatalogState>(
             Load,
             LazyThreadSafetyMode.ExecutionAndPublication);
@@ -662,7 +673,7 @@ public sealed class ItemCatalog
                 new ItemDefinition(
                     itemId,
                     scriptPath,
-                    ReadString(NamePattern, text),
+                    ReadName(text),
                     scriptKind,
                     ClassifyInventory(scriptKind, typeTag),
                     typeTag,
@@ -1096,6 +1107,55 @@ public sealed class ItemCatalog
         var match = pattern.Match(text);
         return match.Success ? match.Groups["value"].Value.Trim() : string.Empty;
     }
+
+    private string ReadName(string text)
+    {
+        var nameText = StripNameComments(text);
+        if (NamePattern.IsMatch(nameText)) return ReadString(NamePattern, nameText);
+
+        // Chapter Two stores names as references into its own language tables;
+        // the category numbers come from string.lst, not an ACT1 constant.
+        var reference = NameReferencePattern.Match(nameText);
+        if (!reference.Success || !int.TryParse(reference.Groups["table"].Value, out var category)
+            || !_nameTablePaths.Value.TryGetValue(category, out var path)
+            || path.Length == 0 || !_scripts.FileExists(path))
+            return string.Empty;
+
+        if (!_nameTables.TryGetValue(category, out var names))
+        {
+            var loaded = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var rawLine in _scripts.ReadLines(path, ScriptEncoding))
+            {
+                var line = rawLine.TrimStart();
+                var separator = line.IndexOf('>');
+                if (separator <= 0 || line.StartsWith("//", StringComparison.Ordinal)) continue;
+                var key = line[..separator].TrimEnd();
+                // Ambiguous mappings remain unnamed rather than selecting a false name.
+                if (!loaded.TryAdd(key, line[(separator + 1)..].Trim())) loaded[key] = string.Empty;
+            }
+            names = loaded;
+            _nameTables.Add(category, names);
+        }
+        return names.TryGetValue(reference.Groups["key"].Value, out var name) ? name : string.Empty;
+    }
+
+    private IReadOnlyDictionary<int, string> LoadNameTablePaths()
+    {
+        var paths = new Dictionary<int, string>();
+        if (!_scripts.FileExists("string.lst")) return paths;
+        foreach (var line in StripNameComments(_scripts.ReadAllText("string.lst", ScriptEncoding)).Split('\n'))
+        {
+            var row = ListEntryPattern.Match(line);
+            if (!row.Success || !int.TryParse(row.Groups["id"].Value, out var category)) continue;
+            var path = row.Groups["path"].Value.Replace('\\', '/');
+            if (!paths.TryAdd(category, path)) paths[category] = string.Empty;
+        }
+        return paths;
+    }
+
+    private static string StripNameComments(string text) => NameCommentPattern.Replace(text, match =>
+        match.Value.StartsWith('`') ? match.Value
+            : new string(match.Value.Select(value => value is '\r' or '\n' ? value : ' ').ToArray()));
 
     private static int ReadUsableJobs(string text)
     {
