@@ -178,6 +178,11 @@ add_custom_command(TARGET ijl15 POST_BUILD
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(performance_text_lifetime_tests tests/performance_text_lifetime_tests.cpp src/memory_patch.cpp)
+    target_compile_options(performance_text_lifetime_tests PRIVATE /W4 /WX /permissive- /EHsc)
+    target_link_options(performance_text_lifetime_tests PRIVATE /DYNAMICBASE:NO /BASE:0x10000000)
+    target_link_libraries(performance_text_lifetime_tests PRIVATE psapi)
+    add_test(NAME performance_text_lifetime COMMAND performance_text_lifetime_tests)
     add_executable(loot_gather_tests tests/loot_gather_tests.cpp src/loot_gather.cpp)
     target_compile_options(loot_gather_tests PRIVATE /W4 /WX /permissive- /EHsc)
     add_test(NAME loot_gather COMMAND loot_gather_tests)
