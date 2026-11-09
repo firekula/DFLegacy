@@ -1,12 +1,67 @@
 #define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
+#include <malloc.h>
+#include <string>
 #include "native_incidents.h"
 
-__declspec(noinline) void Fault() { *reinterpret_cast<volatile int*>(0x123)=1; }
+__declspec(naked) void Fault() { __asm { mov eax,123h } __asm { mov dword ptr [eax],1 } __asm { ret } }
+#pragma warning(push)
+#pragma warning(disable:4717) // Intentional genuine recursive exhaustion, not a raised status code.
+__declspec(noinline) int Overflow(unsigned depth) { volatile char page[4096];page[depth%4096]=static_cast<char>(depth);return Overflow(depth+1)+page[depth%4096]; }
+#pragma warning(pop)
 LONG WINAPI Previous(EXCEPTION_POINTERS*) { return EXCEPTION_EXECUTE_HANDLER; }
+LONG WINAPI Recover(EXCEPTION_POINTERS* e) { e->ContextRecord->Eip+=6;return EXCEPTION_CONTINUE_EXECUTION; }
+LONG WINAPI ExitBeforeReturn(EXCEPTION_POINTERS*) { ExitProcess(91); }
+LONG WINAPI BlockBeforeReturn(EXCEPTION_POINTERS*) { Sleep(20000);return EXCEPTION_CONTINUE_SEARCH; }
+LONG WINAPI BlockThenRecover(EXCEPTION_POINTERS* e) {auto window=CreateWindowExW(0,L"STATIC",L"CrashSender",WS_OVERLAPPEDWINDOW,0,0,200,100,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);Sleep(6000);DestroyWindow(window);e->ContextRecord->Eip+=6;return EXCEPTION_CONTINUE_EXECUTION;}
+volatile LONG StackReady=0;
+DWORD WINAPI LargeStack(void*) {volatile char* bytes=static_cast<volatile char*>(_alloca(1024*1024));for(unsigned i=0;i<1024*1024;i+=4096)bytes[i]=1;InterlockedIncrement(&StackReady);Sleep(20000);return bytes[0];}
+ULONG_PTR WINAPI DenySocket(int,int,int,void*,unsigned,unsigned) {SetLastError(ERROR_ACCESS_DENIED);return ~ULONG_PTR{};}
+void* WINAPI DenyHost(const char*) {SetLastError(ERROR_ACCESS_DENIED);return nullptr;}
+void* WINAPI DenyInternet(const char*,DWORD,const char*,const char*,DWORD) {SetLastError(ERROR_ACCESS_DENIED);return nullptr;}
+DWORD WINAPI DenyAttempt(DWORD) {return ERROR_ACCESS_DENIED;}
+bool DisableLegacyTransport(HMODULE module)
+{
+    auto* base=reinterpret_cast<unsigned char*>(module);auto* dos=reinterpret_cast<IMAGE_DOS_HEADER*>(base);auto* nt=reinterpret_cast<IMAGE_NT_HEADERS32*>(base+dos->e_lfanew);
+    auto* imports=reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR*>(base+nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress);unsigned patched=0;
+    for(;imports->Name;++imports) {
+        auto* names=reinterpret_cast<IMAGE_THUNK_DATA32*>(base+imports->OriginalFirstThunk);auto* slots=reinterpret_cast<IMAGE_THUNK_DATA32*>(base+imports->FirstThunk);
+        for(;names->u1.AddressOfData;++names,++slots) {
+            const bool ordinal=IMAGE_SNAP_BY_ORDINAL32(names->u1.Ordinal)!=0;
+            const char* name=ordinal?(IMAGE_ORDINAL32(names->u1.Ordinal)==52&&!_stricmp(reinterpret_cast<char*>(base+imports->Name),"WS2_32.dll")?"gethostbyname":"ordinal"):reinterpret_cast<IMAGE_IMPORT_BY_NAME*>(base+names->u1.AddressOfData)->Name;void* deny=nullptr;
+            if(!strcmp(name,"WSASocketA"))deny=reinterpret_cast<void*>(DenySocket);
+            if(!strcmp(name,"gethostbyname"))deny=reinterpret_cast<void*>(DenyHost);
+            if(!strcmp(name,"InternetOpenA"))deny=reinterpret_cast<void*>(DenyInternet);
+            if(!strcmp(name,"InternetAttemptConnect"))deny=reinterpret_cast<void*>(DenyAttempt);
+            if(deny){DWORD protection{};if(!VirtualProtect(&slots->u1.Function,sizeof(DWORD),PAGE_READWRITE,&protection))return false;slots->u1.Function=reinterpret_cast<DWORD>(deny);DWORD ignored{};VirtualProtect(&slots->u1.Function,sizeof(DWORD),protection,&ignored);++patched;fprintf(stderr,"blocked-import=%s\n",name);}
+        }
+    }if(patched!=4)fprintf(stderr,"transport-import-patches=%u\n",patched);return patched==4;
+}
+HMODULE Original(const wchar_t* mode,const wchar_t* directory)
+{
+    wchar_t root[1024]{};if(!GetEnvironmentVariableW(L"DFL_TEST_ORIGINAL_DIR",root,1024))return nullptr;
+    const bool bug=wcsstr(mode,L"bug")!=nullptr;
+    const auto path=std::wstring(root)+(bug?L"\\BugTrap.dll":L"\\DumpReport.dll");
+    HMODULE module=LoadLibraryExW(path.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_SYSTEM32);if(!module){fprintf(stderr,"original-load-error=%lu\n",GetLastError());return nullptr;}
+    if(bug) {
+        if(!wcsstr(mode,L"privacy")&&!DisableLegacyTransport(module)){fprintf(stderr,"transport-guard-failed\n");return nullptr;}
+        // ABI independently checked in original disassembly: stdcall scalar,
+        // stdcall ANSI string+port, stdcall ANSI path. Never use SENDREPORT=4.
+        reinterpret_cast<void(WINAPI*)(DWORD)>(GetProcAddress(module,"BT_SetActivityType"))(2);
+        wchar_t port[16]{};GetEnvironmentVariableW(L"DFL_TEST_RECEIVER_PORT",port,16);
+        reinterpret_cast<void(WINAPI*)(const char*,DWORD)>(GetProcAddress(module,"BT_SetSupportServer"))("127.0.0.1",port[0]?wcstoul(port,nullptr,10):9);
+        reinterpret_cast<void(WINAPI*)(DWORD)>(GetProcAddress(module,"BT_SetFlags"))(0);
+        char report[1024]{};WideCharToMultiByte(CP_ACP,0,directory,-1,report,1024,nullptr,nullptr);
+        reinterpret_cast<void(WINAPI*)(const char*)>(GetProcAddress(module,"BT_SetReportFilePath"))(report);
+        if(reinterpret_cast<DWORD(WINAPI*)()>(GetProcAddress(module,"BT_GetActivityType"))()!=2)return nullptr;
+        if(wcsstr(mode,L"badsig")){auto* entry=reinterpret_cast<unsigned char*>(GetProcAddress(module,"BT_SehFilter"));DWORD protection{};if(!VirtualProtect(entry,1,PAGE_EXECUTE_READWRITE,&protection))return nullptr;*entry=0x90;DWORD ignored{};VirtualProtect(entry,1,protection,&ignored);}
+    }
+    return module;
+}
 __declspec(naked) int InvokeNotice(void*,void*,unsigned,unsigned)
 {
     __asm {
@@ -61,8 +116,43 @@ int wmain(int argc,wchar_t** argv)
 {
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
     if(argc!=3)return 2;
+    HMODULE original=nullptr;
+    if(!wcsncmp(argv[1],L"original-",9)){original=Original(argv[1],argv[2]);if(!original)return 13;}
     if(!wcscmp(argv[1],L"previous"))SetUnhandledExceptionFilter(Previous);
+    if(!wcscmp(argv[1],L"recover"))SetUnhandledExceptionFilter(Recover);
+    if(!wcscmp(argv[1],L"previous-exit"))SetUnhandledExceptionFilter(ExitBeforeReturn);
+    if(!wcscmp(argv[1],L"previous-block"))SetUnhandledExceptionFilter(BlockBeforeReturn);
+    if(!wcscmp(argv[1],L"block-recover"))SetUnhandledExceptionFilter(BlockThenRecover);
     if(!dfl::native_incidents::Initialize(argv[2],"fixture-session","fixture-version+commit"))return 3;
+    if(original) {
+        if(wcsstr(argv[1],L"bad")) {
+            reinterpret_cast<void(WINAPI*)(DWORD)>(GetProcAddress(original,"BT_SetActivityType"))(4);
+            if(reinterpret_cast<DWORD(WINAPI*)()>(GetProcAddress(original,"BT_GetActivityType"))()!=4)return 19;
+        }
+        else if(wcsstr(argv[1],L"bug"))reinterpret_cast<void(WINAPI*)()>(GetProcAddress(original,"BT_InstallSehFilter"))();
+        else reinterpret_cast<void(__cdecl*)()>(GetProcAddress(original,"InitStackTraceLibrary"))();
+        if(wcsstr(argv[1],L"privacy")) {
+            reinterpret_cast<void(WINAPI*)(DWORD)>(GetProcAddress(original,"BT_SetActivityType"))(4);
+            if(reinterpret_cast<DWORD(WINAPI*)()>(GetProcAddress(original,"BT_GetActivityType"))()!=5){fprintf(stderr,"legacy SENDREPORT was not suppressed\n");return 16;}
+            WSADATA ws{};if(WSAStartup(MAKEWORD(2,2),&ws))return 17;
+            const SOCKET socket=::socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);sockaddr_in address{};address.sin_family=AF_INET;address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
+            wchar_t port[16]{};GetEnvironmentVariableW(L"DFL_TEST_RECEIVER_PORT",port,16);address.sin_port=htons(static_cast<u_short>(wcstoul(port,nullptr,10)));
+            const bool ok=connect(socket,reinterpret_cast<sockaddr*>(&address),sizeof(address))==0&&send(socket,"ordinary-game-socket",20,0)==20;closesocket(socket);WSACleanup();if(!ok)return 18;
+        }
+    }
+    if(GetEnvironmentVariableW(L"DFL_DIAGNOSTIC_SESSION_DIR",nullptr,0)) {
+        FILETIME created{},exit{},kernel{},user{};GetProcessTimes(GetCurrentProcess(),&created,&exit,&kernel,&user);
+        printf("ready %lu %llu\n",GetCurrentProcessId(),((static_cast<unsigned long long>(created.dwHighDateTime)<<32)|created.dwLowDateTime)+504911232000000000ULL);fflush(stdout);
+        (void)getchar();
+    }
+    if(!wcscmp(argv[1],L"recover")||!wcscmp(argv[1],L"previous-exit")||!wcscmp(argv[1],L"previous-block")||!wcscmp(argv[1],L"block-recover")){Fault();return 0;}
+    if(!wcscmp(argv[1],L"large-dump")){for(int i=0;i<24;++i){HANDLE thread=CreateThread(nullptr,2*1024*1024,LargeStack,nullptr,0,nullptr);if(!thread)return 15;CloseHandle(thread);}while(StackReady<24)Sleep(10);Fault();return 0;}
+    if(original){if(wcsstr(argv[1],L"bad"))return 0;Fault();return 14;}
+    if(!wcscmp(argv[1],L"overflow"))return Overflow(0);
+    if(!wcscmp(argv[1],L"abnormal-exit"))return 92;
+    if(!wcscmp(argv[1],L"normal"))return 0;
+    if(!wcscmp(argv[1],L"later")){SetUnhandledExceptionFilter(Previous);Fault();return 4;}
+    if(!wcscmp(argv[1],L"dialog")){auto window=CreateWindowExW(0,L"STATIC",L"CrashSender",WS_OVERLAPPEDWINDOW,0,0,200,100,nullptr,nullptr,GetModuleHandleW(nullptr),nullptr);if(!window)return 8;ShowWindow(window,SW_HIDE);Sleep(2000);DestroyWindow(window);return 93;}
     if(!wcscmp(argv[1],L"handled")) { __try { Fault(); } __except(EXCEPTION_EXECUTE_HANDLER) {} return 0; }
     if(!wcscmp(argv[1],L"crash")||!wcscmp(argv[1],L"previous")) { Fault(); return 4; }
     if(!wcscmp(argv[1],L"network"))

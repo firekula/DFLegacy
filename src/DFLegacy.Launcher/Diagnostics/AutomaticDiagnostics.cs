@@ -17,18 +17,21 @@ internal static class AutomaticDiagnostics
             settings??=Program.UserDiagnosticSettings;
             var clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(options.ClientPath))!;
             var site=string.IsNullOrWhiteSpace(options.Diagnostics.ServiceUrl)?options.ResolveAccountServiceUrl():options.Diagnostics.ServiceUrl;
-            var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId;
+            var preference=settings.Read();
+            var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId+"|"+preference.Enabled+"|"+preference.LocalSmallDumps;
             lock(Gate)
             {
                 // A durable current-user preference is authoritative over copied launcher.json defaults.
-                options.Diagnostics.Enabled=settings.Read().Enabled;
-                if(!options.Diagnostics.Enabled){Session?.Complete();Session=null;identity=null;return;}
-                if(identity==key&&Session is not null&&new DiagnosticQueue(Session).IsEligible)return;
-                Session?.Complete();Session=DiagnosticSession.Start(clientRoot,site,Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");identity=key;
+                options.Diagnostics.Enabled=preference.Enabled;
+                if(identity==key&&Session is not null&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible))return;
+                Session?.Complete();
+                try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}
+                catch(ArgumentException) {Session=DiagnosticSession.Start(clientRoot,"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}
+                identity=key;
                 Program.Incidents.AutomaticReport=Record;
                 registered=true;
                 var helper=Path.Combine(AppContext.BaseDirectory,"DFLegacy.Diagnostics.exe");
-                if(File.Exists(helper)) { DFLegacy.UpdateCore.PathPolicy.NoLinks(helper);using var process=Process.Start(CreateHelperStartInfo(helper,Session)); }
+                if(!Session.Registration.LocalOnly&&File.Exists(helper)) { DFLegacy.UpdateCore.PathPolicy.NoLinks(helper);using var process=Process.Start(CreateHelperStartInfo(helper,Session)); }
             }
         }
         catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)

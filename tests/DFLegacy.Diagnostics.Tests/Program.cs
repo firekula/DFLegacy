@@ -18,11 +18,51 @@ void Check(bool ok,string text) { checks++; if(!ok) { failures++; Console.Error.
 var root=Path.Combine(Path.GetTempPath(),"dflegacy-diagnostic-tests-"+Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try {
- if(args.Contains("--status-only"))await StatusTests();else {await Run();await StatusTests();}
+ if(args.Contains("--native-integration-only"))await NativeIntegrationTests();else if(args.Contains("--status-only"))await StatusTests();else {await Run();await StatusTests();await NativeIntegrationTests();}
 } catch(Exception ex) { failures++; Console.Error.WriteLine("FAIL: "+ex); }
 finally { Directory.Delete(root,true); }
 Console.WriteLine($"Diagnostics tests: {checks} assertions, {failures} failures");
 return failures==0?0:1;
+
+async Task NativeIntegrationTests()
+{
+ var home=Path.Combine(root,"native-user");var client=Path.Combine(root,"native-client");
+ var settings=new DiagnosticSettings(home);settings.SetEnabled(false);
+ var oldEpoch=settings.Read().Epoch;
+ Check(settings.Read().LocalSmallDumps,"local small dumps default on even when automatic reporting is disabled");
+ settings.SetLocalSmallDumps(false);
+ Check(!settings.Read().Enabled&&!settings.Read().LocalSmallDumps&&settings.Read().Epoch==oldEpoch,"independent dump toggle preserves existing basic opt-out and epoch");
+ settings.SetEnabled(true);Check(!settings.Read().LocalSmallDumps,"basic reporting toggle does not reset dump preference");settings.SetEnabled(false);settings.SetLocalSmallDumps(true);
+ try {
+  var local=DiagnosticSession.Start(client,"",Guid.NewGuid().ToString("N"),home);
+  Check(!new DiagnosticQueue(local).IsEligible,"missing endpoint creates local-only session without any upload eligibility");
+  Check(DiagnosticSession.Open(local.DirectoryPath,local.Registration.Capability,home).SessionId==local.SessionId,"local-only session remains capability registered");
+ }catch(ArgumentException){Check(false,"missing endpoint must retain local-only native diagnostics");}
+ settings.SetEnabled(true);
+ var session=DiagnosticSession.Start(client,"http://127.0.0.1:32241",Guid.NewGuid().ToString("N"),home);
+ var old=session.Registration with { StartedAt=DateTimeOffset.UtcNow.AddDays(-2) };
+ var path=Path.Combine(session.DirectoryPath,"session.json");
+ File.WriteAllText(path,JsonSerializer.Serialize(old,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ try {Check(DiagnosticSession.Open(session.DirectoryPath,session.Registration.Capability,home).SessionId==session.SessionId,"verified live owner survives 24-hour session age");}
+ catch(InvalidDataException){Check(false,"verified live owner must not expire at 24 hours");}
+ File.WriteAllText(path,JsonSerializer.Serialize(old with {LauncherCreatedUtcTicks=1},new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ try {DiagnosticSession.Open(session.DirectoryPath,session.Registration.Capability,home);Check(false,"stale mismatched PID creation binding must be refused");}catch(InvalidDataException){Check(true,"stale mismatched PID creation binding refused");}
+ File.WriteAllText(path,JsonSerializer.Serialize(session.Registration,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ var exit=new DiagnosticIncident{Kind="error",Stage="game-exit",Evidence="abnormal-process-exit"};session.WriteIncident(exit,"confirmed");
+ Check(session.CollectConfirmed()==0,"exit summary waits for late native confirmation before freezing upload");
+ var native=new DiagnosticIncident{Kind="crash",Stage="game",Evidence="original-exception-context"};session.WriteIncident(native,"confirmed");
+ Check(session.CollectConfirmed()==1&&new DiagnosticQueue(session).ReadPending().Count==1,"late native original context suppresses earlier unlinked exit across polls");
+ var unknown=DiagnosticSession.Start(Path.Combine(client,"unknown"),"http://127.0.0.1:32241",Guid.NewGuid().ToString("N"),home);unknown.WriteIncident(exit with {EventId=Guid.NewGuid().ToString("N")},"confirmed");
+ Check(unknown.CollectConfirmed()==0,"unknown exit also waits for bounded native final drain");
+ foreach(var p in Directory.EnumerateFiles(Path.Combine(unknown.DirectoryPath,"events"),"*.json"))File.SetLastWriteTimeUtc(p,DateTime.UtcNow.AddSeconds(-7));
+ // Registration start predates the deliberately aged fixture event.
+ File.WriteAllText(Path.Combine(unknown.DirectoryPath,"session.json"),JsonSerializer.Serialize(unknown.Registration with{StartedAt=DateTimeOffset.UtcNow.AddMinutes(-1)},new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ unknown=DiagnosticSession.Open(unknown.DirectoryPath,unknown.Registration.Capability,home);
+ Check(unknown.CollectConfirmed()==1,"unknown exit eventually reports as error once native drain ends");
+ unknown.WriteIncident(native with{EventId=Guid.NewGuid().ToString("N")},"confirmed");
+ Check(unknown.CollectConfirmed()==0&&new DiagnosticQueue(unknown).ReadPending().Count==1,"exceptional late native record cannot double-count an already frozen unknown exit");
+ await Task.CompletedTask;
+}
 
 async Task Run()
 {

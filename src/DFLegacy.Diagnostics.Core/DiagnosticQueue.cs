@@ -26,6 +26,7 @@ public sealed class DiagnosticQueue(DiagnosticSession session)
     {
         get {
             try {
+                if(Registration.LocalOnly)return false;
                 var preference=new DiagnosticSettings(Registration.UserRoot).Read();
                 var active=DiagnosticFiles.Read<DiagnosticScope>(Path.Combine(Registration.Installation,"active.json"),4096);
                 return preference.Enabled&&active is not null&&active.PreferenceEpoch==preference.Epoch&&active.Site==Registration.Site&&active.Epoch==Path.GetFileName(Registration.Queue);

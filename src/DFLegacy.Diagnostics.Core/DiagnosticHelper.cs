@@ -5,7 +5,9 @@ public static class DiagnosticHelper
     // This process only observes registered ownership. It never attaches a debugger, owns a game job, or terminates a process.
     public static async Task RunAsync(DiagnosticSession session,CancellationToken cancellationToken=default,TimeSpan? finalDrainBudget=null)
     {
-        using var lifetime=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);lifetime.CancelAfter(TimeSpan.FromHours(24));
+        // A verified live game may legitimately run longer than a day. The
+        // retained PID+creation identity controls lifetime, not registration age.
+        using var lifetime=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var watcher=WatchOwners();cancellationToken=lifetime.Token;
         var queue=new DiagnosticQueue(session);
         try
@@ -17,8 +19,9 @@ public static class DiagnosticHelper
                     await queue.UploadPendingAsync(cancellationToken:cancellationToken).ConfigureAwait(false);
                     if(session.IsClosed||!session.OwnerAlive())
                     {
-                        // Give a terminated native producer time to finish its atomic rename, within the drain deadline.
-                        await Task.Delay(500,cancellationToken).ConfigureAwait(false);session.CollectConfirmed();
+                        // Native helper allows a late bind for 5 seconds; the
+                        // collector delays unlinked game-exit summaries 6 seconds.
+                        await Task.Delay(6500,cancellationToken).ConfigureAwait(false);session.CollectConfirmed();
                         await queue.UploadPendingAsync(cancellationToken:cancellationToken).ConfigureAwait(false);
                         session.CleanupManagedFiles();return;
                     }

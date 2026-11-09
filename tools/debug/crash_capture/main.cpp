@@ -7,6 +7,16 @@
 #include <cstdio>
 #include <cwchar>
 #include <string>
+#include <shlobj.h>
+
+std::wstring LocalCaptureRoot() {
+    PWSTR path{};if(FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData,0,nullptr,&path)))return {};
+    const std::wstring root=std::wstring(path)+L"\\DFLegacy\\Diagnostics";CoTaskMemFree(path);return root;
+}
+decltype(&MiniDumpWriteDump) LocalCaptureDumpWriter() {
+    HMODULE module=LoadLibraryExW(L"dbghelp.dll",nullptr,LOAD_LIBRARY_SEARCH_SYSTEM32);
+    return module?reinterpret_cast<decltype(&MiniDumpWriteDump)>(GetProcAddress(module,"MiniDumpWriteDump")):nullptr;
+}
 
 namespace {
 decltype(&MiniDumpWriteDump) writeDump = nullptr;
@@ -94,7 +104,9 @@ void Record(HANDLE process, const DEBUG_EVENT& event, const CONTEXT& context, FI
 }
 }
 
+int LocalCaptureMain(int argc,wchar_t** argv);
 int wmain(int argc, wchar_t** argv) {
+    if(argc>1&&(!wcscmp(argv[1],L"--local-session")||!wcscmp(argv[1],L"--local-dump")))return LocalCaptureMain(argc,argv);
     if (argc != 4 || (wcscmp(argv[1], L"monitor") && wcscmp(argv[1], L"snapshot"))) {
         puts("Usage: DFLegacy.CrashCapture.exe monitor|snapshot PID EXISTING_REPORT_DIRECTORY"); return 2;
     }

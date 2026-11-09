@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include "native_incidents.h"
+#include "native_capture.h"
 #include "memory_patch.h"
 #include "../../DFLegacy.Client/client_paths.h"
 
@@ -20,6 +21,11 @@ namespace
     FILETIME Started{};
     LPTOP_LEVEL_EXCEPTION_FILTER Previous=nullptr;
     volatile LONG Busy=0,Next=0;
+    volatile LONG HandlerBusy=0;
+    bool ExternalCapture=false;
+    HANDLE LegacyRequest=nullptr,LegacyDone=nullptr;
+    EXCEPTION_RECORD LegacyException{};
+    CONTEXT LegacyContext{};
     struct Entry { bool Used{},Connect{}; unsigned Code{},Count{}; wchar_t Path[32768]{}; char Id[33]{}; };
     Entry Entries[16]{};
     char Body[16384]{};
@@ -61,13 +67,9 @@ namespace
         { DWORD written{};WriteFile(file,Body,static_cast<DWORD>(strlen(Body)),&written,nullptr);SetEndOfFile(file);FlushFileBuffers(file); }
         CloseHandle(file);
     }
-    LONG WINAPI Unhandled(EXCEPTION_POINTERS* exception)
+    void SaveLegacy(EXCEPTION_POINTERS* exception)
     {
-        // First-chance probes never enter this filter. Respect any previous
-        // filter, including CONTINUE_EXECUTION; never turn a fault into success.
-        const LONG disposition=Previous?Previous(exception):EXCEPTION_CONTINUE_SEARCH;
-        if(disposition==EXCEPTION_CONTINUE_EXECUTION||!exception||!exception->ExceptionRecord||!exception->ContextRecord)return disposition;
-        if(InterlockedCompareExchange(&Busy,1,0))return disposition;
+        if(InterlockedCompareExchange(&Busy,1,0))return;
         static Entry crash{};crash.Count=1;Name(crash,L"crash");Header("unhandled-exception-filter",crash);
         const auto& c=*exception->ContextRecord;const auto& e=*exception->ExceptionRecord;
         Append("exceptionCode=0x%08lX\nexceptionAddress=%p\nregister.eip=%08lX\nregister.esp=%08lX\nregister.ebp=%08lX\nregister.eax=%08lX\nregister.ebx=%08lX\nregister.ecx=%08lX\nregister.edx=%08lX\nregister.esi=%08lX\nregister.edi=%08lX\nregister.eflags=%08lX\n",e.ExceptionCode,e.ExceptionAddress,c.Eip,c.Esp,c.Ebp,c.Eax,c.Ebx,c.Ecx,c.Edx,c.Esi,c.Edi,c.EFlags);
@@ -81,7 +83,24 @@ namespace
         // Read only frame return addresses, never raw stack contents or payloads.
         DWORD frame=c.Ebp;
         for(unsigned i=1;i<32;++i) { DWORD pair[2]{};SIZE_T read{};if(frame<c.Esp||frame-c.Esp>1024*1024||!ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<void*>(frame),pair,sizeof(pair),&read)||read!=sizeof(pair)||pair[0]<=frame)break;Append("stack.return[%u]=%08lX\n",i,pair[1]);frame=pair[0]; }
-        Save(crash);InterlockedExchange(&Busy,0);return disposition;
+        Save(crash);InterlockedExchange(&Busy,0);
+    }
+    DWORD WINAPI LegacyWriter(void*)
+    {
+        for(;;){WaitForSingleObject(LegacyRequest,INFINITE);EXCEPTION_POINTERS pointers{&LegacyException,&LegacyContext};SaveLegacy(&pointers);SetEvent(LegacyDone);}
+    }
+    LONG WINAPI Unhandled(EXCEPTION_POINTERS* exception)
+    {
+        // Guard before the previous chain: original filters may chain back here.
+        if(InterlockedCompareExchange(&HandlerBusy,1,0))return EXCEPTION_CONTINUE_SEARCH;
+        const LONG slot=dfl::native_capture::Begin(exception,false);
+        const LONG disposition=Previous?Previous(exception):EXCEPTION_CONTINUE_SEARCH;
+        dfl::native_capture::Finish(slot,disposition);
+        if(!ExternalCapture&&disposition!=EXCEPTION_CONTINUE_EXECUTION&&exception&&exception->ExceptionRecord&&exception->ContextRecord&&LegacyRequest) {
+            LegacyException=*exception->ExceptionRecord;LegacyException.ExceptionRecord=nullptr;LegacyContext=*exception->ContextRecord;
+            SetEvent(LegacyRequest);WaitForSingleObject(LegacyDone,1750);
+        }
+        InterlockedExchange(&HandlerBusy,0);return disposition;
     }
     constexpr std::uintptr_t Notice=0x00799EF0;
     void* OriginalNotice=reinterpret_cast<void*>(Notice);
@@ -151,7 +170,10 @@ namespace dfl::native_incidents
         else for(unsigned i=0;i<64;++i)if(!((Pvf[i]>='0'&&Pvf[i]<='9')||(Pvf[i]>='a'&&Pvf[i]<='f'))){strcpy_s(Pvf,"unknown");break;}
         FILETIME exit{},kernel{},user{};GetProcessTimes(GetCurrentProcess(),&Started,&exit,&kernel,&user);
         try { Retain(); } catch(...) { /* Optional retention must not block gameplay. */ }
-        Previous=SetUnhandledExceptionFilter(Unhandled);return true;
+        ExternalCapture=dfl::native_capture::Initialize();
+        if(!ExternalCapture){LegacyRequest=CreateEventW(nullptr,FALSE,FALSE,nullptr);LegacyDone=CreateEventW(nullptr,FALSE,FALSE,nullptr);if(LegacyRequest&&LegacyDone){const auto worker=CreateThread(nullptr,0,LegacyWriter,nullptr,0,nullptr);if(worker)CloseHandle(worker);}}
+        Previous=SetUnhandledExceptionFilter(Unhandled);
+        dfl::native_capture::InstallOriginalHooks();return true;
     }
     void NetworkNotification(bool connecting,unsigned socketError,bool visibleDisconnect) noexcept
     {

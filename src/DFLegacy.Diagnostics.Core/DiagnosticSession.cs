@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace DFLegacy.Diagnostics;
 
 public sealed record DiagnosticRegistration(string SessionId,string Capability,string UserRoot,string ClientRoot,string Site,string Installation,string Queue,
-    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown");
+    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown",bool LocalOnly=false,bool LocalSmallDumps=true);
 internal sealed record DiagnosticLocalEvent(string SessionId,string Capability,string State,DiagnosticIncident Incident,int ProducerPid,long ProducerCreatedUtcTicks);
 
 public sealed class DiagnosticSession
@@ -21,7 +21,7 @@ public sealed class DiagnosticSession
     public static DiagnosticSession Start(string clientRoot,string serviceUrl,string sessionId,string? userRoot=null,string clientVersion="unknown")
     {
         if(!DiagnosticProjection.Id(sessionId))throw new ArgumentException("Invalid session identity.");
-        var settings=new DiagnosticSettings(userRoot);var site=NormalizeSite(serviceUrl);var scope=settings.SelectScope(clientRoot,site);
+        var settings=new DiagnosticSettings(userRoot);var localOnly=string.IsNullOrWhiteSpace(serviceUrl);var site=localOnly?"local-only":NormalizeSite(serviceUrl);var scope=settings.SelectScope(clientRoot,site);
         using var sessionLease=DiagnosticFiles.Lease(settings.Root,"sessions.lock");
         var sessions=Path.Combine(settings.Root,"sessions");DiagnosticFiles.Ensure(sessions);
         foreach(var previous in Directory.EnumerateDirectories(sessions).Take(101))
@@ -33,7 +33,7 @@ public sealed class DiagnosticSession
         }
         if(Directory.EnumerateDirectories(sessions).Take(101).Count()>=100){settings.RecordDrop();throw new IOException("Diagnostic session budget exhausted.");}
         var directory=Path.Combine(settings.Root,"sessions",Guid.NewGuid().ToString("N"));DiagnosticFiles.Ensure(Path.Combine(directory,"events"));
-        using var launcher=Process.GetCurrentProcess();var registration=new DiagnosticRegistration(sessionId,Guid.NewGuid().ToString("N"),settings.Root,Path.GetFullPath(clientRoot),site,scope.Installation,scope.Queue,DateTimeOffset.UtcNow,launcher.Id,launcher.StartTime.ToUniversalTime().Ticks,ClientVersion:clientVersion);
+        using var launcher=Process.GetCurrentProcess();var registration=new DiagnosticRegistration(sessionId,Guid.NewGuid().ToString("N"),settings.Root,Path.GetFullPath(clientRoot),site,scope.Installation,scope.Queue,DateTimeOffset.UtcNow,launcher.Id,launcher.StartTime.ToUniversalTime().Ticks,ClientVersion:clientVersion,LocalOnly:localOnly,LocalSmallDumps:settings.Read().LocalSmallDumps);
         DiagnosticFiles.Write(Path.Combine(directory,"session.json"),registration,false);return new(directory,registration);
     }
     public static DiagnosticSession Open(string directory,string capability,string? userRoot=null)
@@ -41,9 +41,9 @@ public sealed class DiagnosticSession
         var root=DiagnosticFiles.Root(userRoot);var path=Path.GetFullPath(directory);var sessions=Path.Combine(root,"sessions")+Path.DirectorySeparatorChar;
         if(!path.StartsWith(sessions,StringComparison.OrdinalIgnoreCase)||Path.GetDirectoryName(path)!=sessions.TrimEnd(Path.DirectorySeparatorChar))throw new IOException("Session is outside current-user registration.");
         var registration=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(path,"session.json"),16384)??throw new InvalidDataException("Missing session registration.");
-        if(!DiagnosticProjection.Id(capability)||registration.Capability!=capability||registration.UserRoot!=root||!DiagnosticProjection.Id(registration.SessionId)||registration.StartedAt<DateTimeOffset.UtcNow.AddDays(-1)||registration.StartedAt>DateTimeOffset.UtcNow.AddMinutes(1))throw new InvalidDataException("Invalid diagnostic registration.");
+        if(!DiagnosticProjection.Id(capability)||registration.Capability!=capability||registration.UserRoot!=root||!DiagnosticProjection.Id(registration.SessionId)||(registration.StartedAt<DateTimeOffset.UtcNow.AddDays(-1)&&!Alive(registration.LauncherPid,registration.LauncherCreatedUtcTicks)&&!Alive(registration.GamePid,registration.GameCreatedUtcTicks))||registration.StartedAt>DateTimeOffset.UtcNow.AddMinutes(1))throw new InvalidDataException("Invalid diagnostic registration.");
         var installation=Path.Combine(root,"installations",DiagnosticFiles.Hash(Path.GetFullPath(registration.ClientRoot).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant()));
-        if(registration.Installation!=installation||Path.GetDirectoryName(registration.Queue)!=Path.Combine(installation,"queues")||!DiagnosticProjection.Id(Path.GetFileName(registration.Queue))||registration.Site!=NormalizeSite(registration.Site))throw new InvalidDataException("Invalid diagnostic scope.");
+        if(registration.Installation!=installation||Path.GetDirectoryName(registration.Queue)!=Path.Combine(installation,"queues")||!DiagnosticProjection.Id(Path.GetFileName(registration.Queue))||(registration.LocalOnly?registration.Site!="local-only":registration.Site!=NormalizeSite(registration.Site)))throw new InvalidDataException("Invalid diagnostic scope.");
         return new(path,registration);
     }
     public void BindProcess(Process process)
@@ -55,6 +55,9 @@ public sealed class DiagnosticSession
     {
         start.Environment["DFL_DIAGNOSTIC_SESSION_DIR"]=DirectoryPath;start.Environment["DFL_DIAGNOSTIC_SESSION_ID"]=SessionId;
         start.Environment["DFL_DIAGNOSTIC_CAPABILITY"]=Registration.Capability;
+        start.Environment["DFL_DIAGNOSTIC_SMALL_DUMPS"]=Registration.LocalSmallDumps?"1":"0";
+        var helper=Path.Combine(AppContext.BaseDirectory,"DFLegacy.CrashCapture.exe");
+        if(File.Exists(helper)){DiagnosticFiles.NoLinks(helper);start.Environment["DFL_DIAGNOSTIC_CAPTURE_HELPER"]=helper;}
     }
     public bool OwnerAlive()
     {
@@ -74,6 +77,7 @@ public sealed class DiagnosticSession
         if(state is not ("provisional" or "confirmed" or "cancelled")||!DiagnosticProjection.Id(incident.EventId))throw new ArgumentException("Invalid diagnostic event state.");
         // One file per state transition; provisional events are never interpreted as crashes.
         var events=Path.Combine(DirectoryPath,"events");DiagnosticFiles.NoLinks(events);
+        using var lease=DiagnosticFiles.Lease(events,"events.lock");
         var value=new DiagnosticLocalEvent(SessionId,Registration.Capability,state,incident,Registration.LauncherPid,Registration.LauncherCreatedUtcTicks);
         var bytes=System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(value,DiagnosticJson.Options);
         if(bytes.Length>16384||Directory.EnumerateFiles(events,"*.json").Take(101).Count()>=100){new DiagnosticSettings(Registration.UserRoot).RecordDrop();return;}
@@ -100,12 +104,27 @@ public sealed class DiagnosticSession
     public int CollectConfirmed()
     {
         var queue=new DiagnosticQueue(this);if(!queue.IsEligible)return 0;var count=0;
+        FileStream lease;try{lease=DiagnosticFiles.Lease(DirectoryPath,"collect.lock");}catch(IOException){return 0;}
+        using(lease) {
         // Confirm native causes before linked exit summaries regardless of directory enumeration order.
         var events=ConfirmedEvents();IReadOnlyDictionary<string,string>? system=null;
+        var nativeCause=events.FirstOrDefault(e=>e.Incident.Kind=="crash"&&e.Incident.Evidence is "confirmed-unhandled-exception" or "original-exception-context");
+        var exitAlreadyFrozen=events.Any(e=>e.Incident.Stage=="game-exit"&&queue.ContainsEvent(e.Incident.EventId));
         foreach(var value in events.OrderBy(e=>e.Incident.RelatedEventId is null?0:1))
         {
             try {
                 var incident=value.Incident;
+                // An exceptionally stalled local writer can miss the six-second
+                // drain. Preserve its richer evidence locally, without a second
+                // automatic report after the unknown exit was already frozen.
+                if(exitAlreadyFrozen&&incident.Kind=="crash"&&incident.Evidence is "confirmed-unhandled-exception" or "original-exception-context")continue;
+                if(incident.Stage=="game-exit") {
+                    if(nativeCause is not null)continue;
+                    var eventPath=Path.Combine(DirectoryPath,"events",incident.EventId+"-confirmed.json");
+                    // The external native helper can finalize after process exit.
+                    // Do not freeze an unlinked summary until that bounded drain ends.
+                    if(!File.Exists(eventPath)||File.GetLastWriteTimeUtc(eventPath)>DateTime.UtcNow.AddSeconds(-6))continue;
+                }
                 if(collected.Contains(incident.EventId)||queue.ContainsEvent(incident.EventId))continue;
                 if(incident.RelatedEventId is not null&&(queue.ContainsEvent(incident.RelatedEventId)||events.Any(e=>e.Incident.EventId==incident.RelatedEventId)))continue;
                 system??=DiagnosticProjection.CollectSystem();
@@ -113,6 +132,7 @@ public sealed class DiagnosticSession
             } catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
         }
         return count;
+        }
     }
     internal void CleanupManagedFiles()
     {
@@ -120,10 +140,11 @@ public sealed class DiagnosticSession
         var events=Path.Combine(DirectoryPath,"events");DiagnosticFiles.NoLinks(events);
         if(Directory.Exists(events)) {
             foreach(var path in Directory.EnumerateFiles(events,"*.json").Take(300)){DiagnosticFiles.NoLinks(path);File.Delete(path);}
+            var eventsLock=Path.Combine(events,"events.lock");DiagnosticFiles.NoLinks(eventsLock);if(File.Exists(eventsLock))File.Delete(eventsLock);
             if(!Directory.EnumerateFileSystemEntries(events).Any())Directory.Delete(events);
         }
         DiagnosticFiles.NoLinks(DirectoryPath);
-        if(!Directory.EnumerateDirectories(DirectoryPath).Any()&&Directory.EnumerateFiles(DirectoryPath).All(p=>Path.GetFileName(p) is "session.json" or "closed.json")) {
+        if(!Directory.EnumerateDirectories(DirectoryPath).Any()&&Directory.EnumerateFiles(DirectoryPath).All(p=>Path.GetFileName(p) is "session.json" or "closed.json" or "collect.lock")) {
             foreach(var path in Directory.EnumerateFiles(DirectoryPath)){DiagnosticFiles.NoLinks(path);File.Delete(path);}Directory.Delete(DirectoryPath);
         }
     }

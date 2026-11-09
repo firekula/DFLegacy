@@ -260,7 +260,7 @@ public partial class ConfigWindow : System.Windows.Window
     private void LoadDiagnostics()
     {
         var settings=Program.UserDiagnosticSettings;
-        try { DiagnosticEnabledBox.IsChecked=settings.Read().Enabled; }
+        try { var preference=settings.Read();DiagnosticEnabledBox.IsChecked=preference.Enabled;DiagnosticSmallDumpsBox.IsChecked=preference.LocalSmallDumps; }
         catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException) { DiagnosticEnabledBox.IsEnabled=false; }
         string? clientRoot=null;
         try {clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(_options.ClientPath));}
@@ -272,6 +272,7 @@ public partial class ConfigWindow : System.Windows.Window
         try
         {
             Program.UserDiagnosticSettings.SetEnabled(DiagnosticEnabledBox.IsChecked==true);
+            Program.UserDiagnosticSettings.SetLocalSmallDumps(DiagnosticSmallDumpsBox.IsChecked==true);
             Diagnostics.AutomaticDiagnostics.Configure(_options);LoadDiagnostics();
         }
         catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)

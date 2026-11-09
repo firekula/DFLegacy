@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace DFLegacy.Diagnostics;
 
-public sealed record DiagnosticPreference(bool Enabled,string Epoch);
+public sealed record DiagnosticPreference(bool Enabled,string Epoch,bool LocalSmallDumps=true);
 public sealed record DiagnosticStatusSnapshot(string Receiver,bool Enabled,int Pending,int Held,int Uploaded,string LastStatus,string? ReceiptId,bool Available,bool IsSending=false);
 internal sealed record DiagnosticScope(string Site,string Epoch,string PreferenceEpoch);
 
@@ -90,7 +90,12 @@ public sealed class DiagnosticSettings
     public void SetEnabled(bool enabled)
     {
         using var held=DiagnosticFiles.Lease(Root,"settings.lock");var current=Read();
-        if(current.Enabled!=enabled)DiagnosticFiles.Write(Path.Combine(Root,"preference.json"),new DiagnosticPreference(enabled,Guid.NewGuid().ToString("N")));
+        if(current.Enabled!=enabled)DiagnosticFiles.Write(Path.Combine(Root,"preference.json"),current with {Enabled=enabled,Epoch=Guid.NewGuid().ToString("N")});
+    }
+    public void SetLocalSmallDumps(bool enabled)
+    {
+        using var held=DiagnosticFiles.Lease(Root,"settings.lock");var current=Read();
+        if(current.LocalSmallDumps!=enabled)DiagnosticFiles.Write(Path.Combine(Root,"preference.json"),current with {LocalSmallDumps=enabled});
     }
     internal void RecordDrop()
     {

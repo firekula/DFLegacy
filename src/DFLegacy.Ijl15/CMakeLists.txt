@@ -73,6 +73,8 @@ add_library(ijl15 SHARED
     src/d3d8_hooks.h
     src/native_incidents.cpp
     src/native_incidents.h
+    src/native_capture.cpp
+    src/native_capture.h
     src/diagnostic_delivery.h
     src/pe_import.h
     src/window_input_scaling.cpp
@@ -156,7 +158,7 @@ target_sources(ijl15 PRIVATE ../DFLegacy.Client/player_runtime.cpp ../DFLegacy.C
     ../DFLegacy.Debug/src/client_town_route_contract.cpp
     ../DFLegacy.Debug/src/client_town_route_runtime.cpp
 )
-target_link_libraries(ijl15 PRIVATE bcrypt)
+target_link_libraries(ijl15 PRIVATE bcrypt detours)
 
 get_target_property(client_sources ijl15 SOURCES)
 list(REMOVE_ITEM client_sources src/ijl15.cpp src/ijl15.def src/ijl15_entry.cpp)
@@ -185,12 +187,26 @@ if(BUILD_TESTING)
     add_test(NAME loot_gather_hook_abi COMMAND loot_gather_hook_tests)
 endif()
 if(BUILD_TESTING)
-    add_executable(native_incident_tests tests/incident_tests.cpp src/native_incidents.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    add_executable(native_incident_tests tests/incident_tests.cpp src/native_incidents.cpp src/native_capture.cpp src/memory_patch.cpp ../DFLegacy.Client/client_paths.cpp)
+    target_link_libraries(native_incident_tests PRIVATE detours bcrypt ws2_32)
     target_include_directories(native_incident_tests PRIVATE src)
     target_compile_options(native_incident_tests PRIVATE /W4 /WX /EHsc)
     target_link_options(native_incident_tests PRIVATE /BASE:0x10000000 /DYNAMICBASE:NO)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_test(NAME native_incidents COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_incidents.py" "$<TARGET_FILE:native_incident_tests>")
+    add_subdirectory(../../tools/debug/crash_capture "${CMAKE_CURRENT_BINARY_DIR}/crash_capture")
+    add_executable(native_capture_helper_fixture tests/capture_helper_fixture.cpp ../../tools/debug/crash_capture/local_capture.cpp)
+    target_compile_definitions(native_capture_helper_fixture PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(native_capture_helper_fixture PRIVATE /W4 /WX)
+    target_link_libraries(native_capture_helper_fixture PRIVATE psapi shell32 ole32 advapi32)
+    add_library(original_game_probe SHARED tests/original_game_probe.cpp tests/original_game_probe.def src/native_capture.cpp)
+    target_include_directories(original_game_probe PRIVATE src)
+    target_compile_options(original_game_probe PRIVATE /W4 /WX)
+    target_link_libraries(original_game_probe PRIVATE detours bcrypt)
+    add_executable(original_game_host tests/original_game_host.cpp)
+    target_compile_options(original_game_host PRIVATE /W4 /WX)
+    target_link_libraries(original_game_host PRIVATE detours)
+    add_test(NAME native_capture COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_native_capture.py" "$<TARGET_FILE:native_incident_tests>" "$<TARGET_FILE:native_capture_helper_fixture>")
     add_executable(payment_window_layout_tests tests/payment_window_layout_tests.cpp)
     target_compile_options(payment_window_layout_tests PRIVATE /W4 /WX /utf-8 /EHsc)
     add_test(NAME payment_window_layout COMMAND payment_window_layout_tests)
