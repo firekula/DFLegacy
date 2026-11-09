@@ -1,8 +1,8 @@
 # Stable native startup entry
 
-Release note: v0.1.9 deliberately reuses the published v0.1.8 entry bytes. The
+Release note: v0.1.10 deliberately reuses the published v0.1.8 entry bytes. The
 `startup.dat` fast path described below is a source experiment, not part of the
-v0.1.9 binary delivery. Its managed updater still reuses validated receipts.
+v0.1.10 binary delivery. Its managed updater still reuses validated receipts.
 
 `DFLegacy.Launcher.exe` is the fixed shortcut target. It has a static C++ runtime,
 uses the existing launcher icon, and needs no .NET runtime or external client

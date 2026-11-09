@@ -99,12 +99,23 @@ internal static class BootstrapUpdateTests
             check(true,"managed UI startup reads completed record without opening asset content");
             var quickLaunches=0;
             var ordinary=BootstrapUpdateClient.ParseArguments(["--bootstrap-client",root,"--"]);
+            var discoveryCalls=provider.FindCalls;provider.ThrowOnNetwork=true;
             try
             {
                 await BootstrapUpdateClient.RunAsync(ordinary,provider,launch:(_,_)=>{quickLaunches++;return Task.CompletedTask;});
-                check(quickLaunches==1,"unchanged v0.1.8 native entry can open the UI without re-reading resource contents");
+                check(quickLaunches==1&&provider.FindCalls==discoveryCalls,"network-enabled ordinary bootstrap opens UI without discovery or re-reading resource contents");
             }
-            catch(Exception ex) when(ex is IOException or InvalidOperationException){check(false,"ordinary bootstrap must reuse the completed receipt while resource contents are locked");}
+            catch(Exception ex) when(ex is IOException or InvalidOperationException){check(false,"network-enabled ordinary bootstrap must reuse the completed receipt without contacting the release provider");}
+            foreach(var headless in new[]{new[]{"--headless"},new[]{"--account","fixture"},new[]{"--account-index","0"}})
+            {
+                var before=provider.FindCalls;
+                try{await BootstrapUpdateClient.RunAsync(new(root,headless),provider,launch:(_,_)=>{check(false,"game CLI without background updater must discover releases before handoff");return Task.CompletedTask;});check(false,"game CLI retains provider discovery");}
+                catch(InvalidOperationException){check(provider.FindCalls==before+1,"game CLI retains provider discovery because no GUI background updater runs afterward");}
+            }
+            discoveryCalls=provider.FindCalls;
+            await BootstrapUpdateClient.RunAsync(new(root,["--third-party-notices"]),provider,launch:(_,_)=>Task.CompletedTask);
+            check(provider.FindCalls==discoveryCalls,"read-only notices retain offline local handoff without provider discovery");
+            provider.ThrowOnNetwork=false;
             var manual=BootstrapUpdateClient.ParseArguments(["--bootstrap-client",root,"--","--bootstrap-wait-parent",int.MaxValue.ToString(),"1"]);
             try{await BootstrapUpdateClient.RunAsync(manual,provider,launch:(_,_)=>{check(false,"manual check cannot execute UI before full verification");return Task.CompletedTask;});check(false,"manual check must read locked resource contents");}
             catch(Exception ex) when(ex is IOException or InvalidOperationException){check(true,"manual check propagated by the old native entry retains full verification");}
@@ -120,9 +131,12 @@ internal static class BootstrapUpdateTests
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"github\",\"UpdateChannel\":\"stable\"}");
         try{await BootstrapLayout.ValidateInstalledAsync(root,arch);check(false,"record fast path cannot authorize a mismatched configured source");}
         catch(InvalidDataException){check(true,"UI handoff validates configured source even with a completed record");}
+        var sourceCalls=provider.FindCalls;
+        try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"source mismatch cannot hand off through completed record");return Task.CompletedTask;});check(false,"bootstrap source mismatch must fail closed");}
+        catch(InvalidDataException){check(provider.FindCalls==sourceCalls,"bootstrap source mismatch fails before discovery or UI handoff");}
         File.WriteAllText(Path.Combine(root,"launcher.json"),validConfig);
         provider.InvalidManifest=true;
-        try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"invalid manifest cannot launch UI through record fast path");return Task.CompletedTask;});check(false,"invalid online manifest must fail closed");}
+        try{await BootstrapUpdateClient.RunAsync(new(root,[],int.MaxValue,1),provider,launch:(_,_)=>{check(false,"invalid manifest cannot launch UI during explicit recheck");return Task.CompletedTask;});check(false,"invalid online manifest must fail closed");}
         catch(InvalidDataException){check(true,"completed record does not suppress online manifest integrity failures");}
         provider.InvalidManifest=false;
         var pendingPath=Path.Combine(root,".dflegacy","v4","pending.json");
@@ -132,6 +146,11 @@ internal static class BootstrapUpdateTests
         try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"malformed pending transaction cannot execute UI");return Task.CompletedTask;});check(false,"malformed transaction must fail closed");}
         catch(InvalidDataException){check(File.Exists(pendingPath),"ordinary bootstrap preserves invalid pending recovery evidence and refuses launch");}
         File.Delete(pendingPath);
+        var legacyPending=Path.Combine(root,".dflegacy","pending.json");File.WriteAllText(legacyPending,"{}");
+        var pendingCalls=provider.FindCalls;
+        try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"legacy pending transaction cannot use completed record");return Task.CompletedTask;});check(false,"legacy pending transaction must fail closed");}
+        catch(InvalidDataException){check(File.Exists(legacyPending)&&provider.FindCalls==pendingCalls,"completed record preserves and rejects pending V3 transaction before discovery");}
+        File.Delete(legacyPending);
         var installed=new Core.InstallationStore(root).ReadInstalled()!;
         var changedEntry=installed.Release.Manifest with {Files=installed.Release.Manifest.Files.Select(f=>f.Path==BootstrapLayout.EntryName?f with{Sha256=new string('f',64)}:f).ToArray()};
         try{BootstrapLayout.RequireStableEntry(root,changedEntry);check(false,"fixed running entry cannot be replaced during repair");}catch(InvalidDataException){check(true,"changed native entry is rejected before repair");}
@@ -175,20 +194,68 @@ internal static class BootstrapUpdateTests
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{bad config");var calls=provider.FindCalls;
         try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:Launch);check(false,"malformed config must not reset");}catch(System.Text.Json.JsonException){check(launches==2&&File.ReadAllText(Path.Combine(root,"launcher.json"))=="{bad config"&&provider.FindCalls==calls,"config corruption retained and no launch/discovery");}
     }
+    internal static async Task RunWindowPolicyAsync(string scratch,Action<bool,string> check)
+    {
+        var root=Path.Combine(scratch,"bootstrap-window-policy");Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
+        string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
+        var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]="entry bytes"u8.ToArray(),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),[BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]="client dll"u8.ToArray(),["resource.bin"]="resource content"u8.ToArray()};
+        files[BootstrapLayout.DescriptorName]=Encoding.ASCII.GetBytes($"[Bootstrap]\nSchemaVersion=1\nArchitecture={BootstrapLayout.Architecture}\nLauncherSha256={Hash(files[BootstrapLayout.AppName])}\nUpdaterSha256={Hash(files[BootstrapLayout.UpdaterName])}\n");
+        var migration=new Core.ConfigMigration("bootstrap-window-test","launcher.json","setDefault","Relay.Enabled",System.Text.Json.JsonSerializer.SerializeToElement(true));
+        var provider=new FixtureProvider(BootstrapLayout.Architecture,files,[migration]);
+        await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
+        var app=System.Windows.Application.Current;
+        int Windows()=>app.Dispatcher.Invoke(()=>app.Windows.OfType<DFLegacy.Launcher.Views.UpdateInstallWindow>().Count(w=>w.IsVisible));
+        var shownBeforeLaunch=false;var launches=0;
+        provider.OnFind=()=>shownBeforeLaunch|=Windows()>0;
+        provider.ThrowOnNetwork=true;
+        var calls=provider.FindCalls;
+        using(var held=new FileStream(Path.Combine(root,"resource.bin"),FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+        {
+            var exit=await BootstrapUpdateClient.RunEntryAsync(["--bootstrap-client",root,"--"],provider,(_,_)=>
+            {
+                launches++;check(Windows()==0,"ordinary GUI bootstrap creates no validation window before handoff");return Task.CompletedTask;
+            });
+            check(exit==0&&launches==1&&provider.FindCalls==calls&&!shownBeforeLaunch,"network-enabled ordinary GUI bootstrap skips both verification window and provider discovery");
+        }
+        provider.ThrowOnNetwork=false;
+        var marker=Path.Combine(root,".dflegacy","v4","validated.json");
+        foreach(var mode in new[]{"missing-record","invalid-record","changed-critical-file","configuration-migration","explicit-recheck"})
+        {
+            if(mode=="missing-record")File.Delete(marker);
+            if(mode=="invalid-record")File.WriteAllText(marker,"{");
+            if(mode=="changed-critical-file")File.WriteAllText(Path.Combine(root,BootstrapLayout.AppName),"corrupt UI");
+            if(mode=="configuration-migration")File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
+            var args=mode=="explicit-recheck"?new[]{"--bootstrap-client",root,"--","--bootstrap-wait-parent",int.MaxValue.ToString(),"1"}:new[]{"--bootstrap-client",root,"--"};
+            shownBeforeLaunch=false;calls=provider.FindCalls;
+            var exit=await BootstrapUpdateClient.RunEntryAsync(args,provider,(_,_)=>
+            {
+                check(Windows()==1,$"{mode} retains real repair progress until handoff");return Task.CompletedTask;
+            });
+            check(exit==0&&shownBeforeLaunch&&provider.FindCalls>calls,$"{mode} creates repair window before release discovery");
+            check(Windows()==0,$"{mode} closes owned progress window after successful handoff");
+            check(Core.ConfigurationMigration.IsSatisfied(File.ReadAllBytes(Path.Combine(root,"launcher.json")),[migration]),$"{mode} only hands off after configuration migration postconditions are satisfied");
+        }
+        calls=provider.FindCalls;
+        provider.OnFind=()=>check(Windows()==0,"headless game update discovery does not create a GUI repair window");
+        var headlessExit=await BootstrapUpdateClient.RunEntryAsync(["--bootstrap-client",root,"--","--headless"],provider,(_,_)=>Task.CompletedTask);
+        check(headlessExit==0&&provider.FindCalls==calls+1,"headless game entry keeps update discovery before handoff");
+    }
     private sealed class FixtureProvider:Core.IReleaseProvider
     {
         private readonly Core.VerifiedRelease release;private readonly Dictionary<string,byte[]> blobs=[];
-        internal bool Offline,InvalidManifest;internal int OpenCalls,FindCalls;
+        internal bool Offline,InvalidManifest,ThrowOnNetwork;internal int OpenCalls,FindCalls;
+        internal Action? OnFind;
         public Core.ReleaseSource Source=>release.Source;public string Identity=>Source.Identity;
-        internal FixtureProvider(string arch,Dictionary<string,byte[]> files)
+        internal FixtureProvider(string arch,Dictionary<string,byte[]> files,Core.ConfigMigration[]? migrations=null)
         {
             string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
             var source=new Core.ReleaseSource("gitea","firekula/DFLegacy","gitea-test",arch,"normal");
             var managed=files.Select(f=>{var hash=Hash(f.Value);blobs[hash]=f.Value;return new Core.ManagedFile(f.Key,f.Value.Length,hash,[new(hash,f.Value.Length,"v0.1.8-giteatest.3",hash+".bin")]);}).ToArray();
-            var manifest=new Core.ClientManifest(4,"v0.1.8-giteatest.3",new string('b',40),arch,"normal","gitea-test",3,0,managed,[],[]);
+            var manifest=new Core.ClientManifest(4,"v0.1.8-giteatest.3",new string('b',40),arch,"normal","gitea-test",3,0,managed,[],migrations??[]);
             var bytes=Core.ManifestCodec.Serialize(manifest);release=new(source,manifest.Version,Hash(bytes),bytes);
         }
-        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
-        public Task<System.Net.Http.HttpResponseMessage> OpenAsync(Core.ResourcePart part,long offset,string? etag,CancellationToken token){OpenCalls++;return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK){Content=new System.Net.Http.ByteArrayContent(blobs[part.Sha256])});}
+        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;OnFind?.Invoke();if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not contact network-enabled provider.");if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
+        public Task<System.Net.Http.HttpResponseMessage> OpenAsync(Core.ResourcePart part,long offset,string? etag,CancellationToken token){OpenCalls++;if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not download resources.");return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK){Content=new System.Net.Http.ByteArrayContent(blobs[part.Sha256])});}
     }
 }

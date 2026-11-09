@@ -44,16 +44,26 @@ internal static class BootstrapUpdateClient
     }
     internal static async Task<RepairOutcome> RunAsync(BootstrapRequest request,Core.IReleaseProvider? provider=null,
         IProgress<Core.UpdateProgress>? progress=null,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirmClose=null,
-        Func<ProcessStartInfo,CancellationToken,Task>? launch=null,CancellationToken token=default)
+        Func<ProcessStartInfo,CancellationToken,Task>? launch=null,CancellationToken token=default,Func<Task>? repairRequired=null)
     {
         await WaitForParentAsync(request,token).ConfigureAwait(false);
         // Both published and newer native entries forward the existing wait-
         // parent arguments for an explicit UI recheck. Ordinary startup may
         // reuse a completed receipt; external repair keeps its full-scan default.
-        var outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
-            manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true,
-            forceVerification:request.WaitPid is not null).ConfigureAwait(false);
-        await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
+        RepairOutcome outcome;
+        // Game CLI modes have no login window to check for updates afterward.
+        var localStartup=!App.IsHeadless(request.LauncherArguments)||request.LauncherArguments.Contains("--third-party-notices",StringComparer.OrdinalIgnoreCase);
+        if(request.WaitPid is null&&localStartup&&BootstrapLayout.TryValidateCompleted(request.Directory,BootstrapLayout.Architecture,provider?.Source,token))
+            outcome=new(true,true,"文件符合已校验安装记录，未确认线上最新版本。");
+        else
+        {
+            if(repairRequired is not null)await repairRequired().ConfigureAwait(false);
+            outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
+                manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true,
+                forceVerification:request.WaitPid is not null).ConfigureAwait(false);
+            await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
+        }
+        token.ThrowIfCancellationRequested();
         var start=new ProcessStartInfo(Path.Combine(request.Directory,BootstrapLayout.AppName)){WorkingDirectory=request.Directory,UseShellExecute=false};
         start.ArgumentList.Add("--bootstrap-verified");start.ArgumentList.Add("--");
         foreach(var arg in request.LauncherArguments)start.ArgumentList.Add(arg);
@@ -111,7 +121,7 @@ internal static class BootstrapUpdateClient
         if(!name.StartsWith(prefix,StringComparison.Ordinal)||!Guid.TryParseExact(name[prefix.Length..],"N",out _))throw new InvalidDataException("启动握手事件格式无效。");
         using var ready=EventWaitHandle.OpenExisting(name);ready.Set();
     }
-    internal static async Task<int> RunEntryAsync(string[] args)
+    internal static async Task<int> RunEntryAsync(string[] args,Core.IReleaseProvider? provider=null,Func<ProcessStartInfo,CancellationToken,Task>? launch=null)
     {
         Views.UpdateInstallWindow? window=null;using var cancel=new CancellationTokenSource();
         try
@@ -119,7 +129,15 @@ internal static class BootstrapUpdateClient
             var request=ParseArguments(args);
             var quiet=App.IsHeadless(request.LauncherArguments);
             Program.LogClientPath=Path.Combine(request.Directory,"DNF.exe");
-            if(!quiet){window=new Views.UpdateInstallWindow{Title="验证与修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();}
+            async Task BeginRepair()
+            {
+                if(quiet)return;
+                await Application.Current.Dispatcher.InvokeAsync(()=>
+                {
+                    window=new Views.UpdateInstallWindow{Title="验证与修复客户端"};
+                    window.CancelRequested+=()=>cancel.Cancel();window.Show();
+                });
+            }
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
                 var message=$"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path} {p.Detail}";
@@ -136,7 +154,7 @@ internal static class BootstrapUpdateClient
                     "以下进程占用客户端文件：\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+"\n是否关闭这些进程并继续修复？请先保存其他工作。",
                     "修复需要释放文件",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
             }
-            var outcome=await RunAsync(request,progress:progress,confirmClose:Confirm,token:cancel.Token);
+            var outcome=await RunAsync(request,provider,progress:progress,confirmClose:Confirm,launch:launch,token:cancel.Token,repairRequired:BeginRepair);
             if(outcome.Offline&&quiet)Console.WriteLine(outcome.Message);
             return 0;
         }

@@ -44,8 +44,10 @@ internal static class UpdateControllerTests
         internal Func<UpdateHandoff,CancellationToken,Task<UpdateHelperHandle>>? Start;
         internal Func<string,IProgress<UpdateProgress>,CancellationToken,Task<PreparedUpdate>>? Download;
         internal UpdateRecovery? Recovery;
+        internal Func<CancellationToken,Task<IReadOnlyList<FileLockOwner>>>? InspectLocks;
         internal Func<UpdateRecovery,CancellationToken,Task<UpdateHandoff>>? PrepareRecovery;
         public UpdateRecovery? ReadRecovery()=>Recovery;
+        public Task<IReadOnlyList<FileLockOwner>> InspectLocksAsync(CancellationToken token)=>InspectLocks?.Invoke(token)??Task.FromResult<IReadOnlyList<FileLockOwner>>([]);
         public Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)=>PrepareRecovery!(recovery,token);
         public UpdateState? ReadState() { if (StateError != null) throw StateError; return Installer?.ReadState(); }
         public UpdateApplyResult? ReadLastResult() => null;

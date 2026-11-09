@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 保存冰心少年修复、完成跨副本排查及 GM 多物品发信，发布可兼容升级的 v0.1.9。
+**Goal:** 保存冰心少年修复、完成跨副本排查及 GM 多物品发信，发布可兼容升级的 v0.1.10。v0.1.9 仅为已构建候选：GHCR 标签保留，GitHub 客户端草稿不公开。
 
 **Architecture:** 保留旧客户端单物品邮件协议，后台多格请求按角色原子拆信。保留现网固定入口，托管更新流程处理旧版首次校验记录迁移。
 
@@ -51,11 +51,13 @@ Files: wwwroot/admin/index.html、admin.js、admin-rewards.js、admin.css、网�
 
 - [x] 为 v0.1.8 更新后没有 validated 记录的首次进入添加失败回归。
 - [x] 安全完整校验后记账，保留篡改／来源不符拒绝；跑两架构测试。
+- [x] 普通 GUI 快路不先联网、不创建验证窗口；命令行自动登录保留更新检查。
+- [x] 后台 Ready 自动交回固定入口安装，保留占用确认和失败处理；联合 x86/x64 各 2290 项通过。
 - [ ] 四路产物使用旧稳定入口并验证生产符号来源。
 
 ### Task 5: 发布
 
 - [x] 汇总报告，更新 README、CHANGELOG、ADMIN_API、部署及发布文档。
 - [ ] 代码审阅、提交推送 Gitea，净化快照推 GitHub。
-- [ ] 构建 GHCR 和四路客户端、验证摘要清单、迁移、符号；发布 v0.1.9。
+- [ ] 构建 GHCR 和四路客户端、验证摘要清单、迁移、符号；发布 v0.1.10。
 - [ ] 核实公开下载与镜像标签，交付用户更新命令和验证边界。

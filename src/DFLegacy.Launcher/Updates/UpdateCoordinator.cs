@@ -10,17 +10,24 @@ internal sealed class UpdateCoordinator : IDisposable
     private readonly string installation;
     private readonly Action<string> notify;
     private readonly Func<Window,bool> confirmRecovery;
+    private readonly Func<bool> bootstrapVerified;
+    private readonly Action recheckBootstrap;
+    private readonly Func<Window,IReadOnlyList<FileLockOwner>,bool> confirmLocks;
     private readonly bool backgroundCheck;
     private UpdateInstallWindow? window;
     private Task operation=Task.CompletedTask;
-    private bool disposed;
+    private bool disposed,bootstrapHandedOff;
     internal UpdateCoordinator(Window owner,LauncherOptions options,string installation)
         : this(owner,installation,new V4UpdateSession(installation,options),()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown()))) { }
-    internal UpdateCoordinator(Window owner,string installation,IUpdateSession session,Action shutdown,Action<string>? notify=null,Func<Window,bool>? confirmRecovery=null)
+    internal UpdateCoordinator(Window owner,string installation,IUpdateSession session,Action shutdown,Action<string>? notify=null,Func<Window,bool>? confirmRecovery=null,
+        Func<bool>? bootstrapVerified=null,Action? recheckBootstrap=null,Func<Window,IReadOnlyList<FileLockOwner>,bool>? confirmLocks=null)
     {
         this.owner=owner; this.installation=installation; this.session=session;
         this.notify=notify??(message=>ClassicMessage.Show(owner,message));
         this.confirmRecovery=confirmRecovery??(parent=>UpdateWindow.ConfirmRestart(parent,true));
+        this.bootstrapVerified=bootstrapVerified??(()=>App.BootstrapVerified);
+        this.recheckBootstrap=recheckBootstrap??App.RecheckBootstrap;
+        this.confirmLocks=confirmLocks??ConfirmLocks;
         controller=new(session,installation,shutdown); controller.Changed+=Changed;
         try
         {
@@ -35,7 +42,7 @@ internal sealed class UpdateCoordinator : IDisposable
     internal void Check()=>_=Run(controller.CheckAsync);
     private Task Run(Func<Task> check)
     {
-        if(disposed || !operation.IsCompleted) return operation;
+        if(disposed || bootstrapHandedOff || !operation.IsCompleted) return operation;
         if(backgroundCheck)owner.Show();else owner.Hide();
         operation=RunCore(check); return operation;
     }
@@ -55,19 +62,34 @@ internal sealed class UpdateCoordinator : IDisposable
                 {
                     await Diagnostics.AutomaticDiagnostics.SuspendForUpdateAsync(CancellationToken.None);
                     var owners=await session.InspectLocksAsync(CancellationToken.None);
-                    if(owners.Count>0)
+                    if(disposed || controller.State.Phase!=UpdatePhase.Ready) confirmed=false;
+                    else if(owners.Count>0)
                     {
-                        var details=string.Join("\n",owners.Select(p=>$"{p.Name}（PID {p.ProcessId}）"+(p.CanTerminate?"":"，需手动关闭")));
-                        var answer=MessageBox.Show(window!,"以下程序正在使用更新文件：\n"+details+"\n\n是否关闭可处理的程序后继续安装？未保存的内容可能丢失。选择“否”会保留下载结果。",
-                            "文件被占用",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No);
-                        confirmed=answer==MessageBoxResult.Yes;
+                        confirmed=confirmLocks(window!,owners);
                         if(confirmed) await FileLockOwners.CloseAsync(owners,true,CancellationToken.None);
                     }
                 }
                 catch(Exception ex) { Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); Program.ReportError("update-lock-inspection",ex); notify("无法处理文件占用，请关闭相关程序后重试。\n"+ex.Message); confirmed=false; }
             }
-            try { await controller.InstallAsync(confirmed); }
-            finally { if(controller.State.Phase!=UpdatePhase.Installing)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
+            try
+            {
+                if(confirmed && !disposed && controller.State.Phase==UpdatePhase.Ready && bootstrapVerified())
+                {
+                    // The verified App is not the legacy Launcher.exe installer.
+                    // The fixed entry waits for this process (and its app lock) to
+                    // exit, then verifies/installs from the persistent V4 cache.
+                    bootstrapHandedOff=true;
+                    try { controller.Cancel(); recheckBootstrap(); return; }
+                    catch(Exception ex)
+                    {
+                        bootstrapHandedOff=false;
+                        Program.ReportError("update-bootstrap-recheck",ex);
+                        if(!disposed)notify("无法重新启动更新入口，可返回登录后重试。\n"+ex.Message);
+                    }
+                }
+                else await controller.InstallAsync(confirmed);
+            }
+            finally { if(!bootstrapHandedOff && controller.State.Phase!=UpdatePhase.Installing)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
         }
         if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
         ShowLogin();
@@ -75,6 +97,12 @@ internal sealed class UpdateCoordinator : IDisposable
         else if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
         else if(session.ShowStatusNotice) owner.ToolTip=controller.State.Message;
         await ShowPreviousWarning();
+    }
+    private static bool ConfirmLocks(Window parent,IReadOnlyList<FileLockOwner> owners)
+    {
+        var details=string.Join("\n",owners.Select(p=>$"{p.Name}（PID {p.ProcessId}）"+(p.CanTerminate?"":"，需手动关闭")));
+        return MessageBox.Show(parent,"以下程序正在使用更新文件：\n"+details+"\n\n是否关闭可处理的程序后继续安装？未保存的内容可能丢失。选择“否”会保留下载结果。",
+            "文件被占用",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes;
     }
     private void Changed(UpdateViewState state)
     {

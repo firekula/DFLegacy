@@ -205,6 +205,6 @@ Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试�
 
 HTTP 基本 JSON 兼容现有公网入口，设置明确显示未加密；建议部署 HTTPS。HTTPS 不允许降级或忽略证书，不允许跨源重定向。自动队列按当前用户保存，100 份／32 MiB／14 天、单并发约 64 KiB/s，每次登录器运行每事件最多三次尝试；丢失响应／重启重复发送保持相同正文和事件 ID。该服务没有原始转储上传接口。
 
-## v0.1.9 冰心少年与邮件更新
+## v0.1.10 冰心少年与邮件更新
 
-本版只需把 .env 的 DFLEGACY_IMAGE 改为 ghcr.io/firekula/dflegacy:v0.1.9，再执行 podman compose pull 和 podman compose up -d。保留数据卷、原环境变量和端口；PVF 与 v0.1.8 相同，无需重复上传。客户端从 GitHub 对应架构自动更新。详见 [v0.1.9 升级说明](docs/releases/v0.1.9.md)。
+本版只需把 .env 的 DFLEGACY_IMAGE 改为 ghcr.io/firekula/dflegacy:v0.1.10，再执行 podman compose pull 和 podman compose up -d。保留数据卷、原环境变量和端口；PVF 与 v0.1.8 相同，无需重复上传。客户端从 GitHub 对应架构自动更新。详见 [v0.1.10 升级说明](docs/releases/v0.1.10.md)。
