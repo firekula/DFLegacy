@@ -102,12 +102,21 @@ bool Initialize() noexcept
 }
 LONG Begin(EXCEPTION_POINTERS* e,bool originalEntry) noexcept
 {
-    if(!Data||!e||!e->ExceptionRecord||!e->ContextRecord||InterlockedCompareExchange(&Busy,1,0))return -1;
+    if(!Data||!e||!e->ExceptionRecord||!e->ContextRecord)return -1;
+    // Busy owns an odd sequence, not just a boolean. A later entry may rearm
+    // an acknowledged cancellation after Finish's deadline, but cannot clear
+    // another thread's newly acquired slot using stale cancellation evidence.
+    const LONG owner=InterlockedCompareExchange(&Busy,-1,0);
+    if(owner!=0) {
+        if(owner<0)return -1;
+        const LONG sequence=InterlockedCompareExchange(&Data->Sequence,0,0);
+        if(sequence!=owner+1||InterlockedCompareExchange(&Data->StateValue,0,0)!=Cancelled||InterlockedCompareExchange(&Data->Acknowledged,0,0)<sequence||InterlockedCompareExchange(&Busy,-1,owner)!=owner)return -1;
+    }
     const LONG slot=InterlockedIncrement(&Next)-1;
-    if(slot>=7){return -1;} // Slot 7 belongs to window-only evidence; no allocation on the fault stack.
+    if(slot>=7){InterlockedExchange(&Busy,-2);return -1;} // Saturated; slot 7 belongs to window-only evidence.
     Data->Started=GetTickCount64();Data->ThreadId=GetCurrentThreadId();Data->OriginalEntry=originalEntry?1:0;
     Data->Exception=*e->ExceptionRecord;Data->Exception.ExceptionRecord=nullptr;Data->Context=*e->ContextRecord;
-    InterlockedExchange(&Data->StateValue,Provisional);InterlockedExchange(&Data->Sequence,slot*2+1);SetEvent(Request);
+    InterlockedExchange(&Data->StateValue,Provisional);InterlockedExchange(&Busy,slot*2+1);InterlockedExchange(&Data->Sequence,slot*2+1);SetEvent(Request);
     WaitAck(Data->SmallDumps?4500:1750,slot*2+1);return slot;
 }
 void Finish(LONG slot,LONG disposition) noexcept
@@ -118,7 +127,7 @@ void Finish(LONG slot,LONG disposition) noexcept
     const auto elapsed=GetTickCount64()-Data->Started;const DWORD total=Data->SmallDumps?5000:2000;
     if(elapsed<total)WaitAck(static_cast<DWORD>(total-elapsed),slot*2+2);
     // Only reuse a slot after cancellation has durably reached the helper.
-    if(disposition==EXCEPTION_CONTINUE_EXECUTION&&Data->Acknowledged>=slot*2+2)InterlockedExchange(&Busy,0);
+    if(disposition==EXCEPTION_CONTINUE_EXECUTION&&Data->Acknowledged>=slot*2+2)InterlockedCompareExchange(&Busy,0,slot*2+1);
 }
 bool InstallOriginalHooks() noexcept
 {

@@ -1,8 +1,8 @@
 """Real faults in test-owned children. Production paths, no debugger, no network."""
-import ctypes, json, os, pathlib, shutil, subprocess, sys, time, uuid, tempfile, socket, struct
+import ctypes, json, os, pathlib, shutil, subprocess, sys, time, uuid, tempfile, socket, struct, argparse
 from ctypes import wintypes
 
-def stop_own_capture_helper(game,helper):
+def control_own_capture_helper(game,helper,pause=False):
     class ProcessEntry(ctypes.Structure):
         _fields_=[('size',wintypes.DWORD),('usage',wintypes.DWORD),('pid',wintypes.DWORD),('heap',ctypes.c_size_t),('module',wintypes.DWORD),('threads',wintypes.DWORD),('parent',wintypes.DWORD),('priority',wintypes.LONG),('flags',wintypes.DWORD),('exe',wintypes.WCHAR*260)]
     kernel=ctypes.WinDLL('kernel32',use_last_error=True)
@@ -10,7 +10,10 @@ def stop_own_capture_helper(game,helper):
     kernel.CloseHandle.argtypes=[wintypes.HANDLE];kernel.TerminateProcess.argtypes=[wintypes.HANDLE,wintypes.UINT];kernel.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
     kernel.QueryFullProcessImageNameW.argtypes=[wintypes.HANDLE,wintypes.DWORD,wintypes.LPWSTR,ctypes.POINTER(wintypes.DWORD)]
     kernel.Process32FirstW.argtypes=[wintypes.HANDLE,ctypes.POINTER(ProcessEntry)];kernel.Process32NextW.argtypes=kernel.Process32FirstW.argtypes
-    snapshot=kernel.CreateToolhelp32Snapshot(2,0);entry=ProcessEntry();entry.size=ctypes.sizeof(entry);found=False
+    snapshot=kernel.CreateToolhelp32Snapshot(2,0);entry=ProcessEntry();entry.size=ctypes.sizeof(entry);found=False;paused=[]
+    def resume():
+        for owned in paused:kernel.ResumeThread(owned);kernel.CloseHandle(owned)
+        paused.clear()
     try:
         more=kernel.Process32FirstW(snapshot,ctypes.byref(entry))
         while more:
@@ -18,13 +21,38 @@ def stop_own_capture_helper(game,helper):
                 handle=kernel.OpenProcess(0x100000|0x1000|1,False,entry.pid);path=ctypes.create_unicode_buffer(32768);length=wintypes.DWORD(32768)
                 try:
                     assert handle and kernel.QueryFullProcessImageNameW(handle,0,path,ctypes.byref(length)) and pathlib.Path(path.value).resolve()==helper
-                    assert game.poll() is None and kernel.TerminateProcess(handle,125);kernel.WaitForSingleObject(handle,2000);found=True
+                    assert game.poll() is None
+                    if not pause:
+                        assert kernel.TerminateProcess(handle,125);kernel.WaitForSingleObject(handle,2000)
+                    else:
+                        class ThreadEntry(ctypes.Structure):
+                            _fields_=[('size',wintypes.DWORD),('usage',wintypes.DWORD),('tid',wintypes.DWORD),('owner',wintypes.DWORD),('priority',wintypes.LONG),('delta',wintypes.LONG),('flags',wintypes.DWORD)]
+                        kernel.OpenThread.restype=wintypes.HANDLE;kernel.SuspendThread.argtypes=[wintypes.HANDLE];kernel.ResumeThread.argtypes=[wintypes.HANDLE]
+                        kernel.Thread32First.argtypes=[wintypes.HANDLE,ctypes.POINTER(ThreadEntry)];kernel.Thread32Next.argtypes=kernel.Thread32First.argtypes
+                        threads=kernel.CreateToolhelp32Snapshot(4,0);thread=ThreadEntry();thread.size=ctypes.sizeof(thread)
+                        try:
+                            more_threads=kernel.Thread32First(threads,ctypes.byref(thread))
+                            while more_threads:
+                                if thread.owner==entry.pid:
+                                    owned=kernel.OpenThread(2,False,thread.tid);assert owned
+                                    if kernel.SuspendThread(owned)==-1:kernel.CloseHandle(owned);raise AssertionError('cannot suspend owned collector thread')
+                                    paused.append(owned)
+                                more_threads=kernel.Thread32Next(threads,ctypes.byref(thread))
+                        finally:kernel.CloseHandle(threads)
+                        assert paused,'collector thread must exist'
+                    found=True
                 finally:
                     if handle:kernel.CloseHandle(handle)
                 break
             more=kernel.Process32NextW(snapshot,ctypes.byref(entry))
+    except BaseException:
+        resume();raise
     finally:kernel.CloseHandle(snapshot)
+    if not found or game.poll() is not None:resume()
     assert found and game.poll() is None,'stopping own native helper must leave game alive'
+    return resume
+
+def stop_own_capture_helper(game,helper):control_own_capture_helper(game,helper)
 
 def wait_for(predicate, seconds=8):
     end=time.monotonic()+seconds
@@ -45,17 +73,20 @@ def verify_exception_dump(path,code):
     assert struct.unpack_from('<I',data,context+184)[0]==address,'saved EIP must match original exception instruction'
 
 def main():
-    exe=pathlib.Path(sys.argv[1]).resolve()
-    helper=pathlib.Path(sys.argv[2]).resolve()
+    parser=argparse.ArgumentParser();parser.add_argument('exe');parser.add_argument('helper');parser.add_argument('original',nargs='?');parser.add_argument('--modes',nargs='+');args=parser.parse_args()
+    exe=pathlib.Path(args.exe).resolve()
+    helper=pathlib.Path(args.helper).resolve()
     temporary=tempfile.TemporaryDirectory(prefix='dflegacy-capture-fixtures-');root=pathlib.Path(temporary.name)
     failures=[];modes=['crash','overflow','recover','previous-exit','previous-block','block-recover','handled','normal','abnormal-exit','later','dialog','no-dump','dump-timeout','large-dump','wrong-capability','wrong-creation','wrong-pid','early-bind','helper-exit','linked-events','helper-dump-exit']
-    if len(sys.argv)>3:
-        source=pathlib.Path(sys.argv[3]);copies=root/'original-modules';copies.mkdir()
+    modes+=['delayed-recovery-twice','skip-provisional']
+    if args.original:
+        source=pathlib.Path(args.original);copies=root/'original-modules';copies.mkdir()
         for name in ('BugTrap.dll','DumpReport.dll','MSVCR71.dll'):shutil.copyfile(source/name,copies/name)
         changed=root/'changed-modules';changed.mkdir();shutil.copyfile(source/'BugTrap.dll',changed/'BugTrap.dll')
         with (changed/'BugTrap.dll').open('ab') as file:file.write(b'fixture hash mismatch')
         modes+=['original-bug','original-dump','original-bug-privacy','original-bug-badhash','original-bug-badsig']
     else:print('SKIP original module fixture: supply read-only original directory as third argument')
+    if args.modes:modes=[mode for mode in modes if mode in args.modes]
     for mode in modes:
         folder=root/'sessions'/uuid.uuid4().hex; (folder/'events').mkdir(parents=True)
         (folder/'rich').mkdir();sid=uuid.uuid4().hex;cap=uuid.uuid4().hex
@@ -70,7 +101,7 @@ def main():
         if mode=='linked-events':
             outside=root/'outside';outside.mkdir(exist_ok=True);(outside/'sentinel').write_text('untouched');(folder/'events').rmdir()
             result=subprocess.run(['cmd.exe','/c','mklink','/J',str(folder/'events'),str(outside)],capture_output=True);assert result.returncode==0,result.stderr
-        process=None;receiver=None
+        process=None;receiver=None;resume=None
         if mode=='original-bug-privacy':
             receiver=socket.socket();receiver.bind(('127.0.0.1',0));receiver.listen(4);receiver.settimeout(.3);env['DFL_TEST_RECEIVER_PORT']=str(receiver.getsockname()[1])
         try:
@@ -84,6 +115,13 @@ def main():
                 (folder/'session.tmp').write_text(json.dumps(registration));os.replace(folder/'session.tmp',folder/'session.json')
             if mode=='helper-exit':stop_own_capture_helper(process,helper)
             started=time.monotonic();process.stdin.write(b'\n');process.stdin.flush()
+            if mode in ('delayed-recovery-twice','skip-provisional'):
+                assert process.stdout.readline().decode().strip()=='recovered'
+                cancelled=wait_for(lambda:list((folder/'events').glob('*-cancelled.json')));assert cancelled,'first real fault must be cancelled'
+                assert not list((folder/'events').glob('*-confirmed.json'))
+                if mode=='skip-provisional':resume=control_own_capture_helper(process,helper,pause=True)
+                process.stdin.write(b'\n');process.stdin.flush();process.wait(timeout=8)
+                if resume:resume();resume=None
             if mode=='helper-dump-exit':
                 assert wait_for(lambda:list((root/'captures').glob('*.part'))),'need actual in-flight dump reservation'
                 stop_own_capture_helper(process,helper)
@@ -97,7 +135,13 @@ def main():
                 assert not list((folder/'events').glob('*-confirmed.json')), 'timeout is not confirmation'
             else:
                 process.wait(timeout=12)
-                if mode in ('crash','overflow','previous-exit','no-dump','dump-timeout','large-dump','early-bind') or (mode.startswith('original-') and '-bad' not in mode):
+                if mode in ('delayed-recovery-twice','skip-provisional'):
+                    records=wait_for(lambda:list((folder/'events').glob('*-confirmed.json')));assert records,'second real fault must remain capturable after recovery'
+                    assert len(records)==1;record=json.loads(records[0].read_text());incident=record['incident']
+                    assert records[0].name==incident['eventId']+'-confirmed.json','new sequence filename and incident ID must agree'
+                    assert incident['eventId']!=json.loads(cancelled[0].read_text())['incident']['eventId']
+                    assert incident['exceptionCode']=='0xC000001D','second fault must retain its own original context'
+                elif mode in ('crash','overflow','previous-exit','no-dump','dump-timeout','large-dump','early-bind') or (mode.startswith('original-') and '-bad' not in mode):
                     records=wait_for(lambda:list((folder/'events').glob('*-confirmed.json')))
                     assert records, f'{mode}: original exception never confirmed'
                     record=json.loads(records[0].read_text());incident=record['incident']
@@ -133,6 +177,7 @@ def main():
         except Exception as error:
             failures.append(mode);print('FAIL native capture',mode,str(error))
         finally:
+            if resume:resume()
             if process and process.poll() is None:process.kill();process.wait()
             if receiver:receiver.close()
             if mode=='linked-events':
@@ -141,7 +186,7 @@ def main():
             shutil.rmtree(folder,ignore_errors=True)
     children=[]
     try:
-        for _ in range(2):
+        for _ in range(2 if not args.modes or 'concurrent' in args.modes else 0):
             folder=root/'sessions'/uuid.uuid4().hex;(folder/'events').mkdir(parents=True);(folder/'rich').mkdir();sid,cap=uuid.uuid4().hex,uuid.uuid4().hex
             registration={'sessionId':sid,'capability':cap,'gamePid':0,'gameCreatedUtcTicks':0,'localSmallDumps':True};(folder/'session.json').write_text(json.dumps(registration))
             env={**os.environ,'DFL_TEST_CAPTURE_ROOT':str(root),'DFL_DIAGNOSTIC_SESSION_DIR':str(folder),'DFL_DIAGNOSTIC_SESSION_ID':sid,'DFL_DIAGNOSTIC_CAPABILITY':cap,'DFL_DIAGNOSTIC_CAPTURE_HELPER':str(helper)}
@@ -156,7 +201,7 @@ def main():
         ids=[]
         for child,folder in children:
             records=wait_for(lambda:list((folder/'events').glob('*-confirmed.json')));assert len(records)==1;record=json.loads(records[0].read_text());assert record['producerPid']==child.pid;ids.append(record['incident']['eventId'])
-        assert len(set(ids))==2;print('PASS native capture concurrent ownership and global dump budget')
+        if children:assert len(set(ids))==2;print('PASS native capture concurrent ownership and global dump budget')
     finally:
         for child,_ in children:
             if child.poll() is None:child.kill();child.wait()

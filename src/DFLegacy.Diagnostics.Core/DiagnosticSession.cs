@@ -64,6 +64,13 @@ public sealed class DiagnosticSession
         var current=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(DirectoryPath,"session.json"),16384)??Registration;
         return Alive(current.LauncherPid,current.LauncherCreatedUtcTicks)||Alive(current.GamePid,current.GameCreatedUtcTicks);
     }
+    public bool GameAlive()
+    {
+        // An uploader may have opened this session before BindProcess wrote the
+        // game identity. Always check the latest PID and creation-time pair.
+        var current=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(DirectoryPath,"session.json"),16384)??Registration;
+        return Alive(current.GamePid,current.GameCreatedUtcTicks);
+    }
     public void Complete() => DiagnosticFiles.Write(Path.Combine(DirectoryPath,"closed.json"),Registration.Capability);
     public bool IsClosed => DiagnosticFiles.Read<string>(Path.Combine(DirectoryPath,"closed.json"),128)==Registration.Capability;
     private static bool Alive(int pid,long created)
@@ -136,6 +143,8 @@ public sealed class DiagnosticSession
     }
     internal void CleanupManagedFiles()
     {
+        // Closing/revoking upload does not revoke a running game's local capture.
+        if(GameAlive())return;
         // Remove only our bounded structured metadata. Unknown files and Task3 local captures are preserved.
         var events=Path.Combine(DirectoryPath,"events");DiagnosticFiles.NoLinks(events);
         if(Directory.Exists(events)) {

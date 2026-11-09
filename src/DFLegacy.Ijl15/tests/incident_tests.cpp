@@ -9,6 +9,9 @@
 #include "native_incidents.h"
 
 __declspec(naked) void Fault() { __asm { mov eax,123h } __asm { mov dword ptr [eax],1 } __asm { ret } }
+__declspec(naked) void SecondFault() { __asm { _emit 0x0f } __asm { _emit 0x0b } __asm { ret } }
+unsigned FaultNumber=0;bool DelayRecovery=false;
+LONG WINAPI TwoFaults(EXCEPTION_POINTERS* e) {if(++FaultNumber==1){if(DelayRecovery)Sleep(6000);e->ContextRecord->Eip+=6;return EXCEPTION_CONTINUE_EXECUTION;}return EXCEPTION_EXECUTE_HANDLER;}
 #pragma warning(push)
 #pragma warning(disable:4717) // Intentional genuine recursive exhaustion, not a raised status code.
 __declspec(noinline) int Overflow(unsigned depth) { volatile char page[4096];page[depth%4096]=static_cast<char>(depth);return Overflow(depth+1)+page[depth%4096]; }
@@ -123,6 +126,7 @@ int wmain(int argc,wchar_t** argv)
     if(!wcscmp(argv[1],L"previous-exit"))SetUnhandledExceptionFilter(ExitBeforeReturn);
     if(!wcscmp(argv[1],L"previous-block"))SetUnhandledExceptionFilter(BlockBeforeReturn);
     if(!wcscmp(argv[1],L"block-recover"))SetUnhandledExceptionFilter(BlockThenRecover);
+    if(!wcscmp(argv[1],L"delayed-recovery-twice")||!wcscmp(argv[1],L"skip-provisional")){DelayRecovery=!wcscmp(argv[1],L"delayed-recovery-twice");SetUnhandledExceptionFilter(TwoFaults);}
     if(!dfl::native_incidents::Initialize(argv[2],"fixture-session","fixture-version+commit"))return 3;
     if(original) {
         if(wcsstr(argv[1],L"bad")) {
@@ -146,6 +150,7 @@ int wmain(int argc,wchar_t** argv)
         (void)getchar();
     }
     if(!wcscmp(argv[1],L"recover")||!wcscmp(argv[1],L"previous-exit")||!wcscmp(argv[1],L"previous-block")||!wcscmp(argv[1],L"block-recover")){Fault();return 0;}
+    if(!wcscmp(argv[1],L"delayed-recovery-twice")||!wcscmp(argv[1],L"skip-provisional")){Fault();puts("recovered");fflush(stdout);(void)getchar();SecondFault();return 20;}
     if(!wcscmp(argv[1],L"large-dump")){for(int i=0;i<24;++i){HANDLE thread=CreateThread(nullptr,2*1024*1024,LargeStack,nullptr,0,nullptr);if(!thread)return 15;CloseHandle(thread);}while(StackReady<24)Sleep(10);Fault();return 0;}
     if(original){if(wcsstr(argv[1],L"bad"))return 0;Fault();return 14;}
     if(!wcscmp(argv[1],L"overflow"))return Overflow(0);

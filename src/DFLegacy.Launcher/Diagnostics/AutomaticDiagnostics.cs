@@ -18,12 +18,15 @@ internal static class AutomaticDiagnostics
             var clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(options.ClientPath))!;
             var site=string.IsNullOrWhiteSpace(options.Diagnostics.ServiceUrl)?options.ResolveAccountServiceUrl():options.Diagnostics.ServiceUrl;
             var preference=settings.Read();
-            var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId+"|"+preference.Enabled+"|"+preference.LocalSmallDumps;
+            var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId+"|"+preference.Enabled;
             lock(Gate)
             {
                 // A durable current-user preference is authoritative over copied launcher.json defaults.
                 options.Diagnostics.Enabled=preference.Enabled;
-                if(identity==key&&Session is not null&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible))return;
+                // Dump preferences apply to the next game. Keep the live game's
+                // immutable registration and capture helper until it exits.
+                if(identity==key&&Session is not null&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible)&&
+                    (Session.Registration.LocalSmallDumps==preference.LocalSmallDumps||Session.GameAlive()))return;
                 Session?.Complete();
                 try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}
                 catch(ArgumentException) {Session=DiagnosticSession.Start(clientRoot,"",Program.Incidents.SessionId,settings.Root,typeof(Program).Assembly.GetName().Version?.ToString()??"unknown");}

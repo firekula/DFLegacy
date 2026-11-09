@@ -221,21 +221,26 @@ int Monitor(HANDLE mapping,HANDLE request,HANDLE ack,HANDLE process)
     Shared identity=*data;std::wstring root;
     if(!Identity(identity,process)||!SameUser(process)||!Location(identity,root)){UnmapViewOfFile(data);return 3;}
     InterlockedExchange(&data->Ready,1);SetEvent(ack);
-    LONG seen=0;Shared pending{};std::string incident;bool provisional=false,finished=false,windowSent=false;ULONGLONG exited=0;
+    LONG seen=0;unsigned activeSlot=8;Shared pending{};std::string incident;bool provisional=false,finished=false,windowSent=false;ULONGLONG exited=0;
     for(;;) {
         const bool dead=WaitForSingleObject(process,0)==WAIT_OBJECT_0;
         if(dead&&!exited)exited=GetTickCount64();
         const bool bound=Registration(identity,true);
         const LONG sequence=InterlockedCompareExchange(&data->Sequence,0,0);
         if(bound&&sequence>seen&&sequence<=16) {
-            pending=*data;const LONG state=InterlockedCompareExchange(&data->StateValue,0,0);const unsigned slot=static_cast<unsigned>(sequence-1)/2;
+            const unsigned slot=static_cast<unsigned>(sequence-1)/2;
+            // The producer can finish its bounded wait before this process
+            // observes provisional. Final-only observations still belong to a
+            // new slot and must never reuse a preceding cancelled incident.
+            if(slot!=activeSlot){activeSlot=slot;incident.clear();pending={};provisional=false;finished=false;}
+            pending=*data;const LONG state=InterlockedCompareExchange(&data->StateValue,0,0);
             if(state==Provisional) {
                 incident=Incident(pending,process,pending.Ids[slot]);provisional=Event(pending,pending.Ids[slot],"provisional",incident);finished=false;
                 if(provisional)SmallDump(pending,process,root,pending.Ids[slot]);
             }else if(state==Confirmed||state==Cancelled) {
                 if(incident.empty())incident=Incident(pending,process,pending.Ids[slot]);
                 Event(pending,pending.Ids[slot],state==Cancelled?"cancelled":"confirmed",incident);finished=true;
-                if(state==Cancelled){const auto path=root+L"\\captures\\"+Wide(pending.Ids[slot])+L".dmp";if(Plain(path))DeleteFileW(path.c_str());}
+                if(state==Cancelled){provisional=false;const auto path=root+L"\\captures\\"+Wide(pending.Ids[slot])+L".dmp";if(Plain(path))DeleteFileW(path.c_str());}
             }
             seen=sequence;InterlockedExchange(&data->Acknowledged,sequence);SetEvent(ack);
         }
@@ -247,7 +252,7 @@ int Monitor(HANDLE mapping,HANDLE request,HANDLE ack,HANDLE process)
             }
             // Hold early captures for a late launcher PID/time bind, up to 5s.
             if(bound||GetTickCount64()-exited>=5000)break;
-        }else if(bound&&!windowSent&&!provisional) {
+        }else if(bound&&!windowSent&&(data->StateValue==Idle||data->StateValue==Cancelled)) {
             WindowSearch search{identity.Pid,false};EnumWindows(Window,reinterpret_cast<LPARAM>(&search));
             if(search.found){Event(identity,identity.Ids[7],"confirmed",Incident(identity,process,identity.Ids[7],true));windowSent=true;}
         }

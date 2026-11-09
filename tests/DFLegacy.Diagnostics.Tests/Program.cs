@@ -61,7 +61,14 @@ async Task NativeIntegrationTests()
  Check(unknown.CollectConfirmed()==1,"unknown exit eventually reports as error once native drain ends");
  unknown.WriteIncident(native with{EventId=Guid.NewGuid().ToString("N")},"confirmed");
  Check(unknown.CollectConfirmed()==0&&new DiagnosticQueue(unknown).ReadPending().Count==1,"exceptional late native record cannot double-count an already frozen unknown exit");
- await Task.CompletedTask;
+ var childInfo=new ProcessStartInfo("dotnet"){UseShellExecute=false,CreateNoWindow=true};childInfo.ArgumentList.Add(typeof(Endpoint).Assembly.Location);childInfo.ArgumentList.Add("--game-fixture");
+ using var live=Process.Start(childInfo)!;
+ try {
+  var closing=DiagnosticSession.Start(Path.Combine(client,"closing"),"http://127.0.0.1:32241",Guid.NewGuid().ToString("N"),home);
+  var observer=DiagnosticSession.Open(closing.DirectoryPath,closing.Registration.Capability,home);closing.BindProcess(live);closing.Complete();
+  await DiagnosticHelper.RunAsync(observer).WaitAsync(TimeSpan.FromSeconds(10));
+  Check(!live.HasExited&&File.Exists(Path.Combine(closing.DirectoryPath,"session.json"))&&Directory.Exists(Path.Combine(closing.DirectoryPath,"events")),"closed uploader cannot delete a verified live game's registration");
+ }finally{if(!live.HasExited)live.Kill();await live.WaitForExitAsync();}
 }
 
 async Task Run()
