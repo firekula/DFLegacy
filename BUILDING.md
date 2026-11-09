@@ -185,4 +185,4 @@ dotnet publish src/DFLegacy.ClientPackager -c Release -r win-x64 --self-containe
 
 上传助手没有可共享的松散运行时目录；使用独立自包含单文件以保持固定入口修复合同，无需全局 .NET。每个架构单独发布并按实际大小记录额外成本。V4 `bootstrap_package.build_release` 要求明确固定文件及 hash/size 输入，必需两个助手；不能把整个游戏目录或 LocalAppData 复制到输入。发布前验证全部四个 x86/x64 × normal/test 清单和附件。调试 fixture、原版第三方 DLL、PDB、转储、会话和凭据永不进入公开资源；源码提交与私有符号 SHA256 保留在验收来源记录中。
 
-最终修订版的自有原生 DLL 必须保留优化 Release 行为，同时生成并私有留存精确匹配的生产 PDB，记录 PE/PDB GUID 与 Age、DLL/PDB SHA256 和构建源码 SHA。PDB 不能进入 V4 清单、client-assets 或 Gitea 附件；不能用 presenter 测试 PDB 代替生产 DLL 符号。`.5` 中间快照尚缺该生产符号，后续一次最终新测试标签构建时必须补齐；原始 DNF 无符号与此要求分开记录。
+最终修订版的自有原生 DLL 必须保留优化 Release 行为，同时生成并私有留存精确匹配的生产 PDB，记录 PE/PDB GUID 与 Age、DLL/PDB SHA256 和构建源码 SHA。PDB 不能进入 V4 清单、client-assets 或 Gitea 附件；不能用 presenter 测试 PDB 代替生产 DLL 符号。`.5` 中间快照缺少该生产符号；最终隔离 `.6` 已生成并私有保留五个生产目标的匹配 PE/PDB（源码 `64f5ab5`），详见验收报告。原始 DNF 无符号与此要求分开记录。

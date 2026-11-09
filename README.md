@@ -1,6 +1,6 @@
 # DFLegacy
 
-Unreleased 客户端基本故障报告在普通版和测试版默认自动发送，可在设置关闭。接收使用账号 API（默认 8081），GM 查询／下载／删除仅在 18081 管理口和管理员身份可用；小型转储只留当前用户本地，不上传。两架构独立自包含助手随客户端更新，详情及真实验收边界见[自动诊断验收](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。本轮不提升正式版本、不发布 GitHub/GHCR。
+Unreleased 客户端基本故障报告在普通版和测试版默认自动发送，可在设置关闭。接收使用账号 API（默认 8081），GM 查询／下载／删除仅在 18081 管理口和管理员身份可用；小型转储只留当前用户本地，不上传。两架构独立自包含助手随客户端更新，详情及真实验收边界见[自动诊断验收](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。最终隔离预发布 [v0.1.8-giteatest.6](http://firekula.site:3000/firekula/DFLegacy/releases/tag/v0.1.8-giteatest.6) 来自 `64f5ab5`，四变体真实修复及五对私有生产符号已验收。本轮不提升正式版本、不发布 GitHub/GHCR。
 
 开发中（Unreleased）：V4 客户端更新支持完整文件校验、逐文件修复、配置迁移和独立故障报告。Gitea 测试版已推进至 `v0.1.8-giteatest.4`，x86/x64 均使用固定图标入口、独立登录界面及带恢复副本的更新程序。新增单人聊天“牛来”归拢当前地面掉落，兼容附近和副本默认聊天；已获用户实机确认。最终 Boss 死亡后非法换房重置结算的服务端路径已修复，亚蒙下层实测能拒绝换房并正常回城；门动画和原始闪退的验证边界见[本轮图文报告](artifacts/bootstrap-auto-repair-20261108/REPORT.md)。更新方法见 [V4 说明](CLIENT_UPDATES_V4.md)。正式 GitHub 更新和线上服务保持原发布范围。
 
