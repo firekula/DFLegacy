@@ -8,6 +8,13 @@ using System.Buffers.Binary;
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(
     Path.Combine(Path.GetTempPath(),"dflegacy-launcher-child-diagnostics-"+Guid.NewGuid().ToString("N")));
 
+if(args.Length==4&&args[0]=="--session"&&args[2]=="--capability"&&Environment.GetEnvironmentVariable("DFL_TEST_HELPER_ENTRY_MARKER") is { } entryMarker)
+{
+    var marker=Path.GetFullPath(entryMarker);
+    if(!marker.StartsWith(Path.GetFullPath(Path.GetTempPath()),StringComparison.OrdinalIgnoreCase))return 2;
+    File.WriteAllText(marker,"verified own executable entry");return 0;
+}
+
 if(args.Length==5&&args[0]=="--diagnostic-helper-fixture")
 {
     using var held=new FileStream(args[4],FileMode.Open,FileAccess.Read,FileShare.Read);
@@ -51,11 +58,12 @@ DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.Diag
 try
 {
     if(args.Length==2&&args[0]=="--diagnostic-release-acceptance"){await DiagnosticReleaseAcceptanceTests.Run(args[1],Check);Console.WriteLine($"Diagnostic release acceptance: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Contains("--diagnostic-helper-integrity-tests")){DiagnosticHelperIntegrityTests.Run(root,Check);Console.WriteLine($"Diagnostic helper integrity: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-lifetime-tests")){await DiagnosticUpdateLifetimeTests.Run(root,Check);Console.WriteLine($"Diagnostic lifetime tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Length==2&&args[0]=="--native-diagnostic-setting-tests") {await NativeDiagnosticLifetimeTests.Run(root,Check,Path.GetFullPath(args[1]));Console.WriteLine($"Native diagnostic setting tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
-    if(args.Length==0){await DiagnosticUpdateLifetimeTests.Run(root,Check);await BootstrapUpdateTests.Run(root,Check);}
+    if(args.Length==0){DiagnosticHelperIntegrityTests.Run(root,Check);await DiagnosticUpdateLifetimeTests.Run(root,Check);await BootstrapUpdateTests.Run(root,Check);}
     if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await GiteaSourceTests.RunV4(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
