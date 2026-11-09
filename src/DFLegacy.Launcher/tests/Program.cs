@@ -43,6 +43,7 @@ Directory.CreateDirectory(root);
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Length==0) await BootstrapUpdateTests.Run(root,Check);
     if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }

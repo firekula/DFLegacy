@@ -31,7 +31,7 @@ internal static class AutomaticDiagnostics
                 if(File.Exists(helper)) { DFLegacy.UpdateCore.PathPolicy.NoLinks(helper);using var process=Process.Start(CreateHelperStartInfo(helper,Session)); }
             }
         }
-        catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
         {
             if(!registered)lock(Gate){Session=null;identity=null;Program.Incidents.AutomaticReport=null;}
             Program.LogWarning="自动诊断暂不可用，仅保留本地记录。";

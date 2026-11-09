@@ -79,7 +79,12 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             Set(UpdatePhase.Ready,"下载及校验完成。点击“重启安装”确认；也可返回登录稍后更新。",release.Version,replacesScriptPvf:prepared.Manifest.HasScriptPvf);
         }
         catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消更新，可重试或返回登录。"); }
-        catch(Exception ex) { Program.ReportError("update-check-download",ex); Cleanup(); Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+ex.Message); }
+        catch(Exception ex)
+        {
+            // Caller cancellation was handled above. A linked transport/download deadline is a real error.
+            var failure=ex is OperationCanceledException?new TimeoutException("更新请求超时，请稍后重试。",ex):ex;
+            Program.ReportError("update-check-download",failure);Cleanup();Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+failure.Message);
+        }
     }
     internal Task InstallAsync(bool confirmed)
     {

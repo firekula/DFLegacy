@@ -5,6 +5,36 @@ using DFLegacy.Launcher;
 
 internal static class UpdateControllerTests
 {
+    internal static async Task RunDiagnosticTimeouts(string root,Action<bool,string> check)
+    {
+        var install=Path.Combine(root,"diagnostic-update-timeouts");Directory.CreateDirectory(install);
+        var settings=new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"timeout-user"));
+        DFLegacy.Launcher.Diagnostics.AutomaticDiagnostics.Configure(new LauncherOptions {ClientPath=Path.Combine(install,"DNF.exe"),AccountServiceUrl="http://127.0.0.1:32198"},settings);
+        var diagnostics=DFLegacy.Launcher.Diagnostics.AutomaticDiagnostics.Session!;
+        var entered=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var http=new HttpClient(new UpdateTransportTests.Handler(async(_,token)=> {entered.TrySetResult();await Task.Delay(Timeout.Infinite,token);return new(HttpStatusCode.OK);})) {Timeout=Timeout.InfiniteTimeSpan};
+        var hosted=new HostedUpdateClient(http,new Uri("http://127.0.0.1:32199"),"x64","normal");
+        var session=new Session {Feed=token=>hosted.CheckAsync(0,token)};
+        using var controller=new UpdateController(session,install,()=>{});
+        await controller.StartAsync();
+        check(controller.State.Phase==UpdatePhase.Error&&diagnostics.CollectConfirmed()==1,"real hosted internal five-second deadline emits one pre-game automatic error");
+        var pending=new DFLegacy.Diagnostics.DiagnosticQueue(diagnostics).ReadPending();
+        check(pending.Count==1&&System.Text.Encoding.UTF8.GetString(pending[0].Body).Contains("0x80131505"),"internal deadline is classified as structured TimeoutException");
+        entered=new(TaskCreationOptions.RunContinuationsAsynchronously);var cancel=controller.CheckAsync();await entered.Task;controller.Cancel();await cancel;
+        check(controller.State.Phase==UpdatePhase.Cancelled&&diagnostics.CollectConfirmed()==0,"same hosted call path emits nothing for explicit user cancellation");
+        entered=new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var downloadHttp=new HttpClient(new UpdateTransportTests.Handler(async(_,token)=>{entered.TrySetResult();await Task.Delay(Timeout.Infinite,token);return new(HttpStatusCode.OK);})) {Timeout=TimeSpan.FromMilliseconds(150)};
+        var downloadClient=new HostedUpdateClient(downloadHttp,new Uri("http://127.0.0.1:32200"),"x64","normal");
+        var hash=new string('a',64);var release=new UpdateRelease(1,"test-1",DateTimeOffset.UtcNow,false,new Uri("http://127.0.0.1:32200/v1/x64/normal/"+hash+".zip"),128,hash);
+        var downloading=new Session {Feed=_=>Task.FromResult<UpdateRelease?>(release),Download=(stage,progress,token)=>downloadClient.DownloadAsync(release,stage,progress,token)};
+        using var downloader=new UpdateController(downloading,install,()=>{});await downloader.StartAsync();
+        check(downloader.State.Phase==UpdatePhase.Error&&diagnostics.CollectConfirmed()==1,"real UpdateDownload call path reports its internal HTTP deadline");
+        pending=new DFLegacy.Diagnostics.DiagnosticQueue(diagnostics).ReadPending();
+        check(pending.Count==2&&pending.All(p=>System.Text.Encoding.UTF8.GetString(p.Body).Contains("0x80131505")),"check and download deadline reports both retain typed timeout evidence");
+        entered=new(TaskCreationOptions.RunContinuationsAsynchronously);var cancelDownload=downloader.CheckAsync();await entered.Task;downloader.Cancel();await cancelDownload;
+        check(downloader.State.Phase==UpdatePhase.Cancelled&&diagnostics.CollectConfirmed()==0,"real UpdateDownload user cancellation remains excluded");
+        settings.SetEnabled(false);
+    }
     internal sealed class Session : IUpdateSession
     {
         internal Func<CancellationToken, Task<UpdateRelease?>> Feed = _ => Task.FromResult<UpdateRelease?>(null);
@@ -32,6 +62,7 @@ internal static class UpdateControllerTests
     }
     internal static async Task Run(string root, Action<bool,string> check)
     {
+        await RunDiagnosticTimeouts(root,check);
         var install=Path.Combine(root,"controller"); Directory.CreateDirectory(install);
         var session=new Session(); var closed=0;
         using(var controller=new UpdateController(session,install,()=>closed++))

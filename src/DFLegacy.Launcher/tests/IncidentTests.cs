@@ -85,5 +85,14 @@ internal static class IncidentTests
             check(pregame.CollectConfirmed()==0,"invalid new site cannot send its error through the previous site's session");
         }
         userSettings.SetEnabled(false);
+        var nullPath=Path.Combine(root,"null-diagnostics.json");File.WriteAllText(nullPath,"{\"Diagnostics\":null}");
+        var nullOptions=new LauncherAccountStore(nullPath).Load();
+        check(nullOptions.Diagnostics is not null&&nullOptions.Diagnostics.Enabled,"explicit null diagnostics loads default enabled options");
+        using(var nullLease=new LauncherAccountStore(nullPath).AcquireReadLease())check(nullLease.Options.Diagnostics is not null,"read lease normalizes null diagnostics too");
+        nullOptions.ClientPath=Path.Combine(root,"null-client","DNF.exe");nullOptions.AccountServiceUrl="http://127.0.0.1:32197";nullOptions.Diagnostics=null!;
+        userSettings.SetEnabled(true);
+        try {AutomaticDiagnostics.Configure(nullOptions,userSettings);check(AutomaticDiagnostics.Session is not null,"direct null diagnostics cannot break automatic configuration");}
+        catch(NullReferenceException){check(false,"direct null diagnostics cannot break automatic configuration");}
+        userSettings.SetEnabled(false);
     }
 }

@@ -115,12 +115,14 @@ internal static class ClassicUiTests
                 try
                 {
                     var store = new LauncherAccountStore(Path.Combine(scratch, "launcher.json"));
-                    store.Save(new LauncherOptions { ClientPath = Path.Combine(scratch, "missing-client", "DNF.exe") });
+                    File.WriteAllText(Path.Combine(scratch,"launcher.json"),System.Text.Json.JsonSerializer.Serialize(new {ClientPath=Path.Combine(scratch,"missing-client","DNF.exe"),AccountServiceUrl="http://127.0.0.1:32203",Diagnostics=(object?)null}));
                     var settings = new ConfigWindow(store, trackMonitor: false) { Height = 360, WindowStartupLocation = WindowStartupLocation.Manual,
                         Left = -32000, Top = -32000, ShowActivated = false, ShowInTaskbar = false };
                     try
                     {
                         settings.Show(); settings.UpdateLayout();
+                        var diagnosticStatus=(PixelText)settings.FindName("DiagnosticStatusText");
+                        check(diagnosticStatus.Text.Contains("http://127.0.0.1:32203")&&diagnosticStatus.Text.Contains("待发送：0")&&diagnosticStatus.Text.Contains("尚未发送"),"null diagnostics settings view displays resolved receiver and actual empty queue/send state");
                         var error = (PixelText)settings.FindName("DisplayErrorText");
                         var save = (SkinButton)settings.FindName("DisplaySaveButton");
                         var reload = (SkinButton)settings.FindName("DisplayReloadButton");

@@ -261,8 +261,11 @@ public partial class ConfigWindow : System.Windows.Window
     {
         var settings=Program.UserDiagnosticSettings;
         try { DiagnosticEnabledBox.IsChecked=settings.Read().Enabled; }
-        catch(Exception error) when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException) { DiagnosticEnabledBox.IsEnabled=false; }
-        DiagnosticStatusText.Text=settings.Describe(string.IsNullOrWhiteSpace(_options.Diagnostics.ServiceUrl)?_options.ResolveAccountServiceUrl():_options.Diagnostics.ServiceUrl);
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException) { DiagnosticEnabledBox.IsEnabled=false; }
+        string? clientRoot=null;
+        try {clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(_options.ClientPath));}
+        catch(Exception error) when(error is IOException or ArgumentException or NotSupportedException) { }
+        DiagnosticStatusText.Text=settings.Describe(string.IsNullOrWhiteSpace(_options.Diagnostics.ServiceUrl)?_options.ResolveAccountServiceUrl():_options.Diagnostics.ServiceUrl,clientRoot);
     }
     private void DiagnosticSave_Click(object sender,RoutedEventArgs e)
     {
@@ -271,7 +274,7 @@ public partial class ConfigWindow : System.Windows.Window
             Program.UserDiagnosticSettings.SetEnabled(DiagnosticEnabledBox.IsChecked==true);
             Diagnostics.AutomaticDiagnostics.Configure(_options);LoadDiagnostics();
         }
-        catch(Exception error) when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)
         { ClassicMessage.Show(this,"保存诊断设置失败："+error.Message); }
     }
     internal void ShowConnectionPage() => SettingsTabs.SelectedIndex = 0;

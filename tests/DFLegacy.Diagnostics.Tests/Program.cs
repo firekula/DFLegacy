@@ -18,7 +18,7 @@ void Check(bool ok,string text) { checks++; if(!ok) { failures++; Console.Error.
 var root=Path.Combine(Path.GetTempPath(),"dflegacy-diagnostic-tests-"+Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
 try {
- await Run();
+ if(args.Contains("--status-only"))await StatusTests();else {await Run();await StatusTests();}
 } catch(Exception ex) { failures++; Console.Error.WriteLine("FAIL: "+ex); }
 finally { Directory.Delete(root,true); }
 Console.WriteLine($"Diagnostics tests: {checks} assertions, {failures} failures");
@@ -92,6 +92,34 @@ async Task Run()
  Check(File.ReadAllText(Path.Combine(boundedHome,"drops.json"))=="1","global queue admission records bounded dropped count");
  await TransportTests(home,client,incident);
  await ServerCompatibility(home,client,incident);
+}
+
+async Task StatusTests()
+{
+ var home=Path.Combine(root,"status-user");var client=Path.Combine(root,"status-client");var settings=new DiagnosticSettings(home);
+ var empty=settings.GetStatus(client,"http://127.0.0.1:32201/");
+ Check(empty.Receiver=="http://127.0.0.1:32201"&&empty.Enabled&&empty.Pending==0&&empty.Held==0&&empty.LastStatus=="never","empty read-only status resolves actual origin without inventing a send result");
+ Check(!Directory.Exists(home),"inspecting status never creates diagnostic storage");
+ var one=DiagnosticSession.Start(client,"http://127.0.0.1:32201",Guid.NewGuid().ToString("N"),home);new DiagnosticQueue(one).Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),one.SessionId,"test-1"));
+ var queued=settings.GetStatus(client,one.Registration.Site);Check(queued.Pending==1&&queued.Held==0&&queued.LastStatus=="never","status exposes actual unsent queue count");
+ var two=DiagnosticSession.Start(client,"http://127.0.0.1:32202",Guid.NewGuid().ToString("N"),home);new DiagnosticQueue(two).Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),two.SessionId,"test-1"));
+ var before=Directory.GetFiles(home,"*",SearchOption.AllDirectories).ToDictionary(p=>p,p=>Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p))));
+ var active=settings.GetStatus(client,two.Registration.Site);var prior=settings.GetStatus(client,one.Registration.Site);
+ Check(active.Pending==1&&active.Held==1&&prior.Pending==0&&prior.Held==2,"status distinguishes current queue from held prior site records");
+ Check(before.Count==Directory.GetFiles(home,"*",SearchOption.AllDirectories).Length&&before.All(p=>Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(p.Key)))==p.Value)&&new DiagnosticQueue(two).IsEligible&&!new DiagnosticQueue(one).IsEligible,"inspecting another destination does not write or rotate any scope");
+ settings.SetEnabled(false);var disabled=settings.GetStatus(client,two.Registration.Site);Check(!disabled.Enabled&&disabled.Pending==0&&disabled.Held==2,"disabled status shows held records without implying they will send");
+ foreach(var (code,want) in new[]{(404,"unsupported"),(503,"exhausted"),(201,"uploaded")}) {
+  using var endpoint=new Endpoint(async(ctx,n)=>{ctx.Response.StatusCode=code;if(code==201)await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{receiptId="11111111111111111111111111111111",eventId=ctx.EventId,status="stored"})));});
+  var sendHome=Path.Combine(root,"status-send-"+code);var s=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),sendHome);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(new DiagnosticIncident(),s.SessionId,"test-1"));
+  var read=new DiagnosticSettings(sendHome);read.GetStatus(client,endpoint.Url);Check(endpoint.Bodies.Count==0,"status inspection performs no HTTP request");
+  await q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero});var sent=read.GetStatus(client,endpoint.Url);
+  Check(sent.LastStatus==want&&sent.Receiver==endpoint.Url&&sent.Available,$"status exposes actual persisted HTTP {code} result");
+  if(code==201)Check(sent.ReceiptId=="11111111111111111111111111111111"&&sent.Uploaded==1&&sent.Pending==0,"status exposes validated successful receipt");
+  if(code==503)Check(sent.Pending==1&&sent.Held==0,"exhausted run remains pending a future launcher retry");
+  if(code==404)Check(sent.Pending==0&&sent.Held==1,"unsupported receive route remains held rather than shown as sending");
+ }
+ var corrupt=Path.Combine(root,"status-corrupt");Directory.CreateDirectory(Path.Combine(corrupt,"queue"));File.WriteAllBytes(Path.Combine(corrupt,"queue",Guid.NewGuid().ToString("N")+".json"),new byte[400001]);
+ Check(!new DiagnosticSettings(corrupt).GetStatus(client,"http://127.0.0.1:32201").Available,"oversized local status record returns bounded unavailable status");
 }
 
 async Task HelperLifetime(string home,string client)
