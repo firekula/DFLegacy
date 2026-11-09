@@ -18376,9 +18376,11 @@ public sealed class EntranceService(
             : 0;
         if (!expectsTargetName && messageLength != body.Length - messageOffset)
         {
-            // A captured Ver_OB_216 type 2 dungeon message ends at the next AES block boundary.
+            // Captured Ver_OB_216 party and nearby chat end at the next AES
+            // boundary. The native type3 sample has 23 text bytes and 14 zeros.
             var tail = body.AsSpan(messageOffset + (int)messageLength);
-            if (!chapterTwo || messageType != (byte)GameMessageType.Type02LightCyan
+            if (!chapterTwo || messageType is not ((byte)GameMessageType.Type02LightCyan)
+                    and not ((byte)GameMessageType.Type03White)
                 || (body.Length - payloadOffset) % 16 != 0
                 || tail.Length >= 16 || tail.ContainsAnyExcept((byte)0))
             {
