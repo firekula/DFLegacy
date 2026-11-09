@@ -65,7 +65,7 @@ internal static class BootstrapUpdateTests
         var root=Path.Combine(scratch,"自动修复 client");Directory.CreateDirectory(root);
         const string config="{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\",\"Account\":\"private\",\"Password\":\"private\",\"Other\":42}";
         File.WriteAllText(Path.Combine(root,"launcher.json"),config);
-        var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]="entry bytes"u8.ToArray(),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),[BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]="client dll"u8.ToArray()};
+        var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]="entry bytes"u8.ToArray(),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),[BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]="client dll"u8.ToArray(),["resource.bin"]="resource content"u8.ToArray()};
         files[BootstrapLayout.DescriptorName]=Encoding.ASCII.GetBytes(text.Replace("LauncherSha256="+hash,"LauncherSha256="+Hash(files[BootstrapLayout.AppName])).Replace("UpdaterSha256="+hash,"UpdaterSha256="+Hash(files[BootstrapLayout.UpdaterName])));
         var provider=new FixtureProvider(arch,files);
         var legacy=new FixtureProvider(arch,files.Where(f=>f.Key!=BootstrapLayout.AppName).ToDictionary());
@@ -75,6 +75,63 @@ internal static class BootstrapUpdateTests
         await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
         check(File.ReadAllText(Path.Combine(root,"launcher.json"))==config,"bootstrap repair preserves unknown/user config bytes");
         await BootstrapLayout.ValidateInstalledAsync(root,arch);
+        var validationPath=Path.Combine(root,".dflegacy","v4","validated.json");
+        File.Delete(validationPath);
+        try
+        {
+            await BootstrapLayout.ValidateInstalledAsync(root,arch);
+            check(File.Exists(validationPath),"first UI handoff from the v0.1.8 updater creates a fully verified validation record");
+        }
+        catch(InvalidDataException){check(false,"first UI handoff accepts the old updater's complete installation without a validation record");}
+        // Keep later cases independent even when the preceding RED case failed.
+        await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
+        File.WriteAllText(validationPath,"{");
+        try
+        {
+            await BootstrapLayout.ValidateInstalledAsync(root,arch);
+            check(new Core.InstallationStore(root).HasValidatedReceipt(new Core.InstallationStore(root).ReadInstalled()!),"corrupt validation record is replaced only after complete verification");
+        }
+        catch(InvalidDataException){check(false,"corrupt validation record can be rebuilt from the complete trusted installation");}
+        await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
+        using(var assetLock=new FileStream(Path.Combine(root,"resource.bin"),FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+        {
+            await BootstrapLayout.ValidateInstalledAsync(root,arch);
+            check(true,"managed UI startup reads completed record without opening asset content");
+            var quickLaunches=0;
+            var ordinary=BootstrapUpdateClient.ParseArguments(["--bootstrap-client",root,"--"]);
+            try
+            {
+                await BootstrapUpdateClient.RunAsync(ordinary,provider,launch:(_,_)=>{quickLaunches++;return Task.CompletedTask;});
+                check(quickLaunches==1,"unchanged v0.1.8 native entry can open the UI without re-reading resource contents");
+            }
+            catch(Exception ex) when(ex is IOException or InvalidOperationException){check(false,"ordinary bootstrap must reuse the completed receipt while resource contents are locked");}
+            var manual=BootstrapUpdateClient.ParseArguments(["--bootstrap-client",root,"--","--bootstrap-wait-parent",int.MaxValue.ToString(),"1"]);
+            try{await BootstrapUpdateClient.RunAsync(manual,provider,launch:(_,_)=>{check(false,"manual check cannot execute UI before full verification");return Task.CompletedTask;});check(false,"manual check must read locked resource contents");}
+            catch(Exception ex) when(ex is IOException or InvalidOperationException){check(true,"manual check propagated by the old native entry retains full verification");}
+            try{await RepairClient.RunAsync(new(root),provider);check(false,"explicit repair must still read locked resource contents");}
+            catch(Exception ex) when(ex is IOException or InvalidOperationException){check(true,"explicit repair cannot bless unreadable resource contents");}
+        }
+        await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
+        File.Delete(validationPath);File.WriteAllText(Path.Combine(root,"resource.bin"),"corrupt resource");
+        try{await BootstrapLayout.ValidateInstalledAsync(root,arch);check(false,"old updater handoff cannot bless corrupt resources without a validation record");}
+        catch(InvalidDataException){check(!File.Exists(validationPath),"failed first handoff leaves no validation record");}
+        await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
+        var validConfig=File.ReadAllText(Path.Combine(root,"launcher.json"));
+        File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"github\",\"UpdateChannel\":\"stable\"}");
+        try{await BootstrapLayout.ValidateInstalledAsync(root,arch);check(false,"record fast path cannot authorize a mismatched configured source");}
+        catch(InvalidDataException){check(true,"UI handoff validates configured source even with a completed record");}
+        File.WriteAllText(Path.Combine(root,"launcher.json"),validConfig);
+        provider.InvalidManifest=true;
+        try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"invalid manifest cannot launch UI through record fast path");return Task.CompletedTask;});check(false,"invalid online manifest must fail closed");}
+        catch(InvalidDataException){check(true,"completed record does not suppress online manifest integrity failures");}
+        provider.InvalidManifest=false;
+        var pendingPath=Path.Combine(root,".dflegacy","v4","pending.json");
+        File.WriteAllText(pendingPath,"{}");
+        try{await BootstrapLayout.ValidateInstalledAsync(root,arch);check(false,"pending installation cannot use a completed validation record");}
+        catch(InvalidDataException){check(true,"UI handoff refuses incomplete transactions before any receipt fast path");}
+        try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{check(false,"malformed pending transaction cannot execute UI");return Task.CompletedTask;});check(false,"malformed transaction must fail closed");}
+        catch(InvalidDataException){check(File.Exists(pendingPath),"ordinary bootstrap preserves invalid pending recovery evidence and refuses launch");}
+        File.Delete(pendingPath);
         var installed=new Core.InstallationStore(root).ReadInstalled()!;
         var changedEntry=installed.Release.Manifest with {Files=installed.Release.Manifest.Files.Select(f=>f.Path==BootstrapLayout.EntryName?f with{Sha256=new string('f',64)}:f).ToArray()};
         try{BootstrapLayout.RequireStableEntry(root,changedEntry);check(false,"fixed running entry cannot be replaced during repair");}catch(InvalidDataException){check(true,"changed native entry is rejected before repair");}
@@ -121,7 +178,7 @@ internal static class BootstrapUpdateTests
     private sealed class FixtureProvider:Core.IReleaseProvider
     {
         private readonly Core.VerifiedRelease release;private readonly Dictionary<string,byte[]> blobs=[];
-        internal bool Offline;internal int OpenCalls,FindCalls;
+        internal bool Offline,InvalidManifest;internal int OpenCalls,FindCalls;
         public Core.ReleaseSource Source=>release.Source;public string Identity=>Source.Identity;
         internal FixtureProvider(string arch,Dictionary<string,byte[]> files)
         {
@@ -131,7 +188,7 @@ internal static class BootstrapUpdateTests
             var manifest=new Core.ClientManifest(4,"v0.1.8-giteatest.3",new string('b',40),arch,"normal","gitea-test",3,0,managed,[],[]);
             var bytes=Core.ManifestCodec.Serialize(manifest);release=new(source,manifest.Version,Hash(bytes),bytes);
         }
-        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(release);}
+        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
         public Task<System.Net.Http.HttpResponseMessage> OpenAsync(Core.ResourcePart part,long offset,string? etag,CancellationToken token){OpenCalls++;return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK){Content=new System.Net.Http.ByteArrayContent(blobs[part.Sha256])});}
     }
 }

@@ -8,6 +8,32 @@ public sealed partial class JsonGameStore
     private List<AdminVictoryPointReceipt> _adminVictoryPointGrants = [];
     private List<AdminMailBatchReceipt> _adminMailBatches = [];
 
+    public async Task<AdminMailSendResult> SendAdminCharacterMailAsync(Guid characterId,
+        AdminSendMailRequest mail, CancellationToken ct = default)
+    {
+        AdminMailSendResult Reject(string error, AdminOperationStatus status = AdminOperationStatus.Rejected) =>
+            new(status, [], error);
+        if (characterId == Guid.Empty || mail is null) return Reject("invalid-request");
+        if (itemCatalog is null) return Reject("item-catalog-unavailable");
+        if (!AdminMailComposer.TryComposeMany(mail, itemCatalog, out var composed, out var error))
+            return Reject(error!);
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_rewardQuarantined) return Reject("store-quarantined", AdminOperationStatus.Unknown);
+            var character = StoreCharacter(_accounts, characterId);
+            if (character is null) return Reject("character-not-found");
+            var accounts = CopyStoreAccountsLocked();
+            var now = checked((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            if (!TryAppendAdminMailBundleLocked(accounts, character, composed, [], now, out var mails))
+                return Reject("mailbox-full");
+            if (!await CommitAdminSnapshotAsync(accounts, _adminVictoryPointGrants, _adminMailBatches, ct))
+                return Reject("write-outcome-unknown", AdminOperationStatus.Unknown);
+            return new(AdminOperationStatus.Completed, mails);
+        }
+        finally { _gate.Release(); }
+    }
+
     public async Task<AdminVictoryPointResult> GrantAdminVictoryPointsAsync(string actor,
         Guid operationId, Guid characterId, uint amount, CancellationToken ct = default)
     {
@@ -48,7 +74,8 @@ public sealed partial class JsonGameStore
         if (string.IsNullOrWhiteSpace(actor) || operationId == Guid.Empty || mail is null || retryOf == Guid.Empty)
             return RejectAdminBatch(operationId, "invalid-request");
         if (itemCatalog is null) return RejectAdminBatch(operationId, "item-catalog-unavailable");
-        if (!AdminMailComposer.TryCompose(mail, itemCatalog, out _, out var error))
+        mail = mail with { Attachments = mail.Attachments?.ToArray() };
+        if (!AdminMailComposer.TryComposeMany(mail, itemCatalog, out _, out var error))
             return RejectAdminBatch(operationId, error!);
         actor = actor.Trim().ToUpperInvariant();
         mail = mail with { Sender = mail.Sender.Trim() };
@@ -117,7 +144,7 @@ public sealed partial class JsonGameStore
             if (receipt is null) return RejectAdminBatch(operationId, "batch-not-found");
             if (receipt.Completed) return AdminBatchResult(receipt, replayed: true);
             if (itemCatalog is null) return RejectAdminBatch(operationId, "item-catalog-unavailable");
-            if (!AdminMailComposer.TryCompose(receipt.Mail, itemCatalog, out var composed, out var error))
+            if (!AdminMailComposer.TryComposeMany(receipt.Mail, itemCatalog, out var composed, out var error))
                 return RejectAdminBatch(operationId, error!);
             var accounts = CopyStoreAccountsLocked();
             var successful = SuccessfulAdminMailRecipients(receipt.RootOperationId);
@@ -138,25 +165,13 @@ public sealed partial class JsonGameStore
                     deliveries.Add(new(target.CharacterId, target.Name, false, Error: "character-not-found"));
                     continue;
                 }
-                var mailbox = (character.Mailbox ?? []).Where(m => IsMailAvailable(m, now)).ToList();
-                if (mailbox.Count >= byte.MaxValue)
+                if (!TryAppendAdminMailBundleLocked(accounts, character, composed, usedIds, now, out var mails))
                 {
                     deliveries.Add(new(character.Id, character.Name, false, Error: "mailbox-full"));
                     continue;
                 }
-                uint mailId;
-                do { mailId = AllocateMailIdLocked(); } while (!usedIds.Add(mailId));
-                // Unique equipment/avatar/egg identities belong to each recipient, not the batch.
-                var request = EnsureMailAttachmentInstanceId(composed with
-                {
-                    Attachment = composed.Attachment is { } attachment ? attachment with { InstanceId = Guid.Empty } : null
-                });
-                var mail = new CharacterMailRecord(mailId, request.Sender, request.Text, request.Gold,
-                    request.Attachment, now, checked(now + (uint)TimeSpan.FromDays(30).TotalSeconds));
-                mailbox.Add(mail);
-                var updated = ReconcileAvatarLifetimes(character with { Mailbox = mailbox }, character);
-                SetStoreCharacter(accounts, updated);
-                deliveries.Add(new(character.Id, character.Name, true, mailId));
+                deliveries.Add(new(character.Id, character.Name, true, mails[0].Id,
+                    MailIds: mails.Select(m => m.Id).ToArray()));
             }
             var completed = receipt with { Completed = true, Deliveries = deliveries.ToArray() };
             var batches = _adminMailBatches.Select(r => r.OperationId == operationId ? completed : r).ToList();
@@ -165,6 +180,33 @@ public sealed partial class JsonGameStore
             return AdminBatchResult(completed);
         }
         finally { _gate.Release(); }
+    }
+
+    private bool TryAppendAdminMailBundleLocked(List<AccountRecord> accounts, CharacterRecord character,
+        IReadOnlyList<CreateCharacterMailRequest> composed, HashSet<uint> usedIds, uint now,
+        out CharacterMailRecord[] mails)
+    {
+        mails = [];
+        var mailbox = (character.Mailbox ?? []).Where(m => IsMailAvailable(m, now)).ToList();
+        if (mailbox.Count + composed.Count > byte.MaxValue) return false;
+        var ids = new List<uint>(composed.Count);
+        foreach (var template in composed)
+        {
+            var mailId = AllocateMailIdLocked(usedIds);
+            usedIds.Add(mailId);
+            ids.Add(mailId);
+            // Every recipient and every slot owns its equipment/avatar/egg identity.
+            var request = EnsureMailAttachmentInstanceId(template with
+            {
+                Attachment = template.Attachment is { } attachment ? attachment with { InstanceId = Guid.Empty } : null
+            });
+            mailbox.Add(new(mailId, request.Sender.Trim(), request.Text, request.Gold,
+                request.Attachment, now, checked(now + (uint)TimeSpan.FromDays(30).TotalSeconds)));
+        }
+        var updated = ReconcileAvatarLifetimes(character with { Mailbox = mailbox }, character);
+        SetStoreCharacter(accounts, updated);
+        mails = ids.Select(id => updated.Mailbox!.Single(m => m.Id == id)).ToArray();
+        return true;
     }
 
     private Dictionary<Guid, AdminMailDelivery> SuccessfulAdminMailRecipients(Guid rootId) =>

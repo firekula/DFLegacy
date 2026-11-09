@@ -78,8 +78,9 @@
         <form id="mailForm" class="surface form-layout">
           <div class="section-heading">
             <h2>新邮件</h2>
-            <p>每封邮件最多携带一种物品，金币可与物品同时发送。</p>
+            <p>原版客户端每封邮件只能携带一种物品。多个物品格会自动拆成多封邮件，金币仅附首封。</p>
           </div>
+          <fieldset id="mailDraftFields" class="mail-draft-fields">
           <div class="form-grid two-column">
             <label class="field span-two">
               <span>发送范围</span>
@@ -104,50 +105,35 @@
               <span>正文</span>
               <textarea name="text" maxlength="255" rows="4" placeholder="邮件内容"></textarea>
             </label>
-            <label class="field">
-              <span>附件类型</span>
-              <select id="attachmentKind" name="attachmentKind">
-                <option value="0">无附件</option>
-                <option value="1">普通道具 / 装备</option>
-                <option value="2">Avatar 装备</option>
-                <option value="3">宠物蛋</option>
-              </select>
-            </label>
-            <label id="quantityField" class="field attachment-field hidden">
-              <span>数量</span>
-              <input name="quantity" type="number" min="1" step="1" value="1">
-            </label>
-            <label id="avatarAbilityField" class="field attachment-field hidden">
-              <span>Avatar 能力索引</span>
-              <input name="avatarAbilityIndex" type="number" min="0" max="65535" step="1" value="0">
-            </label>
-            <div id="itemPicker" class="field span-two attachment-field hidden">
-              <span>物品 ID 或名称</span>
-              <div class="search-row">
-                <input id="itemSearch" autocomplete="off" placeholder="输入物品 ID、名称或脚本路径">
-                <button id="itemSearchButton" class="secondary-button" type="button">查询</button>
-              </div>
-              <select id="itemResults" class="item-results" size="5" aria-label="物品查询结果"></select>
-              <input id="selectedItemId" name="itemId" type="hidden">
-              <div id="itemMeta" class="item-meta">尚未选择物品</div>
-            </div>
           </div>
+          <section class="mail-attachments" aria-labelledby="mailAttachmentsTitle" aria-describedby="mailAttachmentsHelp">
+            <div class="mail-attachments-heading">
+              <h3 id="mailAttachmentsTitle">物品附件</h3>
+              <p id="mailAttachmentCount" aria-live="polite">0 / 10 格</p>
+            </div>
+            <p id="mailAttachmentsHelp" class="mail-attachment-help">最多 10 格为管理端单次操作上限；不添加物品格时，仅发送文字／金币邮件。</p>
+            <div id="mailAttachmentRows" class="mail-attachment-rows"></div>
+            <button id="mailAddAttachment" class="secondary-button" type="button">添加物品格</button>
+          </section>
+          </fieldset>
           <div class="form-actions">
             <button id="mailSubmit" class="primary-button" type="submit">发送邮件</button>
           </div>
         </form>
         <section id="mailBatchPending" class="surface form-layout hidden" aria-live="polite">
           <p>当前批次：<code id="mailPendingId"></code></p>
-          <p>响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
-          <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+          <p>批次内容已锁定。响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
+          <div class="mail-pending-actions">
+            <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+            <button id="mailBatchCancel" class="secondary-button" type="button">取消预览并编辑</button>
+          </div>
         </section>
         <section id="mailBatchPreview" class="surface form-layout hidden" aria-live="polite">
           <h2>确认全服邮件</h2>
           <p id="mailBatchPreviewText"></p>
-          <p>每个接收角色各一封，包含离线角色；之后新建的角色不补发。</p>
+          <p>按物品格自动拆信，金币仅附每位角色的首封；包含离线角色，之后新建的角色不补发。</p>
           <div class="form-actions">
             <button id="mailBatchConfirm" class="danger-button" type="button">确认发送</button>
-            <button id="mailBatchCancel" class="secondary-button" type="button">取消</button>
           </div>
         </section>
         <section id="mailBatchResult" class="surface form-layout hidden" aria-live="polite">

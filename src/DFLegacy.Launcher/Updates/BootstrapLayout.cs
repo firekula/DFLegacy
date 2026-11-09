@@ -51,12 +51,22 @@ internal static class BootstrapLayout
     }
     internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
     {
+        var settings=RepairClient.ReadSettings(new(root));
+        // The v0.1.8 updater can install this UI before it knows how to write
+        // validated.json. Verify that installation once; later handoffs reuse
+        // its receipt. This local operation never discovers or downloads releases.
+        using var http=Core.ReleaseProvider.CreateHttpClient();
+        var engine=new Core.UpdateEngine(root,new Core.ReleaseProvider(http,settings.Source));
+        var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
+        if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
         using var lease=Core.InstallationLease.Acquire(root);
         if(Core.InstallTransaction.HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");
-        var receipt=new Core.InstallationStore(root).ReadInstalled()??throw new InvalidDataException("缺少已验证的启动组件安装记录。");
+        token.ThrowIfCancellationRequested();
+        var store=new Core.InstallationStore(root);
+        var receipt=store.ReadInstalled()??throw new InvalidDataException("缺少已验证的启动组件安装记录。");
+        receipt.Release.Validate(settings.Source);
         RequireManifest(receipt.Release.Manifest);
-        var result=await Core.FileVerifier.VerifyAsync(root,receipt.Release.Manifest,token:token).ConfigureAwait(false);
-        if(!result.IsValid)throw new InvalidDataException("启动组件未通过完整校验；请使用原来的启动图标自动修复。");
+        if(!store.HasValidatedReceipt(receipt))throw new InvalidDataException("启动组件校验记录无效；请使用原来的启动图标自动修复。");
         var path=Core.PathPolicy.Resolve(root,DescriptorName);Core.PathPolicy.NoLinks(path);
         using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
         if(stream.Length>4096)throw new InvalidDataException("启动恢复描述文件过大。");

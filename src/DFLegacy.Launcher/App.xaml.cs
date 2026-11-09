@@ -62,7 +62,11 @@ public partial class App : Application
         catch(Exception ex)
         {
             Program.ReportError("bootstrap-ui-validation",ex);
-            MessageBox.Show(ex.Message,"DFLegacy 启动校验失败",MessageBoxButton.OK,MessageBoxImage.Error);Shutdown(1);return;
+            // The native supervisor retries recovery when receipt validation fails.
+            // An early modal would block that recovery until the user dismissed it.
+            if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT") is null)
+                MessageBox.Show(ex.Message,"DFLegacy 启动校验失败",MessageBoxButton.OK,MessageBoxImage.Error);
+            Shutdown(1);return;
         }
         if (IsHeadless(args))
         {

@@ -47,8 +47,12 @@ internal static class BootstrapUpdateClient
         Func<ProcessStartInfo,CancellationToken,Task>? launch=null,CancellationToken token=default)
     {
         await WaitForParentAsync(request,token).ConfigureAwait(false);
+        // Both published and newer native entries forward the existing wait-
+        // parent arguments for an explicit UI recheck. Ordinary startup may
+        // reuse a completed receipt; external repair keeps its full-scan default.
         var outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
-            manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true).ConfigureAwait(false);
+            manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true,
+            forceVerification:request.WaitPid is not null).ConfigureAwait(false);
         await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
         var start=new ProcessStartInfo(Path.Combine(request.Directory,BootstrapLayout.AppName)){WorkingDirectory=request.Directory,UseShellExecute=false};
         start.ArgumentList.Add("--bootstrap-verified");start.ArgumentList.Add("--");
@@ -133,11 +137,7 @@ internal static class BootstrapUpdateClient
                     "修复需要释放文件",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
             }
             var outcome=await RunAsync(request,progress:progress,confirmClose:Confirm,token:cancel.Token);
-            if(outcome.Offline)
-            {
-                if(quiet)Console.WriteLine(outcome.Message);
-                else MessageBox.Show(window!,"本地文件已通过完整校验，可以启动。未确认线上最新版本。\n"+outcome.Message,"离线校验",MessageBoxButton.OK,MessageBoxImage.Information);
-            }
+            if(outcome.Offline&&quiet)Console.WriteLine(outcome.Message);
             return 0;
         }
         catch(OperationCanceledException){return 2;}

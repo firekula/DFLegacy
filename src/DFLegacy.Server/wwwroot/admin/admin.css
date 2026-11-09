@@ -304,6 +304,92 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.mail-draft-fields {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mail-attachments {
+  margin-top: 24px;
+}
+
+.mail-attachments-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mail-attachments-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.mail-attachment-help,
+#mailAttachmentCount {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.mail-attachment-help {
+  margin-top: 6px;
+}
+
+.mail-attachment-rows {
+  display: grid;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.mail-attachment-row {
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #f9fbfa;
+}
+
+.mail-attachment-row legend {
+  padding: 0 6px;
+  color: var(--green);
+  font-weight: 650;
+}
+
+.mail-attachment-row > .remove-attachment {
+  display: block;
+  margin: 0 0 12px auto;
+}
+
+#mailBatchPreviewText {
+  margin-top: 12px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+
+#mailBatchPending,
+#mailBatchPreview,
+#mailBatchResult {
+  margin-top: 16px;
+}
+
+#mailBatchPending p + p {
+  margin: 8px 0 12px;
+}
+
+.mail-pending-actions {
+  display: flex;
+}
+
+.form-actions,
+.mail-pending-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .form-actions {
   margin-top: 22px;
   padding-top: 17px;

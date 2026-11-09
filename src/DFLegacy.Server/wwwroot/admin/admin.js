@@ -22,9 +22,7 @@ const state = {
   characters: [],
   dungeons: [],
   messageTypes: [],
-  itemResults: [],
   users: [],
-  selectedItem: null,
   toastTimer: null
 };
 
@@ -684,124 +682,198 @@ function switchView(view) {
 
 /* ---------- 邮件附件 ---------- */
 
-function updateAttachmentFields() {
-  const kind = Number($("#attachmentKind").value);
-  const hasAttachment = kind !== 0;
-  $$(".attachment-field").forEach(field => {
-    field.classList.toggle("hidden", !hasAttachment);
+const MAX_MAIL_ATTACHMENTS = 10;
+let mailAttachments = [];
+let mailAttachmentSequence = 0;
+let mailSubmissionPending = false;
+
+function mailControl(tag, properties = {}) {
+  return Object.assign(document.createElement(tag), properties);
+}
+
+function mailField(label, control, className = "field") {
+  const field = mailControl("label", { className });
+  field.append(mailControl("span", { textContent: label }), control);
+  return field;
+}
+
+function updateMailAttachmentCount() {
+  mailAttachments.forEach((entry, index) => {
+    entry.legend.textContent = `物品格 ${index + 1}`;
+    entry.remove.setAttribute("aria-label", `移除物品格 ${index + 1}`);
+    entry.results.setAttribute("aria-label", `物品格 ${index + 1} 查询结果`);
   });
-  $("#avatarAbilityField").classList.toggle("hidden", kind !== 2);
-  $("#quantityField").classList.toggle("hidden", !hasAttachment);
-  const quantity = $('[name="quantity"]', $("#mailForm"));
-  if (kind === 2 || kind === 3) {
-    quantity.value = "1";
-    quantity.disabled = true;
-  } else {
-    quantity.disabled = !hasAttachment;
+  $("#mailAttachmentCount").textContent = `${mailAttachments.length} / ${MAX_MAIL_ATTACHMENTS} 格`;
+  $("#mailAddAttachment").disabled = mailAttachments.length >= MAX_MAIL_ATTACHMENTS;
+}
+
+function updateMailFormLock() {
+  const locked = mailSubmissionPending || !!activeMailBatch;
+  $("#mailDraftFields").disabled = locked;
+  $("#mailSubmit").disabled = locked;
+}
+
+function addMailAttachment(value = {}) {
+  if (mailAttachments.length >= MAX_MAIL_ATTACHMENTS) return;
+  const id = `mail-item-${++mailAttachmentSequence}`;
+  const row = mailControl("fieldset", { className: "mail-attachment-row" });
+  const legend = mailControl("legend");
+  const remove = mailControl("button", { type: "button", className: "secondary-button small-button remove-attachment", textContent: "移除此格" });
+  const grid = mailControl("div", { className: "form-grid two-column" });
+  const kind = mailControl("select", { name: "attachmentKind" });
+  kind.append(option(1, "普通道具 / 装备"), option(2, "Avatar 装备"), option(3, "宠物蛋"));
+  kind.value = String(value.attachmentKind || 1);
+  const quantity = mailControl("input", { name: "quantity", type: "number", min: "1", step: "1", value: String(value.quantity ?? 1), required: true });
+  const ability = mailControl("input", { name: "avatarAbilityIndex", type: "number", min: "0", max: "65535", step: "1", value: String(value.avatarAbilityIndex ?? 0) });
+  const abilityField = mailField("Avatar 能力索引", ability);
+  const picker = mailControl("div", { className: "field span-two" });
+  const search = mailControl("input", { id, className: "item-search", autocomplete: "off", placeholder: "输入物品 ID、名称或脚本路径", value: value.itemId == null ? "" : String(value.itemId), required: true });
+  const searchLabel = mailControl("label", { htmlFor: id, textContent: "物品 ID 或名称" });
+  const searchRow = mailControl("div", { className: "search-row" });
+  const searchButton = mailControl("button", { type: "button", className: "secondary-button", textContent: "查询" });
+  const results = mailControl("select", { className: "item-results", size: 5 });
+  const meta = mailControl("div", { id: `${id}-meta`, className: "item-meta", textContent: value.itemId == null ? "尚未选择物品" : `已保存物品 ID ${value.itemId}` });
+  search.setAttribute("aria-describedby", meta.id);
+  searchRow.append(search, searchButton);
+  picker.append(searchLabel, searchRow, results, meta);
+  grid.append(mailField("附件类型", kind), mailField("数量", quantity), abilityField, picker);
+  row.append(legend, remove, grid);
+  const entry = { row, legend, remove, kind, quantity, ability, abilityField, search, results, meta, items: [], selectedItem: null, searchVersion: 0 };
+  mailAttachments.push(entry);
+  $("#mailAttachmentRows").append(row);
+  updateAttachmentFields(entry, false);
+  remove.addEventListener("click", () => {
+    mailAttachments = mailAttachments.filter(candidate => candidate !== entry);
+    row.remove(); updateMailAttachmentCount();
+  });
+  kind.addEventListener("change", () => updateAttachmentFields(entry));
+  search.addEventListener("input", () => {
+    entry.searchVersion++; entry.selectedItem = null; entry.items = [];
+    results.replaceChildren(); meta.textContent = "尚未选择物品";
+    updateAttachmentFields(entry, false);
+  });
+  searchButton.addEventListener("click", () => searchItems(entry).catch(error => showToast(errorMessage(error), true)));
+  search.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchItems(entry).catch(error => showToast(errorMessage(error), true));
+    }
+  });
+  results.addEventListener("change", () => selectItem(entry));
+  updateMailAttachmentCount();
+  return entry;
+}
+
+function bindMailAttachments() {
+  $("#mailAddAttachment").addEventListener("click", () => {
+    const entry = addMailAttachment();
+    entry?.search.focus();
+  });
+  updateMailAttachmentCount();
+}
+
+function mailAttachmentValues(mail) {
+  if (Array.isArray(mail.attachments)) return mail.attachments;
+  return mail.attachmentKind ? [{ attachmentKind: mail.attachmentKind, itemId: mail.itemId, quantity: mail.quantity, avatarAbilityIndex: mail.avatarAbilityIndex }] : [];
+}
+
+function restoreMailDraft(mail) {
+  for (const name of ["sender", "text", "gold"])
+    $(`[name="${name}"]`, $("#mailForm")).value = String(mail[name] ?? "");
+  mailAttachments = [];
+  $("#mailAttachmentRows").replaceChildren();
+  mailAttachmentValues(mail).forEach(addMailAttachment);
+  updateMailAttachmentCount();
+}
+
+function updateAttachmentFields(entry, reset = true) {
+  const kind = Number(entry.kind.value);
+  entry.abilityField.classList.toggle("hidden", kind !== 2);
+  entry.ability.disabled = kind !== 2;
+  if (reset) {
+    entry.searchVersion++; entry.selectedItem = null; entry.items = [];
+    entry.results.replaceChildren(); entry.meta.textContent = "尚未选择物品";
   }
-  state.selectedItem = null;
-  $("#selectedItemId").value = "";
-  $("#itemResults").replaceChildren();
-  $("#itemMeta").textContent = hasAttachment ? "尚未选择物品" : "无附件";
-  if (hasAttachment && $("#itemSearch").value.trim()) {
-    searchItems();
-  }
+  const single = kind !== 1 || (entry.selectedItem && entry.selectedItem.scriptKind !== "Stackable");
+  entry.quantity.disabled = !!single;
+  if (single) entry.quantity.value = "1";
 }
 
 function describeItem(item) {
-  return [
-    `ID ${item.id}`,
-    item.name,
-    item.scriptKind,
-    item.attachType,
-    item.typeTag || "无类型标签",
-    item.scriptPath
-  ].join(" · ");
+  return [`ID ${item.id}`, item.name, item.scriptKind, item.attachType,
+    item.typeTag || "无类型标签", item.scriptPath].join(" · ");
 }
 
-async function searchItems() {
-  const query = $("#itemSearch").value.trim();
-  const kind = Number($("#attachmentKind").value);
-  if (kind === 0) {
-    return;
-  }
-  try {
-    const items = await api(
-      `/api/admin/items?query=${encodeURIComponent(query)}&kind=${kind}&limit=60`);
-    state.itemResults = items;
-    const results = $("#itemResults");
-    results.replaceChildren();
-    items.forEach(item => results.append(option(
-      item.id,
-      `${item.id} · ${item.name} · ${item.scriptPath}`)));
-    if (items.length === 0) {
-      results.append(option("", "没有匹配的 PVF 物品", true));
-      $("#itemMeta").textContent = "没有匹配的 PVF 物品";
-    }
-  } catch (error) {
-    showToast(errorMessage(error), true);
+async function searchItems(entry) {
+  const query = entry.search.value.trim(), kind = Number(entry.kind.value);
+  const version = ++entry.searchVersion;
+  const items = await api(`/api/admin/items?query=${encodeURIComponent(query)}&kind=${kind}&limit=60`);
+  // A late response must not replace a different row, a newer query, or a removed row.
+  if (!mailAttachments.includes(entry) || version !== entry.searchVersion
+      || query !== entry.search.value.trim() || kind !== Number(entry.kind.value)) return;
+  entry.items = items;
+  entry.results.replaceChildren();
+  items.forEach(item => entry.results.append(option(item.id, `${item.id} · ${item.name} · ${item.scriptPath}`)));
+  if (!items.length) {
+    entry.results.append(option("", "没有匹配的 PVF 物品", true));
+    entry.meta.textContent = "没有匹配的 PVF 物品";
   }
 }
 
-function selectItem() {
-  const itemId = Number($("#itemResults").value);
-  const item = state.itemResults.find(candidate => candidate.id === itemId) || null;
-  state.selectedItem = item;
-  $("#selectedItemId").value = item ? String(item.id) : "";
-  $("#itemMeta").textContent = item ? describeItem(item) : "尚未选择物品";
-  const quantity = $('[name="quantity"]', $("#mailForm"));
-  if (item && item.scriptKind !== "Stackable") {
-    quantity.value = "1";
-    quantity.disabled = true;
-  } else if (Number($("#attachmentKind").value) === 1) {
-    quantity.disabled = false;
-  }
+function selectItem(entry) {
+  const itemId = Number(entry.results.value);
+  entry.selectedItem = entry.items.find(candidate => candidate.id === itemId) || null;
+  if (entry.selectedItem) entry.search.value = String(entry.selectedItem.id);
+  entry.meta.textContent = entry.selectedItem ? describeItem(entry.selectedItem) : "尚未选择物品";
+  updateAttachmentFields(entry, false);
 }
 
-async function resolveSelectedItem() {
-  const kind = Number($("#attachmentKind").value);
-  if (kind === 0) {
-    return null;
-  }
-  if (state.selectedItem) {
-    return state.selectedItem;
-  }
-  await searchItems();
-  const exact = state.itemResults.find(item =>
-    String(item.id) === $("#itemSearch").value.trim());
-  if (!exact) {
-    throw new Error("请选择一个有效的 PVF 物品。");
-  }
-  $("#itemResults").value = String(exact.id);
-  selectItem();
+async function resolveSelectedItem(entry) {
+  if (entry.selectedItem) return entry.selectedItem;
+  await searchItems(entry);
+  const exact = entry.items.find(item => String(item.id) === entry.search.value.trim());
+  if (!exact) throw new Error("请选择每个物品格的有效 PVF 物品，或移除空格。");
+  entry.results.value = String(exact.id);
+  selectItem(entry);
   return exact;
 }
 
+async function readMailAttachments() {
+  return Promise.all(mailAttachments.map(async entry => {
+    const kind = Number(entry.kind.value), quantity = Number(entry.quantity.value), ability = Number(entry.ability.value);
+    if (![1, 2, 3].includes(kind) || !Number.isSafeInteger(quantity) || quantity < 1
+        || (kind === 2 && (!Number.isInteger(ability) || ability < 0 || ability > 65535)))
+      throw new Error("请填写有效的附件类型、正整数数量及 Avatar 能力索引。");
+    const item = await resolveSelectedItem(entry);
+    return { attachmentKind: kind, itemId: item.id, quantity: item.scriptKind !== "Stackable" || kind !== 1 ? 1 : quantity,
+      avatarAbilityIndex: kind === 2 ? ability : 0 };
+  }));
+}
+
 function bindForms() {
-  $("#mailForm").addEventListener("submit", event => {
+  $("#mailForm").addEventListener("submit", async event => {
     event.preventDefault();
-    runForm(event.currentTarget, async data => {
-      const item = await resolveSelectedItem();
-      const character = state.characters.find(candidate => candidate.id === data.get("characterId"));
-      const payload = {
-        sender: data.get("sender"),
-        text: data.get("text"),
-        gold: Number(data.get("gold")),
-        attachmentKind: Number(data.get("attachmentKind")),
-        itemId: item?.id ?? null,
-        quantity: item && item.scriptKind !== "Stackable" ? 1 : Number(data.get("quantity") || 1),
-        avatarAbilityIndex: Number(data.get("avatarAbilityIndex") || 0)
-      };
-      if (data.get("scope") === "all") {
-        await prepareBroadcastMail(payload);
-        return { message: "全服邮件预览已就绪，请核对并确认发送。" };
-      }
-      await api(`/api/admin/characters/${data.get("characterId")}/mail`, {
-        method: "POST",
-        body: JSON.stringify(payload)
+    if (mailSubmissionPending || activeMailBatch) return;
+    mailSubmissionPending = true;
+    try {
+      await runForm(event.currentTarget, async data => {
+        updateMailFormLock();
+        const attachments = await readMailAttachments();
+        const character = state.characters.find(candidate => candidate.id === data.get("characterId"));
+        const payload = { sender: data.get("sender"), text: data.get("text"), gold: Number(data.get("gold")), attachments };
+        if (data.get("scope") === "all") {
+          await prepareBroadcastMail(payload);
+          return { message: "全服邮件预览已就绪，请核对并确认发送。" };
+        }
+        await api(`/api/admin/characters/${data.get("characterId")}/mail`, {
+          method: "POST", body: JSON.stringify(payload)
+        });
+        return { message: `已向 ${character?.name || "目标角色"} 发送 ${Math.max(1, attachments.length)} 封邮件，金币仅附首封。` };
       });
-      return { message: `邮件已发送给 ${character?.name || "目标角色"}` };
-    });
+    } finally {
+      mailSubmissionPending = false;
+      updateMailFormLock();
+    }
   });
 
   $("#directPopupForm").addEventListener("submit", event => {
@@ -898,18 +970,9 @@ function initialize() {
   $("#refreshData").addEventListener("click", refreshData);
   $("#logoutButton").addEventListener("click", logout);
   $("#loginForm").addEventListener("submit", submitLoginForm);
-  $("#attachmentKind").addEventListener("change", updateAttachmentFields);
-  $("#itemSearchButton").addEventListener("click", searchItems);
-  $("#itemSearch").addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      searchItems();
-    }
-  });
-  $("#itemResults").addEventListener("change", selectItem);
+  bindMailAttachments();
   bindForms();
   bindAccountManagement();
-  updateAttachmentFields();
   applyIdentity();
   if (!auth.token) {
     showLogin();

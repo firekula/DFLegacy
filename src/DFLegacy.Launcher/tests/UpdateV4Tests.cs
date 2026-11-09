@@ -33,7 +33,7 @@ internal static class UpdateV4Tests
             var staged=await session.DownloadAsync(found!,attempt,new Progress<UpdateProgress>(),default);
             check(!session.Adopt(staged),"missing managed files require installation");
             Core.InstallTransaction.Apply(root,new(release,Path.Combine(root,".dflegacy","v4","cache")));
-            check(await session.CheckAsync(0,default)==null && session.StatusMessage.Contains("完整校验"),"V4 adapter reports actual complete verification");
+            check(await session.CheckAsync(0,default)==null && session.StatusMessage.Contains("安装记录"),"V4 adapter reports completed receipt reuse");
         }
         var manifest=ClientPackageManifest.LoadAndValidate(root);
         check(manifest.Files.Count==4 && manifest.Files.Any(f=>f.Path.EndsWith(".npk")),"launch validation includes arbitrary managed resources");
@@ -53,7 +53,9 @@ internal static class UpdateV4Tests
         check(File.ReadAllText(diagnosticHelper)=="helper","V4 repair restores hash-verified helper bytes");
         File.WriteAllText(Path.Combine(root,"ImagePacks2/test.npk"),"bad");
         try { ClientPackageManifest.LoadAndValidate(root); check(false,"launch blocks changed managed NPK"); } catch(InvalidDataException) { }
-        using(var session=new V4UpdateSession(root,options,provider)) check(await session.CheckAsync(0,default)!=null,"same version damage stays repairable through UI session");
+        using(var session=new V4UpdateSession(root,options,provider)) check(await session.CheckAsync(0,default)==null,"normal discovery trusts completed resource receipt between installations");
+        var explicitRepair=await helperEngine.CheckAsync(forceVerification:true);
+        check(explicitRepair.NeedsInstall&&explicitRepair.Verification!.Problems.Single().Path=="ImagePacks2/test.npk","explicit verification still locates and repairs unchanged-version asset damage");
         File.WriteAllText(Path.Combine(root,"ImagePacks2/test.npk"),"npk"); provider.Offline=true;
         using(var session=new V4UpdateSession(root,options,provider))
         {

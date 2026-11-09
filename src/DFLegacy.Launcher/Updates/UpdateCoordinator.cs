@@ -10,6 +10,7 @@ internal sealed class UpdateCoordinator : IDisposable
     private readonly string installation;
     private readonly Action<string> notify;
     private readonly Func<Window,bool> confirmRecovery;
+    private readonly bool backgroundCheck;
     private UpdateInstallWindow? window;
     private Task operation=Task.CompletedTask;
     private bool disposed;
@@ -21,6 +22,12 @@ internal sealed class UpdateCoordinator : IDisposable
         this.notify=notify??(message=>ClassicMessage.Show(owner,message));
         this.confirmRecovery=confirmRecovery??(parent=>UpdateWindow.ConfirmRestart(parent,true));
         controller=new(session,installation,shutdown); controller.Changed+=Changed;
+        try
+        {
+            var store=new DFLegacy.UpdateCore.InstallationStore(installation);var receipt=store.ReadInstalled();
+            backgroundCheck=receipt!=null&&store.HasValidatedReceipt(receipt);
+        }
+        catch(InvalidDataException) { }
         owner.Closed+=OwnerClosed;
     }
     internal void Start()=>_=StartAsync();
@@ -29,7 +36,8 @@ internal sealed class UpdateCoordinator : IDisposable
     private Task Run(Func<Task> check)
     {
         if(disposed || !operation.IsCompleted) return operation;
-        owner.Hide(); operation=RunCore(check); return operation;
+        if(backgroundCheck)owner.Show();else owner.Hide();
+        operation=RunCore(check); return operation;
     }
     private async Task RunCore(Func<Task> check)
     {
@@ -63,8 +71,9 @@ internal sealed class UpdateCoordinator : IDisposable
         }
         if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
         ShowLogin();
-        if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
-        else if(session.ShowStatusNotice) notify(controller.State.Message);
+        if(backgroundCheck) owner.ToolTip=controller.State.Message;
+        else if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
+        else if(session.ShowStatusNotice) owner.ToolTip=controller.State.Message;
         await ShowPreviousWarning();
     }
     private void Changed(UpdateViewState state)
@@ -72,8 +81,11 @@ internal sealed class UpdateCoordinator : IDisposable
         if(disposed || owner.Dispatcher.HasShutdownStarted) return;
         owner.Dispatcher.BeginInvoke(new Action(()=>
         {
-            if(!disposed && ReferenceEquals(controller.State,state) && state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)
-                ShowProgress(state);
+            if(!disposed && ReferenceEquals(controller.State,state))
+            {
+                if(backgroundCheck&&state.Phase==UpdatePhase.Checking)owner.ToolTip=state.Message;
+                else if(state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)ShowProgress(state);
+            }
         }));
     }
     private void ShowProgress(UpdateViewState state)

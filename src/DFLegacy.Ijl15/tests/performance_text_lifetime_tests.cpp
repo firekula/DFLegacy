@@ -54,6 +54,18 @@ namespace {
         reinterpret_cast<BeginTextFunction>(table[0x4C / 4])(&renderer, &next);
         Check(State(renderer) == &next, "subsequent native message selects its own text state");
         reinterpret_cast<void(__thiscall*)(void*)>(table[0x50 / 4])(&renderer);
+        // Different dungeon overlays and room prompts share this same callback.
+        // Exercise repeated frames and immediately-following native messages.
+        for (int frame = 0; frame < 256; ++frame) {
+            Renders = Draws = 0;
+            const auto result = DrawFpsAndMemory(nullptr, nullptr);
+            Check(Renders == 1 && Draws == 0, "hidden overlay retains plugin drawing behavior");
+            Check(result == 0, "normal overlay return preserved");
+            Check(!Active(renderer) && !State(renderer), "repeated overlay left expired text state");
+            reinterpret_cast<BeginTextFunction>(table[0x4C / 4])(&renderer, &next);
+            Check(State(renderer) == &next, "next room message uses its own state after each overlay frame");
+            reinterpret_cast<void(__thiscall*)(void*)>(table[0x50 / 4])(&renderer);
+        }
         TextState borrowed{}; borrowed.mode = 1;
         reinterpret_cast<BeginTextFunction>(table[0x4C / 4])(&renderer, &borrowed);
         DrawFpsAndMemory(nullptr, nullptr);
@@ -74,6 +86,6 @@ namespace dfl::debug_module {
     void Render() noexcept { ++Renders; }
 }
 int main() {
-    try { Run(); std::puts("performance_text_lifetime PASS (default hidden overlay, native follow-up, borrowed, missing cleanup)"); return 0; }
+    try { Run(); std::puts("performance_text_lifetime PASS (hidden overlay, 256 frames, native follow-up, borrowed, missing cleanup)"); return 0; }
     catch (const std::exception& error) { std::fprintf(stderr, "FAIL: %s\n", error.what()); return 1; }
 }

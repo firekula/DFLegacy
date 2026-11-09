@@ -19,14 +19,30 @@ internal static class EngineTests
         var stage = await engine.DownloadAsync(check);
         InstallTransaction.Apply(root, stage);
         TestRun.Check((await engine.ValidateInstalledAsync()).CanLaunch, "committed installation can launch after complete validation");
+        // A completed receipt must authorize launch even when asset bytes cannot be read.
+        // Reintroducing per-start hashing causes this real Windows sharing lock to fail.
+        using (var held = new FileStream(Path.Combine(root, "ImagePacks2/a.npk"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            TestRun.Check((await engine.ValidateInstalledAsync()).CanLaunch, "validated receipt launches without opening resource contents");
+            var quick = await engine.CheckAsync();
+            TestRun.Check(quick.CanLaunch && !quick.NeedsInstall && quick.Verification == null, "same release discovery reuses receipt without content verification");
+        }
         provider.Downloads.Clear();
         File.WriteAllText(Path.Combine(root, "ImagePacks2/a.npk"), "bad");
-        check = await engine.CheckAsync();
+        TestRun.Check((await engine.CheckAsync()).CanLaunch, "normal launch trusts unchanged completed resource record");
+        check = await engine.CheckAsync(forceVerification: true);
         TestRun.Check(check.NeedsInstall && check.Verification!.Problems.Single().Path == "ImagePacks2/a.npk", "same version corrupt file requires repair");
         // Remove only this object's cache to prove exactly one remote fetch is needed.
         File.Delete(new ContentCache(stage.CacheDirectory).ObjectPath(m.Files[0].Sha256, m.Files[0].Size));
         stage = await engine.DownloadAsync(check); InstallTransaction.Apply(root, stage);
         TestRun.Check(provider.Downloads.SequenceEqual(new[] { m.Files[0].Sha256 }), "same-version repair fetches only corrupt managed file");
+        var marker = Path.Combine(root, ".dflegacy/v4/validated.json");
+        File.Delete(marker);
+        var upgradeProgress = new CaptureProgress();
+        TestRun.Check((await engine.ValidateInstalledAsync(upgradeProgress)).CanLaunch && upgradeProgress.Count > 0 && File.Exists(marker), "legacy receipt is fully verified once before durable upgrade");
+        File.WriteAllText(marker, "{");
+        upgradeProgress = new();
+        TestRun.Check((await engine.ValidateInstalledAsync(upgradeProgress)).CanLaunch && upgradeProgress.Count > 0, "malformed validation record falls back to complete verification");
         check = await engine.CheckAsync();
         TestRun.Check(!check.NeedsInstall && check.CanLaunch && !check.IsOffline, "same version fully verified on online check");
         provider.Unavailable = true;
@@ -65,6 +81,11 @@ internal static class EngineTests
         var losesHistory=retired with {Version="v4.0.3-test",Sequence=4,Retired=[]};
         raw=ManifestCodec.Serialize(losesHistory); provider.Target=new(source,losesHistory.Version,TestRun.Hash(raw),raw);
         await TestRun.RejectAsync(async()=>await engine.CheckAsync(),"historical tombstone omission rejected before downloading");
+    }
+    private sealed class CaptureProgress : IProgress<UpdateProgress>
+    {
+        internal int Count;
+        public void Report(UpdateProgress value) { if (value.Phase == "verify") Count++; }
     }
     internal sealed class MemoryProvider(ReleaseSource source, VerifiedRelease release) : IReleaseProvider
     {

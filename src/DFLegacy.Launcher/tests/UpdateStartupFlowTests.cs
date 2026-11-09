@@ -51,6 +51,27 @@ internal static class UpdateStartupFlowTests
         Window Owner()=>new() { Width=100,Height=100,ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };
         try
         {
+            var validatedRoot=Path.Combine(root,"validated-background");Directory.CreateDirectory(validatedRoot);
+            var bytes="validated resource"u8.ToArray();var hash=Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
+            var source=new DFLegacy.UpdateCore.ReleaseSource("gitee","firekula/DFLegacy","gitee-test","x64","normal");
+            var manifest=new DFLegacy.UpdateCore.ClientManifest(4,"v4-test",new string('a',40),"x64","normal","gitee-test",1,0,
+                [new("resource.bin",bytes.Length,hash,[new(hash,bytes.Length,"v4-test",hash+".bin")])],[],[]);
+            var raw=DFLegacy.UpdateCore.ManifestCodec.Serialize(manifest);
+            var verified=new DFLegacy.UpdateCore.VerifiedRelease(source,manifest.Version,Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(raw)),raw);
+            var cache=new DFLegacy.UpdateCore.ContentCache(Path.Combine(validatedRoot,".dflegacy/v4/cache"));File.WriteAllBytes(cache.ObjectPath(hash,bytes.Length),bytes);
+            DFLegacy.UpdateCore.InstallTransaction.Apply(validatedRoot,new(verified,cache.DirectoryPath));
+            {
+                var owner=Owner();var notices=new List<string>();
+                var feed=new TaskCompletionSource<UpdateRelease?>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var session=new UpdateControllerTests.Session {Feed=_=>feed.Task};
+                using var flow=new UpdateCoordinator(owner,validatedRoot,session,()=>check(false,"background current check cannot shut down login"),notices.Add);
+                var pending=flow.StartAsync();
+                check(owner.IsVisible,"completed receipt opens login while release discovery is still pending");
+                check(!Application.Current.Windows.OfType<UpdateInstallWindow>().Any(w=>w.IsVisible),"background discovery does not open a verification window");
+                feed.SetException(new IOException("freshness unavailable"));Wait(pending);
+                check(owner.IsVisible&&notices.Count==0,"background freshness failure is nonmodal and leaves login open");
+                owner.Close();
+            }
             foreach(var error in new[]{false,true})
             {
                 var owner=Owner(); var session=new UpdateControllerTests.Session(); var warnings=new List<string>();
