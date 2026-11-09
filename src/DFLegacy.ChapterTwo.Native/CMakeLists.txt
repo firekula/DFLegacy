@@ -17,6 +17,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoNpcDialogue.cpp
     ChapterTwoWarehouseUpgrade.cpp
     ChapterTwoInventoryTab.cpp
+    ChapterTwoHudPortraitCache.cpp
     ChapterTwoParty.cpp
     ChapterTwoTownMap.cpp
     "${DEBUG_NATIVE}/town_route_catalog.cpp"
@@ -56,6 +57,17 @@ add_executable(chapter_two_inventory_tab_tests inventory_tab_tests.cpp)
 target_compile_options(chapter_two_inventory_tab_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_options(chapter_two_inventory_tab_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 target_link_libraries(chapter_two_inventory_tab_tests PRIVATE chapter_two_presentation)
+
+add_executable(chapter_two_hud_portrait_baseline_tests hud_portrait_cache_tests.cpp)
+target_compile_definitions(chapter_two_hud_portrait_baseline_tests PRIVATE CHAPTER_TWO_HUD_BASELINE)
+target_compile_options(chapter_two_hud_portrait_baseline_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_hud_portrait_baseline_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+target_link_libraries(chapter_two_hud_portrait_baseline_tests PRIVATE chapter_two_presentation)
+
+add_executable(chapter_two_hud_portrait_cache_tests hud_portrait_cache_tests.cpp)
+target_compile_options(chapter_two_hud_portrait_cache_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_hud_portrait_cache_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+target_link_libraries(chapter_two_hud_portrait_cache_tests PRIVATE chapter_two_presentation)
 
 if(DEFINED CHAPTER_TWO_HOST_SOURCE)
     add_executable(chapter_two_presentation_host "${CHAPTER_TWO_HOST_SOURCE}")
