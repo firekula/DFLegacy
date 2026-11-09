@@ -190,6 +190,69 @@ public sealed class TownSessionDirectory(
         && _membersByCharacter.TryGetValue(a, out var x) && _membersByCharacter.TryGetValue(b, out var y)
         && x.TownId == y.TownId && x.AreaId == y.AreaId;
 
+    internal bool HasKnownAppearance(Guid recipientId, Guid subjectId, ushort userId) =>
+        _membersByCharacter.TryGetValue(recipientId, out var recipient)
+        && _membersByCharacter.TryGetValue(subjectId, out var subject)
+        && subject.AreaUserId == userId
+        && recipient.KnownAppearances.TryGetValue(userId, out var known) && ReferenceEquals(known, subject);
+
+    internal Func<bool>? CapturePartyPeerPreparationGuard(IReadOnlyCollection<Guid> characterIds)
+    {
+        var ids = characterIds.Distinct().ToArray();
+        var members = ids.Select(id => _membersByCharacter.GetValueOrDefault(id)).OfType<TownMember>().ToArray();
+        bool Current() => members.Length == ids.Length
+            && members.All(member => IsRegistered(member) && IsInTown(member) && member.Peer is not null);
+        return Current() ? Current : null;
+    }
+
+    internal async Task<bool> SendPartyAppearanceIfUnknownAsync(
+        Guid recipientId, Guid subjectId, ushort userId, GameServerPacket fallback,
+        Func<bool> isCurrent, Func<GameServerPacket, Task<bool>> send, CancellationToken cancellationToken)
+    {
+        if (!_membersByCharacter.TryGetValue(subjectId, out var subject)
+            || !_membersByCharacter.TryGetValue(recipientId, out var recipient)) return false;
+        await subject.AppearanceDeliveryGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!isCurrent() || !IsRegistered(subject) || !IsRegistered(recipient)
+                || !IsInTown(subject) || !IsInTown(recipient) || subject.AreaUserId != userId) return false;
+            if (HasKnownAppearance(recipientId, subjectId, userId)) return true;
+            // The owner's current public projection preserves worn appearance, including
+            // an already-known friend's equipment. Never send inventory/detail records.
+            var delivered = await send(subject.Appearance?.Basic ?? fallback);
+            return delivered && isCurrent() && IsRegistered(subject) && IsRegistered(recipient);
+        }
+        finally { subject.AppearanceDeliveryGate.Release(); }
+    }
+
+    internal async Task<bool> SendChapterTwoPartyPeerTablesAsync(
+        IReadOnlyCollection<Guid> characterIds,
+        Func<Guid, ushort, bool> isCurrentMember,
+        CancellationToken cancellationToken)
+    {
+        // This is a party projection, not town admission: no roster, appearance
+        // visibility or private-room membership is changed.
+        var members = characterIds.Distinct().Select(id => _membersByCharacter.GetValueOrDefault(id))
+            .OfType<TownMember>().ToArray();
+        bool Current(TownMember member) => IsRegistered(member) && IsInTown(member)
+            && isCurrentMember(member.CharacterId, member.AreaUserId);
+        bool Complete() => members.Length == characterIds.Distinct().Count()
+            && members.All(member => Current(member) && member.Peer is not null);
+        if (!Complete()) return false;
+        foreach (var recipient in members.Where(member => member.IsChapterTwo))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!Complete()) return false;
+            var peers = members.OrderBy(member => ReferenceEquals(member, recipient) ? 0 : 1)
+                .Where(member => Current(member) && member.Peer is not null)
+                .Select(member => GameplayDatagramService.ApplyPeerEndpointOverride(member.Peer!,
+                    ReferenceEquals(member, recipient), _peerEndpointOverride)).ToArray();
+            if (!await SendAsync(recipient, GameProtocolEngine.CreateUdpPeerInfo(peers, chapterTwoTown: true), cancellationToken)
+                || !Complete()) return false;
+        }
+        return Complete();
+    }
+
     public async Task<TownMemberTicket?> EnterAsync(
         TownEntryRequest request,
         CancellationToken cancellationToken)
@@ -599,7 +662,8 @@ public sealed class TownSessionDirectory(
         byte townId,
         byte areaId,
         GameServerPacket packet,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<bool>? canSend = null)
     {
         if (!options.TownSync.Enabled)
         {
@@ -609,6 +673,7 @@ public sealed class TownSessionDirectory(
         var delivered = 0;
         foreach (var member in SnapshotMembers(townId, areaId))
         {
+            if (canSend?.Invoke() == false) break;
             if (await SendAsync(member, packet, cancellationToken))
             {
                 delivered++;

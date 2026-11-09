@@ -14,6 +14,8 @@ internal sealed class PartyChannel
     public required ushort AreaUserId { get; set; }
     public required Guid SessionId { get; init; }
     public required Func<GameServerPacket, ValueTask> Send { get; init; }
+    public Func<CharacterRecord, ushort, GameServerPacket>? CreatePeerAppearance { get; init; }
+    public int? ChannelNumber { get; init; }
 }
 
 /// <summary>
@@ -55,6 +57,9 @@ internal sealed class PartyPendingRequest
     public required Guid RequesterCharacterId { get; init; }
     public required ushort RequesterUid { get; init; }
     public required DateTimeOffset ExpiresAt { get; init; }
+    public Guid? RequesterSessionId { get; init; }
+    public Guid? TargetSessionId { get; init; }
+    public ushort? TargetUid { get; init; }
 }
 
 /// <summary>
@@ -204,7 +209,10 @@ public sealed class PartyService : BackgroundService
             {
                 RequesterCharacterId = request.RequesterCharacterId,
                 RequesterUid = request.RequesterUid,
-                ExpiresAt = expired
+                ExpiresAt = expired,
+                RequesterSessionId = request.RequesterSessionId,
+                TargetSessionId = request.TargetSessionId,
+                TargetUid = request.TargetUid
             };
         }
 
@@ -234,7 +242,9 @@ public sealed class PartyService : BackgroundService
         ushort areaUserId,
         Guid sessionId,
         Func<GameServerPacket, ValueTask> send,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<CharacterRecord, ushort, GameServerPacket>? createPeerAppearance = null,
+        int? channelNumber = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
@@ -246,7 +256,9 @@ public sealed class PartyService : BackgroundService
             CharacterId = characterId,
             AreaUserId = areaUserId,
             SessionId = sessionId,
-            Send = send
+            Send = send,
+            CreatePeerAppearance = createPeerAppearance,
+            ChannelNumber = channelNumber
         };
         return Task.CompletedTask;
     }
@@ -396,11 +408,34 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        GameServerPacket? requesterAppearance = null;
+        if (target.CreatePeerAppearance is { } createAppearance)
+        {
+            // Chapter Two NOTI7 looks up the inviter in the local user registry before
+            // opening its dialog. Private rooms have no foreign town appearances.
+            var character = await _store.GetCharacterAsync(requester.AccountName, requesterCharacterId, cancellationToken);
+            if (character is null) return;
+            requesterAppearance = createAppearance(character, requesterUid);
+            var currentState = GetPartyRequestState(requesterCharacterId, target.CharacterId);
+            if (currentState.BothInParties || currentState.TargetIsNotLeader) return;
+            if (currentState.PartyIsFull)
+            {
+                if (_channels.TryGetValue(requesterCharacterId, out var current) && current == requester)
+                    await TrySendToChannelAsync(requester, GameProtocolEngine.CreateResponsePeerError(RequestRefusedPeerType, 0));
+                return;
+            }
+            if (!IsCurrentPeerRequest(requester, requesterUid, target, targetUid)) return;
+            now = _timeProvider.GetUtcNow();
+        }
+
         var pending = new PartyPendingRequest
         {
             RequesterCharacterId = requesterCharacterId,
             RequesterUid = requesterUid,
-            ExpiresAt = now + RequestWindow
+            ExpiresAt = now + RequestWindow,
+            RequesterSessionId = target.CreatePeerAppearance is not null ? requester.SessionId : null,
+            TargetSessionId = target.CreatePeerAppearance is not null ? target.SessionId : null,
+            TargetUid = target.CreatePeerAppearance is not null ? targetUid : null
         };
 
         // 原子占位（比较交换）：**只有还活着的待决项才有权拒绝后来者**。
@@ -431,19 +466,154 @@ public sealed class PartyService : BackgroundService
                 requester.CharacterName);
         }
 
-        await SendAsync(
-            target.CharacterId,
-            GameProtocolEngine.CreateRequestPartyNotification(
+        var invitation = GameProtocolEngine.CreateRequestPartyNotification(
                 requesterUid,
                 info.ReviveCoins,
                 info.Fatigue,
-                info.WeaknessPercent),
-            cancellationToken);
+                info.WeaknessPercent);
+        if (target.CreatePeerAppearance is not null)
+        {
+            var delivered = false;
+            try
+            {
+                if (!IsCurrentPeerRequest(requester, requesterUid, target, targetUid)
+                    || requesterAppearance is not null && !await _directory.SendPartyAppearanceIfUnknownAsync(
+                        target.CharacterId, requesterCharacterId, requesterUid, requesterAppearance,
+                        () => IsCurrentPeerRequest(requester, requesterUid, target, targetUid),
+                        packet => TrySendToChannelAsync(target, packet), cancellationToken)
+                    || !IsCurrentPeerRequest(requester, requesterUid, target, targetUid)
+                    || !_pending.TryGetValue(target.CharacterId, out var currentPending) || currentPending != pending
+                    || _timeProvider.GetUtcNow() >= pending.ExpiresAt)
+                {
+                    return;
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                delivered = await TrySendToChannelAsync(target, invitation);
+                if (!delivered) return;
+            }
+            finally
+            {
+                // A disconnected/replaced recipient must not inherit an old invite or
+                // keep its slot occupied. Remove only this exact reservation.
+                if (!delivered && _pending.TryRemove(new KeyValuePair<Guid, PartyPendingRequest>(target.CharacterId, pending))
+                    && !cancellationToken.IsCancellationRequested
+                    && _channels.TryGetValue(requesterCharacterId, out var currentRequesterChannel)
+                    && currentRequesterChannel == requester)
+                {
+                    await TrySendToChannelAsync(requester,
+                        GameProtocolEngine.CreateResponsePeerError(RequestRefusedPeerType, 0));
+                }
+            }
+        }
+        else
+        {
+            await SendAsync(target.CharacterId, invitation, cancellationToken);
+        }
         _logger.LogInformation(
             "Party request from {Requester} to {Target} (uid {TargetUid}).",
             requester.CharacterName,
             target.CharacterName,
             targetUid);
+    }
+
+    private bool IsCurrentPeerRequest(PartyChannel requester, ushort requesterUid, PartyChannel target, ushort targetUid) =>
+        _channels.TryGetValue(requester.CharacterId, out var currentRequester) && currentRequester == requester
+        && _channels.TryGetValue(target.CharacterId, out var currentTarget) && currentTarget == target
+        && requester.AreaUserId == requesterUid && target.AreaUserId == targetUid
+        && requester.ChannelNumber.HasValue && requester.ChannelNumber == target.ChannelNumber
+        && _directory.TryGetSnapshot(requester.CharacterId, out var requesterTown)
+        && _directory.TryGetSnapshot(target.CharacterId, out var targetTown)
+        && requesterTown.AreaUserId == requesterUid && targetTown.AreaUserId == targetUid
+        && requesterTown.TownId == targetTown.TownId && requesterTown.AreaId == targetTown.AreaId
+        && GetPartyRequestState(requester.CharacterId, target.CharacterId) is (false, false, false);
+
+    private (bool BothInParties, bool TargetIsNotLeader, bool PartyIsFull) GetPartyRequestState(Guid requesterId, Guid targetId)
+    {
+        lock (_gate)
+        {
+            TryGetPartyOf(requesterId, out var requesterParty);
+            TryGetPartyOf(targetId, out var targetParty);
+            return (requesterParty is not null && targetParty is not null,
+                targetParty is not null && targetParty.Leader.CharacterId != targetId,
+                (targetParty?.IsFull ?? false) || (requesterParty?.IsFull ?? false));
+        }
+    }
+
+    private async Task<bool> TrySendToChannelAsync(PartyChannel channel, GameServerPacket packet)
+    {
+        try
+        {
+            // Use the captured attachment rather than looking up a replacement session.
+            await channel.Send(packet);
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or ObjectDisposedException or SocketException)
+        {
+            _logger.LogWarning(exception, "Could not deliver party packet {ProtocolId} to {CharacterId}.",
+                packet.ProtocolId, channel.CharacterId);
+            return false;
+        }
+    }
+
+    // Keep the same attachment guard through the following roster writes.
+    private async Task<Func<bool>?> PrepareChapterTwoPartyAsync(
+        PartyRoster roster, CancellationToken cancellationToken, Func<bool> isCurrentAdmission)
+    {
+        (PartyChannel Channel, ushort UserId)[] members;
+        lock (_gate)
+        {
+            if (roster.Count < 2) return null;
+            members = roster.Members.Select(member =>
+                    (_channels.GetValueOrDefault(member.CharacterId), member.AreaUserId))
+                .Where(member => member.Item1 is not null)
+                .Select(member => (member.Item1!, member.AreaUserId)).ToArray();
+        }
+        if (!members.Any(member => member.Channel.CreatePeerAppearance is not null)) return static () => true;
+
+        var channelNumber = members[0].Channel.ChannelNumber;
+        if (!channelNumber.HasValue || members.Any(member => member.Channel.ChannelNumber != channelNumber)) return null;
+        var directoryCurrent = _directory.CapturePartyPeerPreparationGuard(members.Select(member => member.Channel.CharacterId).ToArray());
+        if (directoryCurrent is null) return null;
+
+        bool Current()
+        {
+            lock (_gate)
+                return isCurrentAdmission() && directoryCurrent() && roster.Count == members.Length
+                    && members.All(member => _channels.TryGetValue(member.Channel.CharacterId, out var channel)
+                        && ReferenceEquals(channel, member.Channel) && channel.AreaUserId == member.UserId);
+        }
+
+        var characters = new Dictionary<Guid, CharacterRecord>();
+        foreach (var (recipient, _) in members)
+        {
+            if (recipient.CreatePeerAppearance is not { } createAppearance
+                || !_directory.TryGetSnapshot(recipient.CharacterId, out _)) continue;
+            foreach (var (subject, userId) in members)
+            {
+                if (ReferenceEquals(recipient, subject)
+                    || !_directory.TryGetSnapshot(subject.CharacterId, out _)
+                    || _directory.HasKnownAppearance(recipient.CharacterId, subject.CharacterId, userId)) continue;
+                if (!Current()) return null;
+                if (!characters.TryGetValue(subject.CharacterId, out var character))
+                {
+                    character = await _store.GetCharacterAsync(subject.AccountName, subject.CharacterId, cancellationToken);
+                    if (character is null) return null;
+                    characters.Add(subject.CharacterId, character);
+                }
+                if (!Current()) return null;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!await _directory.SendPartyAppearanceIfUnknownAsync(recipient.CharacterId, subject.CharacterId, userId,
+                        createAppearance(character, userId), Current, packet => TrySendToChannelAsync(recipient, packet), cancellationToken)) return null;
+            }
+        }
+
+        if (!Current()) return null;
+        if (!await _directory.SendChapterTwoPartyPeerTablesAsync(
+            members.Select(member => member.Channel.CharacterId).ToArray(),
+            (id, uid) => Current() && members.Any(member => member.Channel.CharacterId == id && member.UserId == uid),
+            cancellationToken)) return null;
+        return Current() ? Current : null;
     }
 
     /// <summary>
@@ -483,6 +653,12 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        if (pending.RequesterSessionId is { } requesterSession
+            && (!_channels.TryGetValue(pending.RequesterCharacterId, out var pendingRequester)
+                || !_channels.TryGetValue(accepterCharacterId, out var pendingTarget)
+                || pendingRequester.SessionId != requesterSession || pendingTarget.SessionId != pending.TargetSessionId
+                || pendingRequester.AreaUserId != pending.RequesterUid || pendingTarget.AreaUserId != pending.TargetUid)) return;
+
         // 小窗【否】：待决项已经在上面被原子摘除（超时收尾不会再补一条失败）。只给请求方一条与超时
         // 完全同形的 `CMD 11 [0,100,0]`，接受方零包，**绝不**往下走建队/并队。
         if (!accepted)
@@ -508,6 +684,12 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        bool AdmissionCurrent() => pending.RequesterSessionId is null
+            || (_channels.TryGetValue(requester.CharacterId, out var currentRequester) && currentRequester == requester
+                && _channels.TryGetValue(accepterCharacterId, out var currentAccepter) && currentAccepter == accepter
+                && requester.SessionId == pending.RequesterSessionId && accepter.SessionId == pending.TargetSessionId
+                && requester.AreaUserId == pending.RequesterUid && accepter.AreaUserId == pending.TargetUid);
+
         // The pending request has already been consumed. Cancellation alone cannot protect this
         // interval: admission of BOTH players and the complete accepted/roster publication must
         // exclude the PvP ownership transition atomically, including asynchronous socket writes.
@@ -520,10 +702,17 @@ public sealed class PartyService : BackgroundService
             return;
         }
 
+        if (pending.RequesterSessionId.HasValue)
+        {
+            await AdmitChapterTwoPartyAsync(requester, accepter, AdmissionCurrent, cancellationToken);
+            return;
+        }
+
         PartyRoster? roster = null;
         var created = false;
         lock (_gate)
         {
+            if (!AdmissionCurrent()) return;
             TryGetPartyOf(pending.RequesterCharacterId, out var requesterParty);
             TryGetPartyOf(accepterCharacterId, out var accepterParty);
             if (requesterParty is not null && accepterParty is not null)
@@ -588,6 +777,81 @@ public sealed class PartyService : BackgroundService
             roster.PartyId,
             roster.Count,
             created ? " (created)" : string.Empty);
+    }
+
+    private async Task AdmitChapterTwoPartyAsync(PartyChannel requester, PartyChannel accepter,
+        Func<bool> admissionCurrent, CancellationToken cancellationToken)
+    {
+        PartyRoster? requesterBase;
+        PartyRoster? accepterBase;
+        PartyRoster? baseline;
+        PartyRoster? candidate = null;
+        long baselineRevision = 0;
+        lock (_gate)
+        {
+            if (!admissionCurrent()) return;
+            TryGetPartyOf(requester.CharacterId, out requesterBase);
+            TryGetPartyOf(accepter.CharacterId, out accepterBase);
+            baseline = requesterBase ?? accepterBase;
+            if (requesterBase is not null && accepterBase is not null) { }
+            else if (baseline is not null)
+            {
+                if (!baseline.IsFull && (accepterBase is null || baseline.Leader.CharacterId == accepter.CharacterId))
+                {
+                    baselineRevision = baseline.Revision;
+                    candidate = baseline.Copy(isChapterTwo: true);
+                    candidate.TryAdd(BuildMember(requesterBase is null ? requester : accepter));
+                }
+            }
+            else if (PartyRoster.TryAllocatePartyId([.. _parties.Keys], requester.AreaUserId, out var partyId))
+            {
+                candidate = new PartyRoster(partyId, BuildMember(requester), GameProtocolEngine.PartyMemberSlotCount, 0)
+                    { IsChapterTwo = true };
+                candidate.TryAdd(BuildMember(accepter));
+            }
+        }
+        if (candidate is null)
+        {
+            await SendRequestFailureAsync(accepter.CharacterId, cancellationToken);
+            return;
+        }
+
+        var committed = false;
+        var installedRevision = candidate.Revision;
+        bool Current()
+        {
+            lock (_gate)
+            {
+                if (!admissionCurrent()) return false;
+                if (committed)
+                    return _parties.TryGetValue(candidate.PartyId, out var live) && ReferenceEquals(live, candidate)
+                        && candidate.Revision == installedRevision
+                        && candidate.Members.All(member => _partyByCharacter.TryGetValue(member.CharacterId, out var id) && id == candidate.PartyId);
+                TryGetPartyOf(requester.CharacterId, out var currentRequesterParty);
+                TryGetPartyOf(accepter.CharacterId, out var currentAccepterParty);
+                return ReferenceEquals(currentRequesterParty, requesterBase) && ReferenceEquals(currentAccepterParty, accepterBase)
+                    && (baseline is null ? !_parties.ContainsKey(candidate.PartyId)
+                        : _parties.TryGetValue(baseline.PartyId, out var liveBase) && ReferenceEquals(liveBase, baseline)
+                            && baseline.Revision == baselineRevision);
+            }
+        }
+
+        // Candidates are invisible to generic roster publication and membership queries.
+        // A failed/cancelled preparation leaves the existing roster entirely untouched.
+        var canPublish = await PrepareChapterTwoPartyAsync(candidate, cancellationToken, Current);
+        if (canPublish is null) return;
+        lock (_gate)
+        {
+            if (!canPublish()) return;
+            _parties[candidate.PartyId] = candidate;
+            foreach (var member in candidate.Members) _partyByCharacter[member.CharacterId] = candidate.PartyId;
+            committed = true;
+        }
+        await PublishRosterToAsync(candidate, recipients: null, cancellationToken, registerResettle: true, canPublish);
+        if (!canPublish()) return;
+        await TrySendToChannelAsync(requester, GameProtocolEngine.CreatePartyAcceptedNotification(accepter.AreaUserId));
+        _logger.LogInformation("{Accepter} accepted the party request from {Requester}; party {PartyId} now has {Count} member(s){Created}.",
+            accepter.CharacterName, requester.CharacterName, candidate.PartyId, candidate.Count, baseline is null ? " (created)" : string.Empty);
     }
 
     /// <summary>
@@ -816,7 +1080,8 @@ public sealed class PartyService : BackgroundService
                     return;
                 }
 
-                roster = new PartyRoster(partyId, BuildMember(channel), maxMembers, nameSelection);
+                roster = new PartyRoster(partyId, BuildMember(channel), maxMembers, nameSelection)
+                    { IsChapterTwo = channel.CreatePeerAppearance is not null };
                 _parties[partyId] = roster;
                 _partyByCharacter[characterId] = partyId;
             }
@@ -865,8 +1130,8 @@ public sealed class PartyService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         var now = _timeProvider.GetUtcNow();
-        List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
-        List<(byte TownId, byte AreaId, GameServerPacket Packet)> areas = [];
+        List<(Guid CharacterId, GameServerPacket Packet, Func<bool>? Current)> direct = [];
+        List<(byte TownId, byte AreaId, GameServerPacket Packet, Func<bool>? Current)> areas = [];
         lock (_gate)
         {
             if (_channels.TryGetValue(characterId, out var channel))
@@ -877,9 +1142,10 @@ public sealed class PartyService : BackgroundService
             if (TryGetPartyOf(characterId, out var roster) && roster is not null)
             {
                 roster.UpdateLocation(characterId, townId, areaId, areaUserId);
+                var current = CaptureRosterPublicationGuard(roster);
                 foreach (var member in roster.Members)
                 {
-                    direct.Add((member.CharacterId, BuildRosterPacket(roster, member.CharacterId)));
+                    direct.Add((member.CharacterId, BuildRosterPacket(roster, member.CharacterId), current));
                 }
 
                 // 新区域这一份 + "曾通知过的区域"各一份：旧区域版本里他那一格回落到他自己的 uid
@@ -890,7 +1156,7 @@ public sealed class PartyService : BackgroundService
                     areas.Add((
                         memberTownId,
                         memberAreaId,
-                        BuildRosterPacketForArea(roster, memberTownId, memberAreaId)));
+                        BuildRosterPacketForArea(roster, memberTownId, memberAreaId), current));
                 }
 
                 ScheduleResettle(roster, now);
@@ -901,18 +1167,20 @@ public sealed class PartyService : BackgroundService
                 // 进区补发也一样：这份名册被客户端静默丢掉时，他的列表就一直空着（不会自己重试），
                 // 所以涉及的每支队伍都排一次补播（幂等，代价 = 每次换区多两次名册）。
                 ScheduleResettle(visible, now);
-                direct.Add((characterId, BuildRosterPacket(visible, characterId)));
+                direct.Add((characterId, BuildRosterPacket(visible, characterId), CaptureRosterPublicationGuard(visible)));
             }
         }
 
-        foreach (var (target, packet) in direct)
+        foreach (var (target, packet, current) in direct)
         {
+            if (current?.Invoke() == false) continue;
             await SendAsync(target, packet, cancellationToken);
         }
 
-        foreach (var (memberTownId, memberAreaId, packet) in areas)
+        foreach (var (memberTownId, memberAreaId, packet, current) in areas)
         {
-            await _directory.BroadcastPartyPacketAsync(memberTownId, memberAreaId, packet, cancellationToken);
+            if (current?.Invoke() == false) continue;
+            await _directory.BroadcastPartyPacketAsync(memberTownId, memberAreaId, packet, cancellationToken, current);
         }
     }
 
@@ -1131,7 +1399,8 @@ public sealed class PartyService : BackgroundService
         PartyRoster roster,
         IReadOnlyList<Guid>? recipients,
         CancellationToken cancellationToken,
-        bool registerResettle)
+        bool registerResettle,
+        Func<bool>? canPublish = null)
     {
         var now = _timeProvider.GetUtcNow();
         List<(Guid CharacterId, GameServerPacket Packet)> direct = [];
@@ -1140,12 +1409,14 @@ public sealed class PartyService : BackgroundService
         int memberCount;
         byte storedNameSelection;
         byte outboundNameSelection;
+        Func<bool>? publicationCurrent;
         lock (_gate)
         {
             // "名册此刻仍在册"（而不是 partyId 被同名的新队伍占用）：两种用途都要它——
             // 真发布只给在册的队伍排补播（不给陈旧引用留垃圾项）；补播则靠它拒绝把已解散队伍的名册
             // 再发一遍（客户端收到会把队伍重新加回本地列表）。
             var live = _parties.TryGetValue(roster.PartyId, out var current) && ReferenceEquals(current, roster);
+            publicationCurrent = CaptureRosterPublicationGuard(roster);
             if (registerResettle)
             {
                 if (live)
@@ -1195,12 +1466,16 @@ public sealed class PartyService : BackgroundService
 
         foreach (var (characterId, packet) in direct)
         {
+            if (canPublish?.Invoke() == false || publicationCurrent?.Invoke() == false) return;
             await SendAsync(characterId, packet, cancellationToken);
         }
 
         foreach (var (townId, areaId, packet) in areas)
         {
-            await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken);
+            if (canPublish?.Invoke() == false || publicationCurrent?.Invoke() == false) return;
+            Func<bool>? current = canPublish is null ? publicationCurrent
+                : () => canPublish() && publicationCurrent?.Invoke() != false;
+            await _directory.BroadcastPartyPacketAsync(townId, areaId, packet, cancellationToken, current);
         }
 
         // NOTI 9 can delete foreign combat actors even while their town user
@@ -1226,6 +1501,23 @@ public sealed class PartyService : BackgroundService
             }
         }
         await _directory.ReplayPartyCombatDetailsAsync(combatMembers, cancellationToken, IsCurrentMember);
+    }
+
+    private Func<bool>? CaptureRosterPublicationGuard(PartyRoster roster)
+    {
+        // Callers hold _gate. No town-registration requirement belongs here:
+        // already-admitted members keep their party while travelling or in a dungeon.
+        var channels = roster.Members.Select(member => _channels.GetValueOrDefault(member.CharacterId)).ToArray();
+        if (!roster.IsChapterTwo) return null;
+        if (!_parties.TryGetValue(roster.PartyId, out var live) || !ReferenceEquals(live, roster)) return static () => false;
+        var revision = roster.Revision;
+        return () =>
+        {
+            lock (_gate)
+                return _parties.TryGetValue(roster.PartyId, out var current) && ReferenceEquals(current, roster)
+                    && roster.Revision == revision && channels.All(channel => channel is not null
+                        && _channels.TryGetValue(channel.CharacterId, out var active) && ReferenceEquals(active, channel));
+        };
     }
 
     /// <summary>
@@ -1632,6 +1924,10 @@ public sealed class PartyService : BackgroundService
             {
                 continue;
             }
+
+            if (_channels.TryGetValue(requesterCharacterId, out var requester)
+                && (requester.CreatePeerAppearance is not null || candidate.CreatePeerAppearance is not null)
+                && (!requester.ChannelNumber.HasValue || requester.ChannelNumber != candidate.ChannelNumber)) continue;
 
             if (!_directory.TryGetSnapshot(candidate.CharacterId, out var candidateTown)
                 || candidateTown.TownId != requesterTown.TownId

@@ -23,6 +23,7 @@ internal static class PartySmokeTests
         CheckPartyAcceptedNotificationLayout(check);
         CheckPartyRoster(check);
         await CheckPartyServiceAsync(check);
+        await ChapterTwoPartyInviteSmokeTests.RunAsync(check);
         await CheckHostSlotIsSharedByEveryMemberAsync(check);
         CheckEnterSelectDungeonLayout(check);
     }
@@ -1751,7 +1752,8 @@ internal sealed class PartyHarness : IAsyncDisposable
     }
 
     /// <summary>把角色搬到另一个城镇区域：先退旧区、再进新区，并通知 PartyService（模拟 CMD 38 钩子）。</summary>
-    public async Task MoveToAsync(string characterName, byte townId, byte areaId, ushort uid)
+    public async Task MoveToAsync(string characterName, byte townId, byte areaId, ushort uid,
+        bool chapterTwo = false, GamePeerInfo? peer = null, Func<GameServerPacket, ValueTask>? townSend = null)
     {
         if (_tickets.TryGetValue(characterName, out var ticket))
         {
@@ -1764,8 +1766,8 @@ internal sealed class PartyHarness : IAsyncDisposable
             new TownEntryRequest(
                 townId, areaId, uid, characterId, 100u + uid,
                 Encoding.ASCII.GetBytes(characterName), characterName,
-                Peer: null, X: 10, Y: 10, Direction: 0,
-                SendAsync: (packet, _) => Record(characterName)(packet)),
+                Peer: peer, X: 10, Y: 10, Direction: 0,
+                SendAsync: (packet, _) => (townSend ?? Record(characterName))(packet), IsChapterTwo: chapterTwo),
             CancellationToken.None);
         if (entered is not null)
         {
@@ -1820,7 +1822,7 @@ internal sealed class PartyHarness : IAsyncDisposable
     /// 记录发包。刻意 <c>await Task.Yield()</c>（真机的 socket 写本来就是异步的）：只有让 handler 在
     /// 发包处真的让出线程，"重复/并发接受"这类竞态用例才会交错到第二个 handler，而不是被同步跑完。
     /// </summary>
-    private Func<GameServerPacket, ValueTask> Record(string characterName) =>
+    internal Func<GameServerPacket, ValueTask> Record(string characterName) =>
         async packet =>
         {
             await Task.Yield();

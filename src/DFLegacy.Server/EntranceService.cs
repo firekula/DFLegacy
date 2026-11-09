@@ -6505,7 +6505,13 @@ public sealed class EntranceService(
                                 localUserId,
                                 runtimeSession.Id,
                                 packet => SendTownPacketAsync(packet, serverToken),
-                                serverToken);
+                                serverToken,
+                                createPeerAppearance: chapter2CheckConnectionAccepted
+                                    ? (peer, uid) => CreateTownAppearancePacket(peer, uid, peer.Equipment ?? [], peer.CreatureInventory ?? [],
+                                        hasBlackDiamond: false, hasPrivateStorePermission: false,
+                                        includeChapter2ActorFields: true)
+                                    : null,
+                                channelNumber: chapter2CheckConnectionAccepted ? channel.Number : null);
                             mentorGoldIncarnation = await mentorService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,
                                 runtimeSession.Id, packet => SendTownPacketAsync(packet, serverToken), serverToken, partyMembershipWake.Pulse);
                             await privateStoreService.AttachChannelAsync(accountName, activeCharacter.Id, localUserId,

@@ -57,6 +57,19 @@ internal sealed class PartyRoster
     public byte LeaderSlot { get; private set; }
 
     public int Count { get; private set; }
+    public long Revision { get; private set; }
+    public bool IsChapterTwo { get; init; }
+
+    public PartyRoster Copy(bool? isChapterTwo = null)
+    {
+        var copy = new PartyRoster(PartyId, Leader, MaxMembers, NameSelection)
+        {
+            Count = Count, LeaderSlot = LeaderSlot, Revision = Revision,
+            IsChapterTwo = isChapterTwo ?? IsChapterTwo
+        };
+        Array.Copy(_slots, copy._slots, _slots.Length);
+        return copy;
+    }
 
     /// <summary>
     /// 名册快照：返回**新数组**，内容 = 按槽下标升序的已占用成员（元素数 = <see cref="Count"/>）。
@@ -135,6 +148,7 @@ internal sealed class PartyRoster
             {
                 _slots[index] = member;
                 Count++;
+                Revision++;
                 return true;
             }
         }
@@ -156,6 +170,7 @@ internal sealed class PartyRoster
 
         _slots[slot] = null;
         Count--;
+        Revision++;
         if (slot == LeaderSlot)
         {
             PromoteLowestSlot();
@@ -191,6 +206,7 @@ internal sealed class PartyRoster
         }
 
         LeaderSlot = slot;
+        Revision++;
         return true;
     }
 
@@ -201,6 +217,7 @@ internal sealed class PartyRoster
     /// </summary>
     public void SetInfo(byte nameSelection, byte maxMembers)
     {
+        Revision++;
         NameSelection = nameSelection;
         MaxMembers = (byte)Math.Clamp((int)maxMembers, Count, GameProtocolEngine.PartyMemberSlotCount);
     }
@@ -219,6 +236,7 @@ internal sealed class PartyRoster
             AreaId = areaId,
             AreaUserId = areaUserId
         };
+        Revision++;
         return true;
     }
 
