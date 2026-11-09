@@ -13,6 +13,8 @@ internal static class DiagnosticReleaseAcceptanceTests
     internal static async Task Run(string specPath,Action<bool,string> check)
     {
         using var spec=JsonDocument.Parse(File.ReadAllBytes(specPath));
+        var expectedVersion=spec.RootElement.GetProperty("expectedVersion").GetString();
+        if(string.IsNullOrWhiteSpace(expectedVersion)||expectedVersion.Length>128)throw new ArgumentException("An explicit expected test version is required.");
         var fixtureRoot=Path.GetFullPath(spec.RootElement.GetProperty("fixturesRoot").GetString()!);
         var previous=Path.GetFullPath(spec.RootElement.GetProperty("previousRoot").GetString()!);
         var arch=RuntimeInformation.ProcessArchitecture==Architecture.X86?"x86":"x64";
@@ -48,7 +50,7 @@ internal static class DiagnosticReleaseAcceptanceTests
             }
             var outcome=await Repair(progress);
             var installed=store.ReadInstalled()!;
-            check(outcome.Success&&!outcome.Offline&&installed.Release.Tag=="v0.1.8-giteatest.5",variant+" actual repair control path upgrades from real Gitea metadata/resources");
+            check(outcome.Success&&!outcome.Offline&&installed.Release.Tag==expectedVersion,variant+" actual repair control path upgrades from real Gitea metadata/resources");
             check(!settings.Read().Enabled,variant+" real update preserves current-user opt-out despite copied enabled default");
             var helper=installed.Release.Manifest.Files.Single(f=>f.Path=="DFLegacy.Diagnostics.exe");
             File.Delete(Core.PathPolicy.Resolve(client,helper.Path));

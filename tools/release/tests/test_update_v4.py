@@ -47,12 +47,14 @@ class Resources(FileFixture):
         for name in ['DNF.exe', 'data/deep/map.npk', 'web/index.html', 'empty.bin']:
             self.put(name, b'' if name == 'empty.bin' else b'abc')
         for name in ['launcher.json', 'Config.ini', 'Logs/crash.log', '.git/config',
-                     'Save/a.dat', 'data/.env', 'data/private.key', '.dflegacy/cache/a', 'nested/launcher.json']:
+                     'Save/a.dat', 'data/.env', 'data/private.key', '.dflegacy/cache/a', 'nested/launcher.json',
+                     'collections/11111111111111111111111111111111.json',
+                     'nested/copied/collections/22222222222222222222222222222222.json']:
             self.put(name, b'PRIVATE')
         preview = v4.plan_resources(**self.options())
         self.assertEqual([x['path'] for x in preview['manifest']['files']],
                          ['data/deep/map.npk', 'DNF.exe', 'empty.bin', 'web/index.html'])
-        self.assertEqual(len(preview['excluded']), 9)
+        self.assertEqual(len(preview['excluded']), 11)
         self.assertNotIn('PRIVATE', json.dumps(preview))
         self.assertEqual(preview['manifest']['files'][2]['parts'][0]['size'], 0)
 

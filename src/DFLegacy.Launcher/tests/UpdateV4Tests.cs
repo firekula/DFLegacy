@@ -37,7 +37,7 @@ internal static class UpdateV4Tests
         }
         var manifest=ClientPackageManifest.LoadAndValidate(root);
         check(manifest.Files.Count==4 && manifest.Files.Any(f=>f.Path.EndsWith(".npk")),"launch validation includes arbitrary managed resources");
-        foreach(var privatePath in new[]{"Diagnostics/session.json","nested/sessions/session.json","captures/x.dmp","nested/preference.json","queue/body.json","nested/closed.json"})
+        foreach(var privatePath in new[]{"Diagnostics/session.json","nested/sessions/session.json","captures/x.dmp","nested/preference.json","queue/body.json","nested/closed.json","collections/11111111111111111111111111111111.json","nested/copied/collections/22222222222222222222222222222222.json"})
         {
             try {Core.PathPolicy.Validate(privatePath);check(false,"managed reader must reject diagnostic private path "+privatePath);}catch(InvalidDataException){check(true,"private diagnostic path rejected: "+privatePath);}
         }

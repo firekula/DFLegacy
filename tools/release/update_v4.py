@@ -34,7 +34,7 @@ PROTECTED = {'launcher.json', 'launcher.txt', 'config.ini', 'client-package.json
              'save', 'saves', 'accounts', 'crashreports'}
 PRIVATE = {'.git', '.svn', '.hg', '.vs', '.vscode', '__pycache__', 'node_modules',
            '.ssh', '.aws', '.codex', '.superpowers', '.tmp', 'server.json', 'manager.json',
-           'diagnostics', 'sessions', 'captures', 'queue', 'events', 'installations', 'preference.json', 'settings.json', 'active.json', 'preferences.json', 'session.json', 'closed.json', 'drops.json',
+           'diagnostics', 'sessions', 'collections', 'captures', 'queue', 'events', 'installations', 'preference.json', 'settings.json', 'active.json', 'preferences.json', 'session.json', 'closed.json', 'drops.json',
            'account.json', 'accounts.json', 'credentials.json', 'cookies.json', 'cache', 'backup', 'backups'}
 # Backups and interrupted atomic saves can contain the same credentials as the
 # original configuration. Match derivatives before include rules at every depth.
