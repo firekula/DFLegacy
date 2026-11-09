@@ -1,5 +1,7 @@
 # V4 客户端更新与离线资源发布
 
+正式 v0.1.8 使用 GitHub `firekula/DFLegacy` / `stable`，两架构各有普通与测试变体。同一 Release 保留 v0.1.6 可识别的 V3 过渡包：旧客户端先升级过渡登录器，重启再进入 V4。固定入口打包器支持显式 `provider='github', channel='stable', origin='https://github.com'`，仍拒绝跨源混用。见 [v0.1.8 升级说明](docs/releases/v0.1.8.md)。下文 Gitea 配置和 `.giteatest` 版本是隔离测试操作示例，不能复制进正式整合包。
+
 状态：**Unreleased，仅 Gitea 隔离测试**。固定来源 `http://firekula.site:3000/firekula/DFLegacy`，测试版本现为 `v0.1.8-giteatest.4`；`.1`～`.3` 保持不可变。四变体匿名资源及 Range 校验通过；固定入口、恢复副本、真实损坏与中断测试见[本轮报告](artifacts/bootstrap-auto-repair-20261108/REPORT.md)，此前逐文件更新验收见[原报告](artifacts/client-update-gitea-20261108/REPORT.md)。正式 GitHub 客户端更新仍按已发布的 V2／V3 合同使用，本文不表示 V4 已正式发布。
 
 ## 来源与离线状态

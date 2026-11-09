@@ -113,6 +113,19 @@ class BootstrapPackages(unittest.TestCase):
                 self.build(inputs=[row for row in inputs if row['path'] != missing])
             self.assertFalse((self.root / 'release').exists())
 
+    def test_github_stable_four_variants_have_source_bound_repair_receipts(self):
+        for architecture in ('x86', 'x64'):
+            for flavor in ('normal', 'test'):
+                options = dict(architecture=architecture, flavor=flavor, provider='github',
+                               repository='firekula/DFLegacy', channel='stable', origin='https://github.com')
+                result = self.build('github-' + architecture + flavor, version='v0.1.8', sequence=1, **options)
+                archive = self.starter(result, name='github-' + architecture + flavor + '.zip', **options)
+                with zipfile.ZipFile(archive) as z:
+                    receipt = json.loads(z.read('.dflegacy/v4/installed.json'))
+                    self.assertEqual(receipt['release']['source']['provider'], 'github')
+                    self.assertEqual(receipt['release']['source']['channel'], 'stable')
+                    self.assertNotIn(b'firekula.site:3000', z.read('.dflegacy/v4/installed.json'))
+
     def test_pin_detects_same_length_mutation_before_copy(self):
         inputs = self.inputs()
         source = Path(inputs[0]['source'])

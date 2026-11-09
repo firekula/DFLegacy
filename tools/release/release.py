@@ -466,11 +466,15 @@ def migration_instructions(version, commit, flavor):
             "After migration the launcher updates the installed normal/test flavor through schema 2 packages.\n").encode("utf-8")
 
 
-def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64", *, pvf_snapshot=None):
+def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64", *, pvf_snapshot=None, legacy_bridge=False):
     """Package verified same-release binaries without any player configuration."""
     root = Path(client_assets)
     verified = verify_assets(root, version, commit)
-    names = (*UPDATE_FILES, *(("debug.dll",) if test_build else ()))
+    if legacy_bridge and (tools or pvf_snapshot is None):
+        raise ReleaseError("legacy bridge requires a V3 update containing Script.pvf")
+    # v0.1.6 rejects unknown manifest paths. It must install the managed
+    # bootstrap first; that bootstrap then installs the complete V4 release.
+    names = (*(LEGACY_UPDATE_FILES if legacy_bridge else UPDATE_FILES), *(("debug.dll",) if test_build else ()))
     launcher_dir = "launcher-x86" if architecture == "x86" else "launcher"
     sources = {name: root / (launcher_dir if name in ("DFLegacy.Launcher.exe", "DFLegacy.Diagnostics.exe") else "patch/") / name for name in names}
     anchored = {row["path"]: row["sha256"] for row in verified["files"]}
@@ -519,7 +523,9 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     return destination
 
 
-def build_client_packages(client_assets, output, version, commit, updates_only=False, script_pvf=None):
+def build_client_packages(client_assets, output, version, commit, updates_only=False, script_pvf=None, legacy_bridge=False):
+    if legacy_bridge and (not updates_only or script_pvf is None):
+        raise ReleaseError("--legacy-bridge requires --updates-only and --script-pvf")
     if script_pvf is not None:
         if not updates_only:
             raise ReleaseError("--script-pvf requires --updates-only")
@@ -539,7 +545,7 @@ def build_client_packages(client_assets, output, version, commit, updates_only=F
             shutil.copyfile(script_pvf, snapshot)
             pvf_snapshot = snapshot, digest(snapshot), snapshot.stat().st_size
             packages = [build_client_update(client_assets, stage, version, commit, test,
-                                            architecture=architecture, pvf_snapshot=pvf_snapshot)
+                                            architecture=architecture, pvf_snapshot=pvf_snapshot, legacy_bridge=legacy_bridge)
                         for architecture in ("x64", "x86") for test in (False, True)]
             return [package.rename(output / package.name) for package in packages]
     packages = [build_client_update(client_assets, output, version, commit, test, tools)
@@ -961,6 +967,7 @@ def parser():
     for name in ("client-assets", "output", "version", "commit"):
         all_packages.add_argument("--" + name, required=True)
     all_packages.add_argument("--updates-only", action="store_true")
+    all_packages.add_argument("--legacy-bridge", action="store_true", help="V3 compatibility bridge for v0.1.6; omit helper paths rejected by its parser")
     all_packages.add_argument("--script-pvf", help="opt in to the four V3 updates containing this PVF export; requires --updates-only and both launcher architectures")
     update_check = sub.add_parser("verify-client-update")
     update_check.add_argument("path")
@@ -1010,7 +1017,7 @@ def main(argv=None):
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":
             print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit,
-                                                                   updates_only=args.updates_only, script_pvf=args.script_pvf)]))
+                                                                   updates_only=args.updates_only, script_pvf=args.script_pvf, legacy_bridge=args.legacy_bridge)]))
         elif args.command == "verify-client-update":
             print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":

@@ -105,6 +105,25 @@ class Bundles(unittest.TestCase):
         with self.assertRaises(release.ReleaseError):
             release.verify_assets(assets, VERSION, COMMIT)
 
+    def test_legacy_bridge_preserves_v016_allowlist_and_pvf_in_all_four_variants(self):
+        source_x86 = app(self.root / 'launcher-input-x86', 'DFLegacy.Launcher', 'win-x86')
+        assets = self.assets(source_x86)
+        pvf = write(self.root, 'Script.pvf', b'verified release pvf')
+        archives = release.build_client_packages(assets, self.root / 'bridge', VERSION, COMMIT,
+                                                updates_only=True, script_pvf=pvf, legacy_bridge=True)
+        self.assertEqual(len(archives), 4)
+        for archive in archives:
+            with zipfile.ZipFile(archive) as z:
+                metadata = json.loads(z.read('update-manifest.json'))
+                expected = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'Script.pvf'}
+                if metadata['flavor'] == 'test': expected.add('debug.dll')
+                self.assertEqual(set(z.namelist()), expected | {'update-manifest.json'})
+                self.assertEqual({row['path'] for row in metadata['files']}, expected)
+                self.assertEqual(z.read('Script.pvf'), pvf.read_bytes())
+                self.assertEqual(metadata['version'], VERSION)
+        with self.assertRaises(release.ReleaseError):
+            release.build_client_packages(assets, self.root / 'bad-bridge', VERSION, COMMIT, legacy_bridge=True)
+
     def test_assets_include_only_the_verified_x86_executable_from_its_publish_output(self):
         source_x86 = app(self.root / "launcher-input-x86", "DFLegacy.Launcher", "win-x86")
         write(source_x86, "launcher.json", '{"Password":"PRIVATE"}')

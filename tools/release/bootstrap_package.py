@@ -32,9 +32,12 @@ REQUIRED = BASE_REQUIRED | {DIAGNOSTICS, CAPTURE}
 
 
 def _source(architecture, flavor, provider, repository, channel, origin):
-    v4.require(provider == 'gitea' and repository == 'firekula/DFLegacy'
-               and channel == 'gitea-test' and origin == v4.GITEA_ORIGIN,
-               'bootstrap packaging requires the pinned Gitea test source')
+    allowed_source = (provider, channel, origin) in (
+        ('gitea', 'gitea-test', v4.GITEA_ORIGIN),
+        ('github', 'stable', 'https://github.com'),
+    )
+    v4.require(repository == 'firekula/DFLegacy' and allowed_source,
+               'bootstrap packaging requires a pinned release source')
     v4.require(architecture in ('x86', 'x64') and flavor in ('normal', 'test'),
                'invalid bootstrap architecture or flavor')
     return dict(provider=provider, repository=repository, channel=channel,

@@ -158,7 +158,7 @@ CI 使用 [Git 提交时间固定 BuildKit 时间戳](https://docs.docker.com/bu
 
 Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Gitea保存开发提交历史，GitHub同步经过脱敏的源码快照并分发产物；公开仓库不导入私有开发历史。`PUBLIC_SOURCE.md`记录快照对应的Gitea构建提交。提交源码不等同发布镜像或客户端更新。Windows、Linux 和 macOS 的独立服务端归档可手工构建。
 
-v0.1.7本次只发布GHCR服务端镜像及GitHub源码快照，不创建新的客户端更新Release，也不修改已发布的v0.1.6客户端附件。镜像仍需包含同提交构建的双架构client-assets，供管理后台生成安装包；构建这些内嵌资源不等于发布客户端自动更新。
+v0.1.8 发布 GHCR 双架构服务端镜像，以及 GitHub x86/x64 普通/测试四路客户端更新；保留 v0.1.6 可解析的 V3 过渡包，并在同一 Release 发布 V4 清单、内容资源和固定入口修复包。镜像必须包含同提交构建的双架构 client-assets。详细操作及 PVF 身份见 [v0.1.8 发布说明](docs/releases/v0.1.8.md)。v0.1.7 仅服务端发布的历史范围见 CHANGELOG。
 
 本轮组队战、擂台赛及多人结算已纳入标准服务端smoke。单独验证可运行 `dotnet run --project tests/DFLegacy.SmokeTests -c Release -- --pvp-team-relay-only`；协议/段位回归使用 `--pvp-protocol-rating`，原有双人个人战回归使用 `--pvp-individual-only`。四类频道和GM功能的配套资源要求见[部署指南](DEPLOYING.md#四类决斗频道与-gm-奖励v017)，本地验证范围见[验收记录](docs/acceptance/2026-11-07-pvp-team-relay.md)。
 
