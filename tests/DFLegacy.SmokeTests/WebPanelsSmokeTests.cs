@@ -164,7 +164,7 @@ internal static class WebPanelsSmokeTests
                     check(manager.StatusCode == HttpStatusCode.NotFound, "panel cannot reach manager control with correct secret");
                     client.DefaultRequestHeaders.Remove(ManagerControl.TokenHeader);
                 }
-                foreach (var path in new[] { "/admin/index.html", "/admin/admin.js", "/admin/admin-rewards.js", "/api/status", "/api/client-pay/cera" })
+                foreach (var path in new[] { "/admin/index.html", "/admin/admin.js", "/admin/admin-rewards.js", "/admin/admin-diagnostics.js", "/api/status", "/api/client-pay/cera" })
                 {
                     using var denied = await Get(player, path); check(denied.StatusCode == HttpStatusCode.NotFound, "player denies privileged surface " + path);
                 }

@@ -23,6 +23,7 @@
         <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
         <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
         <button class="nav-item admin-only" type="button" data-view="users">账号管理</button>
+        <button class="nav-item admin-only" type="button" data-view="diagnostics">客户端故障</button>
         <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
       </nav>
       <div class="sidebar-foot">
@@ -49,6 +50,29 @@
           <button id="logoutButton" class="quiet-button" type="button">退出登录</button>
         </div>
       </header>
+
+      <section class="view admin-only" data-view-panel="diagnostics">
+        <form id="diagnosticFilters" class="surface form-layout">
+          <h2>客户端故障</h2>
+          <p>自动收集的脱敏基本报告。原始内存转储仅保存在玩家本机。</p>
+          <div class="form-grid two-column">
+            <label class="field"><span>类型</span><select name="kind"><option value="">全部</option><option>crash</option><option>error</option><option>networkerror</option></select></label>
+            <label class="field"><span>处理状态</span><select name="status"><option value="">全部</option><option value="new">新问题</option><option value="investigating">处理中</option><option value="resolved">已处理</option></select></label>
+            <label class="field"><span>客户端版本</span><input name="version" maxlength="128"></label>
+            <label class="field"><span>系统</span><input name="system" maxlength="256"></label>
+            <label class="field"><span>显卡</span><input name="gpu" maxlength="256"></label>
+            <label class="field"><span>开始时间</span><input name="from" type="datetime-local"></label>
+            <label class="field"><span>结束时间</span><input name="to" type="datetime-local"></label>
+          </div>
+          <button class="primary-button" type="submit">查询故障</button>
+        </form>
+        <section class="surface form-layout">
+          <p id="diagnosticSummary" role="status">点击查询故障以加载报告。</p>
+          <div id="diagnosticGroups"></div>
+          <div class="form-actions"><button id="diagnosticPrevious" class="secondary-button" type="button">上一页</button><button id="diagnosticNext" class="secondary-button" type="button">下一页</button></div>
+        </section>
+        <section class="surface form-layout"><h2>报告详情</h2><pre id="diagnosticDetail"></pre><div id="diagnosticActions" class="form-actions"></div></section>
+      </section>
 
       <section class="view active admin-only" data-view-panel="mail">
         <form id="mailForm" class="surface form-layout">
@@ -398,5 +422,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/admin/admin.js" defer></script>
   <script src="/admin/admin-rewards.js" defer></script>
+  <script src="/admin/admin-diagnostics.js" defer></script>
 </body>
 </html>
