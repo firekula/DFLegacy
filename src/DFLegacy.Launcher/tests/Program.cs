@@ -50,6 +50,7 @@ Directory.CreateDirectory(root);
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if(args.Length==2&&args[0]=="--diagnostic-release-acceptance"){await DiagnosticReleaseAcceptanceTests.Run(args[1],Check);Console.WriteLine($"Diagnostic release acceptance: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-lifetime-tests")){await DiagnosticUpdateLifetimeTests.Run(root,Check);Console.WriteLine($"Diagnostic lifetime tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Length==2&&args[0]=="--native-diagnostic-setting-tests") {await NativeDiagnosticLifetimeTests.Run(root,Check,Path.GetFullPath(args[1]));Console.WriteLine($"Native diagnostic setting tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
