@@ -1,0 +1,183 @@
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Text.Json;
+using DFLegacy.Diagnostics;
+using DFLegacy.Server;
+
+if(args.Length==1&&args[0]=="--game-fixture"){await Task.Delay(30000);return 0;}
+if(args.Length==4&&args[0]=="--helper-fixture"){await DiagnosticHelper.RunAsync(DiagnosticSession.Open(args[1],args[2],args[3]));return 0;}
+if(args.Length==4&&args[0]=="--queue-retry-run") {var retry=DiagnosticSession.Start(args[2],args[3],Guid.NewGuid().ToString("N"),args[1]);var outcome=await new DiagnosticQueue(retry).UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero,ExhaustedRetryDelay=TimeSpan.Zero});Console.WriteLine(outcome.Status);return outcome.Status=="uploaded"?0:1;}
+var failures=0; var checks=0;
+void Check(bool ok,string text) { checks++; if(!ok) { failures++; Console.Error.WriteLine("FAIL: "+text); } }
+var root=Path.Combine(Path.GetTempPath(),"dflegacy-diagnostic-tests-"+Guid.NewGuid().ToString("N"));
+Directory.CreateDirectory(root);
+try {
+ await Run();
+} catch(Exception ex) { failures++; Console.Error.WriteLine("FAIL: "+ex); }
+finally { Directory.Delete(root,true); }
+Console.WriteLine($"Diagnostics tests: {checks} assertions, {failures} failures");
+return failures==0?0:1;
+
+async Task Run()
+{
+ var home=Path.Combine(root,"user"); var client=Path.Combine(root,"client"); Directory.CreateDirectory(client);
+ var settings=new DiagnosticSettings(home);
+ Check(settings.Read().Enabled,"current-user default enables automatic basic reporting without interaction");
+ var session=DiagnosticSession.Start(client,"http://127.0.0.1:32191",Guid.NewGuid().ToString("N"),home);
+ var incident=new DiagnosticIncident { Kind="crash",Stage="game",Evidence="confirmed-unhandled-exception",ExceptionCode="0xC0000005",Module="game.exe",ModuleOffset="0x1234",Stack=["game.exe+0x1234"] };
+ var report=DiagnosticProjection.Create(incident,session.SessionId,"test-1",new Dictionary<string,string>{{"cpuModel","password=FAKE_PASSWORD C:\\Users\\secret"},{"gpuModel","Bearer FAKE_TOKEN"},{"username","FAKE_ACCOUNT"}});
+ var bytes=DiagnosticJson.Serialize(report); var body=Encoding.UTF8.GetString(bytes);
+ Check(ClientDiagnosticReport.TryParse(bytes,out _),"projected report satisfies authoritative server validator");
+ if(OperatingSystem.IsWindows())Check(DiagnosticProjection.CollectSystem().ContainsKey("totalMemoryBytes"),"bounded native physical-memory query supplies hardware snapshot");
+ Check(!body.Contains("FAKE_")&&!body.Contains("Users")&&!body.Contains("username"),"unsafe hardware values and arbitrary metadata never reach wire");
+ var dirty=DiagnosticProjection.Create(incident with { Module="C:\\secret\\game.exe",Stage="password=secret",Stack=["C:\\secret\\game.exe+0x12"],ExceptionCode="Bearer secret" },session.SessionId,"bad version token");
+ Check(ClientDiagnosticReport.TryParse(DiagnosticJson.Serialize(dirty),out _)&&dirty.Module=="unknown"&&dirty.Stack.Length==0,"unsafe structured fields become unknown and unsafe frames are omitted");
+ var queue=new DiagnosticQueue(session);
+ Check(queue.Enqueue(report),"registered session queues first report");
+ Check(!queue.Enqueue(report with { Occurrences=9 }),"same event ID cannot replace frozen first body");
+ Check(queue.ReadPending().Single().Body.SequenceEqual(bytes),"first serialized bytes remain frozen");
+ var copied=DiagnosticSession.Start(Path.Combine(root,"copied-client"),"http://127.0.0.1:32191",Guid.NewGuid().ToString("N"),home);
+ Check(new DiagnosticQueue(copied).ReadPending().Count==0,"copied client directory cannot inherit installation queue");
+ settings.SetEnabled(false);
+ Check(!queue.Enqueue(report with { EventId=Guid.NewGuid().ToString("N") }),"disable blocks existing session enqueue");
+ settings.SetEnabled(true);
+ Check(new DiagnosticQueue(DiagnosticSession.Start(client,"http://127.0.0.1:32191",Guid.NewGuid().ToString("N"),home)).ReadPending().Count==0,"re-enable starts epoch without silently resuming old reports");
+ Check(!queue.IsEligible,"old session stays revoked after re-enable");
+ Check(new DiagnosticSettings(home).Read().Enabled,"preference reload persists");
+ settings.SetEnabled(false); Check(!new DiagnosticSettings(home).Read().Enabled,"closed preference survives a new settings instance"); settings.SetEnabled(true);
+ var current=DiagnosticSession.Start(client,"http://127.0.0.1:32191",Guid.NewGuid().ToString("N"),home);
+ incident=incident with {EventId=Guid.NewGuid().ToString("N")};
+ current.WriteIncident(incident with {EventId=Guid.NewGuid().ToString("N")},"provisional"); current.WriteIncident(incident with {EventId=Guid.NewGuid().ToString("N")},"cancelled");
+ File.WriteAllText(Path.Combine(client,"launcher.log"),"password=SHARED_OLD_SECRET");
+ Check(current.CollectConfirmed()==0,"provisional cancelled and shared logs are never upload ready");
+ current.WriteIncident(incident,"confirmed");
+ Check(current.CollectConfirmed()==1&&current.CollectConfirmed()==0,"confirmed new session event is consumed once");
+ current.WriteIncident(incident with { EventId=Guid.NewGuid().ToString("N"),Kind="crash",Evidence="abnormal-process-exit",RelatedEventId=incident.EventId },"confirmed");
+ Check(current.CollectConfirmed()==0,"linked game exit does not count confirmed native event twice");
+ var bad=Path.Combine(current.DirectoryPath,"events",Guid.NewGuid().ToString("N")+".json"); File.WriteAllBytes(bad,new byte[262145]);
+ Check(current.CollectConfirmed()==0,"oversized local record is not collected");
+ var target=Path.Combine(root,"outside.json"); File.WriteAllBytes(target,bytes);
+ try { File.CreateSymbolicLink(Path.Combine(current.DirectoryPath,"events",Guid.NewGuid().ToString("N")+".json"),target); Check(current.CollectConfirmed()==0,"symbolic-link local record is not collected"); }
+ catch(Exception e) when(e is UnauthorizedAccessException or IOException) { Console.WriteLine("SKIP: file symbolic link requires Windows privilege"); }
+ if(OperatingSystem.IsWindows()) {
+  var junction=Path.Combine(root,"linked-user");var link=new ProcessStartInfo("cmd.exe"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};link.ArgumentList.Add("/c");link.ArgumentList.Add("mklink");link.ArgumentList.Add("/J");link.ArgumentList.Add(junction);link.ArgumentList.Add(home);
+  using var command=Process.Start(link)!;await command.WaitForExitAsync();Check(command.ExitCode==0,"junction fixture is created without symbolic-link privileges");
+  if(command.ExitCode==0){try {new DiagnosticSettings(junction).Read();Check(false,"linked user directory must be refused");}catch(IOException){Check(true,"reparse ancestor cannot enter user queue");}finally{Directory.Delete(junction);}}
+ }
+ var changed=DiagnosticSession.Start(client,"http://127.0.0.1:32192",Guid.NewGuid().ToString("N"),home);
+ Check(!new DiagnosticQueue(current).IsEligible&&new DiagnosticQueue(changed).ReadPending().Count==0,"switching site revokes old queue and cannot redirect it");
+ var back=DiagnosticSession.Start(client,"http://127.0.0.1:32191",Guid.NewGuid().ToString("N"),home);
+ Check(new DiagnosticQueue(back).ReadPending().Count==0,"switching back does not resurrect prior site epoch");
+ Check(DiagnosticSession.Open(back.DirectoryPath,back.Registration.Capability,home).SessionId==back.SessionId,"helper opens current-user capability registration");
+ try {DiagnosticSession.Open(back.DirectoryPath,Guid.NewGuid().ToString("N"),home);Check(false,"wrong capability must be refused");}catch(InvalidDataException){Check(true,"wrong capability is refused");}
+ var spoof=new{sessionId=back.SessionId,capability=back.Registration.Capability,state="confirmed",incident=incident with{EventId=Guid.NewGuid().ToString("N")},producerPid=123,producerCreatedUtcTicks=1};
+ File.WriteAllText(Path.Combine(back.DirectoryPath,"events","spoof.json"),JsonSerializer.Serialize(spoof));Check(back.CollectConfirmed()==0,"foreign process identity cannot contribute automatic events");
+ await HelperLifetime(home,client);
+ var release=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+ using(var blocked=new Endpoint(async(ctx,n)=>await release.Task)) {
+  var closing=DiagnosticSession.Start(client,blocked.Url,Guid.NewGuid().ToString("N"),home);new DiagnosticQueue(closing).Enqueue(DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},closing.SessionId,"test-1"));closing.Complete();
+  using var stop=new CancellationTokenSource();var drain=DiagnosticHelper.RunAsync(closing,stop.Token,TimeSpan.FromMilliseconds(200));
+  var completed=await Task.WhenAny(drain,Task.Delay(2000));Check(completed==drain,"own-session stop bounds final drain even with a stalled receiver");stop.Cancel();await drain;release.TrySetResult();
+ }
+ var boundedHome=Path.Combine(root,"bounded-user");var bounded=DiagnosticSession.Start(client,"http://127.0.0.1:32194",Guid.NewGuid().ToString("N"),boundedHome);var boundedQueue=new DiagnosticQueue(bounded);
+ for(var i=0;i<100;i++)boundedQueue.Enqueue(DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},bounded.SessionId,"test-1"));
+ var nextSite=DiagnosticSession.Start(client,"http://127.0.0.1:32195",Guid.NewGuid().ToString("N"),boundedHome);
+ Check(!new DiagnosticQueue(nextSite).Enqueue(DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},nextSite.SessionId,"test-1")),"100 report cap applies globally across site and epoch changes");
+ Check(File.ReadAllText(Path.Combine(boundedHome,"drops.json"))=="1","global queue admission records bounded dropped count");
+ await TransportTests(home,client,incident);
+ await ServerCompatibility(home,client,incident);
+}
+
+async Task HelperLifetime(string home,string client)
+{
+ Process Child(params string[] arguments){var info=new ProcessStartInfo("dotnet"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};info.ArgumentList.Add(typeof(Endpoint).Assembly.Location);foreach(var value in arguments)info.ArgumentList.Add(value);return Process.Start(info)!;}
+ using var game=Child("--game-fixture");
+ var session=DiagnosticSession.Start(client,"http://127.0.0.1:32193",Guid.NewGuid().ToString("N"),home);
+ var early=new{sessionId=session.SessionId,capability=session.Registration.Capability,state="confirmed",incident=new DiagnosticIncident{Kind="crash",Architecture="x86",Evidence="confirmed-unhandled-exception"},producerPid=game.Id,producerCreatedUtcTicks=game.StartTime.ToUniversalTime().Ticks};
+ File.WriteAllText(Path.Combine(session.DirectoryPath,"events","early-native.json"),JsonSerializer.Serialize(early,new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+ Check(session.CollectConfirmed()==0,"early native event is held until game identity is registered");
+ session.BindProcess(game);Check(session.CollectConfirmed()==1,"held native event becomes eligible after matching PID and creation time are bound");
+ using var helper=Child("--helper-fixture",session.DirectoryPath,session.Registration.Capability,home);
+ try {await Task.Delay(800);Check(!helper.HasExited,"helper remains alive while registered owners run");if(!helper.HasExited)helper.Kill();await helper.WaitForExitAsync();Check(!game.HasExited,"helper exit does not terminate the registered game");}
+ finally {if(!helper.HasExited)helper.Kill();if(!game.HasExited)game.Kill();await game.WaitForExitAsync();}
+}
+
+async Task TransportTests(string home,string client,DiagnosticIncident incident)
+{
+ foreach(var (code,expected,calls) in new[]{(201,"uploaded",1),(429,"retry",1),(503,"exhausted",3),(404,"unsupported",1),(410,"deleted",1),(302,"redirect-rejected",1),(409,"conflict",1)}) {
+  using var endpoint=new Endpoint(async (ctx,n)=> { ctx.Response.StatusCode=code; if(code==429)ctx.Response.Headers["Retry-After"]="60"; if(code==302)ctx.Response.RedirectLocation="http://127.0.0.1:1/leak"; if(code==201)await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {receiptId="11111111111111111111111111111111",eventId=ctx.EventId,status="stored"}))); });
+  var s=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home); var q=new DiagnosticQueue(s); q.Enqueue(DiagnosticProjection.Create(incident with { EventId=Guid.NewGuid().ToString("N") },s.SessionId,"test-1"));
+  var result=await q.UploadPendingAsync(new DiagnosticUploadOptions { RetryDelay=TimeSpan.Zero });
+  Check(result.Status==expected&&endpoint.Bodies.Count==calls,$"HTTP {code} yields {expected} with {calls} bounded attempts");
+  Check(endpoint.Bodies.All(b=>b.SequenceEqual(endpoint.Bodies[0])),"HTTP retry reuses frozen body bytes");
+  if(code==429) {q.Enqueue(DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));await q.UploadPendingAsync();Check(endpoint.Bodies.Count==1,"Retry-After pauses other reports for the same site too");}
+ }
+ using(var endpoint=new Endpoint(async (ctx,n)=> { await Task.Delay(150);ctx.Response.StatusCode=503; })) {
+  var s=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(incident with {EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));
+  var one=q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero}); await Task.Delay(40);
+  var two=await new DiagnosticQueue(s).UploadPendingAsync(); Check(two.Status=="busy","cross-instance filesystem lease enforces single upload");
+  new DiagnosticSettings(home).SetEnabled(false); await one; Check(endpoint.Bodies.Count==1,"opt-out cancels in-flight upload and prevents retries");new DiagnosticSettings(home).SetEnabled(true);
+ }
+ using(var endpoint=new Endpoint((ctx,n)=> {ctx.Response.Abort();return Task.CompletedTask;})) {
+  var s=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(incident with {EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));
+  var result=await q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero}); Check(result.Status=="exhausted"&&endpoint.Bodies.Count==3,"lost response retries exactly three attempts");
+ }
+ // A plain HTTP listener contacted using TLS cannot present a valid certificate; no HTTP fallback is allowed.
+ using(var endpoint=new Endpoint((ctx,n)=>Task.CompletedTask)) {
+  var s=DiagnosticSession.Start(client,endpoint.Url.Replace("http:","https:"),Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(incident with {EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));
+  var result=await q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero,RequestTimeout=TimeSpan.FromMilliseconds(250)});Check(result.Status=="exhausted"&&endpoint.Bodies.Count==0,"TLS failure cannot downgrade to HTTP");
+ }
+ using(var tls=new InvalidCertificateEndpoint()) {
+  var s=DiagnosticSession.Start(client,tls.Url,Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(incident with {EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));
+  var result=await q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero,RequestTimeout=TimeSpan.FromSeconds(2)});
+  Check(result.Status=="exhausted"&&tls.Attempts==3&&tls.HttpBytes==0,"untrusted self-signed certificate is rejected before any report HTTP bytes");
+ }
+ using(var endpoint=new Endpoint(async(ctx,n)=> {ctx.Response.StatusCode=n<=3?503:201;if(n>3)await ctx.Response.OutputStream.WriteAsync(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new{receiptId="11111111111111111111111111111111",eventId=ctx.EventId,status="stored"})));})) {
+  var s=DiagnosticSession.Start(client,endpoint.Url,Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);q.Enqueue(DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1"));
+  await q.UploadPendingAsync(new DiagnosticUploadOptions{RetryDelay=TimeSpan.Zero,ExhaustedRetryDelay=TimeSpan.Zero});await q.UploadPendingAsync();Check(endpoint.Bodies.Count==3,"same launcher cannot reset exhausted budget on the next poll");
+  var info=new ProcessStartInfo("dotnet"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true};foreach(var arg in new[]{typeof(Endpoint).Assembly.Location,"--queue-retry-run",home,client,endpoint.Url})info.ArgumentList.Add(arg);using var child=Process.Start(info)!;var log=child.StandardOutput.ReadToEndAsync();var errors=child.StandardError.ReadToEndAsync();await child.WaitForExitAsync();
+  Check(child.ExitCode==0&&endpoint.Bodies.Count==4,"new genuine launcher run retries prior failure and succeeds: "+await log+await errors);Check(endpoint.Bodies.All(b=>b.SequenceEqual(endpoint.Bodies[0])),"cross-launcher recovery preserves frozen ID and bytes");
+ }
+}
+
+async Task ServerCompatibility(string home,string client,DiagnosticIncident incident)
+{
+ var serverRoot=Path.Combine(root,"server"); Directory.CreateDirectory(Path.Combine(serverRoot,"creature")); File.WriteAllText(Path.Combine(serverRoot,"creature","exptable.tbl"),"10\n100\n");
+ var port=Endpoint.FreePort();var config=Path.Combine(serverRoot,"server.json");
+ File.WriteAllText(config,JsonSerializer.Serialize(new{DFLegacy=new{DataPath=Path.Combine(serverRoot,"state.json"),SeedTestAccount=false,ScriptPvfPath="",SkillScriptPath=serverRoot,Admin=new{Host="127.0.0.1",Port=port},Entrance=new{Enabled=false},CharacterDatagram=new{Enabled=false},GameplayDatagram=new{Enabled=false},FallbackRelay=new{Enabled=false},GameProbe=new{Enabled=false},WebPanels=new{Gm=new{Enabled=false},Player=new{Enabled=false}}}}));
+ var start=new ProcessStartInfo("dotnet"){UseShellExecute=false,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true,WorkingDirectory=Path.GetDirectoryName(typeof(JsonGameStore).Assembly.Location)!};
+ start.ArgumentList.Add(typeof(JsonGameStore).Assembly.Location);start.ArgumentList.Add("--config");start.ArgumentList.Add(config);
+ using var host=Process.Start(start)!;var output=host.StandardOutput.ReadToEndAsync();var error=host.StandardError.ReadToEndAsync();
+ try {
+  using var http=new HttpClient{Timeout=TimeSpan.FromMilliseconds(400)};var ready=false;
+  for(var i=0;i<100&&!host.HasExited;i++){try{using var health=await http.GetAsync($"http://127.0.0.1:{port}/health");if(health.IsSuccessStatusCode){ready=true;break;}}catch(HttpRequestException){}catch(TaskCanceledException){}await Task.Delay(100);}
+  if(!ready)throw new Exception("real server startup failed "+(host.HasExited?await error:"timeout"));
+  var s=DiagnosticSession.Start(client,$"http://127.0.0.1:{port}",Guid.NewGuid().ToString("N"),home);var q=new DiagnosticQueue(s);var r=DiagnosticProjection.Create(incident with{EventId=Guid.NewGuid().ToString("N")},s.SessionId,"test-1");q.Enqueue(r);var frozen=q.ReadPending().Single().Body;
+  var result=await q.UploadPendingAsync();Check(result.Status=="uploaded"&&result.ReceiptId?.Length==32,"real Task1 account listener accepts client frozen JSON and returns receipt");
+  using var content=new ByteArrayContent(frozen);content.Headers.ContentType=new("application/json");using var duplicate=await http.PostAsync($"http://127.0.0.1:{port}/api/client-diagnostics/reports",content);
+  var receipt=JsonDocument.Parse(await duplicate.Content.ReadAsStringAsync()).RootElement;Check(duplicate.StatusCode==HttpStatusCode.OK&&receipt.GetProperty("receiptId").GetString()==result.ReceiptId,"real Task1 duplicate POST preserves original receipt and exact bytes");
+ } finally {if(!host.HasExited)host.Kill(true);await host.WaitForExitAsync();await output;await error;}
+}
+
+sealed class Endpoint : IDisposable
+{
+ readonly HttpListener listener=new();readonly Task loop;public string Url {get;}public List<byte[]> Bodies {get;}=[];
+ public Endpoint(Func<Context,int,Task> action){Url=$"http://127.0.0.1:{FreePort()}";listener.Prefixes.Add(Url+"/");listener.Start();loop=Task.Run(async()=>{while(listener.IsListening){HttpListenerContext c;try{c=await listener.GetContextAsync();}catch(HttpListenerException){break;}catch(ObjectDisposedException){break;}using var memory=new MemoryStream();await c.Request.InputStream.CopyToAsync(memory);var bytes=memory.ToArray();Bodies.Add(bytes);try{await action(new Context(c,bytes),Bodies.Count);c.Response.Close();}catch(HttpListenerException){}catch(ObjectDisposedException){}}});}
+ public static int FreePort(){var l=new TcpListener(IPAddress.Loopback,0);l.Start();var p=((IPEndPoint)l.LocalEndpoint).Port;l.Stop();return p;}
+ public void Dispose(){listener.Close();loop.GetAwaiter().GetResult();}
+ public sealed class Context(HttpListenerContext value,byte[] body){public HttpListenerResponse Response=>value.Response;public string EventId=>JsonDocument.Parse(body).RootElement.GetProperty("eventId").GetString()!;}
+}
+
+sealed class InvalidCertificateEndpoint:IDisposable
+{
+ readonly TcpListener listener=new(IPAddress.Loopback,0);readonly CancellationTokenSource stopped=new();readonly X509Certificate2 certificate;readonly Task loop;
+ public string Url {get;}public int Attempts;public int HttpBytes;
+ public InvalidCertificateEndpoint(){using var rsa=RSA.Create(2048);var request=new CertificateRequest("CN=localhost",rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);certificate=request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1),DateTimeOffset.UtcNow.AddMinutes(10));listener.Start();Url=$"https://127.0.0.1:{((IPEndPoint)listener.LocalEndpoint).Port}";loop=Task.Run(async()=>{while(!stopped.IsCancellationRequested){try{using var socket=await listener.AcceptTcpClientAsync(stopped.Token);Interlocked.Increment(ref Attempts);using var tls=new SslStream(socket.GetStream());try{await tls.AuthenticateAsServerAsync(new SslServerAuthenticationOptions{ServerCertificate=certificate},stopped.Token);var buffer=new byte[1024];HttpBytes+=await tls.ReadAsync(buffer,stopped.Token);}catch(AuthenticationException){}catch(IOException){}}catch(OperationCanceledException){break;}}});}
+ public void Dispose(){stopped.Cancel();listener.Stop();loop.GetAwaiter().GetResult();certificate.Dispose();stopped.Dispose();}
+}

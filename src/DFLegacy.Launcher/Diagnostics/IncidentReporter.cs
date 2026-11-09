@@ -7,9 +7,10 @@ namespace DFLegacy.Launcher.Diagnostics;
 
 internal enum IncidentKind { Error, NetworkError, Crash, Update }
 
-// Local, best-effort diagnostics: never upload, throw into gameplay, or consume credentials.
+// Rich records remain local; the optional sink receives a separate structured projection only.
 internal sealed class IncidentReporter
 {
+    internal Action<DFLegacy.Diagnostics.DiagnosticIncident>? AutomaticReport { get; set; }
     private readonly object gate = new();
     private readonly Queue<string> context = new();
     private readonly HashSet<string> secrets = new(StringComparer.Ordinal);
@@ -48,7 +49,7 @@ internal sealed class IncidentReporter
     {
         lock(gate) { context.Enqueue($"{DateTimeOffset.Now:O} {Limit(Redact(message),1024)}"); while(context.Count>64) context.Dequeue(); }
     }
-    internal string? Report(IncidentKind kind,string stage,Exception? error=null,string? details=null,string? updateId=null,string? repetitionKey=null)
+    internal string? Report(IncidentKind kind,string stage,Exception? error=null,string? details=null,string? updateId=null,string? repetitionKey=null,DFLegacy.Diagnostics.DiagnosticIncident? structured=null)
     {
         if(error is OperationCanceledException) return null;
         lock(gate)
@@ -65,6 +66,17 @@ internal sealed class IncidentReporter
                 var eventId=grouped ? previous.EventId : Guid.NewGuid().ToString("N");
                 var count=grouped ? previous.Count+1 : 1;
                 var first=grouped ? previous.First : now;
+                if(kind!=IncidentKind.Update)
+                {
+                    var evidence=structured??new DFLegacy.Diagnostics.DiagnosticIncident {
+                        Kind=kind==IncidentKind.NetworkError?"networkerror":kind==IncidentKind.Crash&&stage!="game-exit"?"crash":"error",
+                        Stage=stage,Evidence=stage=="game-exit"?"abnormal-process-exit":kind==IncidentKind.Crash?"managed-unhandled-exception":"managed-error",
+                        ExceptionCode=error is null?"unknown":$"0x{error.HResult:X8}"
+                    };
+                    // Freeze the first event identity even when the rich local file later aggregates occurrences.
+                    try { AutomaticReport?.Invoke(evidence with {EventId=eventId}); }
+                    catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { }
+                }
                 ClientLogPaths.EnsureDirectory(directory);
                 var path=grouped ? previous.Path! : Path.Combine(directory,$"{kind.ToString().ToLowerInvariant()}-{now:yyyyMMdd-HHmmss-fff}-{Environment.ProcessId}-{eventId}.log");
                 if(ClientLogPaths.HasLink(path)) return null;
@@ -106,7 +118,8 @@ internal sealed class IncidentReporter
         return Report(IncidentKind.Crash,"game-exit",details:$"evidence=abnormal-process-exit\ngamePid={processId}\nexitCode=0x{exitCode:X8}\nnativeCause={(native is null ? "unknown" : "see-linked-native-record")}\nnativeReport={native ?? "missing"}\nnativeScene={(native is null ? "missing; a nonzero exit does not establish an unhandled exception" : "available")}");
     }
     internal string? ReportNetwork(DFLegacy.Relay.RelayTermination value) => !value.IsIncident ? null : Report(IncidentKind.NetworkError,"relay-"+value.Phase,
-        details:$"evidence=relay-termination\nreason={value.Reason}\nprotocol={value.Protocol}\ndirection={value.Direction}\nport={value.Port}\nconnectionId={value.ConnectionId}\nelapsedMs={value.ElapsedMilliseconds:F0}\nclientToServerBytes={value.ClientToServerBytes}\nserverToClientBytes={value.ServerToClientBytes}\nsocketError={value.SocketError}\nsocketCode={(int?)value.SocketError}\nnativeError={value.NativeError}\nattempts={value.Attempts}",repetitionKey:$"{value.Reason}|{value.Protocol}|{value.Phase}|{value.Port}|{value.Direction}|{value.SocketError}");
+        details:$"evidence=relay-termination\nreason={value.Reason}\nprotocol={value.Protocol}\ndirection={value.Direction}\nport={value.Port}\nconnectionId={value.ConnectionId}\nelapsedMs={value.ElapsedMilliseconds:F0}\nclientToServerBytes={value.ClientToServerBytes}\nserverToClientBytes={value.ServerToClientBytes}\nsocketError={value.SocketError}\nsocketCode={(int?)value.SocketError}\nnativeError={value.NativeError}\nattempts={value.Attempts}",repetitionKey:$"{value.Reason}|{value.Protocol}|{value.Phase}|{value.Port}|{value.Direction}|{value.SocketError}",
+        structured:new DFLegacy.Diagnostics.DiagnosticIncident {Kind="networkerror",Stage="relay-"+value.Phase,Evidence="relay-termination",Protocol=value.Protocol.ToLowerInvariant(),Port=value.Port,SocketCode=(int?)value.SocketError});
     internal UpdateIncidentScope BeginUpdate(string stage) => new(this,stage);
     private static string Limit(string value,int max) { if(Encoding.UTF8.GetByteCount(value)<=max) return value; var chars=Math.Min(value.Length,max/3); return value[..chars]+"\n[truncated by diagnostic budget]"; }
 }

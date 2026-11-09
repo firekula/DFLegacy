@@ -39,6 +39,7 @@ internal static class ClientBootstrapLauncher
             start.WorkingDirectory=Path.GetDirectoryName(clientPath)!;
             if(paymentUrl is not null) start.Environment["DFLEGACY_LOCAL_PAYMENT_URL"]=paymentUrl;
             start.Environment["DFLEGACY_DIAGNOSTIC_SESSION"]=Program.Incidents.SessionId;
+            Diagnostics.AutomaticDiagnostics.Session?.ApplyEnvironment(start);
             start.Environment["DFLEGACY_DIAGNOSTIC_VERSION"]=manifest.Version+"+"+manifest.Commit;
             start.Environment["DFLEGACY_DIAGNOSTIC_PVF"]=Program.Incidents.CapturePvfIdentity(Path.Combine(manifest.DirectoryPath,"Script.pvf"));
             if(fixtureStart is null)

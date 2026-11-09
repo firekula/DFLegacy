@@ -13,6 +13,7 @@ internal static class Program
     private static IncidentReporter? incidentReporter;
     private static string? incidentDirectory;
     internal static bool DetailedCaptureEnabled { get; set; }
+    internal static DFLegacy.Diagnostics.DiagnosticSettings UserDiagnosticSettings { get; set; } = new();
     internal static string? LogClientPath { get; set; }
     internal static IncidentReporter Incidents
     {
@@ -35,6 +36,7 @@ internal static class Program
     {
         Incidents.RegisterSecret(options.Account); Incidents.RegisterSecret(options.Password);
         foreach(var account in options.Accounts) { Incidents.RegisterSecret(account.Account); Incidents.RegisterSecret(account.Password); }
+        AutomaticDiagnostics.Configure(options);
     }
     internal static string? LogWarning { get; set; }
     internal const string DefaultClientPath = @"D:\DFLegacy\DF2008\DNF.exe";

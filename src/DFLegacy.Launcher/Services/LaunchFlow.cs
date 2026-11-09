@@ -13,6 +13,8 @@ internal static class LaunchFlow
         Action<string>? reportWarning = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        // Establish a current-user session before validation can fail. Diagnostic failure never blocks launch.
+        Program.RegisterDiagnosticSecrets(options);
         Program.ValidateOptions(options);
         Program.ValidateLauncherField(account.Account, "Account");
         Program.ValidateLauncherField(account.Password, "Password");
@@ -71,6 +73,8 @@ internal static class LaunchFlow
                 () => StartWithInstallationLeaseAsync(()=>ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),installationLease),
                 async (client, token) =>
                 {
+                    try { Diagnostics.AutomaticDiagnostics.Session?.BindProcess(client); }
+                    catch(Exception error) when(error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
                     Program.TryRaisePriority(client);
                     using var capture=Diagnostics.DetailedCrashCapture.TryStart(client.Id);
                     Program.WriteLauncherLog(

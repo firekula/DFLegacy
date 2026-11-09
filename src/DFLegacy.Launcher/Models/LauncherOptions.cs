@@ -44,6 +44,7 @@ internal sealed class LauncherOptions
     public double D3D9TimeoutSeconds { get; set; } = 30;
     public double D3D9RetryIntervalSeconds { get; set; } = 1;
     public LauncherRelayOptions Relay { get; set; } = new();
+    public DFLegacy.Diagnostics.DiagnosticOptions Diagnostics { get; set; } = new();
 
     public LauncherAccountProfile GetSelectedAccount() =>
         Accounts.Count == 0

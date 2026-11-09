@@ -9,6 +9,9 @@
   </Project>
   <Project Path="src/DFLegacy.RandomNative/DFLegacy.RandomNative.vcxproj" Id="414afaaa-2b3d-4d08-959c-10c4208e65b0" />
   <Project Path="src/DFLegacy.Launcher/DFLegacy.Launcher.csproj" />
+  <Project Path="src/DFLegacy.Diagnostics.Core/DFLegacy.Diagnostics.Core.csproj" />
+  <Project Path="src/DFLegacy.Diagnostics/DFLegacy.Diagnostics.csproj" />
+  <Project Path="tests/DFLegacy.Diagnostics.Tests/DFLegacy.Diagnostics.Tests.csproj" />
   <Project Path="src/DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
   <Project Path="src/DFLegacy.InterProcess/DFLegacy.InterProcess.csproj" />
   <Project Path="src/DFLegacy.Relay/DFLegacy.Relay.csproj" />

@@ -141,6 +141,10 @@ internal static class ClassicUiTests
                         while (parent is not null && parent is not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
                         check(parent is ScrollViewer { ScrollableHeight: > 0 }, "detailed save failures remain inside a scrollable viewport");
                         var tabs = (TabControl)settings.FindName("SettingsTabs");
+                        tabs.SelectedIndex=1;settings.UpdateLayout();
+                        var diagnosticSave=(SkinButton)settings.FindName("DiagnosticSaveButton");
+                        check(diagnosticSave.TranslatePoint(new Point(0,diagnosticSave.ActualHeight),settings).Y<=settings.ActualHeight,"diagnostic save remains visible at minimum settings height");
+                        tabs.SelectedIndex=2;settings.UpdateLayout();
                         foreach (TabItem tab in tabs.Items)
                         {
                             var hit = settings.InputHitTest(tab.TranslatePoint(new Point(4, 14), settings)) as DependencyObject;

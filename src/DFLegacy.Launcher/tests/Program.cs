@@ -4,6 +4,10 @@ using System.Text;
 using System.Diagnostics;
 using System.Buffers.Binary;
 
+// Child dispatch also precedes normal suite setup; isolate diagnostics before either path can load config.
+DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(
+    Path.Combine(Path.GetTempPath(),"dflegacy-launcher-child-diagnostics-"+Guid.NewGuid().ToString("N")));
+
 if(args.Length==2 && args[0]=="--v4-lock-fixture")
 {
     using var held=new FileStream(args[1],FileMode.Open,FileAccess.Read,FileShare.Read);
@@ -35,6 +39,8 @@ void Check(bool condition, string message)
 
 var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
+// All launcher-created diagnostic registration/preferences stay inside this test-owned directory.
+DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }

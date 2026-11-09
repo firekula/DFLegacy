@@ -59,5 +59,31 @@ internal static class IncidentTests
         DetailedCrashCapture.PrepareDirectory(captureRoot,42);DetailedCrashCapture.PrepareDirectory(captureRoot,43);
         try { DetailedCrashCapture.PrepareDirectory(captureRoot,44);check(false,"third detailed session must require clearing earlier local captures"); }
         catch(IOException) { check(Directory.GetDirectories(captureRoot).Length==2,"detailed capture session budget is bounded without deleting evidence"); }
+        var automatic=new List<DFLegacy.Diagnostics.DiagnosticIncident>();
+        var safe=new IncidentReporter(Path.Combine(root,"auto-incidents"),"test-1","x86") { AutomaticReport=automatic.Add };
+        safe.Report(IncidentKind.Error,"startup",new IOException("password=DO_NOT_UPLOAD C:\\Users\\private"),details:"token=DO_NOT_UPLOAD");
+        check(automatic.Count==1&&automatic[0].Stage=="startup"&&automatic[0].ExceptionCode.StartsWith("0x"),"managed error emits structured automatic evidence");
+        check(!System.Text.Json.JsonSerializer.Serialize(automatic).Contains("DO_NOT_UPLOAD"),"automatic evidence does not transport raw details or exception text");
+        var autoCount=automatic.Count;
+        safe.Report(IncidentKind.Error,"cancel",new OperationCanceledException());safe.Report(IncidentKind.Update,"success",details:"result=success");
+        check(automatic.Count==autoCount,"normal cancellation and successful updates do not emit automatic reports");
+        safe.ReportNetwork(eof with {Reason=DFLegacy.Relay.RelayTerminationReason.SocketError,SocketError=System.Net.Sockets.SocketError.ConnectionReset});
+        check(automatic.Count==autoCount+1&&automatic[^1].Protocol=="tcp"&&automatic[^1].Port==7001&&automatic[^1].SocketCode==10054,"relay emits only typed protocol port and socket evidence");
+        check(new LauncherOptions().Diagnostics.Enabled,"launcher default enables automatic reporting without consent prompt");
+        var userSettings=new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"pregame-diagnostic-user"));
+        AutomaticDiagnostics.Configure(new LauncherOptions {ClientPath=Path.Combine(root,"pregame-client","DNF.exe"),AccountServiceUrl="http://127.0.0.1:32196"},userSettings);
+        Program.ReportError("update-check-download",new IOException("password=DO_NOT_UPLOAD"));
+        var pregame=AutomaticDiagnostics.Session;
+        check(pregame is not null&&pregame.Registration.GamePid==0&&pregame.CollectConfirmed()==1,"configured launcher update error is handed off before a game process exists");
+        if(pregame is not null) {
+            var queued=new DFLegacy.Diagnostics.DiagnosticQueue(pregame).ReadPending().Single();
+            check(!System.Text.Encoding.UTF8.GetString(queued.Body).Contains("DO_NOT_UPLOAD"),"pre-game error handoff excludes raw credentials");
+            var helper=AutomaticDiagnostics.CreateHelperStartInfo("C:/helper/DFLegacy.Diagnostics.exe",pregame);
+            check(helper.ArgumentList.Count==4&&helper.ArgumentList.Contains(pregame.Registration.Capability)&&!helper.UseShellExecute,"automatic helper uses structured session capability arguments without game credentials");
+            AutomaticDiagnostics.Configure(new LauncherOptions {ClientPath=Path.Combine(root,"pregame-client","DNF.exe"),AccountServiceUrl="invalid-site"},userSettings);
+            Program.ReportError("invalid-site-validation",new IOException("local only"));
+            check(pregame.CollectConfirmed()==0,"invalid new site cannot send its error through the previous site's session");
+        }
+        userSettings.SetEnabled(false);
     }
 }
