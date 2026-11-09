@@ -57,6 +57,7 @@ internal sealed class PackagerForm : Form
         Row("生成测试版安装包", test);
         Row("配置方案", Buttons(("导入后台配置", Import), ("打开方案", LoadProfile), ("保存方案", SaveProfile)));
         Row("安装包与更新", Buttons(("仅生成", () => Generate(false)), ("生成并发布到 GitHub", () => Generate(true)), ("打开输出目录", OpenOutput)));
+        Row("V4 更新资源", Buttons(("资源选择、差异与迁移…", () => { using var form = new V4ResourcesForm(output.Text); form.ShowDialog(this); })));
         Row("进度", progress);
         status.Height = 110;
         Row("结果", status);
@@ -224,4 +225,134 @@ internal sealed class PackagerForm : Form
     }
 
     private sealed record Profile(DeploymentConfig Config, string ResourceRoot, string OutputDirectory, bool TestBuild);
+}
+
+internal sealed class V4ResourcesForm : Form
+{
+    private readonly TableLayoutPanel fields = new() { ColumnCount = 2, Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(10) };
+    private readonly TextBox source = new(), output = new(), version = new(), commit = new(), repository = new() { Text = "firekula/DFLegacy" },
+        channel = new() { Text = "gitea-test" }, previous = Multi(42), reuse = Multi(42), includes = Multi(65), excludes = Multi(42),
+        migrations = Multi(75), retired = Multi(65), targetCommit = new();
+    private readonly ComboBox provider = Choice("Gitea 测试源", "Gitee 测试源", "GitHub 正式源"), architecture = Choice("x86", "x64"), flavor = Choice("test", "normal");
+    private readonly NumericUpDown sequence = new() { Minimum = 1, Maximum = 999999999, Value = 1 },
+        minimum = new() { Minimum = 0, Maximum = 999999999, Value = 0 };
+    private readonly TextBox preview = new() { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Both, WordWrap = false, Height = 260 };
+    private readonly Label status = new() { AutoSize = true, MaximumSize = new Size(780, 0) };
+    private string? previewRequest, builtDirectory;
+    private bool busy;
+
+    internal V4ResourcesForm(string destination)
+    {
+        Text = "V4 更新资源：预览、生成、发布与验证";
+        ClientSize = new Size(900, 860); MinimumSize = new Size(700, 500);
+        StartPosition = FormStartPosition.CenterParent; Font = new Font("Microsoft YaHei UI", 9); AutoScaleMode = AutoScaleMode.Dpi;
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true }; scroll.Controls.Add(fields); Controls.Add(scroll);
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180)); fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        output.Text = destination;
+        Row("客户端文件目录", Browse(source, true)); Row("新构建输出父目录", Browse(output, true));
+        Row("提供方", provider); Row("公开仓库 owner/repo", repository); Row("渠道", channel);
+        Row("不可变版本 / Tag", version); Row("源构建 Commit (40 位)", commit);
+        Row("架构", architecture); Row("类型", flavor); Row("发布顺序", sequence); Row("最小支持顺序", minimum);
+        Row("旧清单（每行一个）", Browse(previous, false)); Row("复用清单（每行一个）", Browse(reuse, false));
+        includes.Text = "DFLegacy.Launcher.exe\r\nDFLegacy.Client.dll\r\nDFLegacy.Diagnostics.exe\r\nDFLegacy.CrashCapture.exe\r\nScript.pvf\r\nImagePacks2/**";
+        excludes.Text = "*.pdb\r\n*.tmp"; migrations.Text = "[]"; retired.Text = "[]";
+        Row("包含规则（每行一个）", includes); Row("排除规则（优先）", excludes);
+        Row("配置迁移 JSON 数组", migrations); Row("退役 JSON 数组", retired);
+        Row("公开仓库 Commit (40 位)", targetCommit);
+        var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = true };
+        AddAction(actions, "扫描与预览", () => Execute("preview")); AddAction(actions, "生成 V4 资源", () => Execute("build"));
+        AddAction(actions, "验证本地产物", () => Execute("verify")); AddAction(actions, "发布已生成产物…", () => Execute("publish"));
+        Row("操作", actions); Row("文件差异 / 迁移预览", preview); Row("结果", status);
+        status.Text = "默认仅选择列出的资源。账号、配置、日志、存档和私有目录始终排除。V3 桥接包仍由原发行工具生成。";
+        provider.SelectedIndexChanged += (_, _) => channel.Text = provider.SelectedIndex switch { 0 => "gitea-test", 1 => "gitee-test", _ => "stable" };
+        FormClosing += (_, e) => { if (busy) e.Cancel = true; };
+    }
+
+    private static TextBox Multi(int height) => new() { Multiline = true, ScrollBars = ScrollBars.Vertical, Height = height };
+    private static ComboBox Choice(params string[] values)
+    {
+        var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList }; box.Items.AddRange(values); box.SelectedIndex = 0; return box;
+    }
+    private void Row(string label, Control control)
+    {
+        var row = fields.RowCount++; fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        fields.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
+        control.Anchor = AnchorStyles.Left | AnchorStyles.Right; fields.Controls.Add(control, 1, row);
+    }
+    private static Control Browse(TextBox box, bool directory)
+    {
+        var panel = new TableLayoutPanel { ColumnCount = 2, AutoSize = true }; panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        box.Dock = DockStyle.Fill; panel.Controls.Add(box, 0, 0);
+        var button = new Button { Text = "浏览…", AutoSize = true }; panel.Controls.Add(button, 1, 0);
+        button.Click += (_, _) =>
+        {
+            if (directory) { using var dialog = new FolderBrowserDialog { SelectedPath = box.Text }; if (dialog.ShowDialog() == DialogResult.OK) box.Text = dialog.SelectedPath; }
+            else { using var dialog = new OpenFileDialog { Filter = "V4 清单|*.json", Multiselect = true }; if (dialog.ShowDialog() == DialogResult.OK) box.Text = string.Join(Environment.NewLine, dialog.FileNames); }
+        };
+        return panel;
+    }
+    private static void AddAction(FlowLayoutPanel panel, string text, Action action)
+    {
+        var button = new Button { Text = text, AutoSize = true }; button.Click += (_, _) => action(); panel.Controls.Add(button);
+    }
+    private static string[] Lines(TextBox box) => box.Lines.Select(x => x.Trim()).Where(x => x.Length > 0).ToArray();
+    private string Request()
+    {
+        using var migrationJson = JsonDocument.Parse(migrations.Text); using var retiredJson = JsonDocument.Parse(retired.Text);
+        if (migrationJson.RootElement.ValueKind != JsonValueKind.Array || retiredJson.RootElement.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("迁移与退役必须为 JSON 数组。");
+        return JsonSerializer.Serialize(new { root = source.Text.Trim(), version = version.Text.Trim(), commit = commit.Text.Trim(),
+            architecture = architecture.Text, flavor = flavor.Text, channel = channel.Text.Trim(), sequence = (long)sequence.Value,
+            minimum_sequence = (long)minimum.Value, includes = Lines(includes), excludes = Lines(excludes), previous = Lines(previous), reuse = Lines(reuse),
+            migrations = migrationJson.RootElement, retired = retiredJson.RootElement,
+            provider = provider.SelectedIndex switch { 0 => "gitea", 1 => "gitee", _ => "github" }, repository = repository.Text.Trim() });
+    }
+    private void ShowPreview(string json)
+    {
+        using var doc = JsonDocument.Parse(json); var root = doc.RootElement;
+        if (!root.TryGetProperty("diff", out var differences)) { preview.Text = json; return; }
+        var lines = differences.EnumerateArray().Select(x => $"{x.GetProperty("status").GetString(),-10} {x.GetProperty("size").GetInt64(),12:N0}  {x.GetProperty("path").GetString()}").ToList();
+        lines.Add("\r\n配置迁移："); lines.Add(root.GetProperty("migrations").ToString()); lines.Add("\r\n退役："); lines.Add(root.GetProperty("retired").ToString());
+        lines.Add("\r\n排除："); lines.AddRange(root.GetProperty("excluded").EnumerateArray().Select(x => x.GetProperty("path").GetString() + " (" + x.GetProperty("reason").GetString() + ")"));
+        preview.Text = string.Join(Environment.NewLine, lines);
+        status.Text = $"完整文件 {root.GetProperty("totalBytes").GetInt64():N0} 字节；新增上传 {root.GetProperty("uploadBytes").GetInt64():N0} 字节；复用 {root.GetProperty("reusedBytes").GetInt64():N0} 字节。";
+    }
+    private async void Execute(string command)
+    {
+        if (busy) return;
+        string? requestFile = null;
+        try
+        {
+            var request = command is "preview" or "build" ? Request() : null;
+            if (command == "build" && request != previewRequest) { status.Text = "选择或元数据已变化，请先重新扫描与预览，再确认生成。"; return; }
+            if (command is "verify" or "publish" && builtDirectory == null) throw new InvalidOperationException("请先生成本次 V4 资源。");
+            if (command == "publish")
+            {
+                using var receipt = JsonDocument.Parse(File.ReadAllText(Path.Combine(builtDirectory!, "receipt.json")));
+                var r = receipt.RootElement;
+                var identity = $"{r.GetProperty("provider").GetString()} / {r.GetProperty("repository").GetString()} / {r.GetProperty("manifest").GetProperty("version").GetString()}";
+                if (MessageBox.Show(this, $"将发布已生成并验证的产物：\n{identity}\n\n发布凭据仅从专用环境变量读取；不会推送源代码或 Git 历史。继续？", "发布 V4 资源", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            }
+            busy = true; foreach (Control c in fields.Controls) if (c != status && c != preview) c.Enabled = false;
+            status.Text = "正在执行 " + command + "…";
+            if (request != null)
+            {
+                requestFile = Path.Combine(Path.GetTempPath(), "dflegacy-v4-request-" + Guid.NewGuid().ToString("N") + ".json");
+                await File.WriteAllTextAsync(requestFile, request);
+            }
+            var destination = command == "build" ? Path.Combine(Path.GetFullPath(output.Text), "v4-" + version.Text.Trim() + "-" + architecture.Text + "-" + flavor.Text + "-" + Guid.NewGuid().ToString("N")[..8]) : null;
+            var result = await ClientBuild.RunV4Async(command, requestFile ?? builtDirectory!, destination, targetCommit.Text.Trim());
+            ShowPreview(result);
+            if (command == "preview") previewRequest = request;
+            if (command == "build") { builtDirectory = destination; status.Text += "\r\n产物：" + destination; }
+            if (command == "verify") status.Text = "本地产物完整校验通过：" + builtDirectory;
+            if (command == "publish") status.Text = "发布完成，清单及资源已通过匿名下载校验。";
+        }
+        catch (Exception error) { status.Text = error.Message; }
+        finally
+        {
+            if (requestFile != null) File.Delete(requestFile);
+            foreach (Control c in fields.Controls) c.Enabled = true; busy = false;
+        }
+    }
 }

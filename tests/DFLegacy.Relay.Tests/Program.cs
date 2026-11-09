@@ -59,6 +59,8 @@ static async Task FragmentedDuplexAsync()
     pair.Server.Client.Shutdown(SocketShutdown.Send);
     Require((await receivedResponse).AsSpan().SequenceEqual(response), "reply after request EOF was truncated or changed");
     await fixture.Logs.WaitForAsync(line => Has(line, "event=connection-end"), fixture.Deadline);
+    var eof = fixture.Events.Single();
+    Require(eof.Reason == RelayTerminationReason.Eof && !eof.IsIncident && eof.ClientToServerBytes==131117 && eof.ServerToClientBytes==65573,"typed graceful EOF is not an incident and retains totals");
     var logs = fixture.Logs.Connections;
     Require(logs.Length == 4, $"expected four bounded lifecycle entries, got {logs.Length}");
     var id = Field(logs.Single(line => Has(line, "event=connection-start")), "connection");
@@ -82,6 +84,8 @@ static async Task ServerResetAsync()
     // inside the relay without requiring host shutdown or an arbitrary idle timeout.
     await RequireClosedAsync(pair.Client, fixture.Deadline);
     var end = await fixture.Logs.WaitForAsync(line => Has(line, "event=connection-end"), fixture.Deadline);
+    var resetEvent=fixture.Events.Single();
+    Require(resetEvent.IsIncident && resetEvent.Reason==RelayTerminationReason.SocketError && resetEvent.Direction=="server->client" && resetEvent.SocketError==SocketError.ConnectionReset && resetEvent.ClientToServerBytes==7 && resetEvent.ServerToClientBytes==3,"typed reset retains direction, error, and duplex totals");
     Require(Has(end, "reason=socket-error"), "connection did not retain its socket failure reason");
     var logs = fixture.Logs.Connections;
     var reset = logs.Single(line => Has(line, "direction=server->client"));
@@ -97,6 +101,7 @@ static async Task HostCancellationAsync()
     using var pair = await fixture.ConnectAsync();
     await ExchangeSmallPayloadsAsync(pair, fixture.Deadline);
     await fixture.CancelHostAsync();
+    Require(fixture.Events.Single().Reason==RelayTerminationReason.Cancelled && !fixture.Events.Single().IsIncident,"host cancellation does not produce network incident");
     var lines = fixture.Logs.All;
     Require(lines.Count(line => Has(line, "event=direction-end", "reason=cancelled", "cancellation=host-stop")) == 2,
         "host completed before both cancelled pump summaries were recorded");
@@ -117,6 +122,7 @@ static async Task ConnectionRefusalAsync()
     using var client = new TcpClient(AddressFamily.InterNetwork);
     await client.ConnectAsync(IPAddress.Loopback, fixture.Port, fixture.Deadline);
     var end = await fixture.Logs.WaitForAsync(line => Has(line, "event=connection-end"), fixture.Deadline);
+    Require(fixture.Events.Single().Phase=="connect" && fixture.Events.Single().SocketError==SocketError.ConnectionRefused,"typed connection refusal retains phase and native reason");
     Require(Has(end, "phase=connect", "reason=socket-error", "socketError=ConnectionRefused"), "connect refusal lost its phase or socket code");
     Require(fixture.Logs.Connections.Any(line => Has(line, "event=connection-start", $"target=127.0.0.2:{fixture.Port}")), "target endpoint missing");
     Require(fixture.Logs.Connections.Length == 2, "unconnected sockets should only have start/end diagnostics");
@@ -275,7 +281,7 @@ internal sealed class RelayFixture : IAsyncDisposable
                 Interlocked.Increment(ref _injectedLogFailures);
                 throw new IOException("Simulated diagnostic sink failure.");
             }
-        });
+        }, Events.Enqueue);
         _host.Start();
         _run = _host.RunAsync(_hostCancellation.Token);
     }
@@ -283,6 +289,7 @@ internal sealed class RelayFixture : IAsyncDisposable
     public int Port { get; }
     public int InjectedLogFailures => _injectedLogFailures;
     public LogCapture Logs { get; } = new();
+    public ConcurrentQueue<RelayTermination> Events { get; } = new();
     public CancellationToken Deadline => _deadline.Token;
 
     public async Task<RelayPair> ConnectAsync()

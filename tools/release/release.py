@@ -45,7 +45,9 @@ X86_UPDATE_ASSETS = tuple(name.replace("win-x64", "win-x86") for name in (UPDATE
 V3_UPDATE_ASSETS = tuple(f"DFLegacy-client-update-v3{flavor}-win-{architecture}.zip"
                          for architecture in ("x64", "x86") for flavor in ("", "-test"))
 PUBLIC_ASSETS = (UPDATE_ASSET, UPDATE_TEST_ASSET, TOOLS_ASSET, TOOLS_TEST_ASSET)
-UPDATE_FILES = ("DFLegacy.Launcher.exe", "DFLegacy.Client.dll")
+LEGACY_UPDATE_FILES = ("DFLegacy.Launcher.exe", "DFLegacy.Client.dll")
+DIAGNOSTIC_FILES = ("DFLegacy.Diagnostics.exe", "DFLegacy.CrashCapture.exe")
+UPDATE_FILES = (*LEGACY_UPDATE_FILES, *DIAGNOSTIC_FILES)
 SCRIPT_PVF = "Script.pvf"
 MAX_UPDATE_ZIP = 256 * 1024**2
 MAX_UPDATE_EXPANDED = 512 * 1024**2
@@ -255,15 +257,18 @@ def verify_assets(root, version=None, commit=None):
     data = check_manifest(root, "manifest.json", version, commit)
     paths = [row["path"] for row in data["files"]]
     allowed = {"launcher/DFLegacy.Launcher.exe", "launcher-x86/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/Config.ini", "launcher/launcher.json",
+               "launcher/DFLegacy.Diagnostics.exe", "launcher-x86/DFLegacy.Diagnostics.exe", "patch/DFLegacy.CrashCapture.exe",
                "launcher/Assets/Skin/fwtk.html", "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini"}
     if any(p not in allowed for p in paths):
         raise ReleaseError("client asset outside whitelist")
-    for required in ("patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/launcher.json"):
+    for required in ("patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/launcher.json", "launcher/DFLegacy.Diagnostics.exe", "patch/DFLegacy.CrashCapture.exe"):
         if required not in paths:
             raise ReleaseError("missing client asset: " + required)
     check_app(root / "launcher", "DFLegacy.Launcher", "win-x64", wpf=True)
+    check_app(root / "launcher", "DFLegacy.Diagnostics", "win-x64")
     if "launcher-x86/DFLegacy.Launcher.exe" in paths:
         check_app(root / "launcher-x86", "DFLegacy.Launcher", "win-x86", wpf=True)
+        check_app(root / "launcher-x86", "DFLegacy.Diagnostics", "win-x86")
     launcher = read_json(root / "launcher/launcher.json")
     client_paths = {"DNF.exe"}
     if launcher.get("Accounts") != [] or launcher.get("Account") != "" or launcher.get("Password") != "" or launcher.get("StartServer") is not False or launcher.get("ClientPath") not in client_paths:
@@ -288,28 +293,39 @@ def copy_tree(source, output):
         shutil.copy2(path, destination)
 
 
-def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None, launcher_x86=None):
+def build_client_assets(launcher, client_patch, config, output, version, commit, debug=None, launcher_x86=None, capture_helper=None):
     validate_identity(version, commit)
     output = new_output(output)
     launcher, client_patch, config = Path(launcher), Path(client_patch), Path(config)
+    files(launcher)  # Retain source tree link/special-file rejection before exact public selection.
     check_app(launcher, "DFLegacy.Launcher", "win-x64", wpf=True)
     if launcher_x86 is not None:
         launcher_x86 = Path(launcher_x86)
         if launcher_x86 / "DFLegacy.Launcher.exe" not in files(launcher_x86):
             raise ReleaseError("missing regular x86 launcher executable")
         check_app(launcher_x86, "DFLegacy.Launcher", "win-x86", wpf=True)
-    for native in (client_patch, config, *((Path(debug),) if debug else ())):
+    capture_helper=Path(capture_helper) if capture_helper is not None else launcher / "DFLegacy.CrashCapture.exe"
+    check_app(launcher, "DFLegacy.Diagnostics", "win-x64")
+    if launcher_x86 is not None: check_app(launcher_x86, "DFLegacy.Diagnostics", "win-x86")
+    for native in (client_patch, config, capture_helper, *((Path(debug),) if debug else ())):
         if not native.is_file() or native.is_symlink():
             raise ReleaseError("missing regular native asset")
     with tempfile.TemporaryDirectory(prefix="dflegacy-assets-", dir=output.parent) as temp:
         stage = Path(temp) / "bundle"
         stage.mkdir()
-        copy_tree(launcher, stage / "launcher")
+        # Exact public inventory: never sweep session/capture/preferences siblings.
+        (stage / "launcher").mkdir()
+        for name in ("DFLegacy.Launcher.exe", "DFLegacy.Diagnostics.exe", "Assets/Skin/fwtk.html"):
+            source=launcher / name
+            if source.is_file():
+                target=stage / "launcher" / name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target)
         if launcher_x86 is not None:
             (stage / "launcher-x86").mkdir()
-            shutil.copy2(launcher_x86 / "DFLegacy.Launcher.exe", stage / "launcher-x86/DFLegacy.Launcher.exe")
+            for name in ("DFLegacy.Launcher.exe", "DFLegacy.Diagnostics.exe"):
+                shutil.copy2(launcher_x86 / name, stage / "launcher-x86" / name)
         (stage / "patch").mkdir()
         shutil.copy2(client_patch, stage / "patch/DFLegacy.Client.dll")
+        shutil.copy2(capture_helper, stage / "patch/DFLegacy.CrashCapture.exe")
         shutil.copy2(client_patch, stage / "launcher/DFLegacy.Client.dll")
         ini = configparser.ConfigParser(interpolation=None, strict=True)
         ini.optionxform = str
@@ -395,7 +411,10 @@ def verify_client_package(archive, version=None, commit=None, asset_name=None):
             test = data["flavor"] == "test"
             if asset_name is not None and test != ("-test-" in asset_name):
                 raise ReleaseError("asset name differs from manifest flavor")
-            binaries = {*UPDATE_FILES, *(("debug.dll",) if test else ())}
+            # Previously released schema-2 packages remain readable; new builds always include the pair.
+            present_helpers=set(DIAGNOSTIC_FILES)&set(z.namelist())
+            if present_helpers and present_helpers!=set(DIAGNOSTIC_FILES): raise ReleaseError("incomplete diagnostic helper pair")
+            binaries = {*LEGACY_UPDATE_FILES, *present_helpers, *(("debug.dll",) if test else ())}
             if asset_name in V3_UPDATE_ASSETS or (asset_name is None and SCRIPT_PVF in z.namelist()):
                 binaries.add(SCRIPT_PVF)
             expected = binaries | {manifest_name} | ({"SHA256SUMS", "README.txt"} if tools else set())
@@ -441,19 +460,23 @@ def migration_instructions(version, commit, flavor):
             "Never infer an original DLL from a backup filename. Keep original EXE/DLL/PVF/NPK files intact.\n"
             "Only verified compatible unpacked clients are supported; the original packed shell is not repaired.\n"
             "No game binaries or player configuration are included. Preserve Config.ini and launcher.json.\n"
-            "Normal includes all gameplay optimizations without diagnostics; test defaults to local diagnostics on the first in-world frame. Automation controls require explicit opt-in.\n"
+            "Both flavors automatically send bounded basic fault reports by default; settings can disable them. Small dumps stay local to the current user. Normal excludes the debug overlay; test defaults to the local debug overlay on the first in-world frame. Automation controls require explicit opt-in.\n"
             "Only server overlay data requires a shared local directory; remote data is not synchronized.\n"
             "Full Detours license and version are embedded in patch/helper/launcher. Read: DFLegacy.Launcher.exe --third-party-notices | more\n"
             "After migration the launcher updates the installed normal/test flavor through schema 2 packages.\n").encode("utf-8")
 
 
-def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64", *, pvf_snapshot=None):
+def build_client_update(client_assets, output, version, commit, test_build=False, tools=False, architecture="x64", *, pvf_snapshot=None, legacy_bridge=False):
     """Package verified same-release binaries without any player configuration."""
     root = Path(client_assets)
     verified = verify_assets(root, version, commit)
-    names = (*UPDATE_FILES, *(("debug.dll",) if test_build else ()))
+    if legacy_bridge and (tools or pvf_snapshot is None):
+        raise ReleaseError("legacy bridge requires a V3 update containing Script.pvf")
+    # v0.1.6 rejects unknown manifest paths. It must install the managed
+    # bootstrap first; that bootstrap then installs the complete V4 release.
+    names = (*(LEGACY_UPDATE_FILES if legacy_bridge else UPDATE_FILES), *(("debug.dll",) if test_build else ()))
     launcher_dir = "launcher-x86" if architecture == "x86" else "launcher"
-    sources = {name: root / (launcher_dir if name == "DFLegacy.Launcher.exe" else "patch/") / name for name in names}
+    sources = {name: root / (launcher_dir if name in ("DFLegacy.Launcher.exe", "DFLegacy.Diagnostics.exe") else "patch/") / name for name in names}
     anchored = {row["path"]: row["sha256"] for row in verified["files"]}
     if any(path.relative_to(root).as_posix() not in anchored for path in sources.values()):
         raise ReleaseError("missing same-release client binary")
@@ -500,7 +523,9 @@ def build_client_update(client_assets, output, version, commit, test_build=False
     return destination
 
 
-def build_client_packages(client_assets, output, version, commit, updates_only=False, script_pvf=None):
+def build_client_packages(client_assets, output, version, commit, updates_only=False, script_pvf=None, legacy_bridge=False):
+    if legacy_bridge and (not updates_only or script_pvf is None):
+        raise ReleaseError("--legacy-bridge requires --updates-only and --script-pvf")
     if script_pvf is not None:
         if not updates_only:
             raise ReleaseError("--script-pvf requires --updates-only")
@@ -520,7 +545,7 @@ def build_client_packages(client_assets, output, version, commit, updates_only=F
             shutil.copyfile(script_pvf, snapshot)
             pvf_snapshot = snapshot, digest(snapshot), snapshot.stat().st_size
             packages = [build_client_update(client_assets, stage, version, commit, test,
-                                            architecture=architecture, pvf_snapshot=pvf_snapshot)
+                                            architecture=architecture, pvf_snapshot=pvf_snapshot, legacy_bridge=legacy_bridge)
                         for architecture in ("x64", "x86") for test in (False, True)]
             return [package.rename(output / package.name) for package in packages]
     packages = [build_client_update(client_assets, output, version, commit, test, tools)
@@ -932,6 +957,7 @@ def parser():
         build.add_argument("--" + name, required=True)
     build.add_argument("--debug")
     build.add_argument("--launcher-x86-output")
+    build.add_argument("--capture-helper")
     update = sub.add_parser("build-client-update")
     for name in ("client-assets", "output", "version", "commit"):
         update.add_argument("--" + name, required=True)
@@ -941,6 +967,7 @@ def parser():
     for name in ("client-assets", "output", "version", "commit"):
         all_packages.add_argument("--" + name, required=True)
     all_packages.add_argument("--updates-only", action="store_true")
+    all_packages.add_argument("--legacy-bridge", action="store_true", help="V3 compatibility bridge for v0.1.6; omit helper paths rejected by its parser")
     all_packages.add_argument("--script-pvf", help="opt in to the four V3 updates containing this PVF export; requires --updates-only and both launcher architectures")
     update_check = sub.add_parser("verify-client-update")
     update_check.add_argument("path")
@@ -985,12 +1012,12 @@ def main(argv=None):
             return subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", str(Path(__file__).parent / "tests"), "-v"], cwd=REPO).returncode
         if args.command == "build-client-assets":
             print(build_client_assets(args.launcher_output, args.client_patch, args.config, args.output, args.version, args.commit,
-                                      args.debug, launcher_x86=args.launcher_x86_output))
+                                      args.debug, launcher_x86=args.launcher_x86_output, capture_helper=args.capture_helper))
         elif args.command == "build-client-update":
             print(build_client_update(args.client_assets, args.output, args.version, args.commit, args.test_build, args.tools))
         elif args.command == "build-client-packages":
             print(json.dumps([str(p) for p in build_client_packages(args.client_assets, args.output, args.version, args.commit,
-                                                                   updates_only=args.updates_only, script_pvf=args.script_pvf)]))
+                                                                   updates_only=args.updates_only, script_pvf=args.script_pvf, legacy_bridge=args.legacy_bridge)]))
         elif args.command == "verify-client-update":
             print(json.dumps(verify_client_update(args.path, args.version, args.commit)))
         elif args.command == "publish":

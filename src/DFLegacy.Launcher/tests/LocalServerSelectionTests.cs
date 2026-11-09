@@ -57,9 +57,11 @@ internal static class LocalServerSelectionTests
         check(File.ReadAllBytes(path).SequenceEqual(before), "changed target is never restored from cached snapshot");
         using (var locked = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         { try { selection.Confirm(store); check(false, "locked config fails closed"); } catch (IOException) { } }
+        var intactConfiguration=File.ReadAllBytes(path);
         File.WriteAllText(path, "{not-json"); before = File.ReadAllBytes(path);
         try { selection.Confirm(store); check(false, "corrupt saved config fails closed"); } catch (JsonException) { }
         check(File.ReadAllBytes(path).SequenceEqual(before), "corrupt config bytes remain untouched");
+        File.WriteAllBytes(path,intactConfiguration);
         options.Servers[1].Id = "a"; store.Save(options);
         try { LocalServerSelection.Open(store); check(false, "duplicate identities are rejected"); } catch (InvalidDataException) { }
         options.Servers = []; options.EntrancePort = 65536; store.Save(options);

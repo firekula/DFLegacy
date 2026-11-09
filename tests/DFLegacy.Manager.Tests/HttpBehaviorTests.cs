@@ -117,7 +117,7 @@ internal static class HttpBehaviorTests
             // Use real incompressible input so generation is still in flight
             // while ordinary management requests are exercised.
             var exportFiles = new List<object>();
-            foreach (var name in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe" })
+            foreach (var name in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", "launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Diagnostics.exe", "patch/DFLegacy.CrashCapture.exe" })
             {
                 var assetPath = Path.Combine(paths.AssetsDirectory, name.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(assetPath)!);
@@ -177,6 +177,7 @@ internal static class HttpBehaviorTests
             }
             var assetFiles = new Dictionary<string, string>
             {
+                ["launcher/DFLegacy.Diagnostics.exe"]="fixture diagnostics", ["patch/DFLegacy.CrashCapture.exe"]="fixture capture",
                 ["launcher/DFLegacy.Launcher.exe"] = "fixture launcher", ["patch/DFLegacy.Client.dll"] = "fixture core",
                 ["patch/Config.ini"] = "[Features]\nEnableDebugOverlay=0\n", ["patch/debug.dll"] = "fixture debug"
             };

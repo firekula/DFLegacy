@@ -24,6 +24,7 @@ public partial class MainWindow
         var typedAccount = AccountText.Text; var typedPassword = PasswordText.Password;
         var selectedAccount = (AccountList.SelectedItem as AccountItem)?.Account;
         _options = options; _account = account;
+        Program.RegisterDiagnosticSecrets(options);
         RefreshAccounts();
         if (selectedAccount is not null)
         {

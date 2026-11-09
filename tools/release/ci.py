@@ -190,8 +190,15 @@ def windows(version, commit, client_only=False):
         run("dotnet", "publish", "src/DFLegacy.Launcher/DFLegacy.Launcher.csproj", "-c", "Release", "-r", rid, "--self-contained", "true",
             "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true", "-p:DebugType=embedded", "-p:PublishTrimmed=false",
             *native_properties, "-p:ContinuousIntegrationBuild=true", "-o", destination)
+    # Separate self-contained helper preserves single-file repair and needs no installed runtime.
+    for rid, destination in (("win-x64", launcher), ("win-x86", launcher_x86)):
+        helper = new_output(REPO / "artifacts" / ("diagnostics-" + rid + "-" + version))
+        run("dotnet", "publish", "src/DFLegacy.Diagnostics/DFLegacy.Diagnostics.csproj", "-c", "Release", "-r", rid,
+            "--self-contained", "true", "-p:PublishSingleFile=true", "-p:IncludeNativeLibrariesForSelfExtract=true",
+            "-p:DebugType=embedded", "-p:PublishTrimmed=false", "-p:ContinuousIntegrationBuild=true", "-o", helper)
+        shutil.copy2(helper / "DFLegacy.Diagnostics.exe", destination / "DFLegacy.Diagnostics.exe")
     assets = build_client_assets(launcher, native, REPO / "src/DFLegacy.Ijl15/Config.ini", REPO / "client-assets", version, commit,
-                                 debug=debug, launcher_x86=launcher_x86)
+                                 debug=debug, launcher_x86=launcher_x86, capture_helper=native_build / "crash_capture/Release/DFLegacy.CrashCapture.exe")
     # Tar transport keeps the immutable assets together. All receivers verify it.
     make_archive(assets, REPO / "artifacts/client-assets.tar.gz", "linux-x64")
     if not client_only:

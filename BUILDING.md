@@ -36,6 +36,16 @@ $env:PYTHONPATH = Join-Path $PWD 'tools'
 
 Linux 使用 `python3 -m venv` 与虚拟环境的 `bin/python`，运行 pytest 时设 `PYTHONPATH="$PWD/tools"`。这些测试只使用临时文件、模拟进程和本机 socket，不需要游戏客户端；端口或环境错误应修复或如实报告，不能用跳过用例制造通过结果。
 
+开发中的 V4 更新增加以下独立入口；在本地执行，不发布远端资源：
+
+```powershell
+dotnet run --project tests/DFLegacy.UpdateCore.Tests -c Release
+py -3.12 -m pytest tools/release/tests -q
+dotnet build src/DFLegacy.ClientPackager/DFLegacy.ClientPackager.csproj -c Release
+```
+
+登录器专项在原生依赖就绪后可追加 `--update-v4-tests` 或 `--incident-tests`。完整登录器套件还需它要求的旧版不可变归档等夹具；专项通过不等同完整套件通过。`tools/debug/crash_capture/test_capture.py` 与原生 incident 测试脚本需要显式可执行文件参数，应按其专用入口运行，不能把无参数 pytest 收集成功当作这些真实进程测试已执行。
+
 Windows 原生与登录器行为测试：
 
 ```powershell
@@ -79,16 +89,23 @@ $clientBootstrap = Join-Path $nativeOutput 'DFLegacy.Bootstrap32.exe'
 $debug = Join-Path $nativeOutput 'debug.dll'
 $launcherOutput = Join-Path $PWD ("artifacts/launcher-" + $env:DFLEGACY_RELEASE_VERSION)
 dotnet publish src/DFLegacy.Launcher/DFLegacy.Launcher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -p:PublishTrimmed=false -p:BuildNativeAssets=false "-p:ClientPatchPrebuiltPath=$clientPatch" "-p:ClientBootstrapPrebuiltPath=$clientBootstrap" -p:ContinuousIntegrationBuild=true -o $launcherOutput
-py -3.12 tools/release/release.py build-client-assets --launcher-output $launcherOutput --client-patch $clientPatch --debug $debug --config src/DFLegacy.Ijl15/Config.ini --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --output client-assets
+# 同架构自包含上传助手；只把可发布 EXE 放入登录器输出目录
+$diagnosticOutput = Join-Path $PWD ("artifacts/diagnostics-" + $env:DFLEGACY_RELEASE_VERSION)
+dotnet publish src/DFLegacy.Diagnostics/DFLegacy.Diagnostics.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded -p:PublishTrimmed=false -o $diagnosticOutput
+Copy-Item -LiteralPath (Join-Path $diagnosticOutput 'DFLegacy.Diagnostics.exe') -Destination $launcherOutput
+$captureHelper = Join-Path (Split-Path $nativeOutput -Parent) 'crash_capture/Release/DFLegacy.CrashCapture.exe'
+py -3.12 tools/release/release.py build-client-assets --capture-helper $captureHelper --launcher-output $launcherOutput --client-patch $clientPatch --debug $debug --config src/DFLegacy.Ijl15/Config.ini --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT --output client-assets
 py -3.12 tools/release/release.py verify client-assets --client-assets --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
 py -3.12 tools/release/release.py build-client-packages --client-assets client-assets --output artifacts --version $env:DFLEGACY_RELEASE_VERSION --commit $env:DFLEGACY_RELEASE_COMMIT
 ```
 
-容器要生成两套玩家包时，再以同一参数发布 `-r win-x86` 到独立目录，并将该目录通过 `--launcher-x86-output` 传给 `build-client-assets`。CI 会构建并验证两个架构。x86 与 x64 登录器都使用同一次构建的 32 位原生补丁与引导器。
+容器要生成两套玩家包时，再以同一参数发布 `-r win-x86` 到独立目录，并将该目录通过 `--launcher-x86-output` 传给 `build-client-assets`。x86 输出旁同样放 win-x86 自包含 Diagnostics.exe。CI 会构建并验证两个架构。x86 与 x64 登录器都使用同一次构建的 32 位原生补丁与引导器。
 
-完整四附件发行必须提供同次原生构建的 `--debug` 资源：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。普通包只包含登录器和独立补丁，测试包另外包含同版本 `debug.dll`；普通包不会因资源目录存在 debug 而包含或启用它。测试模式增加本地诊断，自动输入和其他测试控制仍需显式开启。工具包包含安装清单、摘要和迁移说明，不含玩家配置或游戏文件。
+完整四附件发行必须提供同次原生构建的 `--debug` 资源：`DFLegacy-client-update-v2-win-x64.zip`、`DFLegacy-client-update-v2-test-win-x64.zip`、`DFLegacy-client-tools-win-x64.zip`、`DFLegacy-client-tools-test-win-x64.zip`。普通包包含登录器、独立补丁、同架构自包含上传助手和 x86 本地捕获器，测试包另外包含同版本 `debug.dll`；普通包不会因资源目录存在 debug 而包含或启用它。测试模式增加本地诊断，自动输入和其他测试控制仍需显式开启。工具包包含安装清单、摘要和迁移说明，不含玩家配置或游戏文件。
 
 完整登录器模板账号、密码与账号列表为空，`StartServer=false`，`ClientPath=DNF.exe`。不得把游戏客户端、PVF、存档、个人路径、凭据或 CI secret 放入资源。若只准备普通版管理器资源，可省略 `--debug`；此时不能构建完整四附件或导出测试包。
+
+上面的固定资源目录和白名单属于现有 `client-assets`／V2 工具包合同。V3 的 `--script-pvf` 和开发中的 V4 是单独的资源发布入口；V4 可明确选择拥有分发权限的 PVF、NPK 与其他嵌套资源，不把整个游戏目录或私人配置自动纳入 `client-assets`。
 
 同一个干净提交的自动化入口为：
 
@@ -141,7 +158,7 @@ CI 使用 [Git 提交时间固定 BuildKit 时间戳](https://docs.docker.com/bu
 
 Gitea 接收源码并运行 [只读测试](.gitea/README.md)。Gitea保存开发提交历史，GitHub同步经过脱敏的源码快照并分发产物；公开仓库不导入私有开发历史。`PUBLIC_SOURCE.md`记录快照对应的Gitea构建提交。提交源码不等同发布镜像或客户端更新。Windows、Linux 和 macOS 的独立服务端归档可手工构建。
 
-v0.1.7本次只发布GHCR服务端镜像及GitHub源码快照，不创建新的客户端更新Release，也不修改已发布的v0.1.6客户端附件。镜像仍需包含同提交构建的双架构client-assets，供管理后台生成安装包；构建这些内嵌资源不等于发布客户端自动更新。
+v0.1.8 发布 GHCR 双架构服务端镜像，以及 GitHub x86/x64 普通/测试四路客户端更新；保留 v0.1.6 可解析的 V3 过渡包，并在同一 Release 发布 V4 清单、内容资源和固定入口修复包。镜像必须包含同提交构建的双架构 client-assets。详细操作及 PVF 身份见 [v0.1.8 发布说明](docs/releases/v0.1.8.md)。v0.1.7 仅服务端发布的历史范围见 CHANGELOG。
 
 本轮组队战、擂台赛及多人结算已纳入标准服务端smoke。单独验证可运行 `dotnet run --project tests/DFLegacy.SmokeTests -c Release -- --pvp-team-relay-only`；协议/段位回归使用 `--pvp-protocol-rating`，原有双人个人战回归使用 `--pvp-individual-only`。四类频道和GM功能的配套资源要求见[部署指南](DEPLOYING.md#四类决斗频道与-gm-奖励v017)，本地验证范围见[验收记录](docs/acceptance/2026-11-07-pvp-team-relay.md)。
 
@@ -162,4 +179,10 @@ dotnet publish src/DFLegacy.ClientPackager -c Release -r win-x64 --self-containe
 
 「仅生成」可离线生成普通版或测试版安装包，内含 x86 和 x64 两套 ZIP。无需 Script.pvf、部署管理服务或 Python。「生成并发布到 GitHub」另外生成四个更新 ZIP，使用 Python 3.12 和 GitHub 发布凭据，复用发布器草稿与摘要校验流程。请保留输出目录内的 `tools/release`，并为 Git Credential Manager 配好可写凭据，或在启动进程的环境中设置 `DFLEGACY_GITHUB_RELEASE_TOKEN`。更新包沿用资源清单的版本和提交，发布新版本前先用新版本号构建资源。同版本仅允许重试同一套字节。更新 ZIP 不包含服务器连接配置。
 
+开发中的「V4 更新资源 → 资源选择、差异与迁移」使用同目录 `tools/release/update_v4.py`，所有操作均需 Python 3.12。选择客户端资源目录、包含／排除规则、架构、类型和来源，先扫描查看完整文件、差异、体积及迁移／退役，再生成到源目录以外的新目录。此入口默认选择 Gitea 测试源（固定为 `http://firekula.site:3000`，渠道 `gitea-test`），发布凭据只读取专用环境变量，不沿用旧发布器的 Git Credential Manager 回退。它拒绝重写已经存在的发布标签；与上文旧 ZIP 发布器的同字节重试语义不同。GUI 每次处理一个变体；同 tag 的四个变体先分别生成，再用 CLI 的重复 `--bundle` 一次分组发布。完整 CLI 请求示例、双架构测试产物及增量资源步骤见 [V4 构建指南](CLIENT_UPDATES_V4.md#本地构建双架构测试产物)。
+
 发布 v0.1.3 时，使用该版 `client-assets` 在本机生成并上传更新。内嵌充值页面和自动移鼠标缩放由登录器与原生补丁一起更新，现有测试充值接口可继续由 v0.1.2 服务端提供。
+
+上传助手没有可共享的松散运行时目录；使用独立自包含单文件以保持固定入口修复合同，无需全局 .NET。每个架构单独发布并按实际大小记录额外成本。V4 `bootstrap_package.build_release` 要求明确固定文件及 hash/size 输入，必需两个助手；不能把整个游戏目录或 LocalAppData 复制到输入。发布前验证全部四个 x86/x64 × normal/test 清单和附件。调试 fixture、原版第三方 DLL、PDB、转储、会话和凭据永不进入公开资源；源码提交与私有符号 SHA256 保留在验收来源记录中。
+
+最终修订版的自有原生 DLL 必须保留优化 Release 行为，同时生成并私有留存精确匹配的生产 PDB，记录 PE/PDB GUID 与 Age、DLL/PDB SHA256 和构建源码 SHA。PDB 不能进入 V4 清单、client-assets 或 Gitea 附件；不能用 presenter 测试 PDB 代替生产 DLL 符号。`.5` 中间快照缺少该生产符号；最终隔离 `.6` 已生成并私有保留五个生产目标的匹配 PE/PDB（源码 `64f5ab5`），详见验收报告。原始 DNF 无符号与此要求分开记录。

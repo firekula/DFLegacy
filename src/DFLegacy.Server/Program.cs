@@ -89,6 +89,8 @@ builder.Services.AddSingleton<JsonGameStore>();
 // 8081 管理接口的 token 鉴权（内存 token + 滑动过期 + 登录失败限流）。
 // TimeProvider 显式注册，便于测试注入假时钟。
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<ClientDiagnosticStore>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ClientDiagnosticStore>());
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。
@@ -395,6 +397,7 @@ app.MapGet("/client/client_diamond", () => Results.Redirect("/client/client_diam
 app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
+app.MapClientDiagnostics(options);
 
 app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink, FallbackRelayService fallbackRelay) => Results.Ok(new
 {

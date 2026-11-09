@@ -1,0 +1,128 @@
+{
+  "passed": true,
+  "tag": "v0.1.8-giteatest.1",
+  "variant": "x86-test",
+  "source": {
+    "Provider": "gitea",
+    "Repository": "firekula/DFLegacy",
+    "Channel": "gitea-test",
+    "Architecture": "x86",
+    "Flavor": "test"
+  },
+  "manifestSha256": "e9bee4d983e5515fcb1ea2504d201cf62acb5dd923b998c15e4eca79f5c0ba60",
+  "remoteSourceVerified": true,
+  "gameExecuted": false,
+  "changed": [
+    "debug.dll",
+    "DFLegacy.Client.dll",
+    "DFLegacy.Launcher.exe",
+    "UpdateTestAssets/probe.npk",
+    "UpdateTestAssets/probe.pvf"
+  ],
+  "installRequests": [
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc.bin",
+      "Size": 373248,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 373248
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin",
+      "Size": 935936,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 935936
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc.bin",
+      "Size": 50331648,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 50331648
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e.bin",
+      "Size": 50331648,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 50331648
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc.bin",
+      "Size": 50331648,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 50331648
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a.bin",
+      "Size": 13609450,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 13609450
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin",
+      "Size": 70,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 70
+    },
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin",
+      "Size": 80,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 80
+    }
+  ],
+  "sameVersionResourceRequests": 0,
+  "repairRequests": [
+    {
+      "Tag": "v0.1.8-giteatest.1",
+      "Asset": "dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin",
+      "Size": 70,
+      "Offset": 0,
+      "Status": 200,
+      "ResponseBytes": 70
+    }
+  ],
+  "offlineMessage": "\u6587\u4EF6\u7B26\u5408\u7F13\u5B58\u7248\u672C v0.1.8-giteatest.1\uFF0C\u672A\u786E\u8BA4\u7EBF\u4E0A\u6700\u65B0\u7248\u672C\u3002",
+  "configurationPreserved": true,
+  "files": [
+    {
+      "Path": "debug.dll",
+      "Size": 373248,
+      "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc"
+    },
+    {
+      "Path": "DFLegacy.Client.dll",
+      "Size": 935936,
+      "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70"
+    },
+    {
+      "Path": "DFLegacy.Launcher.exe",
+      "Size": 164604394,
+      "sha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57"
+    },
+    {
+      "Path": "UpdateTestAssets/probe.npk",
+      "Size": 70,
+      "sha256": "04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241"
+    },
+    {
+      "Path": "UpdateTestAssets/probe.pvf",
+      "Size": 80,
+      "sha256": "a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4"
+    }
+  ]
+}

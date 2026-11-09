@@ -1,0 +1,15 @@
+{
+  "architecture": "x86",
+  "case": "delete-updater",
+  "version": "v0.1.8-giteatest.3",
+  "valid": true,
+  "files": 7,
+  "pending": false,
+  "pid": 35872,
+  "ui": "地下城与勇士",
+  "supervisorObserved": true,
+  "entryLockObserved": true,
+  "elapsedSeconds": 18.47,
+  "shortcutHash": "55E6D07530286505A51CA7BE47FB5D86919C8A30D276D5AAA1E6D5D06B3166D6",
+  "configPreserved": true
+}

@@ -1,0 +1,43 @@
+START A x86-normal
+RESOURCE x86/normal dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin offset=0 status=200
+RESOURCE x86/normal dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+PASS A x86-normal: install requests=7, same-version=0, repair requests=1
+START A x86-test
+RESOURCE x86/test dflegacy-v4-8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin offset=0 status=200
+RESOURCE x86/test dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+PASS A x86-test: install requests=8, same-version=0, repair requests=1
+START A x64-normal
+RESOURCE x64/normal dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin offset=0 status=200
+RESOURCE x64/normal dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+PASS A x64-normal: install requests=7, same-version=0, repair requests=1
+START A x64-test
+RESOURCE x64/test dflegacy-v4-8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin offset=0 status=200
+RESOURCE x64/test dflegacy-v4-04d27e79e6288fcc9e98a04ce41fe0561be6327d25ae5147056330a661c77241.bin offset=0 status=200
+PASS A x64-test: install requests=8, same-version=0, repair requests=1
+REMOTE ENGINE A: 4/4 passed

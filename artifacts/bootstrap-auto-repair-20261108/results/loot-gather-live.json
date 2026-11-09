@@ -1,0 +1,41 @@
+{
+  "schema": "dflegacy-live-loot-gather/v1",
+  "server_commit": "57f45506429363180e1386b510c3b3eff7a8a5b6",
+  "client_version": "v0.1.8-giteatest.4",
+  "pid": 53756,
+  "server_pid": 50948,
+  "dungeon": 11,
+  "ground_id": 1,
+  "count": 23,
+  "before": {
+    "ground_id": 1,
+    "actor_token": "0x1869B010",
+    "descriptor_token": "0x185B4F20",
+    "x": 1093,
+    "y": 341,
+    "z": 0,
+    "active": true,
+    "pending": false
+  },
+  "after": {
+    "ground_id": 1,
+    "actor_token": "0x1869B010",
+    "descriptor_token": "0x185B4F20",
+    "x": 800,
+    "y": 270,
+    "z": 0,
+    "active": true,
+    "pending": false
+  },
+  "player": {
+    "x": 800,
+    "y": 270,
+    "z": 0
+  },
+  "ledger_unchanged": true,
+  "inventory_unchanged_until_pickup": true,
+  "pickup_gold_delta": 23,
+  "pickup_ground_removed": true,
+  "native_log": "installed-849280 uid=0 stage=00000000 map=00000000 actor=00000000 moved=0 tick=27908484\nqueued uid=1 stage=18060918 map=1871C988 actor=181A8570 moved=0 tick=28053250\ngathered uid=1 stage=18060918 map=1871C988 actor=181A8570 moved=1 tick=28053250\n",
+  "user_confirmed": true
+}

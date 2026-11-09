@@ -129,6 +129,8 @@ Docker 镜像和客户端的发布流程见 [BUILDING.md](BUILDING.md)。
 
 ## 客户端自动更新
 
+以下 V2／V3 步骤描述已发布客户端。V4 尚处于隔离测试阶段，不能据此认为正式仓库已经有 V4 附件。新协议的来源设置、离线状态和修复边界见 [V4 更新说明](CLIENT_UPDATES_V4.md)。
+
 GitHub Releases 分发 Windows x86 和 x64 两条更新线，各有普通版和测试版。管理后台默认生成指向 GitHub 的安装包，游戏连接地址仍由后台的部署配置决定。服务端镜像从 GHCR 拉取。
 
 v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动后，新登录器会获取 v0.1.6 的 V3 更新包，其中包含 `Script.pvf`。安装前校验 ZIP 和文件摘要，旧 PVF 随原程序文件备份至 `.dflegacy-backups`。x86 和 x64 都沿用各自的普通版或测试版，现有玩家通过登录器更新即可。
@@ -136,6 +138,14 @@ v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动�
 从 18083 迁移时，从 Compose 移除 `DFLEGACY_UPDATE_PUBLIC_URL`（标准模板清空 `UPDATE_PUBLIC_URL`），并移除自定义的 18083 端口映射。更新镜像后，玩家覆盖一次后台导出的同架构、同类型内层 ZIP。保留账号和现有连接设置时，在原 `launcher.json` 中把 `UpdateServiceUrl` 设为空字符串、`DisableGitHubUpdates` 设为 `false`。客户端需要访问 GitHub 的 HTTPS API 和下载地址。
 
 如果曾通过 18083 成功安装过自动更新，先完成任何待恢复的更新，然后退出游戏和登录器，将客户端目录中的 `.dflegacy/state.json` 改名为 `state.hosted-backup.json`。这个文件记录的是旧更新源的版本 ID。完成一次覆盖安装后重新启动，登录器会记录 GitHub 的版本 ID。
+
+上述改名步骤仅针对旧 V2／V3 来源迁移，不适用于 V4 的安装记录或待恢复事务；不要删除 V4 缓存、事务、备份来绕过校验。V4 的已安装状态与待下载目标分开保存，联网失败时仍须全量验证已安装版本并确认没有待恢复事务。
+
+### V4 测试来源与保留配置
+
+仅在配套测试登录器中，把 `launcher.json` 的 `UpdateProvider` 设为 `gitea`、`UpdateChannel` 设为 `gitea-test`、`UpdateRepository` 设为测试仓库；保留现有账号、服务器与 `Relay`。显式 Gitea 来源固定使用 `http://firekula.site:3000`，优先于遗留 `UpdateServiceUrl`，且不会静默回退 GitHub。正式来源配置为 `github`／`stable`；该模式下非空 `UpdateServiceUrl` 仍沿用现有自托管 V3 路径。完整来源决策表见 [来源与离线状态](CLIENT_UPDATES_V4.md#来源与离线状态)。
+
+V4 不整文件覆盖 `launcher.json` 或 `Config.ini`。`Relay.TcpPorts`／`UdpPorts` 在玩家配置中仍是逗号分隔字符串；迁移值使用端口数组，合并后保留自定义端口并写回字符串。格式损坏时保留原配置并提示错误，不以空模板覆盖账号。登录器自身无法运行时需要单独的可信修复程序；独立 `--repair-client` 入口及验收范围见 [V4 更新说明](CLIENT_UPDATES_V4.md#安装恢复与诊断)，修复程序必须放在被修复目录之外。
 
 ### 可选的自托管客户端更新
 
@@ -151,7 +161,7 @@ v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动�
 
 后台一次生成所选版本的 x86 和 x64 安装包，并在两套更新包写入完成后发布。
 普通版和测试版独立发布。已有 GitHub 客户端需手动覆盖一次新导出的同架构、同类型安装包，以取得新更新地址。
-首次迁移时，如需保留已保存的账号，先备份原 `launcher.json`，将新包里的 `UpdateServiceUrl` 和 `DisableGitHubUpdates` 合并到原配置。后续自动更新只替换程序与补丁。
+首次迁移时，如需保留已保存的账号，先备份原 `launcher.json`，将新包里的 `UpdateServiceUrl` 和 `DisableGitHubUpdates` 合并到原配置。此处自托管路径继续使用原有 ZIP 更新合同，不因配置中出现 V4 字段就自动扩展成任意资源更新。
 
 ## 导出玩家包
 
@@ -159,7 +169,7 @@ v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动�
 
 外层 ZIP 包含 x86 和 x64 两个内层 ZIP。按 Windows 系统位数选择其一。内层 ZIP 包含单文件 WPF 登录器、独立的 `DFLegacy.Client.dll` 和 `client-package.json`、空凭据连接配置、条款、说明和摘要，直接解压到 `DNF.exe` 所在目录。游戏退出后先备份再替换；ZIP 不直接包含 `Config.ini`，登录器仅在缺少配置时从内嵌模板生成，保留已有设置。玩家包不包含管理凭据、游戏存档、PVF 或预置游戏账号，玩家自行登录/注册。
 
-独立普通版不加载诊断；测试版默认在首个游戏内画面加载 `debug.dll` 本地诊断，不改写旧 `EnableDebugOverlay` 配置。仅服务端覆盖数据依赖本机共享快照目录，不支持远程 Linux/macOS/Docker 调试数据同步。自动输入等主动控制仍需显式开启。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
+独立普通版不加载 `debug.dll` 诊断界面；测试版默认在首个游戏内画面加载该模块，不改写旧 `EnableDebugOverlay` 配置。Unreleased 的按事件保存事故报告不依赖开启测试界面，详见 [诊断边界](CLIENT_UPDATES_V4.md#安装恢复与诊断)。仅服务端覆盖数据依赖本机共享快照目录，不支持远程 Linux/macOS/Docker 调试数据同步。自动输入等主动控制仍需显式开启。第三方可选 `d3d8to9` 不会自动分发，使用时自行核对仓库附带许可与兼容性。
 
 ## 导入、备份、升级与恢复
 
@@ -186,3 +196,11 @@ v0.1.4 登录器先从 GitHub 安装 v0.1.5 的 V2 兼容更新。重新启动�
 Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试及发布传入 `ClientPatchPrebuiltPath`、`ClientBootstrapPrebuiltPath`，`Ijl15PrebuiltPath` 仅用于旧补丁回归。测试显式设置 `DFL_NATIVE_FIXTURES` 为匹配的 CMake 构建目录（不是 Release 子目录），`DFL_LEGACY_PATCH_ARCHIVE` 为验证过的历史项目补丁 ZIP。`ci.py windows` 只从固定公开地址下载版本 `dev-20261031T114502Z-4a0e12555c17` 的 `DFLegacy-client-update-win-x64.zip` 并缓存到 `artifacts/test-fixture-cache`；严格校验大小 63332728 和 SHA256 `4851bfc41b1c39799ba7ed735954c1d6fd1cbc91fba0d8b2a201eb2c7977e0f5`。这是历史项目自有测试夹具，不是原版 IJL 或新 schema 1 发行附件；测试本身不联网，不依赖真实游戏盘。
 
 本地 Launcher 全套测试也需要上述两个显式环境变量及同版本原生预构建路径。只验证发布包解析可运行 `python -m unittest discover -s tools/release/tests -p test_github_publish.py -k real_client_parser -v`，它调用真实 Launcher 的安装清单和更新解析器检查四种合成包，不启动游戏或操作界面。完整发布工具测试为 `python -m unittest discover -s tools/release/tests -v`。
+
+## 客户端基本故障报告（Unreleased）
+
+无需新端口。`POST /api/client-diagnostics/reports` 只在账号 API `Admin.Port`（本地默认 8081）接收，GM 管理仅在独立 GM 口（本地默认 18081）且需 Admin 身份；玩家 HTTP 口不提供接收／查看。GM 后台新增故障报告页，支持类型、版本、状态、系统、GPU、时间筛选、分页、状态维护、基本 JSON 下载及删除。交互式页面操作本轮尚未完成，自动 HTTP 权限／筛选／下载／删除回归见[验收报告](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。
+
+在 `server.json` 的 `ClientDiagnostics` 中可设置 `Enabled`（默认 true）、`StoragePath`（空则存档同级 diagnostics 独立目录）、`RetentionDays`（最多 14）、`MaxStorageBytes`（最多 268435456）、`MaxReportCount`（最多 2000）、`MaxDeduplicationEntries`（最多 50000）、`SourcePerMinute`（5）、`SourcePerHour`（30）、`GlobalPerMinute`（10）、`GlobalPerHour`（120）。两个并发接收，上行压缩 256 KiB／展开 1 MiB、15 秒请求界限；容量不足返回 503，不通过提前删除幂等摘要腾空间。删除正文后保留 30 天去重摘要，重试返回 410，防止报告复活。诊断存储不持有游戏存档锁。
+
+HTTP 基本 JSON 兼容现有公网入口，设置明确显示未加密；建议部署 HTTPS。HTTPS 不允许降级或忽略证书，不允许跨源重定向。自动队列按当前用户保存，100 份／32 MiB／14 天、单并发约 64 KiB/s，每次登录器运行每事件最多三次尝试；丢失响应／重启重复发送保持相同正文和事件 ID。该服务没有原始转储上传接口。

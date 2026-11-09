@@ -12,6 +12,7 @@
 #include "debug_module.h"
 #include "../../DFLegacy.Client/player_runtime.h"
 #include "boss_room_death.h"
+#include "loot_gather.h"
 #include "channel_reentry.h"
 #include "relay_send_queue.h"
 #include "channel_switch.h"
@@ -23,6 +24,7 @@
 #include "warehouse_upgrade_button.h"
 #include "motion_horizon.h"
 #include "native_loop_probe.h"
+#include "native_incidents.h"
 #include "motion_test_probe.h"
 #include "provider_probe.h"
 #include "dnf_patches.h"
@@ -1237,6 +1239,10 @@ namespace dfl::dnf_patches
             OutputDebugStringA(
                 "DFLegacy.Ijl15: boss room late-spawn death repair was not installed.\n");
         }
+        else if (!dfl::loot_gather::Install())
+        {
+            OutputDebugStringA("DFLegacy.Ijl15: solo loot gather was not installed.\n");
+        }
 
         if (!dfl::priest_heal_target::Install())
         {
@@ -1260,6 +1266,8 @@ namespace dfl::dnf_patches
 
         if (!dfl::motion_horizon::Install())
             OutputDebugStringA("DFLegacy.Ijl15: ACT1 inactive-acceleration interpolation repair was not installed.\n");
+
+        dfl::native_incidents::Install();
 
         if (!dfl::debug_module::Install())
         {

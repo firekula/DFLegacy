@@ -3,6 +3,10 @@ internal enum UpdatePhase { Idle, Checking, Downloading, Ready, Installing, Curr
 internal sealed record UpdateViewState(UpdatePhase Phase, string Message, string Version = "", UpdateProgress? Progress = null, bool IsRecovery=false, string AssetName="", bool ReplacesScriptPvf=false);
 internal interface IUpdateSession
 {
+    string? StatusMessage=>null;
+    bool ShowStatusNotice=>false;
+    void SetProgress(IProgress<UpdateProgress> progress) { }
+    Task<IReadOnlyList<FileLockOwner>> InspectLocksAsync(CancellationToken token)=>Task.FromResult<IReadOnlyList<FileLockOwner>>([]);
     UpdateRecovery? ReadRecovery()=>null;
     Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)=>throw new InvalidOperationException("当前会话不支持恢复。");
     UpdateState? ReadState();
@@ -60,21 +64,27 @@ internal sealed class UpdateController(IUpdateSession session, string installati
             }
             UpdateArtifacts.Sweep(installation);
             var state=session.ReadState(); InstalledVersion=state?.Version??"旧版安装（未登记）";
+            session.SetProgress(new ForwardProgress(p=> { if(!token.IsCancellationRequested) Set(UpdatePhase.Checking,p.Detail??"正在完整校验客户端文件…",InstalledVersion,p); }));
             var release=await session.CheckAsync(state?.ReleaseId??0,token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            if(release==null) { Set(UpdatePhase.Current,"当前已是最新版本，可返回登录。",InstalledVersion); return; }
+            if(release==null) { InstalledVersion=session.ReadState()?.Version??InstalledVersion; Set(UpdatePhase.Current,session.StatusMessage??"当前已是最新版本，可返回登录。",InstalledVersion); return; }
             artifacts=UpdateArtifacts.Create(installation);
             var assetName=Path.GetFileName(release.DownloadUrl.AbsolutePath);
             Set(UpdatePhase.Downloading,"发现新版本，正在下载并校验…",release.Version,assetName:assetName);
             prepared=await session.DownloadAsync(release,artifacts.Directory,new ForwardProgress(p=>
-            { if(!token.IsCancellationRequested) Set(UpdatePhase.Downloading,"正在下载更新包…",release.Version,p,assetName:assetName); }),token).ConfigureAwait(false);
+            { if(!token.IsCancellationRequested) Set(UpdatePhase.Downloading,p.Detail??"正在下载更新包…",release.Version,p,assetName:assetName); }),token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested(); artifacts.Track(prepared);
             if(session.Adopt(prepared)) { Cleanup(); InstalledVersion=release.Version; Set(UpdatePhase.Current,"文件已是最新版本，无需重新安装。",release.Version); return; }
             token.ThrowIfCancellationRequested();
             Set(UpdatePhase.Ready,"下载及校验完成。点击“重启安装”确认；也可返回登录稍后更新。",release.Version,replacesScriptPvf:prepared.Manifest.HasScriptPvf);
         }
         catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消更新，可重试或返回登录。"); }
-        catch(Exception ex) { Cleanup(); Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+ex.Message); }
+        catch(Exception ex)
+        {
+            // Caller cancellation was handled above. A linked transport/download deadline is a real error.
+            var failure=ex is OperationCanceledException?new TimeoutException("更新请求超时，请稍后重试。",ex):ex;
+            Program.ReportError("update-check-download",failure);Cleanup();Set(UpdatePhase.Error,"更新未完成，可重试或返回登录。\n"+failure.Message);
+        }
     }
     internal Task InstallAsync(bool confirmed)
     {
@@ -89,6 +99,7 @@ internal sealed class UpdateController(IUpdateSession session, string installati
                 {
                     Set(UpdatePhase.Installing,recovery!=null?"正在准备安全恢复助手…":"正在准备安全安装助手…",recovery?.Version??prepared!.Release.Version,
                         isRecovery:recovery!=null,replacesScriptPvf:prepared?.Manifest.HasScriptPvf==true);
+                    await Diagnostics.AutomaticDiagnostics.SuspendForUpdateAsync(token).ConfigureAwait(false);
                     artifacts??=UpdateArtifacts.Create(installation);
                     var handoff=recovery!=null?await session.PrepareRecoveryAsync(recovery,token).ConfigureAwait(false):await session.PrepareAsync(prepared!,token).ConfigureAwait(false); artifacts.TrackHelper(handoff);
                     var helper=await session.StartAsync(handoff,token).ConfigureAwait(false);
@@ -97,7 +108,8 @@ internal sealed class UpdateController(IUpdateSession session, string installati
                     lock(gate) { if(!disposed) shutdown(); }
                 }
                 catch(OperationCanceledException) when(token.IsCancellationRequested) { Cleanup(); Set(UpdatePhase.Cancelled,"已取消安装，可返回登录。"); }
-                catch(Exception ex) { Cleanup(); Set(UpdatePhase.Error,"暂时无法安装，请关闭游戏后重试。\n"+ex.Message); }
+                catch(Exception ex) { Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); Program.ReportError("update-install",ex); Cleanup(); Set(UpdatePhase.Error,"暂时无法安装，请关闭游戏后重试。\n"+ex.Message); }
+                finally { if(!handedOff)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
             }); return operation;
         }
     }

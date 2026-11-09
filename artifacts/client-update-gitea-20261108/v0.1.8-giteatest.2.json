@@ -1,0 +1,299 @@
+{
+  "status": "published-verified",
+  "provider": "gitea",
+  "repository": "firekula/DFLegacy",
+  "version": "v0.1.8-giteatest.2",
+  "releaseId": 3717,
+  "bundles": [
+    {
+      "status": "published-verified",
+      "provider": "gitea",
+      "repository": "firekula/DFLegacy",
+      "version": "v0.1.8-giteatest.2",
+      "releaseId": 3717,
+      "manifestSha256": "c8a1fb22f93644f3aceb14f61a713930c72b63911900ffd89b715f24d0fefaf2",
+      "checks": [
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin",
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70",
+          "size": 935936,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc.bin",
+          "sha256": "3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e.bin",
+          "sha256": "9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc.bin",
+          "sha256": "11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a.bin",
+          "sha256": "a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a",
+          "size": 13609450,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin",
+          "sha256": "6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7",
+          "size": 70,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin",
+          "sha256": "a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4",
+          "size": 80,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "DFLegacy-client-update-v4-gitea-test-normal-win-x86.json",
+          "sha256": "c8a1fb22f93644f3aceb14f61a713930c72b63911900ffd89b715f24d0fefaf2",
+          "size": 3348,
+          "range": "supported"
+        }
+      ],
+      "manifestAsset": "DFLegacy-client-update-v4-gitea-test-normal-win-x86.json",
+      "architecture": "x86",
+      "flavor": "normal"
+    },
+    {
+      "status": "published-verified",
+      "provider": "gitea",
+      "repository": "firekula/DFLegacy",
+      "version": "v0.1.8-giteatest.2",
+      "releaseId": 3717,
+      "manifestSha256": "4407c390b041c9daab3a092b4e7aca0ce2135d79c18aa8d76da3bd67eb703400",
+      "checks": [
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc.bin",
+          "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc",
+          "size": 373248,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin",
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70",
+          "size": 935936,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc.bin",
+          "sha256": "3899bff4637280327c170e35a93e152dba3bef76b5e6c81b62cde4ac3e30f1fc",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e.bin",
+          "sha256": "9012d8339f5e6d76bef97e25895ff6a24dc173b1ebe1e38547d7de24d4a25f1e",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc.bin",
+          "sha256": "11c44b6abc3805545e306beb02ce6978157ba2953c40c5e3a016ff8e01ca6ddc",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a.bin",
+          "sha256": "a63cc5d5c46503964fc691bcf0653b8ab53032aff51d68eacd17a2d429b4207a",
+          "size": 13609450,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin",
+          "sha256": "6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7",
+          "size": 70,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin",
+          "sha256": "a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4",
+          "size": 80,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "DFLegacy-client-update-v4-gitea-test-test-win-x86.json",
+          "sha256": "4407c390b041c9daab3a092b4e7aca0ce2135d79c18aa8d76da3bd67eb703400",
+          "size": 3796,
+          "range": "supported"
+        }
+      ],
+      "manifestAsset": "DFLegacy-client-update-v4-gitea-test-test-win-x86.json",
+      "architecture": "x86",
+      "flavor": "test"
+    },
+    {
+      "status": "published-verified",
+      "provider": "gitea",
+      "repository": "firekula/DFLegacy",
+      "version": "v0.1.8-giteatest.2",
+      "releaseId": 3717,
+      "manifestSha256": "8872c76b2a20b4055c988913d83ed314255bd9aa84fe49bf49f66da5db1ecf62",
+      "checks": [
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin",
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70",
+          "size": 935936,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c.bin",
+          "sha256": "016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb.bin",
+          "sha256": "f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587.bin",
+          "sha256": "06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391.bin",
+          "sha256": "3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391",
+          "size": 23042538,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin",
+          "sha256": "6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7",
+          "size": 70,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin",
+          "sha256": "a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4",
+          "size": 80,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "DFLegacy-client-update-v4-gitea-test-normal-win-x64.json",
+          "sha256": "8872c76b2a20b4055c988913d83ed314255bd9aa84fe49bf49f66da5db1ecf62",
+          "size": 3348,
+          "range": "supported"
+        }
+      ],
+      "manifestAsset": "DFLegacy-client-update-v4-gitea-test-normal-win-x64.json",
+      "architecture": "x64",
+      "flavor": "normal"
+    },
+    {
+      "status": "published-verified",
+      "provider": "gitea",
+      "repository": "firekula/DFLegacy",
+      "version": "v0.1.8-giteatest.2",
+      "releaseId": 3717,
+      "manifestSha256": "beb89f5118758c433b5b50b2c747defef058d85e5cf3825fae78bdf74e609418",
+      "checks": [
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc.bin",
+          "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc",
+          "size": 373248,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70.bin",
+          "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70",
+          "size": 935936,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c.bin",
+          "sha256": "016b1ca87822949de7760e44b55e4d427a46e616e44749b18ba8250df3cbd29c",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb.bin",
+          "sha256": "f4124600c5e93c858f239f2b208784e8087faef2a8b51120f280f62404f5a7cb",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587.bin",
+          "sha256": "06c345006721e118270345174c63614b80a55f2129933004ff5222f3cd0e0587",
+          "size": 50331648,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391.bin",
+          "sha256": "3fb8451f1e88f7079f872448fedd861447ecf0b1a96a225175e568ade873f391",
+          "size": 23042538,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "dflegacy-v4-6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7.bin",
+          "sha256": "6b7a0fe340e65e112f629f39db68922063d443d05f878544e621cecf758235f7",
+          "size": 70,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.1",
+          "asset": "dflegacy-v4-a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4.bin",
+          "sha256": "a5a89d2b942fc57bbd9f8d83a95999971fd3b83f4e599fcded727aff704884c4",
+          "size": 80,
+          "range": "supported"
+        },
+        {
+          "release": "v0.1.8-giteatest.2",
+          "asset": "DFLegacy-client-update-v4-gitea-test-test-win-x64.json",
+          "sha256": "beb89f5118758c433b5b50b2c747defef058d85e5cf3825fae78bdf74e609418",
+          "size": 3796,
+          "range": "supported"
+        }
+      ],
+      "manifestAsset": "DFLegacy-client-update-v4-gitea-test-test-win-x64.json",
+      "architecture": "x64",
+      "flavor": "test"
+    }
+  ]
+}

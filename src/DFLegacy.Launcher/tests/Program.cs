@@ -4,6 +4,31 @@ using System.Text;
 using System.Diagnostics;
 using System.Buffers.Binary;
 
+// Child dispatch also precedes normal suite setup; isolate diagnostics before either path can load config.
+DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(
+    Path.Combine(Path.GetTempPath(),"dflegacy-launcher-child-diagnostics-"+Guid.NewGuid().ToString("N")));
+
+if(args.Length==4&&args[0]=="--session"&&args[2]=="--capability"&&Environment.GetEnvironmentVariable("DFL_TEST_HELPER_ENTRY_MARKER") is { } entryMarker)
+{
+    var marker=Path.GetFullPath(entryMarker);
+    if(!marker.StartsWith(Path.GetFullPath(Path.GetTempPath()),StringComparison.OrdinalIgnoreCase))return 2;
+    File.WriteAllText(marker,"verified own executable entry");return 0;
+}
+
+if(args.Length==5&&args[0]=="--diagnostic-helper-fixture")
+{
+    using var held=new FileStream(args[4],FileMode.Open,FileAccess.Read,FileShare.Read);
+    File.WriteAllText(args[4]+".ready","ready");
+    await DFLegacy.Diagnostics.DiagnosticHelper.RunAsync(DFLegacy.Diagnostics.DiagnosticSession.Open(args[1],args[2],args[3]));return 0;
+}
+
+if(args.Length==2 && args[0]=="--v4-lock-fixture")
+{
+    using var held=new FileStream(args[1],FileMode.Open,FileAccess.Read,FileShare.Read);
+    File.WriteAllText(args[1]+".ready",Environment.ProcessId.ToString());
+    await Task.Delay(Timeout.Infinite); return 0;
+}
+
 if (args.Length == 2 && args[0] == "--startup-test-child")
 {
     if (args[1] == "wait") { await Task.Delay(30_000); return 0; }
@@ -11,6 +36,9 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 }
 
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
+if (await UpdateV4HelperTests.Dispatch(args) is int v4HelperExit) return v4HelperExit;
+if (await RepairClientTests.Dispatch(args) is int repairExit) return repairExit;
+if (await BootstrapUpdateTests.Dispatch(args) is int bootstrapUpdateExit) return bootstrapUpdateExit;
 if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recoveryExit;
 if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
@@ -25,14 +53,29 @@ void Check(bool condition, string message)
 
 var root = Path.Combine(Path.GetTempPath(), "dflegacy-launcher-tests-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
+// All launcher-created diagnostic registration/preferences stay inside this test-owned directory.
+DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if(args.Length==2&&args[0]=="--diagnostic-release-acceptance"){await DiagnosticReleaseAcceptanceTests.Run(args[1],Check);Console.WriteLine($"Diagnostic release acceptance: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Contains("--diagnostic-helper-integrity-tests")){DiagnosticHelperIntegrityTests.Run(root,Check);Console.WriteLine($"Diagnostic helper integrity: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Contains("--diagnostic-lifetime-tests")){await DiagnosticUpdateLifetimeTests.Run(root,Check);Console.WriteLine($"Diagnostic lifetime tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Length==2&&args[0]=="--native-diagnostic-setting-tests") {await NativeDiagnosticLifetimeTests.Run(root,Check,Path.GetFullPath(args[1]));Console.WriteLine($"Native diagnostic setting tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
+    if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Length==0){DiagnosticHelperIntegrityTests.Run(root,Check);await DiagnosticUpdateLifetimeTests.Run(root,Check);await BootstrapUpdateTests.Run(root,Check);}
+    if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await GiteaSourceTests.RunV4(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--incident-tests")) { IncidentTests.Run(root,Check); Console.WriteLine($"Incident tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Length==0) IncidentTests.Run(root,Check);
     if(args.Contains("--pvp-relay-ports")) { PvpRelayPortTests.Run(Check); Console.WriteLine($"PvP relay ports: {checks} assertions, {failures} failures"); return failures == 0 ? 0 : 1; }
     if(args.Contains("--update-public-smoke")) { await UpdatePublicSmokeTests.Run(root); return 0; }
     if(args.Contains("--compact-update-tests")) { UpdateStartupFlowTests.RunOnSta(Check); Console.WriteLine($"Compact update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--launch-ui-tests")) { ClassicUiTests.Run(Check,launchOnly:true); Console.WriteLine($"Launch UI tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--registration-ui-tests")) { ClassicUiTests.Run(Check,registrationOnly:true); Console.WriteLine($"Registration UI tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--bootstrap-first-only")) { await BootstrapManagedTests.Run(root,Check,initialOnly:true); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-v4-tests")) { await BootstrapManagedTests.Run(root,Check,v4Only:true); Console.WriteLine($"V4 native bootstrap: {checks} assertions, {failures} failures");return failures==0?0:1; }
     if(args.Contains("--update-v2-tests")) { await UpdateV2Tests.Run(root,Check); Console.WriteLine($"Update V2 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-v3-tests")) { await UpdateV3Tests.Run(root,Check); Console.WriteLine($"Update V3 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-helper-tests")) { await UpdateHelperTests.Run(root,Check); Console.WriteLine($"Update helper tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
@@ -62,6 +105,12 @@ try
     await UpdateTransportTests.Run(root, Check);
     await UpdateV2Tests.Run(root, Check);
     await UpdateV3Tests.Run(root, Check);
+    await UpdateV4Tests.Run(root, Check);
+    await GiteaSourceTests.RunV4(root, Check);
+    await FileLockOwnerTests.Run(root, Check);
+    await UpdateV4HelperTests.Run(root, Check);
+    await RepairClientTests.Run(root, Check);
+    await GiteaSourceTests.RunRepair(root, Check);
     await UpdateRecoveryTests.Run(root, Check);
     await UpdateInstallerTests.Run(root, Check);
     await UpdateHelperTests.Run(root, Check);

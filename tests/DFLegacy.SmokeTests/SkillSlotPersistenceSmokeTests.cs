@@ -33,7 +33,7 @@ internal static class SkillSlotPersistenceSmokeTests
         async Task Case(string name, Func<Action<bool, string>, Task> run)
         {
             try { await run(check); }
-            catch (Exception ex) { check(false, $"skill-slot {name}: {ex.GetType().Name}: {ex.Message}"); }
+            catch (Exception ex) { check(false, $"skill-slot {name}: {ex}"); }
         }
     }
 

@@ -42,7 +42,7 @@ def app(root, name, rid):
     if name == "DFLegacy.Launcher":
         managed += ["PresentationFramework.dll", "PresentationCore.dll", "WindowsBase.dll"]
         frameworks.append("Microsoft.WindowsDesktop.App")
-    elif name != "DFLegacy.Channel":
+    elif name not in ("DFLegacy.Channel", "DFLegacy.Diagnostics"):
         frameworks.append("Microsoft.AspNetCore.App")
         write(root, "wwwroot/index.html", "<!doctype html><title>fixture</title>")
     target = "net10.0/" + rid
@@ -51,6 +51,7 @@ def app(root, name, rid):
     entries[name + ".deps.json"] = json.dumps(deps).encode()
     entries[name + ".runtimeconfig.json"] = json.dumps({"runtimeOptions": {"tfm": "net10.0", "includedFrameworks": [{"name": item} for item in frameworks]}}).encode()
     fixture(root / (name + ext), entries, rid=rid)
+    if name == "DFLegacy.Launcher": app(root,"DFLegacy.Diagnostics",rid)
     return root
 
 
@@ -76,7 +77,12 @@ class Bundles(unittest.TestCase):
 
     def assets(self, launcher_x86=None):
         source = app(self.root / "launcher-input", "DFLegacy.Launcher", "win-x64")
+        write(source, "Diagnostics/sessions/test/session.json", b"PRIVATE-CAPABILITY")
+        write(source, "preference.json", b"PRIVATE-PREFERENCE")
+        write(source, "captures/test.dmp", b"PRIVATE-DUMP")
         write(source, "launcher.json", '{"Password":"PRIVATE", "ClientPath":"C:\\\\private\\\\DNF.exe"}')
+        app(source, "DFLegacy.Diagnostics", "win-x64")
+        write(source, "DFLegacy.CrashCapture.exe", b"native capture fixture")
         native = write(self.root, "native/DFLegacy.Client.dll")
         config = write(self.root, "native/Config.ini", "[Window]\nWidth=640\n[Debug]\nEnabled=1\n")
         output = self.root / "assets"
@@ -84,11 +90,45 @@ class Bundles(unittest.TestCase):
         release.build_client_assets(source, native, config, output, VERSION, COMMIT, debug, launcher_x86=launcher_x86)
         return output
 
+    def test_helpers_are_required_and_packaged_for_both_architectures(self):
+        source_x86 = app(self.root / "launcher-input-x86", "DFLegacy.Launcher", "win-x86")
+        app(source_x86, "DFLegacy.Diagnostics", "win-x86")
+        assets = self.assets(source_x86)
+        for architecture, folder in (("x64", "launcher"), ("x86", "launcher-x86")):
+            self.assertTrue((assets / folder / "DFLegacy.Diagnostics.exe").is_file())
+            archive = release.build_client_update(assets, self.root / architecture, VERSION, COMMIT, architecture=architecture)
+            with zipfile.ZipFile(archive) as z:
+                self.assertIn("DFLegacy.Diagnostics.exe", z.namelist())
+                self.assertIn("DFLegacy.CrashCapture.exe", z.namelist())
+        (assets / "launcher" / "DFLegacy.Diagnostics.exe").unlink()
+        refresh_manifest(assets, "manifest.json")
+        with self.assertRaises(release.ReleaseError):
+            release.verify_assets(assets, VERSION, COMMIT)
+
+    def test_legacy_bridge_preserves_v016_allowlist_and_pvf_in_all_four_variants(self):
+        source_x86 = app(self.root / 'launcher-input-x86', 'DFLegacy.Launcher', 'win-x86')
+        assets = self.assets(source_x86)
+        pvf = write(self.root, 'Script.pvf', b'verified release pvf')
+        archives = release.build_client_packages(assets, self.root / 'bridge', VERSION, COMMIT,
+                                                updates_only=True, script_pvf=pvf, legacy_bridge=True)
+        self.assertEqual(len(archives), 4)
+        for archive in archives:
+            with zipfile.ZipFile(archive) as z:
+                metadata = json.loads(z.read('update-manifest.json'))
+                expected = {'DFLegacy.Launcher.exe', 'DFLegacy.Client.dll', 'Script.pvf'}
+                if metadata['flavor'] == 'test': expected.add('debug.dll')
+                self.assertEqual(set(z.namelist()), expected | {'update-manifest.json'})
+                self.assertEqual({row['path'] for row in metadata['files']}, expected)
+                self.assertEqual(z.read('Script.pvf'), pvf.read_bytes())
+                self.assertEqual(metadata['version'], VERSION)
+        with self.assertRaises(release.ReleaseError):
+            release.build_client_packages(assets, self.root / 'bad-bridge', VERSION, COMMIT, legacy_bridge=True)
+
     def test_assets_include_only_the_verified_x86_executable_from_its_publish_output(self):
         source_x86 = app(self.root / "launcher-input-x86", "DFLegacy.Launcher", "win-x86")
         write(source_x86, "launcher.json", '{"Password":"PRIVATE"}')
         assets = self.assets(source_x86)
-        self.assertEqual({p.name for p in (assets / "launcher-x86").iterdir()}, {"DFLegacy.Launcher.exe"})
+        self.assertEqual({p.name for p in (assets / "launcher-x86").iterdir()}, {"DFLegacy.Launcher.exe", "DFLegacy.Diagnostics.exe"})
         manifest = release.verify_assets(assets, VERSION, COMMIT)
         self.assertIn("launcher-x86/DFLegacy.Launcher.exe", {row["path"] for row in manifest["files"]})
         app(assets / "launcher-x86", "DFLegacy.Launcher", "win-x64")
@@ -154,8 +194,9 @@ class Bundles(unittest.TestCase):
         manifest = release.verify_assets(assets, VERSION, COMMIT)
         self.assertEqual({row["path"] for row in manifest["files"]}, {
             "launcher/DFLegacy.Launcher.exe", "launcher/DFLegacy.Client.dll", "launcher/launcher.json", "launcher/Config.ini",
-            "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini"})
+            "patch/DFLegacy.Client.dll", "patch/debug.dll", "patch/Config.ini", "launcher/DFLegacy.Diagnostics.exe", "patch/DFLegacy.CrashCapture.exe"})
         config = json.loads((assets / "launcher/launcher.json").read_text())
+        self.assertFalse(any(b"PRIVATE-" in p.read_bytes() for p in assets.rglob("*") if p.is_file()))
         self.assertEqual(config["Accounts"], [])
         self.assertEqual(config["Password"], "")
         self.assertFalse(config["StartServer"])

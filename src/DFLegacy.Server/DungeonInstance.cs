@@ -1309,11 +1309,10 @@ internal sealed partial class DungeonInstance(
     ///
     /// 失败返回错误码（沿用改造前 CMD 48 的约定）：目标就是当前房间 / 目标非法 → **4**。
     ///
-    /// **官服另有两道门，我们没有等价状态（已在清单 PD-2005/PD-2012 记录为已知偏差）**：
-    /// ① `party[106] != 2`（队伍不在副本态）→ 错误 19：本路径只对 `IsParty` 且已开局的实例可达，
-    ///    结构上已保证，不再单独判；
-    /// ② `!CDungeon::IsEnterEachMap(dungeon) && CBattle_Field::IsClearDungeon(field)` → 错误 19：
-    ///    我们没有"副本级已清"状态（打通 boss 房后客户端直接进结算页），**此门未实现**。
+    /// 官服另有两道状态门：
+    /// ① 活动副本状态由会话的 currentDungeonLayout 和 TryMoveRoom 的 run 校验保证；
+    /// ② 最终 boss 已死亡/上报，或结算已开放 → 错误 19。死亡掉落和级联仍在等待时也要保留原房间；
+    ///    普通房清怪、地狱遭遇以及尚有 boss 存活的房间仍可换房。当前目录未实现 IsEnterEachMap 特殊模式。
     /// </summary>
     internal bool TryAdvanceRoom(
         byte roomX,
@@ -1323,6 +1322,13 @@ internal sealed partial class DungeonInstance(
     {
         lock (Gate)
         {
+            if (IsFinalRoomTransitionBlockedLocked())
+            {
+                transition = null;
+                errorCode = 19;
+                return false;
+            }
+
             if (roomX == _run.RoomX && roomY == _run.RoomY)
             {
                 transition = null;
@@ -1351,6 +1357,14 @@ internal sealed partial class DungeonInstance(
     {
         lock (Gate)
         {
+            // Reject before touching the run, death generation, drops or card settlement.
+            // Every direct/party/delayed caller must retain the completed boss room.
+            if (IsFinalRoomTransitionBlockedLocked())
+            {
+                transition = null!;
+                return false;
+            }
+
             var previousRoomX = _run.RoomX;
             var previousRoomY = _run.RoomY;
             if (!_run.TryMoveRoom(roomX, roomY, out transition, random))
@@ -1384,6 +1398,19 @@ internal sealed partial class DungeonInstance(
             Version++;
             return true;
         }
+    }
+
+    private bool IsFinalRoomTransitionBlockedLocked()
+    {
+        if (ClearEnabled || _bossDeathCascadeStarted) return true;
+        if (CurrentRoomLocked()?.MapType != DungeonMapType.Boss) return false;
+
+        // BOSS_DIE_CHECK precedes native all-die, and TryBeginMonsterDeath removes
+        // a boss before awaited reward work can start the cascade. Either report
+        // is enough for that boss, but every boss must be finished before blocking.
+        var bosses = _roomMonsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+        return bosses.Length > 0 && bosses.All(monster =>
+            !AliveMonsters.Contains(monster.UniqueId) || ReportedBossDeaths.Contains(monster.UniqueId));
     }
 
     /// <summary>

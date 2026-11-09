@@ -1,0 +1,10 @@
+PASS x86 read-only compiled notices
+PASS x86-normal-valid repair exit 0
+PASS x86-normal-corrupt repair exit 1
+PASS x86-test-valid repair exit 0
+PASS x86-test-corrupt repair exit 1
+PASS x64 read-only compiled notices
+PASS x64-normal-valid repair exit 0
+PASS x64-normal-corrupt repair exit 1
+PASS x64-test-valid repair exit 0
+PASS x64-test-corrupt repair exit 1

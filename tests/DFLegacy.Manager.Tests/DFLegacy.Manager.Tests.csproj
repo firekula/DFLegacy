@@ -11,6 +11,8 @@
     <Compile Include="../../src/DFLegacy.Launcher/Updates/UpdateModels.cs" Link="UpdateModels.cs" />
     <Compile Include="../../src/DFLegacy.Launcher/Models/LauncherOptions.cs" Link="LauncherOptions.cs" />
     <ProjectReference Include="../../src/DFLegacy.Manager/DFLegacy.Manager.csproj" />
+    <ProjectReference Include="../../src/DFLegacy.Diagnostics.Core/DFLegacy.Diagnostics.Core.csproj" />
+    <ProjectReference Include="../../src/DFLegacy.UpdateCore/DFLegacy.UpdateCore.csproj" />
     <ProjectReference Include="../../src/DFLegacy.Server/DFLegacy.Server.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

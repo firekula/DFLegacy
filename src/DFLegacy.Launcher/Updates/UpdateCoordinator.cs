@@ -14,7 +14,7 @@ internal sealed class UpdateCoordinator : IDisposable
     private Task operation=Task.CompletedTask;
     private bool disposed;
     internal UpdateCoordinator(Window owner,LauncherOptions options,string installation)
-        : this(owner,installation,new UpdateSession(installation,options),()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown()))) { }
+        : this(owner,installation,new V4UpdateSession(installation,options),()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown()))) { }
     internal UpdateCoordinator(Window owner,string installation,IUpdateSession session,Action shutdown,Action<string>? notify=null,Func<Window,bool>? confirmRecovery=null)
     {
         this.owner=owner; this.installation=installation; this.session=session;
@@ -41,11 +41,30 @@ internal sealed class UpdateCoordinator : IDisposable
             // The user requested automatic regular updates. Interrupted transactions
             // still require explicit consent before restoring an earlier installation.
             var confirmed=!controller.State.IsRecovery || confirmRecovery(window!);
-            await controller.InstallAsync(confirmed);
+            if(confirmed)
+            {
+                try
+                {
+                    await Diagnostics.AutomaticDiagnostics.SuspendForUpdateAsync(CancellationToken.None);
+                    var owners=await session.InspectLocksAsync(CancellationToken.None);
+                    if(owners.Count>0)
+                    {
+                        var details=string.Join("\n",owners.Select(p=>$"{p.Name}（PID {p.ProcessId}）"+(p.CanTerminate?"":"，需手动关闭")));
+                        var answer=MessageBox.Show(window!,"以下程序正在使用更新文件：\n"+details+"\n\n是否关闭可处理的程序后继续安装？未保存的内容可能丢失。选择“否”会保留下载结果。",
+                            "文件被占用",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No);
+                        confirmed=answer==MessageBoxResult.Yes;
+                        if(confirmed) await FileLockOwners.CloseAsync(owners,true,CancellationToken.None);
+                    }
+                }
+                catch(Exception ex) { Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); Program.ReportError("update-lock-inspection",ex); notify("无法处理文件占用，请关闭相关程序后重试。\n"+ex.Message); confirmed=false; }
+            }
+            try { await controller.InstallAsync(confirmed); }
+            finally { if(controller.State.Phase!=UpdatePhase.Installing)Diagnostics.AutomaticDiagnostics.ResumeAfterUpdate(); }
         }
         if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
         ShowLogin();
         if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
+        else if(session.ShowStatusNotice) notify(controller.State.Message);
         await ShowPreviousWarning();
     }
     private void Changed(UpdateViewState state)
@@ -53,7 +72,7 @@ internal sealed class UpdateCoordinator : IDisposable
         if(disposed || owner.Dispatcher.HasShutdownStarted) return;
         owner.Dispatcher.BeginInvoke(new Action(()=>
         {
-            if(!disposed && ReferenceEquals(controller.State,state) && state.Phase is UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)
+            if(!disposed && ReferenceEquals(controller.State,state) && state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)
                 ShowProgress(state);
         }));
     }

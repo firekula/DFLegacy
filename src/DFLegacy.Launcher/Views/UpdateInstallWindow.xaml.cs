@@ -16,12 +16,14 @@ public partial class UpdateInstallWindow : Window
     internal void Render(UpdateViewState state)
     {
         if(finished) return;
-        canCancel=state.Phase is UpdatePhase.Downloading or UpdatePhase.Ready;
+        canCancel=state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Ready;
         var fraction=state.Progress is {TotalBytes:>0} p?Math.Clamp((double)p.BytesReceived/p.TotalBytes,0,1):0;
-        var value=state.Phase switch { UpdatePhase.Downloading=>.8*fraction,UpdatePhase.Ready=>.82,UpdatePhase.Installing=>.85,_=>0 };
+        var value=state.Phase switch { UpdatePhase.Checking=>.1*fraction,UpdatePhase.Downloading=>state.Progress?.Phase==null?.8*fraction:.1+.7*fraction,UpdatePhase.Ready=>.82,UpdatePhase.Installing=>.85,_=>0 };
         InstallProgress.Set(value,false);
         InstallStatus.Text=state.Phase switch
         {
+            UpdatePhase.Checking=>state.Message,
+            UpdatePhase.Downloading when state.Progress?.Phase!=null=>state.Message,
             UpdatePhase.Downloading=>$"正在下载更新… {fraction:P0}",
             UpdatePhase.Ready or UpdatePhase.Installing when state.ReplacesScriptPvf=>"将替换 Script.pvf，并备份已有文件…",
             UpdatePhase.Ready=>state.IsRecovery?"发现未完成的更新，等待确认恢复…":"下载校验完成，正在准备安装…",

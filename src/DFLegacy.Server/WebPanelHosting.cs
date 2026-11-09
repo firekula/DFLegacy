@@ -51,6 +51,17 @@ public static class WebPanelHosting
         {
             var port = context.Connection.LocalPort;
             var path = context.Request.Path.Value ?? "/";
+            var diagnosticsReceive = context.Request.Path.StartsWithSegments("/api/client-diagnostics", StringComparison.OrdinalIgnoreCase);
+            var diagnosticsAdmin = context.Request.Path.StartsWithSegments("/api/admin/diagnostics", StringComparison.OrdinalIgnoreCase);
+            var diagnosticsGm = options.WebPanels.Gm.Enabled && port == options.WebPanels.Gm.Port;
+            if (diagnosticsReceive && (port != options.Admin.Port || !options.ClientDiagnostics.Enabled
+                    || !HttpMethods.IsPost(context.Request.Method) || !path.TrimEnd('/').Equals("/api/client-diagnostics/reports", StringComparison.OrdinalIgnoreCase))
+                || diagnosticsAdmin && !diagnosticsGm
+                || path.Equals("/admin/admin-diagnostics.js", StringComparison.OrdinalIgnoreCase) && !diagnosticsGm)
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
             if (port != options.Admin.Port && context.Request.Path.StartsWithSegments("/internal/manager", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.StatusCode = StatusCodes.Status404NotFound;
@@ -68,7 +79,9 @@ public static class WebPanelHosting
             var page = player ? "/admin/player.html" : "/admin/index.html";
             var allowed = path.Equals(page, StringComparison.OrdinalIgnoreCase)
                 || path.Equals("/admin/admin.css", StringComparison.OrdinalIgnoreCase)
-                || gm && path.Equals("/admin/admin.js", StringComparison.OrdinalIgnoreCase)
+                || gm && (path.Equals("/admin/admin.js", StringComparison.OrdinalIgnoreCase)
+                    || path.Equals("/admin/admin-rewards.js", StringComparison.OrdinalIgnoreCase)
+                    || path.Equals("/admin/admin-diagnostics.js", StringComparison.OrdinalIgnoreCase))
                 || path.Equals("/health", StringComparison.OrdinalIgnoreCase);
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
                 allowed = gm || AdminAccessPolicy.Resolve(context.Request.Method, path, options.EnableTestCeraTopUp).Access != AdminAccess.Admin;

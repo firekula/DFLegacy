@@ -216,7 +216,7 @@ def publish(api, version, commit, archives, check_only=False, updates_only=False
         manifest = verify_client_package(content, version, commit, name)
         for row in manifest['files']:
             identity = (row['size'], row['sha256'])
-            key = (row['path'], name.rsplit('-', 1)[-1] if row['path'] == 'DFLegacy.Launcher.exe' else None)
+            key = (row['path'], name.rsplit('-', 1)[-1] if row['path'] in ('DFLegacy.Launcher.exe', 'DFLegacy.Diagnostics.exe') else None)
             if key in binaries and binaries[key] != identity:
                 raise ReleaseError('public packages mix binary versions')
             binaries[key] = identity

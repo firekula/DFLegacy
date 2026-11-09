@@ -1,0 +1,68 @@
+{
+  "sourceCommit": "796c1e52bed78d176dc60d1783daadcaab50cb4b",
+  "publicCommit": "6e5efedf8e8dd2d09601949a3a3c828f25bfca90",
+  "fixtureInputs": false,
+  "provider": "gitea",
+  "repository": "firekula/DFLegacy",
+  "channel": "gitea-test",
+  "partLimit": 50331648,
+  "releasePublished": true,
+  "remoteVerification": "passed: four variants, both test releases, anonymous actual engine and compiled repair",
+  "inputs": {
+    "x86-launcher": {
+      "path": "C:\\Users\\Firekula\\AppData\\Local\\Temp\\DFLegacy-v4-gitea-build-20261108\\win-x86\\DFLegacy.Launcher.exe",
+      "sha256": "be0b8da24aa8f846fa7785b319759cd69195eae7ba147b8d8ac78f168c3d2d57",
+      "size": 164604394
+    },
+    "x64-launcher": {
+      "path": "C:\\Users\\Firekula\\AppData\\Local\\Temp\\DFLegacy-v4-gitea-build-20261108\\win-x64\\DFLegacy.Launcher.exe",
+      "sha256": "63d0c07c3cf2d751ccbcf9ba7c12e813573e595ba566283cdbaf377f442d1f18",
+      "size": 174037482
+    },
+    "client-dll": {
+      "path": "D:\\codex_worktree\\manager-export-release\\DFLegacy\\artifacts\\native\\ijl15\\Release\\DFLegacy.Client.dll",
+      "sha256": "f1fd03f6f43cae000a1ab396eff620317264c753b89f9fa4e294a53086ccdd70",
+      "size": 935936
+    },
+    "debug-dll": {
+      "path": "D:\\codex_worktree\\manager-export-release\\DFLegacy\\artifacts\\native\\ijl15\\Release\\debug.dll",
+      "sha256": "8dfbf84477e32ebaf9b31f818955e61e96a1d3c772d37180b7622ae53f4daccc",
+      "size": 373248
+    }
+  },
+  "reconstructedLogicalFiles": 36,
+  "bundles": {
+    "v0.1.8-giteatest.1/x86-normal": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.1\\x86-normal",
+    "v0.1.8-giteatest.1/x86-test": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.1\\x86-test",
+    "v0.1.8-giteatest.1/x64-normal": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.1\\x64-normal",
+    "v0.1.8-giteatest.1/x64-test": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.1\\x64-test",
+    "v0.1.8-giteatest.2/x86-normal": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.2\\x86-normal",
+    "v0.1.8-giteatest.2/x86-test": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.2\\x86-test",
+    "v0.1.8-giteatest.2/x64-normal": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.2\\x64-normal",
+    "v0.1.8-giteatest.2/x64-test": "C:\\Users\\Firekula\\Downloads\\DFLegacy-V4-gitea-test-20261108\\bundles\\v0.1.8-giteatest.2\\x64-test"
+  },
+  "releases": [
+    {
+      "version": "v0.1.8-giteatest.1",
+      "resourceCount": 12,
+      "manifestCount": 4,
+      "attachmentBytes": 339964730,
+      "zip": "DFLegacy-Gitea-v0.1.8-giteatest.1-upload.zip",
+      "zipSha256": "ba67206ff6dff60ede4b9e17b7c791d63631df66e5801161a36d4a79353edf9f",
+      "zipSize": 147045618
+    },
+    {
+      "version": "v0.1.8-giteatest.2",
+      "resourceCount": 1,
+      "manifestCount": 4,
+      "attachmentBytes": 14358,
+      "zip": "DFLegacy-Gitea-v0.1.8-giteatest.2-upload.zip",
+      "zipSha256": "7d93930fcec0f46faaa2dc45f1d40dfceec6cc172347e935cb8570d5cba2d894",
+      "zipSize": 7946
+    }
+  ],
+  "remoteReleaseIds": [
+    3716,
+    3717
+  ]
+}

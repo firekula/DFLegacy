@@ -5,6 +5,7 @@ namespace DFLegacy.Launcher;
 
 internal static class ClientLogPaths
 {
+    private static readonly object WriteGate=new();
     internal static string GetDirectory(string? clientPath) => Path.Combine(
         clientPath is null ? AppContext.BaseDirectory : Path.GetDirectoryName(Path.GetFullPath(clientPath))!,"Logs","DFLegacy");
 
@@ -26,7 +27,16 @@ internal static class ClientLogPaths
         {
             var directory = GetDirectory(clientPath); EnsureDirectory(directory);
             var path = Path.Combine(directory,"launcher.log"); if(HasLink(path)) return false;
-            File.AppendAllText(path,$"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}"); return true;
+            lock(WriteGate)
+            {
+                if(File.Exists(path) && new FileInfo(path).Length>=2*1024*1024)
+                {
+                    var previous=Path.Combine(directory,"launcher.previous.log");if(HasLink(previous))return false;
+                    File.Move(path,previous,true);
+                }
+                File.AppendAllText(path,$"[{DateTimeOffset.Now:O}] {message}{Environment.NewLine}");
+            }
+            return true;
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or ArgumentException) { return false; }
     }

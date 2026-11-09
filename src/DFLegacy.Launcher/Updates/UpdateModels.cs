@@ -8,7 +8,7 @@ public sealed record UpdateManifest(int SchemaVersion, string Version, string Co
     internal bool HasScriptPvf => Files.Any(file => file.Path == ClientPackageManifest.ScriptPvfName);
 }
 public sealed record UpdateRelease(long Id, string Version, DateTimeOffset PublishedAt, bool Prerelease, Uri DownloadUrl, long Size, string Sha256);
-public sealed record UpdateProgress(long BytesReceived, long TotalBytes, double BytesPerSecond);
+public sealed record UpdateProgress(long BytesReceived, long TotalBytes, double BytesPerSecond, string? Phase=null, string? File=null, int CompletedFiles=0, int TotalFiles=0, string? Detail=null);
 internal sealed record UpdateInstallProgress(double Fraction,string Message)
 {
     internal static void Report(IProgress<UpdateInstallProgress>? progress,double fraction,string message)
@@ -20,4 +20,4 @@ internal sealed record UpdateInstallProgress(double Fraction,string Message)
 public sealed record PreparedUpdate(UpdateRelease Release, string Directory, UpdateManifest Manifest);
 public sealed record UpdateState(long ReleaseId, string Version, UpdateFile[] Files);
 public sealed record UpdateApplyResult(bool Success, bool Restarted, string Message, string? BackupDirectory = null);
-internal sealed record UpdateRecovery(string TransactionId, string JournalSha256, string Version, UpdateFile OriginalLauncher, UpdateFile NewLauncher);
+internal sealed record UpdateRecovery(string TransactionId, string JournalSha256, string Version, UpdateFile OriginalLauncher, UpdateFile NewLauncher, bool IsV4=false);

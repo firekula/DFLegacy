@@ -6540,6 +6540,20 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            if (await DungeonLootGatherCommand.TrySendAsync(
+                                    messageRequest.MessageType,
+                                    ClientEncoding.GetString(messageRequest.MessageBytes),
+                                    dungeonInstance, activeCharacter.Id, localUserId,
+                                    dungeonCharacterAlive, isPvpChannel,
+                                    packet => SendTownPacketAsync(packet, serverToken)))
+                            {
+                                logger.LogInformation(
+                                    "Solo loot gather authorized for user {UserId} in dungeon {DungeonId}, room ({RoomX},{RoomY}), generation={RoomGeneration}.",
+                                    localUserId, currentDungeonId, currentDungeonRoomX, currentDungeonRoomY,
+                                    dungeonInstance!.RoomGeneration);
+                                continue;
+                            }
+
                             // 调试聊天命令（**真机测试专用**）：`掉落测试` 开关本实例的"满掉落"。
                             // 只认 `test` 账号；命中就**不再当聊天发出去**（避免污染频道）。
                             // 正文按客户端代码页（936）解码——与本文件其它地方同一口径。
@@ -14652,8 +14666,7 @@ public sealed class EntranceService(
                                     // **一次合法请求推进整队**——那个函数里没有任何"全员到门口"的条件，推进与否
                                     // 只看 `CBattle_Field::MoveMap(field, msg[13], msg[14], &out)` 对**请求者自己**
                                     // 目标的判定；成功后广播 NOTI 29 给全队并清零全员 loaded（resetFinishLoadingVar）。
-                                    // 失败回 CMD 48 错误：官服的两道状态门用 19，我们这边只有"目标非法/重复"这一类，
-                                    // 沿用改造前的错误码 4（见清单 PD-2005/PD-2012）。
+                                    // 最终结算已开放时回状态错误 19；目标非法/重复仍回错误 4。
                                     // 自研的门口集结（宽限窗口/倒计时/到达登记/强制推进）已随本改动整体删除。
                                     if (!partyInstance.TryAdvanceRoom(
                                             targetX, targetY, out var advanceTransition, out var advanceError)
@@ -14680,10 +14693,12 @@ public sealed class EntranceService(
                                         serverToken);
                                     continue;
                                 }
-                                else if (dungeonInstance!.TryMoveRoom(
+                                else if (dungeonInstance!.TryAdvanceRoom(
                                         targetX,
                                         targetY,
-                                        out var transition))
+                                        out var soloTransition,
+                                        out var soloMoveError)
+                                    && soloTransition is { } transition)
                                 {
                                     await SettleDungeonCreatureHungerAsync(
                                         notifyClient: true,
@@ -14775,15 +14790,19 @@ public sealed class EntranceService(
                                 {
                                     var moveError = GameProtocolEngine.CreateCommandError(
                                         request,
-                                        errorCode: 4);
+                                        errorCode: soloMoveError);
                                     await moveError.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, moveError);
                                     logger.LogWarning(
-                                        "Dungeon {DungeonId} rejected disconnected or unavailable room ({RoomX},{RoomY})",
+                                        "Dungeon {DungeonId} rejected room ({RoomX},{RoomY}); error={ErrorCode}, clear={ClearEnabled}, generation={RoomGeneration}, alive={Alive}.",
                                         currentDungeonId,
                                         targetX,
-                                        targetY);
+                                        targetY,
+                                        soloMoveError,
+                                        dungeonInstance.ClearEnabled,
+                                        dungeonInstance.RoomGeneration,
+                                        dungeonCharacterAlive);
                                 }
                             }
                             continue;

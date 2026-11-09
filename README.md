@@ -1,5 +1,13 @@
 # DFLegacy
 
+v0.1.8 正式发布采用 GHCR 服务端镜像，以及 GitHub x86/x64、普通/测试四路 V4 客户端更新。v0.1.6 客户端先安装同版本 V3 兼容包，重启后迁移至固定入口和逐文件修复；兼容包有意不含旧解析器不认识的诊断助手，新 V4 安装再补齐。完整离线包可直接解压到新目录使用，替换旧目录时保留账号和窗口配置。赛丽亚新增 201 种有原价的材料，63 种缺价材料暂不上架。PVF 与服务端同步方法、旧客户端迁移及发布验证见 [v0.1.8 发布说明](docs/releases/v0.1.8.md)。以下保留开发阶段的验收记录，不代表当前发布限制。
+
+Unreleased 客户端基本故障报告在普通版和测试版默认自动发送，可在设置关闭。接收使用账号 API（默认 8081），GM 查询／下载／删除仅在 18081 管理口和管理员身份可用；小型转储只留当前用户本地，不上传。两架构独立自包含助手随客户端更新，详情及真实验收边界见[自动诊断验收](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。最终隔离预发布 [v0.1.8-giteatest.6](http://firekula.site:3000/firekula/DFLegacy/releases/tag/v0.1.8-giteatest.6) 来自 `64f5ab5`，四变体真实修复及五对私有生产符号已验收。本轮不提升正式版本、不发布 GitHub/GHCR。
+
+开发中（Unreleased）：V4 客户端更新支持完整文件校验、逐文件修复、配置迁移和独立故障报告。Gitea 测试版已推进至 `v0.1.8-giteatest.4`，x86/x64 均使用固定图标入口、独立登录界面及带恢复副本的更新程序。新增单人聊天“牛来”归拢当前地面掉落，兼容附近和副本默认聊天；已获用户实机确认。最终 Boss 死亡后非法换房重置结算的服务端路径已修复，亚蒙下层实测能拒绝换房并正常回城；门动画和原始闪退的验证边界见[本轮图文报告](artifacts/bootstrap-auto-repair-20261108/REPORT.md)。更新方法见 [V4 说明](CLIENT_UPDATES_V4.md)。正式 GitHub 更新和线上服务保持原发布范围。
+
+2026-11-08 本地 GM 验收：修复独立 18081 端口未加载奖励脚本的问题，离线胜点发放、全体邮件预览与发送、刷新后恢复原批次均已验证；用户另行确认在线角色收到胜点后立即生效。详见[后台图文报告](artifacts/gm-rewards-live-20261108/REPORT.md)。本轮只提交并推送 Gitea 开发分支，尚未发布线上镜像或正式客户端更新。
+
 v0.1.7 服务端更新：决斗场扩展为初级、中级、高级和自由四类频道，覆盖全部决斗段位；决斗房间新增组队战与擂台赛，支持八座位和整队结算；18081 GM 后台新增胜点发放，以及向所有现有角色（含离线角色）预览、发送和补发邮件。升级需同时更换服务端、客户端 PVF，并映射和放行 `7110–7112/TCP`。本轮已完成本地验证并停止测试服务；同步GitHub源码快照并发布GHCR服务端镜像，客户端自动更新附件继续保留v0.1.6。见[部署说明](DEPLOYING.md#四类决斗频道与-gm-奖励v017)、[频道与GM验收](docs/acceptance/2026-11-07-pvp-gm-rewards.md)和[组队战与擂台赛验收](docs/acceptance/2026-11-07-pvp-team-relay.md)。
 
 第一章 v0.1.6 更新了阿尔伯特偷学、天空之城邀请函掉落、任务文字和周末双倍疲劳，修复仓库、背包、邮件、摆摊及组队黑钻翻牌。已安装的 x86 和 x64 客户端可通过登录器更新 `Script.pvf`。现有 v0.1.4 客户端先安装 v0.1.5 兼容更新，重启后继续安装 v0.1.6。见[更新日志](CHANGELOG.md)和[升级步骤](DEPLOYING.md#客户端自动更新)。
@@ -330,15 +338,17 @@ dotnet publish .\src\DFLegacy.Launcher\DFLegacy.Launcher.csproj -c Release -o .\
 | `AccountServicePort` | 账号服务（后台）端口，默认 `8081`。**域名与 `EntranceHost` 共用**：实际地址 = `http://{EntranceHost}:{AccountServicePort}`，发布前只改这一个端口，域名不用改两处。 |
 | `AccountServiceUrl` | 可选覆盖：填了就完全使用该地址（账号服务在别的域名或走内网时）；留空即按上面的「域名:端口」自动拼。 |
 | `Theme` | 启动器界面主题：`auto` / `light` / `dark`（只作用于注册/改密/找回/账号管理/设置这些窗口，主窗口是原版皮肤不受影响）。 |
+| `UpdateProvider` / `UpdateChannel` | V4 测试构建：正式来源配置为 `github` / `stable`，本轮隔离测试为 `gitea` / `gitea-test`（固定 `http://firekula.site:3000`）；另保留 `gitee` / `gitee-test` 适配。显式测试来源不回退到 GitHub，也不被旧 `UpdateServiceUrl` 覆盖；GitHub 模式保留显式自托管地址优先。 |
+| `UpdateRepository` / `UpdateFlavor` | V4 来源仓库与 `normal`／`test` 类型；类型留空时从已安装记录或安装包清单取得。架构跟随当前登录器进程，不在 x86／x64 之间自动切换。 |
 | `Accounts[]` 子项 | 除 `Account` / `Password` 外还支持 `DisplayName`（显示名）、`CreateTime`（创建时间）、`OicqCode` 与 `RememberPassword`（记住密码，默认 `true`；为 `false` 时只保存空密码，启动前需在界面输入，无头启动需要存储密码）。 |
 
 `Relay.Enabled` 打开后，启动器会把本地中继托管在自己进程内（启动客户端后驻留到客户端退出，不额外产生进程），用于客户端只能 IPv4、服务器只有 IPv6 的场景，见 [DEPLOYING.md](DEPLOYING.md#64-让-ipv4-客户端连接-ipv6-服务器dflegacyrelay)。
 
-新版使用独立 `DFLegacy.Client.dll`，通过登录器内嵌的 x86 引导器在游戏入口前加载；保持原始 EXE、DLL、PVF、NPK 不变。仅支持已验证的同版本兼容展开客户端，不修复原始旧壳的现代 Windows 兼容性。旧版用户需手动迁移一次：退出游戏并备份客户端，使用新登录器验证原版恢复，不能根据 `ijl15.original.dll` 等备份文件名猜测原版。
+新版使用独立 `DFLegacy.Client.dll`，通过登录器内嵌的 x86 引导器在游戏入口前加载；该注入过程本身不改写原始 EXE、DLL、PVF、NPK。版本更新可以替换更新清单明确管理的资源，V4 的文件策略见下文。仅支持已验证的同版本兼容展开客户端，不修复原始旧壳的现代 Windows 兼容性。旧版用户需手动迁移一次：退出游戏并备份客户端，使用新登录器验证原版恢复，不能根据 `ijl15.original.dll` 等备份文件名猜测原版。
 
-部署管理器下载卡片默认导出普通版；勾选“测试版（包含 debug.dll，便于诊断）”加入同版本诊断模块，并默认在首个游戏内画面加载本地诊断，不改写旧 `EnableDebugOverlay` 配置。普通版同样包含完整游戏优化且不加载诊断。测试控制、自动输入和组队文件命令仍需显式开启；仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。缺失或不匹配的测试资源会阻止测试包导出。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可查看。
+部署管理器下载卡片默认导出普通版；勾选“测试版（包含 debug.dll，便于诊断）”加入同版本诊断模块，并默认在首个游戏内画面加载本地诊断，不改写旧 `EnableDebugOverlay` 配置。普通版同样包含完整游戏优化，但不加载 `debug.dll` 界面；Unreleased 的本地事故报告在普通版也可记录。测试控制、自动输入和组队文件命令仍需显式开启；仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。缺失或不匹配的测试资源会阻止测试包导出。补丁、引导器和登录器内嵌 Detours 完整许可与版本，运行 `DFLegacy.Launcher.exe --third-party-notices | more` 可查看。
 
-玩家 ZIP 解压到 `DNF.exe` 所在目录，含 `client-package.json`、单文件登录器、独立补丁及安全生成的服务器连接配置；已有 `Config.ini` 继续保留。GitHub 的手动迁移工具包不含 `Config.ini`、`launcher.json`、游戏文件或账号。迁移后按已安装普通／测试类型自动使用对应 schema 2 更新包；不会新发 schema 1 桥接包。
+玩家 ZIP 解压到 `DNF.exe` 所在目录，含 `client-package.json`、单文件登录器、独立补丁及安全生成的服务器连接配置；已有 `Config.ini` 继续保留。GitHub 的手动迁移工具包不含 `Config.ini`、`launcher.json`、游戏文件或账号。已发布版本按普通／测试类型使用 V2 兼容包或含 PVF 的 V3 更新包；不会新发 schema 1 桥接包。开发中的 V4 使用独立完整文件清单，可管理明确选择的嵌套 NPK、PVF、DLL 等资源；玩家配置通过结构化迁移保留，见 [V4 文件策略](CLIENT_UPDATES_V4.md#文件与配置策略)。
 
 客户端目录中的 `Config.ini` 提供以下常用设置：
 

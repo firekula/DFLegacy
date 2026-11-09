@@ -77,6 +77,7 @@ public sealed class ClientPackageExporter
         kind = "client";
         ConfigurationStore.Validate(config);
         var launcherAsset = arch == "x86" ? "launcher-x86/DFLegacy.Launcher.exe" : "launcher/DFLegacy.Launcher.exe";
+        var diagnosticAsset = arch == "x86" ? "launcher-x86/DFLegacy.Diagnostics.exe" : "launcher/DFLegacy.Diagnostics.exe";
         string? destination = null;
         try
         {
@@ -129,6 +130,7 @@ public sealed class ClientPackageExporter
                     if (!File.Exists(component) && !Directory.Exists(component)) throw new InvalidDataException($"缺少客户端文件：{name}");
                     if ((File.GetAttributes(component) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("客户端资源不允许符号链接。");
                 }
+                if ((name is "launcher/DFLegacy.Diagnostics.exe" or "launcher-x86/DFLegacy.Diagnostics.exe") && name != diagnosticAsset) continue;
                 if ((name is "launcher/DFLegacy.Launcher.exe" or "launcher-x86/DFLegacy.Launcher.exe") && name != launcherAsset) continue;
                 bytes = checked(bytes + new FileInfo(path).Length);
                 if (bytes > 1024L * 1024 * 1024) throw new InvalidDataException("客户端资源超过 1 GiB 上限。");
@@ -149,7 +151,7 @@ public sealed class ClientPackageExporter
                 var actual = Convert.ToHexStringLower(hashState.GetHashAndReset());
                 if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"客户端资源校验失败：{name}");
             }
-            foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", launcherAsset })
+            foreach (var required in new[] { "patch/DFLegacy.Client.dll", "patch/Config.ini", launcherAsset, diagnosticAsset, "patch/DFLegacy.CrashCapture.exe" })
                 if (!files.ContainsKey(required)) throw new InvalidDataException($"客户端资源不完整：{required}");
 
             if (testBuild && !files.ContainsKey("patch/debug.dll")) throw new InvalidDataException("缺少配套测试资源 debug.dll，请安装同版本完整发行包。");
@@ -159,7 +161,7 @@ public sealed class ClientPackageExporter
             foreach (var old in new DirectoryInfo(_paths.Exports).GetFiles("dflegacy-*.zip").Where(file => file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))) old.Delete();
             destination = Path.Combine(_paths.Exports, $"dflegacy-{kind}-{version}-{Guid.NewGuid():N}.zip");
             var sums = new StringBuilder();
-            var compressionTotal = files.Where(file => file.Key is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "launcher/Assets/Skin/fwtk.html" || file.Key == launcherAsset)
+            var compressionTotal = files.Where(file => file.Key is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "patch/DFLegacy.CrashCapture.exe" or "launcher/Assets/Skin/fwtk.html" || file.Key == launcherAsset || file.Key == diagnosticAsset)
                 .Sum(file => new FileInfo(file.Value.FullPath).Length);
             long compressedBytes = 0;
             progress?.Invoke(new("compressing", 0, compressionTotal, "正在压缩客户端资源…"));
@@ -180,6 +182,8 @@ public sealed class ClientPackageExporter
                     {
                         "patch/DFLegacy.Client.dll" => "DFLegacy.Client.dll",
                         "patch/debug.dll" => "debug.dll",
+                        "patch/DFLegacy.CrashCapture.exe" => "DFLegacy.CrashCapture.exe",
+                        _ when name == diagnosticAsset => "DFLegacy.Diagnostics.exe",
                         _ when name == launcherAsset => "DFLegacy.Launcher.exe",
                         "launcher/Assets/Skin/fwtk.html" => "Assets/Skin/fwtk.html",
                         _ => null
@@ -199,7 +203,7 @@ public sealed class ClientPackageExporter
                     var actual = Convert.ToHexStringLower(digest.GetHashAndReset());
                     if (!actual.Equals(file.Hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException($"生成时客户端资源已发生变更：{name}");
                     sums.Append(actual).Append("  ").Append(zipName).Append('\n');
-                    if (zipName is "DFLegacy.Launcher.exe" or "DFLegacy.Client.dll" or "debug.dll")
+                    if (zipName is "DFLegacy.Launcher.exe" or "DFLegacy.Client.dll" or "debug.dll" or "DFLegacy.Diagnostics.exe" or "DFLegacy.CrashCapture.exe")
                     {
                         if (source.Length <= 0) throw new InvalidDataException("客户端程序为空。");
                         installedFiles.Add(new { path = zipName, size = source.Length, sha256 = actual });
@@ -218,7 +222,7 @@ public sealed class ClientPackageExporter
                 await Add("launcher.json", JsonSerializer.Serialize(launcher, new JsonSerializerOptions { WriteIndented = true }));
                 await Add("README.txt", $"DFLegacy {version}\n提交：{commit}\n\n新版使用独立 DFLegacy.Client.dll。旧版用户需先迁移一次：退出游戏并备份客户端，在新登录器中确认经哈希验证的原版 IJL 恢复；不要按备份文件名猜测原版。\n"
                     + "将 ZIP 内容直接解压到 DNF.exe 所在目录，运行 DFLegacy.Launcher.exe；首次自行注册或输入账号。\n默认配置内嵌，已有 Config.ini 仅更新必要连接字段并保留窗口设置。\n"
-                    + "保持原始 EXE、DLL、PVF、NPK 不变；仅支持已验证的同版本兼容展开客户端，不修复原始旧壳。\n不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n普通版包含完整游戏优化且不加载诊断；测试包默认在首个游戏内画面加载本地诊断，自动输入和测试控制仍需显式启用。仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。\n"
+                    + "保持原始 EXE、DLL、PVF、NPK 不变；仅支持已验证的同版本兼容展开客户端，不修复原始旧壳。\n不包含客户端或 Script.pvf，请自行提供与服务端匹配的资源。\n普通版和测试版默认自动发送基本故障信息，可在设置关闭；小型转储仅保存在当前用户本地。普通版包含完整游戏优化且不加载调试覆盖层；测试包默认在首个游戏内画面加载本地诊断，自动输入和测试控制仍需显式启用。仅服务端覆盖数据需要共享本机目录，不自动同步远程数据。\n"
                     + "Detours 完整许可和版本信息已内嵌于补丁、引导器和登录器。查看：DFLegacy.Launcher.exe --third-party-notices | more\n");
                 var checksumData = Encoding.UTF8.GetBytes(sums.ToString());
                 await using var checksum = archive.CreateEntry("SHA256SUMS").Open();
@@ -238,6 +242,7 @@ public sealed class ClientPackageExporter
         if (parts.Any(part => part is "" or "." or ".." || part.StartsWith('.'))) return false;
         return name is "patch/DFLegacy.Client.dll" or "patch/debug.dll" or "patch/Config.ini"
             or "launcher/DFLegacy.Launcher.exe" or "launcher-x86/DFLegacy.Launcher.exe" or "launcher/DFLegacy.Client.dll" or "launcher/launcher.json"
+            or "launcher/DFLegacy.Diagnostics.exe" or "launcher-x86/DFLegacy.Diagnostics.exe" or "patch/DFLegacy.CrashCapture.exe"
             or "launcher/Config.ini" or "launcher/Assets/Skin/fwtk.html";
     }
 

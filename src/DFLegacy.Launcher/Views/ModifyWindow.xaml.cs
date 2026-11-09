@@ -24,6 +24,9 @@ public partial class ModifyWindow : System.Windows.Window
         if (newP != ConfirmBox.Password) { ClassicMessage.Show(this, "两次新密码不一致。"); return; }
         if (user.Length is < 4 or > 32 || newP.Length is < 6 or > 128) { ClassicMessage.Show(this, "账号 4-32、新密码 6-128。"); return; }
 
+        Program.Incidents.RegisterSecret(user);
+        Program.Incidents.RegisterSecret(oldP);
+        Program.Incidents.RegisterSecret(newP);
         SubmitBtn.IsEnabled = false;
         // 8081 对外后改密接口要求身份：先用旧密码登录换 token（失败限流集中在登录一处，
         // 旧密码错误也在这一步暴露），再带 token 改密。
@@ -35,6 +38,7 @@ public partial class ModifyWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-modify",ex);
             ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
@@ -54,6 +58,7 @@ public partial class ModifyWindow : System.Windows.Window
             return;
         }
 
+        Program.Incidents.RegisterSecret(login.Token);
         PasswordResult r;
         try
         {
@@ -61,6 +66,7 @@ public partial class ModifyWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-modify",ex);
             ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
@@ -80,6 +86,7 @@ public partial class ModifyWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-modify",ex);
             // 服务端密码已改，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
             ClassicMessage.Show(this, $"密码已修改，但保存到本地账号列表失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;

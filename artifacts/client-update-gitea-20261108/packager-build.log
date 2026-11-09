@@ -1,0 +1,13 @@
+  正在确定要还原的项目…
+  已还原 D:\codex_worktree\manager-export-release\DFLegacy\src\DFLegacy.Protocol\DFLegacy.Protocol.csproj (用时 76 毫秒)。
+  已还原 D:\codex_worktree\manager-export-release\DFLegacy\src\DFLegacy.Manager\DFLegacy.Manager.csproj (用时 85 毫秒)。
+  已还原 D:\codex_worktree\manager-export-release\DFLegacy\src\DFLegacy.ClientPackager\DFLegacy.ClientPackager.csproj (用时 85 毫秒)。
+  DFLegacy.Protocol -> C:\Users\Firekula\AppData\Local\Temp\dflegacy-gitea-packager-20261108\bin\DFLegacy.Protocol\release\DFLegacy.Protocol.dll
+  DFLegacy.Manager -> C:\Users\Firekula\AppData\Local\Temp\dflegacy-gitea-packager-20261108\bin\DFLegacy.Manager\release\DFLegacy.Manager.dll
+  DFLegacy.ClientPackager -> C:\Users\Firekula\AppData\Local\Temp\dflegacy-gitea-packager-20261108\bin\DFLegacy.ClientPackager\release\DFLegacy.ClientPackager.dll
+
+已成功生成。
+    0 个警告
+    0 个错误
+
+已用时间 00:00:02.61

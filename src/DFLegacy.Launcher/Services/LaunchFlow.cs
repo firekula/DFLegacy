@@ -13,6 +13,8 @@ internal static class LaunchFlow
         Action<string>? reportWarning = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        // Establish a current-user session before validation can fail. Diagnostic failure never blocks launch.
+        Program.RegisterDiagnosticSecrets(options);
         Program.ValidateOptions(options);
         Program.ValidateLauncherField(account.Account, "Account");
         Program.ValidateLauncherField(account.Password, "Password");
@@ -20,8 +22,11 @@ internal static class LaunchFlow
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
         Program.LogClientPath = clientPath;
+        Program.RegisterDiagnosticSecrets(options);
+        Program.Incidents.RegisterSecret(account.Account); Program.Incidents.RegisterSecret(account.Password);
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
-        var manifest = ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
+        using var installationLease=DFLegacy.UpdateCore.InstallationLease.Acquire(Path.GetDirectoryName(clientPath)!);
+        var manifest = await Task.Run(()=>ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!),cancellationToken);
         ClientBootstrapInspector.ValidateForLaunch(clientPath);
         Program.ValidateScriptPvf(clientPath);
         await Program.EnsureD3D9AvailableAsync(options);
@@ -65,16 +70,23 @@ internal static class LaunchFlow
                 "0","0","0","0","0","0","0","0"
             ]);
             await ClientProcessLifetime.RunAsync(
-                () => ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),
+                () => StartWithInstallationLeaseAsync(()=>ClientProcessLauncher.StartAsync(clientPath, launcherData,manifest,cancellationToken,pay.BaseUrl),installationLease),
                 async (client, token) =>
                 {
+                    try { Diagnostics.AutomaticDiagnostics.Session?.BindProcess(client); }
+                    catch(Exception error) when(error is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
                     Program.TryRaisePriority(client);
+                    using var capture=Diagnostics.DetailedCrashCapture.TryStart(client.Id);
                     Program.WriteLauncherLog(
                         $"Created DFLegacy client process {client.Id}; entrance={entranceHost}:{options.EntrancePort}" +
                         (relay is null ? "." : $"; relay target={relay.TargetAddress}."));
-                    await ClientStartupMonitor.ObserveAsync(client, TimeSpan.FromSeconds(5), token);
-                    Program.WriteLauncherLog($"Client process {client.Id} remained running through startup observation.");
-                    await client.WaitForExitAsync(token);
+                    try
+                    {
+                        await ClientStartupMonitor.ObserveAsync(client, TimeSpan.FromSeconds(5), token);
+                        Program.WriteLauncherLog($"Client process {client.Id} remained running through startup observation.");
+                        await client.WaitForExitAsync(token);
+                    }
+                    finally { if(client.HasExited) Program.Incidents.ReportExit(client.Id,client.ExitCode,token.IsCancellationRequested); }
                     shutdown.Cancel();
                     await relayTask;
                     Program.WriteLauncherLog($"Client process {client.Id} exited; launcher stopping.");
@@ -87,5 +99,13 @@ internal static class LaunchFlow
             catch (OperationCanceledException) when (shutdown.IsCancellationRequested) { }
             finally { relay?.Stop(); }
         }
+    }
+    internal static async Task<Process> StartWithInstallationLeaseAsync(Func<Task<Process>> start,IDisposable lease)
+    {
+        var process=await start().ConfigureAwait(false);
+        // Bootstrap has mapped the game and patch. Their OS file locks now protect them;
+        // do not hold the configuration/install mutex for the whole playing session.
+        lease.Dispose();
+        return process;
     }
 }

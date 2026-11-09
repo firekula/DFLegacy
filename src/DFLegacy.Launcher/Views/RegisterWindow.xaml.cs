@@ -30,6 +30,9 @@ public partial class RegisterWindow : System.Windows.Window
             return;
         }
 
+        Program.Incidents.RegisterSecret(user);
+        Program.Incidents.RegisterSecret(pass);
+        Program.Incidents.RegisterSecret(oicq);
         SubmitBtn.IsEnabled = false;
         RegistrationResult r;
         try
@@ -39,6 +42,7 @@ public partial class RegisterWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-register",ex);
             ClassicMessage.Show(this, $"请求失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;
             return;
@@ -63,6 +67,7 @@ public partial class RegisterWindow : System.Windows.Window
         }
         catch (Exception ex)
         {
+            Program.ReportError("account-register",ex);
             // 服务端账号已创建，只是本地 launcher.json 保存失败：不关窗，可重试或稍后在账号管理处理。
             ClassicMessage.Show(this, $"注册成功，但保存到本地账号列表失败：{ex.Message}");
             SubmitBtn.IsEnabled = true;

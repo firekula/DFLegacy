@@ -6,6 +6,9 @@ namespace DFLegacy.Launcher;
 internal sealed class LauncherOptions
 {
     public string UpdateRepository { get; set; } = "firekula/DFLegacy";
+    public string UpdateProvider { get; set; } = "github";
+    public string UpdateChannel { get; set; } = "stable";
+    public string UpdateFlavor { get; set; } = string.Empty;
     public string UpdateServiceUrl { get; set; } = string.Empty;
     public bool DisableGitHubUpdates { get; set; }
     public bool IncludePrereleaseUpdates { get; set; } = true;
@@ -41,6 +44,8 @@ internal sealed class LauncherOptions
     public double D3D9TimeoutSeconds { get; set; } = 30;
     public double D3D9RetryIntervalSeconds { get; set; } = 1;
     public LauncherRelayOptions Relay { get; set; } = new();
+    private DFLegacy.Diagnostics.DiagnosticOptions diagnostics = new();
+    public DFLegacy.Diagnostics.DiagnosticOptions Diagnostics { get => diagnostics; set => diagnostics = value ?? new(); }
 
     public LauncherAccountProfile GetSelectedAccount() =>
         Accounts.Count == 0

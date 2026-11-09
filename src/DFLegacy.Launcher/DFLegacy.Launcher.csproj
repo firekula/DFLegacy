@@ -41,6 +41,8 @@
     <Using Include="System.IO" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../DFLegacy.UpdateCore/DFLegacy.UpdateCore.csproj" />
+    <ProjectReference Include="../DFLegacy.Diagnostics.Core/DFLegacy.Diagnostics.Core.csproj" />
     <ProjectReference Include="../DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
     <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
     <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />

@@ -9,6 +9,17 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Length == 0 || args.Contains("--client-diagnostics"))
+{
+    await ClientDiagnosticSmokeTests.RunAsync(Check);
+    if (args.Contains("--client-diagnostics"))
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Client diagnostics smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Contains("--pvp-admission-race"))
 {
     await PvpMultiChannelSmokeTests.DisplacedAdmission(Check);
@@ -315,8 +326,17 @@ if (args.Contains("--pickup-removal"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--loot-gather"))
+{
+    await DungeonLootGatherSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Loot gather smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--boss-room-death"))
 {
+    await DungeonPartySmokeTests.RunAsync(Check);
     DungeonBossDeathSmokeTests.Run(Check);
     DungeonDebugOverlaySmokeTests.Run(Check);
     await TestControlSmokeTests.RunAsync(Check);
@@ -442,6 +462,7 @@ await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
 DungeonBossDeathSmokeTests.Run(Check);
+await DungeonLootGatherSmokeTests.RunAsync(Check);
 DungeonDebugOverlaySmokeTests.Run(Check);
     await TestControlSmokeTests.RunAsync(Check);
 await GameplayDatagramSmokeTests.RunAsync(Check);
