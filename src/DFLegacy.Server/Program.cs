@@ -90,6 +90,7 @@ builder.Services.AddSingleton<JsonGameStore>();
 // TimeProvider 显式注册，便于测试注入假时钟。
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ClientDiagnosticStore>();
+builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ClientDiagnosticStore>());
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
 // 好友在线索引按角色名跨连接共享，必须单例：EntranceService 的所有会话共用它。

@@ -35,7 +35,7 @@ public sealed record ClientDiagnosticReport(
     private static readonly Regex Hex = new(@"^0x[0-9a-fA-F]{1,16}$", RegexOptions.CultureInvariant);
     private static readonly Regex Hash = new(@"^[0-9a-f]{64}$", RegexOptions.CultureInvariant);
     private static readonly Regex Frame = new(@"^[A-Za-z0-9_.\-]{1,128}\+0x[0-9a-fA-F]{1,16}$", RegexOptions.CultureInvariant);
-    private static readonly Regex Unsafe = new(@"(?:[A-Za-z]:[\\/]|\\\\|://|(?:^|[\s""'=:(])/[A-Za-z0-9_.\-]|(?:password|passwd|token|authorization|secret|account|username|apikey)[""']?\s*[:=]|\bBearer\s+\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex Unsafe = new(@"(?:[A-Za-z]:[\\/]|\\\\|://|(?:^|[\s""'=:(])/\S|(?:password|passwd|token|authorization|secret|account|username|apikey)[""']?\s*[:=]|\bBearer\s+\S+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     public static readonly IReadOnlySet<string> SystemKeys = new HashSet<string>(StringComparer.Ordinal) {
         "osVersion", "osBuild", "osArchitecture", "processArchitecture", "language", "cpuModel", "logicalProcessors",
         "totalMemoryBytes", "availableMemoryBytes", "gpuModel", "gpuDriverVersion", "gpuMemoryBytes", "gameResolution",

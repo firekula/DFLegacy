@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DFLegacy.Server;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Hosting;
 
 internal static class ClientDiagnosticSmokeTests
 {
@@ -22,6 +23,7 @@ internal static class ClientDiagnosticSmokeTests
     public static async Task RunAsync(Action<bool, string> check)
     {
         await StoreAsync(check);
+        await IdleMaintenanceAsync(check);
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-diagnostics-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path.Combine(root, "creature"));
         await File.WriteAllTextAsync(Path.Combine(root, "creature", "exptable.tbl"), "10\n100\n");
@@ -69,6 +71,16 @@ internal static class ClientDiagnosticSmokeTests
             if (created.StatusCode != HttpStatusCode.Created) return;
             var receipt = JsonNode.Parse(await created.Content.ReadAsStringAsync())!["receiptId"]!.GetValue<string>();
             var admin = await Login("diagadmin"); var ordinary = await Login("diagplayer");
+            foreach (var path in new[] { "//server/share/private.txt", "/用户/秘密.txt" }) {
+                foreach (var field in new[] { "context", "system" }) {
+                    var unsafeReport = JsonNode.Parse(Body())!;
+                    if (field == "context") unsafeReport["context"] = path; else unsafeReport["system"]!["cpuModel"] = path;
+                    var unsafeBytes = Encoding.UTF8.GetBytes(unsafeReport.ToJsonString());
+                    check(!ClientDiagnosticReport.TryParse(unsafeBytes, out _), "path predicate rejects " + field + " " + path);
+                    using var response = await Call(api, HttpMethod.Post, Receive, unsafeBytes);
+                    check(response.StatusCode == HttpStatusCode.BadRequest, "HTTP rejects " + field + " " + path);
+                }
+            }
             foreach (var text in new[] { "{\"password\":\"fixture-secret\"}", "Bearer fixture-secret", "/private-file" }) {
                 using var response = await Call(api, HttpMethod.Post, Receive, Body(context: text));
                 check(response.StatusCode == HttpStatusCode.BadRequest, "credential/absolute path syntax is rejected even inside summary: " + text);
@@ -113,7 +125,12 @@ internal static class ClientDiagnosticSmokeTests
             using var resource = await Call(gm, HttpMethod.Get, "/admin/admin-diagnostics.js"); check(resource.IsSuccessStatusCode && resource.Content.Headers.ContentType?.MediaType?.Contains("javascript") == true, "GM serves actual diagnostics feature script");
             using var dump = await Call(api, HttpMethod.Put, Receive + "/" + receipt + "/dump", new byte[] { 1 }, admin); check(dump.StatusCode == HttpStatusCode.NotFound, "no raw memory upload endpoint exists");
             host!.Dispose(); host = null;
-            document["DFLegacy"]!["ClientDiagnostics"]!["Enabled"] = false; await File.WriteAllTextAsync(config, document.ToJsonString()); await Start();
+            document["DFLegacy"]!["ClientDiagnostics"]!["Enabled"] = false;
+            var expiredBytes = Body(); var expiredEvent = JsonNode.Parse(expiredBytes)!["eventId"]!.GetValue<string>();
+            var seed = new ClientDiagnosticStore(options, new Clock { Now = DateTimeOffset.UtcNow.AddDays(-15) });
+            check((await seed.ReceiveAsync(expiredBytes)).StatusCode == 201, "expired startup fixture is persisted before service begins");
+            await File.WriteAllTextAsync(config, document.ToJsonString()); await Start();
+            check(await WaitUntil(() => ReadStored(Path.Combine(root, "diagnostics", expiredEvent + ".json"))["Body"] is null), "actual disabled-receive host cleans startup-expired body without a diagnostics request");
             using var disabled = await Call(api, HttpMethod.Post, Receive, Body()); check(disabled.StatusCode == HttpStatusCode.NotFound, "operator can disable receive");
             host!.Dispose(); host = null;
             document["DFLegacy"]!["ClientDiagnostics"]!["Enabled"] = true; document["DFLegacy"]!["ClientDiagnostics"]!["SourcePerMinute"] = 1;
@@ -122,14 +139,89 @@ internal static class ClientDiagnosticSmokeTests
             using var forgedRequest = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{api}{Receive}") { Content = new ByteArrayContent(original) };
             forgedRequest.Content.Headers.ContentType = new("application/json"); forgedRequest.Headers.Add("X-Forwarded-For", "203.0.113.77");
             using var limited = await client.SendAsync(forgedRequest); check(limited.StatusCode == HttpStatusCode.TooManyRequests && limited.Headers.RetryAfter?.Delta == TimeSpan.FromSeconds(60), "rate limiting uses connection address and bounded Retry-After despite spoofed forwarding header");
+            host!.Dispose(); host = null;
+            document["DFLegacy"]!["ClientDiagnostics"]!["StoragePath"] = options.DataPath;
+            await File.WriteAllTextAsync(config, document.ToJsonString()); await Start();
+            using var brokenHealth = await Call(api, HttpMethod.Get, "/health");
+            check(brokenHealth.IsSuccessStatusCode, "broken diagnostics storage never prevents game HTTP startup");
         }
         finally { host?.Dispose(); Directory.Delete(root, true); }
     }
 
     private sealed class Clock : TimeProvider
     {
-        public DateTimeOffset Now = new(2026, 11, 9, 0, 0, 0, TimeSpan.Zero);
+        private readonly object _gate = new();
+        private DateTimeOffset _now = new(2026, 11, 9, 0, 0, 0, TimeSpan.Zero);
+        private readonly List<ManualTimer> _timers = new();
+        public DateTimeOffset Now { get { lock (_gate) return _now; } set { lock (_gate) _now = value; } }
         public override DateTimeOffset GetUtcNow() => Now;
+        public bool HasMinuteDelay { get { lock (_gate) return _timers.Any(timer => timer.Next == _now.AddMinutes(1)); } }
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state); lock (_gate) { _timers.Add(timer); timer.Change(dueTime, period); } return timer;
+        }
+        public void Advance(TimeSpan duration)
+        {
+            Action[] callbacks;
+            lock (_gate) { _now += duration; callbacks = _timers.ToArray().Select(timer => timer.Due()).OfType<Action>().ToArray(); }
+            foreach (var callback in callbacks) callback();
+        }
+        private sealed class ManualTimer(Clock owner, TimerCallback callback, object? state) : ITimer
+        {
+            public DateTimeOffset? Next;
+            private TimeSpan _period;
+            private bool _disposed;
+            public bool Change(TimeSpan dueTime, TimeSpan period) { lock (owner._gate) { if (_disposed) return false; Next = dueTime == Timeout.InfiniteTimeSpan ? null : owner._now + dueTime; _period = period; return true; } }
+            public Action? Due() { if (Next is null || Next > owner._now || _disposed) return null; Next = _period > TimeSpan.Zero ? owner._now + _period : null; return () => callback(state); }
+            public void Dispose() { lock (owner._gate) { _disposed = true; owner._timers.Remove(this); } }
+            public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+        }
+    }
+    private static JsonNode ReadStored(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return JsonNode.Parse(stream)!;
+    }
+    private static async Task<bool> WaitUntil(Func<bool> condition)
+    {
+        for (var attempt = 0; attempt < 200; attempt++) { if (condition()) return true; await Task.Delay(10); }
+        return false;
+    }
+    private static async Task IdleMaintenanceAsync(Action<bool, string> check)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dflegacy-diagnostic-maintenance-" + Guid.NewGuid().ToString("N"));
+        try {
+            foreach (var enabled in new[] { true, false }) {
+                var clock = new Clock(); var options = new ServerOptions { DataPath = Path.Combine(root, enabled.ToString(), "state.json"), ClientDiagnostics = new() { Enabled = enabled } };
+                var store = new ClientDiagnosticStore(options, clock); var body = Body(); await store.ReceiveAsync(body);
+                var path = Path.Combine(Path.GetDirectoryName(options.DataPath)!, "diagnostics", JsonNode.Parse(body)!["eventId"]!.GetValue<string>() + ".json");
+                if ((object)store is not IHostedService service) { check(false, "idle diagnostics maintenance must run as a hosted service, receive enabled=" + enabled); continue; }
+                await service.StartAsync(default);
+                try {
+                    check(await WaitUntil(() => clock.HasMinuteDelay), "maintenance schedules with injected TimeProvider, receive enabled=" + enabled);
+                    clock.Advance(TimeSpan.FromDays(14));
+                    check(await WaitUntil(() => ReadStored(path)["Body"] is null), "idle body expires on disk without API/store reads, receive enabled=" + enabled);
+                    check(ReadStored(path)["DeletedAt"] is not null, "idle cleanup atomically preserves tombstone");
+                    check(await WaitUntil(() => clock.HasMinuteDelay), "maintenance continues after idle body expiry");
+                    clock.Advance(TimeSpan.FromDays(30));
+                    check(await WaitUntil(() => !File.Exists(path)), "idle tombstone retention is also bounded without API/store reads");
+                }
+                finally { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2)); await service.StopAsync(timeout.Token); }
+            }
+            var brokenClock = new Clock(); var brokenPath = Path.Combine(root, "broken", "diagnostics"); Directory.CreateDirectory(brokenPath);
+            await File.WriteAllTextAsync(Path.Combine(brokenPath, Guid.NewGuid().ToString("N") + ".json"), "{");
+            var broken = new ClientDiagnosticStore(new() { DataPath = Path.Combine(root, "broken", "state.json") }, brokenClock);
+            if ((object)broken is IHostedService brokenService) {
+                await brokenService.StartAsync(default);
+                try {
+                    check(await WaitUntil(() => brokenClock.HasMinuteDelay) && broken.ExecuteTask?.IsCompleted == false,
+                        "malformed diagnostics remain inside the running background service");
+                    check((await broken.ReceiveAsync(Body())).StatusCode == 503, "malformed background recovery fails closed for diagnostic receive");
+                }
+                finally { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2)); await brokenService.StopAsync(timeout.Token); }
+            }
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
     private static async Task StoreAsync(Action<bool, string> check)
     {

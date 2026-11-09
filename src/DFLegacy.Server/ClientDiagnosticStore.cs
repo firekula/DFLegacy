@@ -4,10 +4,11 @@ using System.Text.Json;
 namespace DFLegacy.Server;
 
 /// <summary>Independent bounded diagnostic storage; never takes JsonGameStore's save lock.</summary>
-public sealed class ClientDiagnosticStore
+public sealed class ClientDiagnosticStore : BackgroundService
 {
     private readonly ClientDiagnosticsOptions _options;
     private readonly TimeProvider _clock;
+    private readonly ILogger<ClientDiagnosticStore>? _logger;
     private readonly string _directory;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly SemaphoreSlim _uploads = new(2, 2);
@@ -32,14 +33,47 @@ public sealed class ClientDiagnosticStore
         [System.Text.Json.Serialization.JsonIgnore] public long DiskBytes { get; set; }
     }
 
-    public ClientDiagnosticStore(ServerOptions options, TimeProvider clock)
+    public ClientDiagnosticStore(ServerOptions options, TimeProvider clock, ILogger<ClientDiagnosticStore>? logger = null)
     {
         _options = options.ClientDiagnostics;
         _clock = clock;
+        _logger = logger;
         var root = Path.GetDirectoryName(Path.GetFullPath(options.DataPath))!;
-        _directory = Path.GetFullPath(string.IsNullOrWhiteSpace(_options.StoragePath) ? Path.Combine(root, "diagnostics") : _options.StoragePath);
-        // A misconfiguration must never overwrite the game save.
-        if (string.Equals(_directory, Path.GetFullPath(options.DataPath), StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Diagnostics StoragePath must be a directory separate from DataPath.");
+        _directory = Path.Combine(root, "diagnostics");
+        try {
+            if (!string.IsNullOrWhiteSpace(_options.StoragePath)) _directory = Path.GetFullPath(_options.StoragePath);
+            // Invalid diagnostic configuration fails closed without preventing the game host from starting.
+            if (string.Equals(_directory, Path.GetFullPath(options.DataPath), StringComparison.OrdinalIgnoreCase)) _loaded = _failed = true;
+        }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or IOException or UnauthorizedAccessException) { _loaded = _failed = true; }
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // Even the initial recovery/expiry sweep runs off the startup path, including when receiving is disabled.
+        await Task.Yield();
+        var warningLogged = false;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try {
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30), _clock);
+                using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, deadline.Token);
+                await _gate.WaitAsync(budget.Token);
+                try {
+                    if (!await MaintainAsync(budget.Token)) throw new IOException("Diagnostic storage unavailable.");
+                    warningLogged = false;
+                }
+                finally { _gate.Release(); }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+            catch (Exception exception) {
+                // Faults stay within diagnostics; never fault the hosted task or repeatedly log report data.
+                if (!warningLogged) _logger?.LogWarning("Client diagnostic maintenance unavailable ({Failure}); game service continues.", exception.GetType().Name);
+                warningLogged = true;
+            }
+            try { await Task.Delay(TimeSpan.FromMinutes(1), _clock, stoppingToken); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+        }
     }
 
     public bool TryBeginUpload(string source, out IDisposable? lease)
@@ -75,7 +109,10 @@ public sealed class ClientDiagnosticStore
         if (_loaded) return;
         try { await LoadIndexAsync(cancellationToken); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException) { _failed = true; }
-        catch (OperationCanceledException) { _failed = true; throw; }
+        catch (OperationCanceledException) {
+            // A timed-out partial recovery may retry, but must reread the complete index before admitting anything.
+            _records.Clear(); _bytes = 0; _loaded = false; throw;
+        }
     }
     private async Task LoadIndexAsync(CancellationToken cancellationToken)
     {
@@ -87,6 +124,7 @@ public sealed class ClientDiagnosticStore
         if (files.Length > DedupLimit + 100) { _failed = true; return; }
         foreach (var path in files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) { _failed = true; return; }
             if (path.EndsWith(".tmp", StringComparison.Ordinal)) { File.Delete(path); continue; }
             var id = Path.GetFileNameWithoutExtension(path);
@@ -134,6 +172,7 @@ public sealed class ClientDiagnosticStore
         var now = _clock.GetUtcNow();
         foreach (var record in _records.Values.ToArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (record.DeletedAt is not null && record.DeletedAt <= now.AddDays(-30)) {
                 File.Delete(FilePath(record.EventId)); _records.Remove(record.EventId); _bytes -= record.DiskBytes;
             }
