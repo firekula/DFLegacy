@@ -9,6 +9,22 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args is ["--atomic-snapshot-replace-real", var replacementArtifacts])
+{
+    await AtomicSnapshotReplacementSmokeTests.RunRealFilesAsync(Check, replacementArtifacts);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Atomic real-file replacement smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--atomic-snapshot-replace"))
+{
+    await AtomicSnapshotReplacementSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Atomic snapshot replacement smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--idle-cera-refresh"))
 {
     await IdleCeraRefreshSmokeTests.RunAsync(Check);
@@ -477,6 +493,7 @@ static ScriptFileSystem CreateScripts(ServerOptions options) =>
 static ItemCatalog CreateItems(ScriptFileSystem scripts) =>
     new(scripts, NullLogger<ItemCatalog>.Instance);
 
+await AtomicSnapshotReplacementSmokeTests.RunAsync(Check);
 await NewCharacterDefaultsSmokeTests.RunAsync(Check);
 AccountClientSmokeTests.Run(Check);
 ScriptFileSystemCaseSmokeTests.Run(Check);

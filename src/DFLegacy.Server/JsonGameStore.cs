@@ -508,13 +508,14 @@ internal interface IDungeonRewardSnapshotWriter
     Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken);
 }
 
-internal sealed class DungeonRewardSnapshotWriter : IDungeonRewardSnapshotWriter
+internal sealed class DungeonRewardSnapshotWriter(AtomicSnapshotReplacement? replacement = null) : IDungeonRewardSnapshotWriter
 {
+    private readonly AtomicSnapshotReplacement _replacement = replacement ?? new();
     public async Task WriteAsync(string path, ReadOnlyMemory<byte> snapshot, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.WriteAllBytesAsync(path + ".tmp", snapshot.ToArray(), cancellationToken);
-        File.Move(path + ".tmp", path, overwrite: true);
+        await _replacement.ReplaceAsync(path + ".tmp", path, cancellationToken);
     }
 }
 
@@ -637,6 +638,7 @@ public sealed partial class JsonGameStore(
     ];
 
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly AtomicSnapshotReplacement _snapshotReplacement = new();
     private readonly IDungeonRewardSnapshotWriter _rewardWriter = new DungeonRewardSnapshotWriter();
     private bool _rewardQuarantined;
 
@@ -644,6 +646,13 @@ public sealed partial class JsonGameStore(
         CharacterExperienceCatalog? experienceCatalog = null, ItemCatalog? itemCatalog = null, CharacterStatCatalog? statCatalog = null,
         TimeProvider? avatarTimeProvider = null)
         : this(options, logger, experienceCatalog, itemCatalog, statCatalog, avatarTimeProvider: avatarTimeProvider) => _rewardWriter = writer;
+
+    internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, AtomicSnapshotReplacement replacement)
+        : this(options, logger)
+    {
+        _snapshotReplacement = replacement;
+        _rewardWriter = new DungeonRewardSnapshotWriter(replacement);
+    }
 
     // 交易交付守门：一笔交易落库后，两个角色在各自会话安装新状态之前，
     // 拒绝任何"把调用方内存里的背包整份写回"的盲写保存——否则被动方会话会
@@ -6596,7 +6605,7 @@ public sealed partial class JsonGameStore(
                 cancellationToken);
         }
 
-        File.Move(temporary, StorePath, overwrite: true);
+        await _snapshotReplacement.ReplaceAsync(temporary, StorePath, cancellationToken);
         snapshotCommitted?.Invoke();
         if (!isolateCommittedDiagnostics)
             logger.LogInformation("Saved emulator state to {Path}", StorePath);
