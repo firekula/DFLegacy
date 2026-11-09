@@ -45,6 +45,20 @@ internal static class PrivateStoreSmokeTests
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(display[..^1], out _, out _)
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(Convert.FromHexString("0100FFFFFFFF"), out _, out _)
             && !GameProtocolEngine.TryReadPrivateStoreDisplay(Convert.FromHexString("0100010000000000"), out _, out _), "display rejects extra puppet fields, truncation, oversized lengths and NUL titles");
+        var chapterTwoDisplay = BuildChapterTwoDisplay();
+        check(GameProtocolEngine.TryReadPrivateStoreDisplay(chapterTwoDisplay, out _, out var chapterTwoRows, chapterTwo: true)
+            && chapterTwoRows.Count == 14 && chapterTwoRows[^1] == new PrivateStoreDisplayRequest(13, 101, 0, 86, 1)
+            && !GameProtocolEngine.TryReadPrivateStoreDisplay(chapterTwoDisplay, out _, out _),
+            "Chapter Two display accepts all fourteen native slots without expanding the ACT1 request");
+        chapterTwoDisplay[^1] = 1;
+        check(!GameProtocolEngine.TryReadPrivateStoreDisplay(chapterTwoDisplay, out _, out _, chapterTwo: true),
+            "Chapter Two display rejects nonzero trailing bytes");
+        var chapterTwoCreate = Convert.FromHexString("01000100E803FA0000000000000000000000");
+        check(GameProtocolEngine.TryReadPrivateStoreCreate(chapterTwoCreate, out var chapterTwoPosition, chapterTwo: true)
+            && chapterTwoPosition == pos
+            && !GameProtocolEngine.TryReadPrivateStoreCreate(chapterTwoCreate, out _),
+            "Chapter Two can create a stall with its padded local request");
+        await CheckChapterTwoCapacityAsync(chapterTwoRows, check);
         await CheckDomainAsync(check);
         await CheckIdentitylessMaterialAsync(check);
         await CheckRecoveryAsync(check);
@@ -66,6 +80,49 @@ internal static class PrivateStoreSmokeTests
             catch (OverflowException) { }
             check(rejected, "invalid oversized gold data disables stores without crashing the requesting session");
         }
+    }
+
+    private static byte[] BuildChapterTwoDisplay()
+    {
+        using var output = new MemoryStream();
+        using var writer = new BinaryWriter(output);
+        writer.Write((ushort)1);
+        writer.Write(1u);
+        writer.Write((byte)'S');
+        writer.Write((byte)14);
+        for (ushort slot = 0; slot < 14; slot++)
+        {
+            writer.Write(slot);
+            writer.Write(101u);
+            writer.Write((byte)0);
+            writer.Write((ushort)(73 + slot));
+            writer.Write(1u);
+        }
+        writer.Write(new byte[4]);
+        return output.ToArray();
+    }
+
+    private static async Task CheckChapterTwoCapacityAsync(IReadOnlyList<PrivateStoreDisplayRequest> requests, Action<bool, string> check)
+    {
+        await using var fixture = await StoreFixture.CreateAsync();
+        var stacks = Enumerable.Range(73, 14).Select(slot => new CharacterItemRecord((ushort)slot, TradeFixtures.PotionItemId, 1));
+        await fixture.Store.SaveCharacterInventoryAsync("alice", fixture.A.Id, 1000, stacks, []);
+        var token = Guid.NewGuid();
+        fixture.Store.Commerce.TryAcquire(CommerceActivity.Store, token, fixture.A.Id);
+        var rejected = await fixture.Store.DisplayPrivateStoreAsync(fixture.A.Id, token, requests);
+        var accepted = await fixture.Store.DisplayPrivateStoreAsync(fixture.A.Id, token, requests, chapterTwo: true);
+        check(rejected.Status == DungeonRewardLedgerStatus.Rejected && accepted.Status == DungeonRewardLedgerStatus.Committed
+            && accepted.Character?.PrivateStoreStock?.Listings.Count == 14
+            && accepted.Character.Inventory?.Count == 0,
+            "Chapter Two atomically escrows fourteen real entries while ACT1 retains its seven-item cap");
+        var secondRow = await fixture.Store.BuyPrivateStoreAsync(fixture.B.Id, fixture.A.Id, token, 7, 1);
+        var lastSlot = await fixture.Store.BuyPrivateStoreAsync(fixture.B.Id, fixture.A.Id, token, 13, 1);
+        var closed = await fixture.Store.ClosePrivateStoreAsync(fixture.A.Id, token, false);
+        check(secondRow.Status == DungeonRewardLedgerStatus.Committed && lastSlot.Status == DungeonRewardLedgerStatus.Committed
+            && closed.Status == DungeonRewardLedgerStatus.Committed && closed.Character?.PrivateStoreStock is null
+            && closed.Character?.Inventory?.Sum(item => (long)item.CountOrValue) == 12
+            && lastSlot.Buyer?.Inventory?.Where(item => item.ItemId == TradeFixtures.PotionItemId).Sum(item => (long)item.CountOrValue) == 2,
+            "both ends of Chapter Two row two sell once, and closing returns only unsold items");
     }
 
     private static async Task CheckDomainAsync(Action<bool, string> check)
@@ -404,6 +461,18 @@ internal static class PrivateStoreSmokeTests
                 && pb.Any(p => p.ProtocolId == 78 && p.Type == 0), "licensed create broadcasts a preparing store to same public area");
             await service.EnterAsync(f.B.Id, sessionB, 1);
             check(pb.Last().ProtocolId == 86 && pb.Last().Payload.SequenceEqual(new byte[] { 0 }), "a preparing store cannot be entered");
+            var beforeFailure = pa.Count;
+            var rejectedDraft = await service.DisplayAsync(f.A.Id, sessionA, [83],
+                [new(0, 101, 0, 73, 3), new(7, 101, 0, 74, 1)], chapterTwo: true);
+            var rollback = pa.Skip(beforeFailure).ToArray();
+            check(rejectedDraft is null && !service.IsOwner(f.A.Id)
+                && rollback.Any(p => p.Type == 1 && p.ProtocolId == 90 && p.Payload.SequenceEqual(new byte[] { 0, 17 }))
+                && rollback.LastOrDefault() is { Type: 0, ProtocolId: 80 }
+                && (await f.ReadA()) is { PrivateStoreStock: null } restored
+                && restored.Inventory!.Single(i => i.Slot == 73).CountOrValue == 10,
+                "Chapter Two rejects a mixed draft atomically and closes the preview before restoring the bag");
+            check(await service.CreateAsync(f.A.Id, sessionA, new(1, 0, 1000, 250)),
+                "the rejected Chapter Two draft releases the stall and commerce reservation");
             await service.DisplayAsync(f.A.Id, sessionA, [83, 72, 79, 80], [new(0, 101, 0, 73, 5)]);
             var trade = new ItemTradeService(f.Store, f.Items, f.Stats, directory, TimeProvider.System, NullLogger<ItemTradeService>.Instance);
             using (trade)

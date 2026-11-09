@@ -41,6 +41,10 @@ internal sealed class LauncherOptions
     public double D3D9TimeoutSeconds { get; set; } = 30;
     public double D3D9RetryIntervalSeconds { get; set; } = 1;
     public LauncherRelayOptions Relay { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChapterTwoDisplayOptions? ChapterTwoDisplay { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChapterTwoDialogueOptions? ChapterTwoDialogue { get; set; }
 
     public LauncherAccountProfile GetSelectedAccount() =>
         Accounts.Count == 0
@@ -55,6 +59,20 @@ internal sealed class LauncherOptions
         string.IsNullOrWhiteSpace(AccountServiceUrl)
             ? $"http://{(EntranceHost.Contains(':') && !EntranceHost.StartsWith('[') ? $"[{EntranceHost}]" : EntranceHost)}:{AccountServicePort}"
             : AccountServiceUrl.Trim();
+}
+
+internal sealed record ChapterTwoDisplayOptions(int Width, int Height, string Filter);
+
+internal sealed record ChapterTwoDialogueOptions(int FontSize = 12, int LineGap = 3)
+{
+    internal static readonly ChapterTwoDialogueOptions Default = new();
+    internal static IReadOnlyList<int> FontSizes { get; } = Array.AsReadOnly(new[] { 12, 14, 16, 18 });
+    internal static IReadOnlyList<int> LineGaps { get; } = Array.AsReadOnly(new[] { 0, 1, 2, 3, 4 });
+
+    internal static ChapterTwoDialogueOptions Normalize(ChapterTwoDialogueOptions? options) =>
+        options is null ? Default : new(
+            FontSizes.Contains(options.FontSize) ? options.FontSize : Default.FontSize,
+            LineGaps.Contains(options.LineGap) ? options.LineGap : Default.LineGap);
 }
 
 internal sealed class LauncherAccountProfile

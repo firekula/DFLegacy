@@ -28,7 +28,7 @@ public sealed partial class JsonGameStore
     }
 
     internal async Task<PrivateStoreMutationResult> DisplayPrivateStoreAsync(Guid owner, Guid token,
-        IReadOnlyList<PrivateStoreDisplayRequest> requests, CancellationToken ct = default)
+        IReadOnlyList<PrivateStoreDisplayRequest> requests, CancellationToken ct = default, bool chapterTwo = false)
     {
         await _gate.WaitAsync(ct);
         try
@@ -38,14 +38,15 @@ public sealed partial class JsonGameStore
             if (c is null) return new(DungeonRewardLedgerStatus.Rejected, 58);
             if (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is not null)
                 return new(DungeonRewardLedgerStatus.Rejected, 57);
-            if (itemCatalog is null || requests.Count is < 1 or > 7 || requests.Select(r => r.Slot).Distinct().Count() != requests.Count
+            var capacity = chapterTwo ? GameProtocolEngine.ChapterTwoPrivateStoreSlots : GameProtocolEngine.ActOnePrivateStoreSlots;
+            if (itemCatalog is null || requests.Count < 1 || requests.Count > capacity || requests.Select(r => r.Slot).Distinct().Count() != requests.Count
                 || requests.Select(r => r.SourceSlot).Distinct().Count() != requests.Count || _pendingTradeDeliveries.ContainsKey(owner))
                 return new(DungeonRewardLedgerStatus.Rejected, 17);
             var inventory = (c.Inventory ?? []).ToDictionary(i => i.Slot);
             var listings = new List<PrivateStoreListing>(); long total = 0;
             foreach (var request in requests)
             {
-                if (request.Slot > 6 || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
+                if (request.Slot >= capacity || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
                     || !CharacterInventoryLayout.IsMainItemSlot(request.SourceSlot)
                     || !inventory.TryGetValue(request.SourceSlot, out var item)
                     || !itemCatalog.TryGetDefinition(item.ItemId, out var def)

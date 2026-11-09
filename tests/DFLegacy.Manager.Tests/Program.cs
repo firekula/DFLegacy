@@ -5,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using DFLegacy.Manager;
 
+if (args.Contains("--chapter-two-config-only")) return ChapterTwoConfigTests.Run();
+if (ChapterTwoConfigTests.Run() != 0) return 1;
+
 if (args.Contains("--logs-only")) return LogRecoveryTests.Run();
 if (LogRecoveryTests.Run() != 0) return 1;
 

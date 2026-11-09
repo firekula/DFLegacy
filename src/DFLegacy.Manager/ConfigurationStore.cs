@@ -10,6 +10,7 @@ public sealed class ConfigurationStore
 {
     private readonly ManagerPaths _paths;
     private readonly IDictionary<string, string?> _environment;
+    private readonly DeploymentConfig? _chapterTwoProfile;
     private readonly object _gate = new();
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private static readonly Dictionary<string, string> Fields = new()
@@ -48,12 +49,26 @@ public sealed class ConfigurationStore
     public ConfigurationStore(ManagerPaths paths, IDictionary<string, string?>? environment = null)
     {
         _paths = paths;
-        _environment = environment ?? Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
+        var serverTemplate = Path.Combine(paths.Root, "templates", "server.json");
+        var settingsTemplate = Path.Combine(paths.Root, "templates", "manager.json");
+        var initialSettings = File.Exists(settingsTemplate)
+            ? JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(settingsTemplate), Json) ?? new()
+            : new ManagerSettings();
+        if (initialSettings.ChapterTwoLocal)
+        {
+            var section = ParseFile(serverTemplate)["DFLegacy"] as JsonObject
+                ?? throw new InvalidDataException("第二章部署模板缺少 DFLegacy 节。");
+            _chapterTwoProfile = ReadConfig(section, initialSettings);
+            if (_chapterTwoProfile.BindHost != _chapterTwoProfile.AdminHost
+                || !IPAddress.TryParse(_chapterTwoProfile.BindHost, out var address) || !IPAddress.IsLoopback(address)
+                || _chapterTwoProfile.PanelListeners().Any(listener => !IPAddress.TryParse(listener.Host, out var host) || !IPAddress.IsLoopback(host)))
+                throw new InvalidDataException("第二章部署模板只允许本机回环监听。");
+        }
+        _environment = ChapterTwoLocal ? new Dictionary<string, string?>() : environment ?? Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
             .ToDictionary(x => (string)x.Key, x => x.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
         if (!File.Exists(paths.ServerConfig))
         {
-            var template = Path.Combine(paths.Root, "templates", "server.json");
-            var root = File.Exists(template) ? ParseFile(template) : new JsonObject();
+            var root = File.Exists(serverTemplate) ? ParseFile(serverTemplate) : new JsonObject();
             var section = root["DFLegacy"] as JsonObject ?? new JsonObject();
             if (root["DFLegacy"] is null) root["DFLegacy"] = section;
             Set(section, "SeedTestAccount", JsonValue.Create(false));
@@ -61,8 +76,10 @@ public sealed class ConfigurationStore
             Set(section, "ScriptPvfPath", JsonValue.Create(Path.Combine(paths.Root, "resources", "Script.pvf")));
             AtomicFile.Write(paths.ServerConfig, root.ToJsonString(Json));
         }
-        if (!File.Exists(paths.SettingsFile)) AtomicFile.Write(paths.SettingsFile, JsonSerializer.Serialize(new ManagerSettings(), Json));
+        if (!File.Exists(paths.SettingsFile)) AtomicFile.Write(paths.SettingsFile, JsonSerializer.Serialize(initialSettings, Json));
     }
+
+    internal bool ChapterTwoLocal => _chapterTwoProfile is not null;
 
     public ConfigurationSnapshot Read()
     {
@@ -73,7 +90,7 @@ public sealed class ConfigurationStore
             var settings = JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(_paths.SettingsFile), Json) ?? new();
             var saved = ReadConfig(section, settings);
             var effectiveNode = ApplyEnvironment(section, out var overrides);
-            return new(saved, ReadConfig(effectiveNode, settings), overrides.ToArray(), settings.Configured);
+            return new(saved, ReadConfig(effectiveNode, settings), overrides.ToArray(), settings.Configured) { ChapterTwoLocal = ChapterTwoLocal };
         }
     }
 
@@ -97,6 +114,7 @@ public sealed class ConfigurationStore
             var root = ParseFile(_paths.ServerConfig);
             var section = root["DFLegacy"]!.AsObject();
             foreach (var (field, path) in Fields) Set(section, path, JsonSerializer.SerializeToNode(typeof(DeploymentConfig).GetProperty(field)!.GetValue(config)));
+            if (ChapterTwoLocal) Set(section, "EnableTestCeraTopUp", JsonValue.Create(config.ChapterTwoTestTopUpEnabled));
             Set(section, "GameplayDatagram:AdvertisedHost", JsonValue.Create(gameHost));
             if (config.BindHost != before.Saved.BindHost)
                 foreach (var path in new[] { "CharacterDatagram:Host", "GameplayDatagram:Host", "Channel:Host" }) Set(section, path, JsonValue.Create(config.BindHost));
@@ -132,7 +150,7 @@ public sealed class ConfigurationStore
                 if (ports.Any(port => port is < 1 or > 65535) || ports.Distinct().Count() != ports.Length || ports.Intersect(exclusive).Any())
                     throw new ArgumentException("附加 TCP 端口无效、重复或与其他监听端口冲突。");
             }
-            Validate(effectiveConfig);
+            ValidateForStart(effectiveConfig);
             Set(section, "ScriptPvfPath", JsonValue.Create(Path.GetFullPath(config.ScriptPvfPath, _paths.Root)));
             settings = settings with { AccountServiceUrl = settings.AccountServiceUrl.TrimEnd('/') };
             var backup = Path.Combine(_paths.Backups, "server-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff") + ".json");
@@ -142,6 +160,25 @@ public sealed class ConfigurationStore
             foreach (var old in new DirectoryInfo(_paths.Backups).GetFiles("server-*.json").OrderByDescending(x => x.Name).Skip(20)) old.Delete();
             return Read();
         }
+    }
+
+    internal void ValidateForStart(DeploymentConfig config)
+    {
+        Validate(config);
+        if (_chapterTwoProfile is not { } profile) return;
+        var allowed = profile with
+        {
+            ScriptPvfPath = config.ScriptPvfPath,
+            ChannelName = config.ChannelName,
+            MaximumUsers = config.MaximumUsers,
+            MonsterExperienceMultiplier = config.MonsterExperienceMultiplier,
+            ClearExperienceMultiplier = config.ClearExperienceMultiplier,
+            DropRatePercent = config.DropRatePercent,
+            DropEconomicRate = config.DropEconomicRate,
+            ChapterTwoTestTopUpEnabled = config.ChapterTwoTestTopUpEnabled,
+            Autostart = config.Autostart
+        };
+        if (config != allowed) throw new ArgumentException("第二章测试包使用固定的本机连接配置。请恢复随包提供的第二章模板地址和端口。");
     }
 
     public JsonObject ReadServerDocument() { lock (_gate) return ParseFile(_paths.ServerConfig); }
@@ -243,7 +280,10 @@ public sealed class ConfigurationStore
     }
 
     private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings) =>
-        ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf"));
+        ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf")) with
+        {
+            ChapterTwoTestTopUpEnabled = ChapterTwoLocal && Get(node, "EnableTestCeraTopUp")?.GetValue<bool>() == true
+        };
 
     private static DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings, string defaultPvf)
     {

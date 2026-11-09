@@ -22,6 +22,8 @@ public partial class ModifyWindow : System.Windows.Window
         var oldP = OldBox.Password;
         var newP = NewBox.Password;
         if (newP != ConfirmBox.Password) { ClassicMessage.Show(this, "两次新密码不一致。"); return; }
+        if (ChapterTwoClient.IsBundled && (!ChapterTwoClient.IsValidCredential(user, 4) || !ChapterTwoClient.IsValidCredential(newP, 6)))
+        { ClassicMessage.Show(this, ChapterTwoClient.CredentialHint); return; }
         if (user.Length is < 4 or > 32 || newP.Length is < 6 or > 128) { ClassicMessage.Show(this, "账号 4-32、新密码 6-128。"); return; }
 
         SubmitBtn.IsEnabled = false;

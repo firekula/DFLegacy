@@ -54,6 +54,13 @@ internal static class Program
             ValidateClient(clientPath);
             LogClientPath = clientPath;
             ValidateScriptPvf(clientPath);
+            if (ChapterTwoClient.IsBundled && args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
+            {
+                ChapterTwoClient.ValidateSource(clientPath);
+                ChapterTwoClient.VerifyEmbeddedPayload();
+                WriteLauncherLog("Chapter Two self-test passed: verified original client and embedded startup components.");
+                return 0;
+            }
             if (args.Contains("--install-ijl15", StringComparer.OrdinalIgnoreCase))
             {
                 throw new InvalidDataException("不再支持覆盖安装 ijl15.dll。请将完整独立补丁工具包放入客户端根目录，并在登录器中确认原版恢复。");
@@ -109,11 +116,10 @@ internal static class Program
         ]);
     }
 
-    internal static LauncherOptions LoadOptions()
-    {
-        var path = Path.Combine(AppContext.BaseDirectory, "launcher.json");
-        return new LauncherAccountStore(path).Load();
-    }
+    internal static string LauncherConfigPath => Path.Combine(AppContext.BaseDirectory,
+        ChapterTwoClient.IsBundled ? "launcher.chapter2.json" : "launcher.json");
+
+    internal static LauncherOptions LoadOptions() => new LauncherAccountStore(LauncherConfigPath).Load();
 
     internal static string ResolveClientPath(string configuredPath)
     {

@@ -55,6 +55,11 @@
                 </Grid>
                 <c:PixelText x:Name="DisplayDescriptionText" Margin="0,24,0,0"/>
                 <c:PixelText Text="保持原始 4:3 画面。窗口变大，游戏视野不变。" Foreground="{StaticResource ClassicSecondary}" Margin="0,16,0,0"/>
+                <Grid x:Name="DialogueSettingsPanel" Visibility="Collapsed" Margin="0,14,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="21"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                  <StackPanel><c:PixelText Text="对白字号" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="DialogueSizeBox" AutomationProperties.Name="对白字号"/></StackPanel>
+                  <StackPanel Grid.Column="2"><c:PixelText Text="对白行距（像素）" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="DialogueGapBox" AutomationProperties.Name="对白行距"/></StackPanel>
+                </Grid>
                 <Border Height="1" Background="#625638" Margin="0,20,0,15"/>
                 <Expander Header="客户端与最近运行信息">
                   <StackPanel><c:PixelText Text="当前配置的客户端" Style="{StaticResource ClassicLabel}"/><c:PixelText x:Name="DisplayTargetText" Foreground="{StaticResource ClassicSecondary}"/>

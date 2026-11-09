@@ -23,6 +23,8 @@ public partial class RegisterWindow : System.Windows.Window
         var confirm = ConfirmBox.Password;
         var oicq = string.IsNullOrWhiteSpace(OicqBox.Text) ? null : OicqBox.Text.Trim();
         if (pass != confirm) { ClassicMessage.Show(this, "两次密码不一致。"); return; }
+        if (ChapterTwoClient.IsBundled && (!ChapterTwoClient.IsValidCredential(user, 4) || !ChapterTwoClient.IsValidCredential(pass, 6)))
+        { ClassicMessage.Show(this, ChapterTwoClient.CredentialHint); return; }
         if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128
             || oicq is null || oicq.Length is < 5 or > 32)
         {

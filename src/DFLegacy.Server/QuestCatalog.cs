@@ -184,6 +184,7 @@ public sealed class QuestCatalog
     private readonly ILogger<QuestCatalog> _logger;
     private readonly Lazy<IReadOnlyList<QuestDefinition>> _definitions;
     private readonly Lazy<IReadOnlyDictionary<ushort, int>> _completionMapping;
+    private readonly Lazy<IReadOnlySet<ushort>> _chapterTwoHiddenQuestIds;
 
     public IReadOnlyDictionary<ushort, int> CompletionMapping => _completionMapping.Value;
 
@@ -226,6 +227,7 @@ public sealed class QuestCatalog
         _definitions = new Lazy<IReadOnlyList<QuestDefinition>>(
             LoadDefinitions,
             LazyThreadSafetyMode.ExecutionAndPublication);
+        _chapterTwoHiddenQuestIds = new(LoadChapterTwoHiddenQuestIds);
         _implicitSequencePredecessors =
             new Lazy<IReadOnlyDictionary<ushort, ushort[]>>(
                 () => BuildImplicitSequencePredecessors(_definitions.Value),
@@ -242,8 +244,9 @@ public sealed class QuestCatalog
     {
         var active = activeQuests.Select(quest => quest.QuestId).ToHashSet();
         var completed = completedQuestIds.ToHashSet();
+        var hidden = chapterTwo ? _chapterTwoHiddenQuestIds.Value : null;
         var eligible = _definitions.Value
-            .Where(definition => IsAcceptable(
+            .Where(definition => hidden?.Contains(definition.QuestId) != true && IsAcceptable(
                 definition,
                 character,
                 active,
@@ -272,6 +275,40 @@ public sealed class QuestCatalog
     {
         definition = _definitions.Value.FirstOrDefault(entry => entry.QuestId == questId)!;
         return definition is not null;
+    }
+
+    private IReadOnlySet<ushort> LoadChapterTwoHiddenQuestIds()
+    {
+        // The Chinese native client resolves category 11 quest text while loading
+        // advertised quest IDs. Exclude unavailable titles before that lookup.
+        const string nameTable = "quest/quest.chn.str";
+        const string nameReference = "<11::";
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        var encoding = Encoding.GetEncoding(936);
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (_scripts.FileExists(nameTable))
+        {
+            foreach (var rawLine in _scripts.ReadLines(nameTable, encoding))
+            {
+                var line = rawLine.TrimStart();
+                var separator = line.IndexOf('>');
+                if (separator > 0 && !line.StartsWith("//", StringComparison.Ordinal))
+                    names.TryAdd(line[..separator].TrimEnd(), line[(separator + 1)..].Trim());
+            }
+        }
+
+        var hidden = new HashSet<ushort>();
+        foreach (var definition in _definitions.Value)
+        {
+            var title = ReadBlock(_scripts.ReadAllLines(definition.ScriptPath, encoding), "name").Trim();
+            if (title is "不使用" or "`不使用`"
+                || (names.Count > 0 && title.StartsWith(nameReference, StringComparison.Ordinal) && title.EndsWith('>')
+                    && (!names.TryGetValue(title[nameReference.Length..^1], out var value) || value is "" or "不使用")))
+                hidden.Add(definition.QuestId);
+        }
+
+        _logger.LogInformation("Excluded {Count} unavailable quest titles from Chapter Two quest offers.", hidden.Count);
+        return hidden;
     }
 
     public static bool IsTutorialCompletionQuestDefinition(QuestDefinition definition) =>

@@ -23,6 +23,8 @@ public static class TestCeraEndpoint
             "<!doctype html><html><head><meta charset=\"utf-8\"></head><body style=\"margin:0;background:transparent;color:#ddd;font:12px sans-serif\">" +
             WebUtility.HtmlEncode(message) + "<!--" + new string(' ', 1100) + "--></body></html>", "text/html", Encoding.UTF8, status);
         if (!options.EnableTestCeraTopUp) return Html("测试点券充值未启用。", 400);
+        if (options.ChapterTwoLocalTestPaymentsOnly && !IsLocalPayment(request))
+            return Html("第二章测试充值仅接受本机页面提交。", 403);
         if (!string.Equals(request.ContentType?.Split(';')[0].Trim(), "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
             return Html("仅接受表单提交。", 400);
         IFormCollection form;
@@ -48,6 +50,8 @@ public static class TestCeraEndpoint
             "<!doctype html><html><head><meta charset=\"utf-8\"></head><body style=\"margin:0;background:transparent;color:#ddd;font:12px sans-serif\">" +
             WebUtility.HtmlEncode(message) + "<!--" + new string(' ', 1100) + "--></body></html>", "text/html", Encoding.UTF8, status);
         if (!options.EnableTestCeraTopUp) return Html("测试黑钻充值未启用。", 400);
+        if (options.ChapterTwoLocalTestPaymentsOnly && !IsLocalPayment(request))
+            return Html("第二章测试充值仅接受本机页面提交。", 403);
         if (!string.Equals(request.ContentType?.Split(';')[0].Trim(), "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase))
             return Html("仅接受表单提交。", 400);
         IFormCollection form;
@@ -67,5 +71,22 @@ public static class TestCeraEndpoint
         foreach (var id in result.WeaknessRecoveredCharacterIds ?? [])
             sessions.NotifyWeaknessRecovery(id, DungeonWeaknessPolicy.FullStamina);
         return Html($"测试黑钻充值成功：已增加 {days} 天黑钻。", 200);
+    }
+
+    private static bool IsLocalPayment(HttpRequest request)
+    {
+        var connection = request.HttpContext.Connection;
+        if (connection.RemoteIpAddress is not { } peer || !IPAddress.IsLoopback(peer)
+            || connection.LocalIpAddress is not { } listener || !IPAddress.IsLoopback(listener)
+            || request.Host.Port != connection.LocalPort
+            || !IPAddress.TryParse(request.Host.Host, out var host) || !host.Equals(listener))
+            return false;
+
+        // Ordinary local tools send no Origin. Browsers may submit only from
+        // the test page itself, never from another site targeting loopback.
+        var origin = request.Headers.Origin;
+        return !request.Headers["Sec-Fetch-Site"].Any(value => string.Equals(value, "cross-site", StringComparison.OrdinalIgnoreCase))
+            && (origin.Count == 0 || origin.Count == 1 &&
+                string.Equals(origin[0], request.Scheme + "://" + request.Host.Value, StringComparison.OrdinalIgnoreCase));
     }
 }

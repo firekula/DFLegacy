@@ -54,7 +54,8 @@ public static class CharacterInventorySorter
     public static Dictionary<ushort, CharacterItemRecord> SortWarehouse(
         IReadOnlyDictionary<ushort, CharacterItemRecord> warehouse,
         ItemCatalog catalog,
-        ushort capacity)
+        ushort capacity,
+        bool mergeStacks = false)
     {
         var sorted = warehouse
             .Where(pair => pair.Key < capacity)
@@ -64,10 +65,29 @@ public static class CharacterInventorySorter
             .ThenBy(entry => entry.OldSlot)
             .ToArray();
         var arranged = new Dictionary<ushort, CharacterItemRecord>(sorted.Length);
-        for (var index = 0; index < sorted.Length; index++)
+        var openStacks = new Dictionary<(ushort ItemId, byte State, ushort Durability, byte Seal), ushort>();
+        foreach (var (_, sortedItem) in sorted)
         {
-            var targetSlot = checked((ushort)index);
-            arranged[targetSlot] = sorted[index].Item with { Slot = targetSlot };
+            var item = sortedItem;
+            var slot = checked((ushort)arranged.Count);
+            if (mergeStacks && catalog.TryGetDefinition(item.ItemId, out var definition) && definition.IsStackable)
+            {
+                var limit = CharacterInventoryPlanner.GetStackLimit(definition);
+                var key = (item.ItemId, item.State, item.Durability, item.SealState);
+                if (item.CountOrValue > 0 && item.CountOrValue <= limit && openStacks.TryGetValue(key, out var previousSlot))
+                {
+                    var previous = arranged[previousSlot];
+                    var added = Math.Min(item.CountOrValue, limit - previous.CountOrValue);
+                    arranged[previousSlot] = previous with { CountOrValue = previous.CountOrValue + added };
+                    if (arranged[previousSlot].CountOrValue == limit) openStacks.Remove(key);
+                    item = item with { CountOrValue = item.CountOrValue - added };
+                    if (item.CountOrValue == 0) continue;
+                }
+
+                if (item.CountOrValue > 0 && item.CountOrValue < limit) openStacks[key] = slot;
+            }
+
+            arranged[slot] = item with { Slot = slot };
         }
 
         return arranged;

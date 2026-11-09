@@ -9,6 +9,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--chapter-two-quest-visibility"))
+{
+    ChapterTwoQuestVisibilitySmokeTests.Run(Check);
+    if (Environment.GetEnvironmentVariable("DF2008_CHAPTER_TWO_PVF") is { Length: > 0 } chapterTwoPvf)
+        ChapterTwoQuestVisibilitySmokeTests.RunActual(chapterTwoPvf, Check);
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Chapter Two quest visibility smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 ChapterTwoInventorySmokeTests.Run(Check);
 if (args.Contains("--chapter-two-inventory"))
 {
@@ -384,6 +394,7 @@ await PickupRemovalSmokeTests.RunAsync(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
+ChapterTwoQuestVisibilitySmokeTests.Run(Check);
 QuestMapSmokeTests.Run(Check);
 DungeonMapSelectionSmokeTests.Run(Check);
 QuestPvpRankSmokeTests.Run(Check);

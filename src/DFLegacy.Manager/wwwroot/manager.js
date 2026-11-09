@@ -75,6 +75,15 @@ async function loadConfig() {
   $("#environmentNotice").hidden = !snapshot.environmentOverrides.length;
   $("#environmentNotice").textContent = "部分设置由环境变量控制，已锁定对应输入；有效值以环境变量为准：" + snapshot.environmentOverrides.join("、");
   $("#networkPreset").value = "custom";
+  $("#chapterTwoTestTopUp").hidden = !snapshot.chapterTwoLocal;
+  if (snapshot.chapterTwoLocal) {
+    const adjustable = new Set(["channelName", "maximumUsers", "monsterExperienceMultiplier", "clearExperienceMultiplier", "dropRatePercent", "dropEconomicRate", "autostart", "chapterTwoTestTopUpEnabled"]);
+    for (const input of fields) if (input.name && !adjustable.has(input.name)) input.disabled = true;
+    $("#networkPreset").disabled = true;
+    $("#deriveApi").disabled = true;
+    $("#environmentNotice").hidden = false;
+    $("#environmentNotice").textContent = "第二章测试使用固定的本机地址和端口，配套启动器请使用交付的客户端包。";
+  }
   await refreshPvf();
 }
 
@@ -112,6 +121,7 @@ async function refreshStatusCore() {
   $("#summaryApi").textContent = status.accountServiceUrl; $("#summaryGameplay").textContent = status.gameplayAdvertisedHost;
   $("#summaryData").textContent = status.dataDirectory;
   $("#assetNotice").hidden = status.assetsAvailable;
+  if (status.chapterTwoLocal) $("#assetNotice").textContent = "请使用单独交付的第二章客户端包。";
   $("#exportClient").disabled = busy || exportPending || !status.assetsAvailable || !status.configured;
   await refreshPvf();
   for (const [selector, url] of [["#gmLink", status.gmPanelUrl], ["#playerLink", status.playerPanelUrl]]) {
@@ -119,6 +129,7 @@ async function refreshStatusCore() {
     if (url) $(selector).href = url; else $(selector).removeAttribute("href");
   }
   $("#gameLinksNote").textContent = running ? "使用游戏管理员账号登录 GM 后台。" : "游戏服务当前已停止，这些页面将在启动后可用。";
+  $("#chapterTwoTopUpLinks").hidden = !(status.chapterTwoLocal && running && !server.restartRequired && savedConfig?.chapterTwoTestTopUpEnabled);
 }
 
 async function refreshLogs() {

@@ -16,10 +16,12 @@ internal sealed class LauncherAccountStore
 
     public LauncherOptions Load()
     {
-        if (!File.Exists(_path))
-            return new LauncherOptions();
-        return JsonSerializer.Deserialize<LauncherOptions>(File.ReadAllText(_path), JsonOptions)
-            ?? throw new InvalidDataException("launcher.json 不能为空。");
+        var options = File.Exists(_path)
+            ? JsonSerializer.Deserialize<LauncherOptions>(File.ReadAllText(_path), JsonOptions)
+                ?? throw new InvalidDataException("启动器配置不能为空。")
+            : new LauncherOptions();
+        ChapterTwoClient.ApplyLocalProfile(options);
+        return options;
     }
 
     internal sealed class ReadLease(LauncherOptions options, FileStream stream) : IDisposable

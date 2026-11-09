@@ -19,6 +19,11 @@ internal static class LaunchFlow
 
         var clientPath = Program.ResolveClientPath(options.ClientPath);
         Program.ValidateClient(clientPath);
+        if (ChapterTwoClient.IsBundled)
+        {
+            await ChapterTwoClient.RunAsync(clientPath, options, account, cancellationToken);
+            return;
+        }
         Program.LogClientPath = clientPath;
         ClientBootstrapInspector.ValidateForLaunch(clientPath);
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);

@@ -15,6 +15,8 @@ internal static class TownAppearanceDetailSmokeTests
         await CheckSceneAndTicketBoundariesAsync(check);
         await CheckPrivateAreaAsync(check);
         await CheckConcurrentReplayAsync(check);
+        await CheckChapterTwoTownVitalityAsync(check);
+        CheckChapterTwoAppearanceVitality(check);
     }
 
     private static async Task CheckRecoveryAndReplayAsync(Action<bool, string> check)
@@ -102,6 +104,72 @@ internal static class TownAppearanceDetailSmokeTests
                 && packets.Count(p => IsUserInfo(p, 1, 1)) == 1
                 && Recovery(packets[detail]) == 38,
             "a recovery tick during town entry is cached, then sent once with the latest recovery after roster and before peer table");
+    }
+
+    private static async Task CheckChapterTwoTownVitalityAsync(Action<bool, string> check)
+    {
+        var directory = CreateDirectory();
+        var recovering = new Channel();
+        var recoveringTicket = await directory.EnterAsync(Entry(1, recovering,
+            peer: Peer(1) with { TownVitalityPercentage = 37 }, chapterTwo: true), CancellationToken.None);
+        await directory.RefreshAppearanceAsync(recoveringTicket, Basic(1), CancellationToken.None, Detail(1, 37));
+
+        var observer = new Channel();
+        var observerInTown = true;
+        var observerTicket = await directory.EnterAsync(Entry(2, observer,
+            isInTown: () => observerInTown, peer: Peer(2) with { TownVitalityPercentage = 100 }, chapterTwo: true),
+            CancellationToken.None);
+        await directory.RefreshAppearanceAsync(observerTicket, Basic(2), CancellationToken.None, Detail(2, 100));
+        var legacy = new Channel();
+        await directory.EnterAsync(Entry(3, legacy, peer: Peer(3)), CancellationToken.None);
+
+        static IEnumerable<GameServerPacket> PeerTables(Channel channel) => channel.Packets
+            .Where(packet => packet.ProtocolId == GameProtocolEngine.UdpPeerInfoNotification);
+
+        var townTable = PeerTables(observer).Last().Payload;
+        check(townTable.Length == 45 && townTable[0] == 2 && townTable[22] == 100 && townTable[44] == 37,
+            "Chapter Two town peers receive distinct full and recovering vitality for the native compact HUD");
+        check(PeerTables(legacy).All(packet => packet.Payload.Length == 1 + packet.Payload[0] * 21),
+            "Chapter One town peers retain their original peer record shape");
+
+        recovering.Clear();
+        observer.Clear();
+        legacy.Clear();
+        await directory.RefreshAppearanceRecoveryAsync(recoveringTicket, 46, CancellationToken.None);
+        check(PeerTables(recovering).Single().Payload is [1, .., 46]
+              && PeerTables(observer).Single().Payload is [1, .., 46]
+              && !PeerTables(legacy).Any(),
+            "a town recovery tick refreshes the shared ratio for Chapter Two only");
+
+        observerInTown = false;
+        observer.Clear();
+        await directory.RefreshAppearanceRecoveryAsync(recoveringTicket, 100, CancellationToken.None,
+            updateCombatDetail: false);
+        check(!PeerTables(observer).Any(), "town vitality does not reach a recipient in dungeon selection or combat");
+
+        var lateArrival = new Channel();
+        await directory.EnterAsync(Entry(4, lateArrival, peer: Peer(4), chapterTwo: true), CancellationToken.None);
+        var replay = PeerTables(lateArrival).Last().Payload;
+        check(Enumerable.Range(0, replay[0]).Any(index =>
+                BinaryPrimitives.ReadUInt16LittleEndian(replay.AsSpan(1 + index * 22)) == 1
+                && replay[22 + index * 22] == 100),
+            "a later Chapter Two town arrival receives the recovered actor's updated ratio");
+    }
+
+    private static void CheckChapterTwoAppearanceVitality(Action<bool, string> check)
+    {
+        var summary = new GameCharacterSummary(0, Encoding.ASCII.GetBytes("User1"), 3, 1, 45);
+        byte[] Appearance(bool chapterTwo, byte vitality) => GameProtocolEngine.CreateCurrentCharacterInfo(
+            summary, 1, includeChapter2ActorFields: chapterTwo, chapterTwoTownVitality: vitality).Payload;
+
+        var empty = Appearance(true, 0);
+        var recovering = Appearance(true, 37);
+        check(recovering[^4] == 37 && empty[^4] == 0
+              && recovering.AsSpan(0, recovering.Length - 4).SequenceEqual(empty.AsSpan(0, empty.Length - 4))
+              && recovering.AsSpan(recovering.Length - 3).SequenceEqual(empty.AsSpan(empty.Length - 3)),
+            "Chapter Two mode-zero appearance writes the town vitality field consumed after an area transition");
+        check(Appearance(false, 37).AsSpan().SequenceEqual(Appearance(false, 0)),
+            "Chapter One appearance is independent of the Chapter Two town vitality field");
     }
 
     private static async Task CheckSceneAndTicketBoundariesAsync(Action<bool, string> check)
@@ -211,9 +279,10 @@ internal static class TownAppearanceDetailSmokeTests
         new(options ?? new ServerOptions(), TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
 
     private static TownEntryRequest Entry(ushort uid, Channel channel, byte areaId = 0,
-        Guid? characterId = null, Func<bool>? isInTown = null, GamePeerInfo? peer = null) => new(
+        Guid? characterId = null, Func<bool>? isInTown = null, GamePeerInfo? peer = null,
+        bool chapterTwo = false) => new(
         1, areaId, uid, characterId ?? Guid.NewGuid(), uid, Encoding.ASCII.GetBytes($"User{uid}"),
-        $"User{uid}", peer, 474, 234, 5, channel.SendAsync, isInTown);
+        $"User{uid}", peer, 474, 234, 5, channel.SendAsync, isInTown, chapterTwo);
 
     private static GamePeerInfo Peer(ushort uid) =>
         new(uid, IPAddress.Loopback, IPAddress.Loopback, (ushort)(40_000 + uid), 1, 2, 1400);

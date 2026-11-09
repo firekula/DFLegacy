@@ -27,6 +27,8 @@ public partial class ConfigWindow : System.Windows.Window
         _store = store;
         _trackMonitor = trackMonitor;
         _options = store.Load();
+        if (ChapterTwoClient.IsBundled)
+            ((TabItem)SettingsTabs.Items[0]).Visibility = Visibility.Collapsed;
         HostBox.Text = _options.EntranceHost;
         PortBox.Text = _options.EntrancePort.ToString();
         AccountPortBox.Text = _options.AccountServicePort.ToString();
@@ -165,15 +167,29 @@ public partial class ConfigWindow : System.Windows.Window
         try
         {
             _options = _store.Load();
-            _display = ClientDisplayConfiguration.Load(_options.ClientPath);
-            DisplayTargetText.Text = _display.ClientPath;
+            var chapterTwo = ChapterTwoClient.IsBundled;
+            var displayOptions = ChapterTwoClient.DisplayOptions(_options);
+            if (chapterTwo && ChapterTwoClient.HasPresentationPreview)
+            {
+                var dialogue = ChapterTwoDialogueOptions.Normalize(_options.ChapterTwoDialogue);
+                DialogueSettingsPanel.Visibility = Visibility.Visible;
+                DialogueSizeBox.ItemsSource = ChapterTwoDialogueOptions.FontSizes;
+                DialogueGapBox.ItemsSource = ChapterTwoDialogueOptions.LineGaps;
+                DialogueSizeBox.SelectedItem = dialogue.FontSize;
+                DialogueGapBox.SelectedItem = dialogue.LineGap;
+            }
+            if (!chapterTwo) _display = ClientDisplayConfiguration.Load(_options.ClientPath);
+            var width = _display?.Width ?? displayOptions.Width;
+            var height = _display?.Height ?? displayOptions.Height;
+            DisplayTargetText.Text = _display?.ClientPath ?? Program.ResolveClientPath(_options.ClientPath);
             var choices = ClientDisplayConfiguration.Presets.Select(p => new ResolutionChoice(p.Width, p.Height, p.ToString())).ToList();
-            if (!choices.Any(p => p.Width == _display.Width && p.Height == _display.Height))
-                choices.Add(new(_display.Width, _display.Height, $"当前自定义：{_display.Width} × {_display.Height}（旧配置）"));
+            if (!choices.Any(p => p.Width == width && p.Height == height))
+                choices.Add(new(width, height, $"当前自定义：{width} × {height}（旧配置）"));
             ResolutionBox.ItemsSource = choices;
-            ResolutionBox.SelectedItem = choices.First(p => p.Width == _display.Width && p.Height == _display.Height);
-            PresentationBox.SelectedValue = _display.PresentationFilter;
-            DisplayRuntimeText.Text = ClientRenderDiagnostic.DescribeLatest(_display.ClientPath);
+            ResolutionBox.SelectedItem = choices.First(p => p.Width == width && p.Height == height);
+            PresentationBox.SelectedValue = _display?.PresentationFilter ?? displayOptions.Filter;
+            DisplayRuntimeText.Text = chapterTwo ? "第二章启动日志位于 Logs/DFLegacy。"
+                : ClientRenderDiagnostic.DescribeLatest(_display!.ClientPath);
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or JsonException)
         {
@@ -191,6 +207,16 @@ public partial class ConfigWindow : System.Windows.Window
     private void UpdateDisplayAvailability()
     {
         if (DisplayEditorPanel is null || _loadingDisplay) return;
+        if (ChapterTwoClient.IsBundled)
+        {
+            var legacy = PresentationBox.SelectedValue as string == "legacy";
+            if (legacy && ResolutionBox.SelectedIndex > 0) ResolutionBox.SelectedIndex = 0;
+            ResolutionBox.IsEnabled = !legacy;
+            DisplaySaveButton.IsEnabled = ResolutionBox.SelectedItem is ResolutionChoice && PresentationBox.SelectedValue is string;
+            DisplayWarningText.Text = "第二章增强画质为预览选项，请手动验证画面与鼠标点选。";
+            DisplayDescriptionText.Text = legacy ? "默认使用原始 640 × 480 窗口。" : "沿用第一章的画面缩放，游戏视野保持 640 × 480。";
+            return;
+        }
         var samePath = ClientDisplayConfiguration.SameClientPath(_options.ClientPath, ClientPathBox.Text);
         if (_display is not null && samePath)
         {
@@ -236,6 +262,27 @@ public partial class ConfigWindow : System.Windows.Window
 
     private void DisplaySave_Click(object sender, RoutedEventArgs e)
     {
+        if (ChapterTwoClient.IsBundled)
+        {
+            if (ResolutionBox.SelectedItem is not ResolutionChoice preview || PresentationBox.SelectedValue is not string filter) return;
+            try
+            {
+                _store.Update(options =>
+                {
+                    options.ChapterTwoDisplay = filter == "legacy" ? null : new(preview.Width, preview.Height, filter);
+                    if (DialogueSizeBox.SelectedItem is int size && DialogueGapBox.SelectedItem is int gap)
+                    {
+                        var dialogue = new ChapterTwoDialogueOptions(size, gap);
+                        options.ChapterTwoDialogue = dialogue == ChapterTwoDialogueOptions.Default ? null : dialogue;
+                    }
+                });
+                DisplaySaveResultText.Text = "";
+                DisplayFooterText.Text = "已保存 · 下次启动后生效";
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
+            { DisplaySaveResultText.Text = "保存失败：" + ex.Message; }
+            return;
+        }
         if (_display is null || !ClientDisplayConfiguration.SameClientPath(_options.ClientPath, ClientPathBox.Text)
             || ResolutionBox.SelectedItem is not ResolutionChoice choice || PresentationBox.SelectedValue is not string mode)
         { UpdateDisplayAvailability(); return; }

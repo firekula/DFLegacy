@@ -36,6 +36,17 @@ internal static class ChapterTwoInventorySmokeTests
         check(ReferenceEquals(otherPacket, ChapterTwoPacketProjection.Apply(otherPacket)),
             "character selection keeps its own packet format");
 
+        var legacyExperience = GameProtocolEngine.CreateExperienceGained(3, 160, 0, 2, 15);
+        var chapterTwoExperience = GameProtocolEngine.CreateExperienceGained(3, 160, 0, 2, 15,
+            chapterTwoVictoryPoints: 0x78563412);
+        var zeroVictoryPoints = GameProtocolEngine.CreateExperienceGained(3, 160, 0, 2, 15,
+            chapterTwoVictoryPoints: 0);
+        check(legacyExperience.Payload.AsSpan().SequenceEqual(Convert.FromHexString("03A000000000000000020000000F00")),
+            "ACT1 keeps the original monster experience body");
+        check(chapterTwoExperience.Payload.AsSpan().SequenceEqual(Convert.FromHexString("03A000000000000000020000000F0012345678"))
+            && zeroVictoryPoints.Payload.AsSpan().SequenceEqual(Convert.FromHexString("03A000000000000000020000000F0000000000")),
+            "Chapter Two monster experience carries the full victory point balance including zero");
+
         var purchase = Convert.FromHexString("09000001FF0000DF86010000000000000000");
         check(GameProtocolEngine.TryReadCeraShopPurchase(purchase, out var parsed, true)
             && parsed.Products.Single().CommodityNo == 100063,
@@ -106,6 +117,36 @@ internal static class ChapterTwoInventorySmokeTests
                 Convert.FromHexString("0300FFFF000000000000000000")),
             "Chapter Two trade-slot clearing consumes the same extra field as an item offer");
 
+        PrivateStoreGoodsRow[] storeGoods = [new(0, 100, 10400, 1, 0, 35), new(1, 110, 27093, 2, 0, 30)];
+        CheckRecords(GameProtocolEngine.CreatePrivateStoreEnterReply(123, storeGoods), 4, 2, 15, [0, 0]);
+        CheckRecords(GameProtocolEngine.CreatePrivateStoreInfo(0, storeGoods), 2, 2, 15, [0, 0]);
+        CheckRecords(GameProtocolEngine.CreatePrivateStoreBuyReply(10, 20, 30, 9, 10400, 1, 0, 35),
+            13, 1, 11, [0, 0]);
+        var storeFailure = GameProtocolEngine.CreatePrivateStoreReply(GameProtocolEngine.BuyPrivateStoreCommand, 1);
+        check(ReferenceEquals(storeFailure, ChapterTwoPacketProjection.Apply(storeFailure)),
+            "Chapter Two private-store errors keep their own short format");
+
+        GameMailEntry[] mailbox =
+        [
+            new(1, "Seria"u8.ToArray(), "one"u8.ToArray(), 0, new(3037, 25, 3, 400, 1), 1000, 2000),
+            new(2, "Seria"u8.ToArray(), "two"u8.ToArray(), 500, null, 3000, 4000),
+            new(3, "Seria"u8.ToArray(), "archive"u8.ToArray(), 0, null, 5000, 6000, State: 3)
+        ];
+        var legacyMailbox = GameProtocolEngine.CreateMailboxSnapshot(mailbox);
+        var chapterTwoMailbox = GameProtocolEngine.CreateMailboxSnapshot(mailbox, chapterTwo: true);
+        check(legacyMailbox.Count == 2 && chapterTwoMailbox.Count == 2
+            && MatchesExtendedMailbox(legacyMailbox[0], chapterTwoMailbox[0], packageCount: 1)
+            && MatchesExtendedMailbox(legacyMailbox[1], chapterTwoMailbox[1], packageCount: 2),
+            "Chapter Two keeps attachment, gold-only, and archive mail rows aligned with the text records");
+
+        check(!EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand)
+            && EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxOpenCommand, chapterTwo: true)
+            && !EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxExtractItemCommand, chapterTwo: true)
+            && !EntranceService.PrivateStoreOwnerCommandAllowed(GameProtocolEngine.MailboxSendCommand, chapterTwo: true),
+            "Chapter Two store owner can open the mailbox without allowing claims or sends while trading");
+
+        CheckWarehouseAndOversizeMail(check);
+
         var gold = GameProtocolEngine.CreateGoldItemPickup(2, 1, [22u, 0u, 300u, 0u]);
         check(gold.Payload.AsSpan().SequenceEqual(
                 Convert.FromHexString("02000100160000000000000000002C010000000000000000")),
@@ -144,7 +185,65 @@ internal static class ChapterTwoInventorySmokeTests
             }
 
             check(valid && target[(start + count * projectedStride)..].SequenceEqual(source[(start + count * stride)..]),
-                $"Chapter Two projects notification {original.ProtocolId} mode {source[0]} without shifting later fields");
+                $"Chapter Two projects type {original.Type} id {original.ProtocolId} mode {source[0]} without shifting later fields");
         }
+
+        static bool MatchesExtendedMailbox(GameServerPacket legacy, GameServerPacket chapterTwo, int packageCount)
+        {
+            var source = legacy.Payload.AsSpan();
+            var target = chapterTwo.Payload.AsSpan();
+            if (target.Length != source.Length + 2 * packageCount || !source[..2].SequenceEqual(target[..2])) return false;
+            for (var index = 0; index < packageCount; index++)
+            {
+                const int packageSize = 35;
+                const int fieldOffset = 27;
+                var row = 2 + index * packageSize;
+                var newRow = row + index * 2;
+                if (!source.Slice(row, fieldOffset).SequenceEqual(target.Slice(newRow, fieldOffset))
+                    || target[newRow + fieldOffset] != 0 || target[newRow + fieldOffset + 1] != 0
+                    || !source.Slice(row + fieldOffset, packageSize - fieldOffset)
+                        .SequenceEqual(target.Slice(newRow + fieldOffset + 2, packageSize - fieldOffset))) return false;
+            }
+
+            return source[(2 + packageCount * 35)..].SequenceEqual(target[(2 + packageCount * 37)..]);
+        }
+    }
+
+    private static void CheckWarehouseAndOversizeMail(Action<bool, string> check)
+    {
+        var root = Directory.CreateTempSubdirectory("dflegacy-chapter-two-inventory-");
+        try
+        {
+            TradeFixtures.Create(root.FullName);
+            var catalog = TradeFixtures.CreateItems(root.FullName);
+            var itemId = TradeFixtures.PotionItemId;
+            var warehouse = new Dictionary<ushort, CharacterItemRecord>
+            {
+                [1] = new(1, itemId, 1),
+                [3] = new(3, itemId, 99),
+                [5] = new(5, itemId, 75),
+                [7] = new(7, itemId, 1, SealState: 1)
+            };
+            var ordered = CharacterInventorySorter.SortWarehouse(warehouse, catalog, 8, mergeStacks: true);
+            check(ordered.Count == 3 && ordered[0].CountOrValue == 100 && ordered[1].CountOrValue == 75
+                && ordered[2] is { CountOrValue: 1, SealState: 1 }
+                && CharacterInventorySorter.SortWarehouse(warehouse, catalog, 8).Count == 4,
+                "Chapter Two warehouse sorting merges only compatible stacks up to the item cap");
+            check(EntranceService.TryPlanReverseWarehouseMove(warehouse, 8, 0, 5, out var reordered)
+                && reordered[0] == (warehouse[5] with { Slot = 0 }) && !reordered.ContainsKey(5)
+                && warehouse.ContainsKey(5) && !warehouse.ContainsKey(0)
+                && !EntranceService.TryPlanReverseWarehouseMove(warehouse, 8, 3, 5, out _)
+                && !EntranceService.TryPlanReverseWarehouseMove(warehouse, 8, 8, 5, out _),
+                "Chapter Two empty-endpoint warehouse moves preserve the item and its quantity");
+
+            var inventory = new Dictionary<ushort, CharacterItemRecord>();
+            check(EntranceService.TryPlanMailAttachment(inventory, inventory, inventory,
+                    new CharacterMailAttachmentRecord(itemId, 245), catalog, uint.MaxValue,
+                    out var placed, out _, out _, out var destinationList, out _)
+                && placed.Count == 3 && placed.Values.Select(item => item.CountOrValue).Order().SequenceEqual(new uint[] { 45, 100, 100 })
+                && destinationList == 0 && inventory.Count == 0,
+                "a single oversized mail attachment is planned across multiple legal bag stacks");
+        }
+        finally { root.Delete(recursive: true); }
     }
 }

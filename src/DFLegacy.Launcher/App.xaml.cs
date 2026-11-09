@@ -12,6 +12,7 @@ public partial class App : Application
     {
         if (e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal))
         {
+            if (ChapterTwoClient.IsBundled) { Shutdown(1); return; }
             // Keep the engine result authoritative when the only helper window closes.
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             // Helper UI has only embedded native artwork; it never reads launcher.json/theme.
@@ -36,7 +37,8 @@ public partial class App : Application
             var window = new MainWindow();
             MainWindow = window;
             ShutdownMode=ShutdownMode.OnMainWindowClose;
-            window.StartUpdates();
+            if (ChapterTwoClient.IsBundled) window.Show();
+            else window.StartUpdates();
         }
         catch (Exception exception)
         {

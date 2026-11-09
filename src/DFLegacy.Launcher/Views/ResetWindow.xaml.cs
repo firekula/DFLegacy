@@ -19,6 +19,8 @@ public partial class ResetWindow : System.Windows.Window
         var oicq = OicqBox.Text.Trim();
         var pass = PasswordBox.Password;
         if (pass != ConfirmBox.Password) { ClassicMessage.Show(this, "两次密码不一致。"); return; }
+        if (ChapterTwoClient.IsBundled && (!ChapterTwoClient.IsValidCredential(user, 4) || !ChapterTwoClient.IsValidCredential(pass, 6)))
+        { ClassicMessage.Show(this, ChapterTwoClient.CredentialHint); return; }
         if (user.Length is < 4 or > 32 || pass.Length is < 6 or > 128 || oicq.Length is 0 or > 32)
         { ClassicMessage.Show(this, "账号 4-32、密码 6-128、QQ 不能为空且 ≤32。"); return; }
 

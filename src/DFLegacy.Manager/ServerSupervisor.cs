@@ -93,7 +93,7 @@ public sealed class ServerSupervisor : IAsyncDisposable
             var configuration = _config.Read();
             if (!configuration.Configured) throw new InvalidOperationException("请先完成服务配置并保存。");
             var settings = configuration.Effective;
-            ConfigurationStore.Validate(settings);
+            _config.ValidateForStart(settings);
             var document = _config.ReadServerDocument();
             if (ConfigurationStore.Get(document, "DFLegacy:Processes:Channel:Enabled")?.GetValue<bool>() == true
                 || Environment.GetEnvironmentVariable("DFLegacy__Processes__Channel__Enabled")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
@@ -260,6 +260,14 @@ public sealed class ServerSupervisor : IAsyncDisposable
         }
         info.ArgumentList.Add("--config"); info.ArgumentList.Add(_paths.ServerConfig);
         foreach (var key in info.Environment.Keys.Where(key => key.StartsWith("DFLEGACY_MANAGER_", StringComparison.OrdinalIgnoreCase)).ToArray()) info.Environment.Remove(key);
+        if (_config.ChapterTwoLocal)
+        {
+            foreach (var key in info.Environment.Keys.Where(key => key.StartsWith("DFLEGACY__", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("DFL_S1C2_", StringComparison.OrdinalIgnoreCase)).ToArray()) info.Environment.Remove(key);
+            info.Environment["DFL_S1C2_TRIAL_CHANNEL_CIPHER"] = "1";
+            info.Environment["DFLegacy__DataPath"] = _paths.GameData;
+            info.Environment["DFLegacy__ChapterTwoLocalTestPaymentsOnly"] = "true";
+        }
         return info;
     }
     private HttpRequestMessage ControlRequest(HttpMethod method, string path)

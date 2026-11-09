@@ -7,15 +7,38 @@ internal static class ChapterTwoPacketProjection
 {
     public static GameServerPacket Apply(GameServerPacket packet)
     {
-        if (packet.Type != GameProtocolEngine.NotificationPacketType || packet.Payload.Length == 0)
+        if (packet.Payload.Length == 0)
         {
             return packet;
         }
 
         var payload = packet.Payload.AsSpan();
+        if (packet.Type == GameProtocolEngine.CommandPacketType)
+        {
+            // The successful buy reply and each entered-shop row end with the extra item field.
+            if (payload[0] == 1 && packet.ProtocolId == GameProtocolEngine.BuyPrivateStoreCommand && payload.Length == 24)
+                return packet with { Payload = [.. packet.Payload, 0, 0] };
+            if (payload[0] == 1 && packet.ProtocolId == GameProtocolEngine.EnterPrivateStoreCommand
+                && payload.Length >= 4 && payload.Length == 4 + payload[3] * 15)
+                return ExpandRecords(packet, 4, payload[3], 15, [0, 0]);
+            return packet;
+        }
+
+        if (packet.Type != GameProtocolEngine.NotificationPacketType)
+        {
+            return packet;
+        }
+
+        if (packet.ProtocolId == GameProtocolEngine.PrivateStoreInfoNotification
+            && payload.Length >= 2 && payload.Length == 2 + payload[1] * 15)
+        {
+            return ExpandRecords(packet, 2, payload[1], 15, [0, 0]);
+        }
+
         if (packet.ProtocolId == GameProtocolEngine.UdpPeerInfoNotification && payload.Length == 1 + payload[0] * 21)
         {
-            // Ver_OB_216 reads an extra u8 after each peer's MTU and stores it at +0x118.
+            // Town tables already carry their shared HP/MP percentage. Other peer tables
+            // still need the extra byte consumed by Ver_OB_216 after each MTU.
             return ExpandRecords(packet, 1, payload[0], 21, [0]);
         }
 

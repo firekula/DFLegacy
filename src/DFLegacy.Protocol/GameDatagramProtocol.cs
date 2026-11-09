@@ -17,7 +17,8 @@ public sealed record GamePeerInfo(
     ushort PublicPort,
     uint AccountId,
     byte NatType,
-    uint Mtu);
+    uint Mtu,
+    byte TownVitalityPercentage = 0);
 
 public sealed record GameDatagramApplication(
     byte Mode,

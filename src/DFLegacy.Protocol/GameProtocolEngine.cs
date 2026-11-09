@@ -1106,7 +1106,8 @@ public static partial class GameProtocolEngine
         IReadOnlyList<GameMailEntry> mails,
         short notLoadedCount = 0,
         bool reset = true,
-        bool includeEmptyPackageCarriers = false)
+        bool includeEmptyPackageCarriers = false,
+        bool chapterTwo = false)
     {
         ArgumentNullException.ThrowIfNull(mails);
         if (mails.Count > byte.MaxValue)
@@ -1145,6 +1146,11 @@ public static partial class GameProtocolEngine
             writer.Write(attachment?.CountOrValue ?? 0u);
             writer.Write(attachment?.Durability ?? (ushort)0);
             writer.Write(attachment?.State ?? (byte)0);
+            if (chapterTwo)
+            {
+                // The extended item constructor reads this even for a gold-only carrier.
+                writer.Write((ushort)0);
+            }
             writer.Write(mail.SentAt);
             writer.Write(mail.MailId); // joins the package and text records
         }
@@ -1172,7 +1178,8 @@ public static partial class GameProtocolEngine
 
     public static IReadOnlyList<GameServerPacket> CreateMailboxSnapshot(
         IReadOnlyList<GameMailEntry> mails,
-        short notLoadedCount = 0)
+        short notLoadedCount = 0,
+        bool chapterTwo = false)
     {
         ArgumentNullException.ThrowIfNull(mails);
 
@@ -1188,7 +1195,8 @@ public static partial class GameProtocolEngine
                 [archivedMail],
                 notLoadedCount,
                 reset,
-                includeEmptyPackageCarriers: true));
+                includeEmptyPackageCarriers: true,
+                chapterTwo: chapterTwo));
             reset = false;
         }
 
@@ -1200,7 +1208,8 @@ public static partial class GameProtocolEngine
             packets.Add(CreateMailboxList(
                 inboxMails,
                 notLoadedCount,
-                reset));
+                reset,
+                chapterTwo: chapterTwo));
         }
 
         return packets;
@@ -3037,6 +3046,14 @@ public static partial class GameProtocolEngine
     public static bool TryReadBlacklistName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false) =>
         TryReadLengthPrefixedName(body, out nameBytes, allowChapter2Padding);
 
+    public static bool HasCommandBodyLength(ReadOnlySpan<byte> body, int logicalLength, bool allowChapterTwoPadding = false)
+    {
+        if (logicalLength < sizeof(ushort) || body.Length < logicalLength) return false;
+        return body.Length == logicalLength
+            || allowChapterTwoPadding && (body.Length - sizeof(ushort)) % 16 == 0
+                && body.Length - logicalLength < 16 && !body[logicalLength..].ContainsAnyExcept((byte)0);
+    }
+
     private static bool TryReadLengthPrefixedName(byte[] body, out byte[] nameBytes, bool allowChapter2Padding = false)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -3319,7 +3336,8 @@ public static partial class GameProtocolEngine
     }
 
     public static GameServerPacket CreateUdpPeerInfo(
-        IReadOnlyList<GamePeerInfo> peers)
+        IReadOnlyList<GamePeerInfo> peers,
+        bool chapterTwoTown = false)
     {
         ArgumentNullException.ThrowIfNull(peers);
         if (peers.Count > byte.MaxValue)
@@ -3352,6 +3370,10 @@ public static partial class GameProtocolEngine
             // local MTU for the reliable-buffer capacity (0x78E090). It is
             // little endian, as in CMD 2; the adjacent port uses network order.
             writer.Write(peer.Mtu);
+            if (chapterTwoTown)
+            {
+                writer.Write(peer.TownVitalityPercentage);
+            }
         }
 
         return new GameServerPacket(
@@ -3660,7 +3682,8 @@ public static partial class GameProtocolEngine
         uint cumulativeExperience,
         uint extraExperienceA,
         uint extraExperienceB,
-        ushort skillPoints)
+        ushort skillPoints,
+        uint? chapterTwoVictoryPoints = null)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
@@ -3669,6 +3692,11 @@ public static partial class GameProtocolEngine
         writer.Write(extraExperienceA);
         writer.Write(extraExperienceB);
         writer.Write(skillPoints);
+        if (chapterTwoVictoryPoints is uint victoryPoints)
+        {
+            // Chapter Two compares this absolute balance with the local balance before showing the gain.
+            writer.Write(victoryPoints);
+        }
         return new GameServerPacket(
             NotificationPacketType,
             ExperienceGainedNotification,
@@ -4308,7 +4336,8 @@ public static partial class GameProtocolEngine
         GameCreatureAppearanceEntry? equippedCreature = null,
         bool hasBlackDiamond = false,
         bool hasPrivateStorePermission = false,
-        bool includeChapter2ActorFields = false)
+        bool includeChapter2ActorFields = false,
+        byte chapterTwoTownVitality = 0)
     {
         if (userId == 0)
         {
@@ -4413,7 +4442,7 @@ public static partial class GameProtocolEngine
             writer.Write(0u);
             writer.Write(0u);
             writer.Write(0u);
-            writer.Write((byte)0);
+            writer.Write(chapterTwoTownVitality); // Shared town party HP/MP ratio, CNUser+0x118.
             writer.Write((ushort)0);
             writer.Write((byte)0);
         }

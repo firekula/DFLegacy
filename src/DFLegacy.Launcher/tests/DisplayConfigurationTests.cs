@@ -1,9 +1,68 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Windows;
+using System.Windows.Controls;
 using DFLegacy.Launcher;
+using DFLegacy.Launcher.Views;
 
 internal static class DisplayConfigurationTests
 {
+    internal static void RunChapterTwoDialogue(string root, Action<bool, string> check)
+    {
+        if (!ChapterTwoClient.IsBundled || !ChapterTwoClient.HasPresentationPreview)
+        {
+            check(false, "dialogue settings test requires a Chapter Two presentation build");
+            return;
+        }
+
+        var config = Path.Combine(root, "launcher.chapter2.json");
+        File.WriteAllText(config, """{"ChapterTwoDisplay":{"Width":640,"Height":480,"Filter":"legacy"}}""");
+        var store = new LauncherAccountStore(config);
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            try
+            {
+                var window = new ConfigWindow(store, trackMonitor: false);
+                var font = (ComboBox)window.FindName("DialogueSizeBox");
+                var gap = (ComboBox)window.FindName("DialogueGapBox");
+                var save = (Button)window.FindName("DisplaySaveButton");
+                var reload = (Button)window.FindName("DisplayReloadButton");
+                check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 3),
+                    "an older Chapter Two config opens with the current default body layout");
+                font.SelectedItem = 18;
+                gap.SelectedItem = 1;
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(store.Load().ChapterTwoDialogue == new ChapterTwoDialogueOptions(18, 1),
+                    "Save Settings persists the two controls even with original display mode");
+                font.SelectedItem = 14;
+                gap.SelectedItem = 4;
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(font.SelectedItem, 18) && Equals(gap.SelectedItem, 1),
+                    "Reload restores the saved values");
+                File.WriteAllText(config, """{"ChapterTwoDialogue":{"FontSize":16}}""");
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(font.SelectedItem, 16) && Equals(gap.SelectedItem, 3),
+                    "a partial configuration uses the default for its missing gap");
+                store.Update(options => options.ChapterTwoDialogue = new(100, 0));
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 0),
+                    "an invalid size falls back without losing a valid gap");
+                gap.SelectedItem = 3;
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(store.Load().ChapterTwoDialogue is null, "saving defaults restores the legacy config shape");
+                window.Close();
+            }
+            catch (Exception ex) { failure = ex; }
+            finally { application.Shutdown(); }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        if (failure is not null) throw new InvalidOperationException("Chapter Two settings test failed.", failure);
+    }
+
     internal static void Run(string parent, Action<bool, string> check)
     {
         TargetAuthority(parent, check);

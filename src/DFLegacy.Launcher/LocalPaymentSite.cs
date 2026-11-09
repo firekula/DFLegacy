@@ -13,7 +13,8 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
 {
     internal string BaseUrl { get; } = baseUrl;
 
-    internal static async Task<LocalPaymentSite> StartAsync(string serviceUrl, CancellationToken token)
+    internal static async Task<LocalPaymentSite> StartAsync(string serviceUrl, CancellationToken token,
+        bool useProxy = true, bool inlineStyle = false)
     {
         var service = ClientServiceConfiguration.NormalizeBaseUrl(serviceUrl);
         var prefix = "/" + Guid.NewGuid().ToString("N");
@@ -21,8 +22,14 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
         var resources = assembly.GetManifestResourceNames()
             .Where(name => name.StartsWith("ClientPay/", StringComparison.Ordinal))
             .ToDictionary(name => name.Replace('\\', '/')[10..], StringComparer.Ordinal);
+        string? style = null;
+        if (inlineStyle)
+        {
+            using var reader = new StreamReader(assembly.GetManifestResourceStream(resources["css/commen.css"])!, Encoding.Latin1);
+            style = "<style type=\"text/css\">" + (await reader.ReadToEndAsync(token)).Replace("../images/", "images/", StringComparison.Ordinal) + "</style>";
+        }
         var types = new FileExtensionContentTypeProvider();
-        var upstream = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false })
+        var upstream = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = useProxy })
         {
             Timeout = TimeSpan.FromSeconds(10),
             MaxResponseContentBufferSize = 16384
@@ -57,6 +64,8 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
                 return Results.Stream(stream, contentType);
             using var reader = new StreamReader(stream, Encoding.Latin1, detectEncodingFromByteOrderMarks: false);
             var html = (await reader.ReadToEndAsync()).Replace("/api/client-pay/test-", prefix + "/api/client-pay/test-", StringComparison.Ordinal);
+            if (style is not null)
+                html = html.Replace("<link href=\"css/commen.css\" rel=\"stylesheet\" type=\"text/css\" />", style, StringComparison.Ordinal);
             return Results.Bytes(Encoding.Latin1.GetBytes(html), "text/html; charset=gb2312");
         });
         app.MapPost(prefix + "/api/client-pay/test-cera", (HttpRequest request) =>

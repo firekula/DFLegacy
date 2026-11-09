@@ -259,6 +259,26 @@ internal static class ActiveDropSmokeTests
         catch (IOException) { otherApiThrew = true; }
         check(otherApiThrew && logger.Throws == 2,
             "isolating committed item-space diagnostics does not change other save API exception behavior");
+
+        var sale = await store.SaveCharacterInventoryAsync("alice", original.Id, saved.Gold + 25,
+            saved.Inventory ?? [], saved.Equipment ?? [], isolateCommittedDiagnostics: true);
+        check(sale?.Gold == saved.Gold + 25 && logger.Throws == 3,
+            "the sale save returns the committed balance even if a post-commit diagnostic fails");
+        logger.Armed = false;
+
+        var temporary = harness.Options.DataPath + ".tmp";
+        var failedBeforeCommit = false;
+        using (var blocked = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            try
+            {
+                await store.SaveCharacterInventoryAsync("alice", original.Id, saved.Gold + 50,
+                    saved.Inventory ?? [], saved.Equipment ?? [], isolateCommittedDiagnostics: true);
+            }
+            catch (IOException) { failedBeforeCommit = true; }
+        }
+        check(failedBeforeCommit && (await store.GetCharactersAsync("alice"))[0].Gold == saved.Gold + 25,
+            "the sale save restores the previous in-memory balance if the snapshot cannot be written");
     }
 
     private sealed class ThrowAfterSnapshotLogger : ILogger<JsonGameStore>

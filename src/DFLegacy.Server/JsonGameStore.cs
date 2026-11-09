@@ -3478,7 +3478,8 @@ public sealed partial class JsonGameStore(
         CancellationToken cancellationToken = default,
         IEnumerable<CreateCharacterMailRequest>? generatedMails = null,
         ushort? warehouseCapacity = null,
-        ushort? expectedWarehouseCapacity = null)
+        ushort? expectedWarehouseCapacity = null,
+        bool isolateCommittedDiagnostics = false)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -3540,7 +3541,17 @@ public sealed partial class JsonGameStore(
             };
             updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[index] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics);
+            }
+            catch
+            {
+                if (!snapshotCommitted) account.Characters[index] = character;
+                throw;
+            }
             LogGeneratedMails(characterId, createdMailCount);
             return updated;
         }

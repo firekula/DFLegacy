@@ -25,7 +25,7 @@ public partial class MainWindow : System.Windows.Window
     private readonly Dictionary<string, ImageSource> _artwork = [];
     private static readonly string[] BannerTitles = ["勇士，欢迎重返阿拉德", "经典职业，再次集结", "携手伙伴，开启冒险", "熟悉的世界，新的旅程", "准备出发，探索阿拉德"];
 
-    public MainWindow() : this(new LauncherAccountStore(Path.Combine(AppContext.BaseDirectory, "launcher.json"))) { }
+    public MainWindow() : this(new LauncherAccountStore(Program.LauncherConfigPath)) { }
 
     internal MainWindow(LauncherAccountStore store, bool refreshStatus = true)
     {
@@ -35,6 +35,22 @@ public partial class MainWindow : System.Windows.Window
         _options = _store.Load();
         // 账号服务地址 = 入口域名 + 账号服务端口（可用 AccountServiceUrl 覆盖），发布前只改端口。
         _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
+
+        if (ChapterTwoClient.IsBundled)
+        {
+            Title = "地下城与勇士 · 第二章本机测试";
+            AccountText.MaxLength = PasswordText.MaxLength = 16;
+            var manager = new MenuItem { Header = "打开第二章服务管理器" };
+            manager.Click += (_, _) => OpenUrl("http://127.0.0.1:48092/");
+            MoreServicesButton.ContextMenu.Items.Clear();
+            MoreServicesButton.ContextMenu.Items.Add(manager);
+            var cera = new MenuItem { Header = "本机测试点券" };
+            cera.Click += (_, _) => OpenUrl("http://127.0.0.2:48091/client/client_pay.htm");
+            MoreServicesButton.ContextMenu.Items.Add(cera);
+            var diamond = new MenuItem { Header = "本机测试黑钻" };
+            diamond.Click += (_, _) => OpenUrl("http://127.0.0.2:48091/client/client_diamond.htm");
+            MoreServicesButton.ContextMenu.Items.Add(diamond);
+        }
 
         ShowBanner(0);
         RefreshAccounts();
@@ -357,6 +373,12 @@ public partial class MainWindow : System.Windows.Window
 
     private void OpenConfig(bool connection)
     {
+        if (ChapterTwoClient.IsBundled && (connection || !ChapterTwoClient.HasPresentationPreview))
+        {
+            ClassicMessage.Show(this, $"第二章本机服务：{_options.EntranceHost}:{_options.EntrancePort}\n" +
+                "启动和游戏日志保存在 Logs/DFLegacy。请通过服务管理器启停第二章服务。");
+            return;
+        }
         Views.ConfigWindow win;
         try
         {
@@ -404,7 +426,7 @@ public partial class MainWindow : System.Windows.Window
     private void ShowBanner(int index)
     {
         index = Math.Clamp(index, 0, 4); BannerImage.Source = Artwork($"classic-banner{index}.png");
-        BannerCaption.Text = BannerTitles[index];
+        BannerCaption.Text = ChapterTwoClient.IsBundled ? "第二章 · 本机测试" : BannerTitles[index];
         var buttons = new[] { Slide0, Slide1, Slide2, Slide3, Slide4 };
         for (var i = 0; i < buttons.Length; i++)
         {

@@ -67,6 +67,25 @@ test('dashboard opens dedicated panel roots and hides disabled panels', async ()
   assert.equal(p.element('#playerLink').href, undefined);
 });
 
+test('dashboard shows local test payments only for a running configured Chapter Two service', async () => {
+  const p = await page(); p.run('loggedIn = true; savedConfig = { chapterTwoTestTopUpEnabled: true }');
+  const status = { chapterTwoLocal: false, server: { state: 'running' } };
+  p.context.fetch = async url => p.response(url === '/api/status' ? status : { available: false });
+  const payments = p.element('#chapterTwoTopUpLinks');
+  await p.run('refreshStatus()');
+  assert.equal(payments.hidden, true);
+  status.chapterTwoLocal = true;
+  status.server.restartRequired = true;
+  await p.run('refreshStatus()');
+  assert.equal(payments.hidden, true);
+  status.server.restartRequired = false;
+  await p.run('refreshStatus()');
+  assert.equal(payments.hidden, false);
+  p.run('savedConfig.chapterTwoTestTopUpEnabled = false');
+  await p.run('refreshStatus()');
+  assert.equal(payments.hidden, true);
+});
+
 test('completed generation hands off a direct download without buffering ZIP in JavaScript', async () => {
   const p = await page(); p.run('loggedIn = true');
   const requests = [];

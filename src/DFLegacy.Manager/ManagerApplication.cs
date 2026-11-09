@@ -21,12 +21,14 @@ public static class ManagerApplication
             var paths = new ManagerPaths(options.Root, options.DataDirectory);
             using var lease = new FileStream(Path.Combine(paths.Data, ".manager.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             var config = new ConfigurationStore(paths);
+            if (config.ChapterTwoLocal && !IPAddress.IsLoopback(options.Listen))
+                throw new ArgumentException("第二章部署管理器仅监听本机回环地址。");
             var identity = new ManagerIdentity(paths);
             var log = new ManagerLog(paths);
             log.AddSecret(identity.SetupToken);
             var supervisor = new ServerSupervisor(paths, config, log);
             var exporter = new ClientPackageExporter(paths);
-            var publicUpdateUrl = Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_PUBLIC_URL");
+            var publicUpdateUrl = config.ChapterTwoLocal ? null : Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_PUBLIC_URL");
             var updates = string.IsNullOrWhiteSpace(publicUpdateUrl) ? null : new ClientUpdateStore(paths, publicUpdateUrl);
             if (updates is not null && options.Port == ClientUpdateStore.Port)
                 throw new ArgumentException("管理端口不能与更新端口相同。");
@@ -47,11 +49,12 @@ public static class ManagerApplication
             });
             var keyDirectory = Directory.CreateDirectory(Path.Combine(paths.Management, "keys"));
             if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(keyDirectory.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-            var protection = builder.Services.AddDataProtection().PersistKeysToFileSystem(keyDirectory).SetApplicationName("DFLegacy.Manager");
+            var protection = builder.Services.AddDataProtection().PersistKeysToFileSystem(keyDirectory)
+                .SetApplicationName(config.ChapterTwoLocal ? "DFLegacy.Manager.ChapterTwo" : "DFLegacy.Manager");
             if (OperatingSystem.IsWindows()) protection.ProtectKeysWithDpapi();
             builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(cookie =>
             {
-                cookie.Cookie.Name = "dflegacy.manager";
+                cookie.Cookie.Name = config.ChapterTwoLocal ? "dflegacy.manager.chapter2" : "dflegacy.manager";
                 cookie.Cookie.HttpOnly = true; cookie.Cookie.SameSite = SameSiteMode.Strict; cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                 cookie.ExpireTimeSpan = TimeSpan.FromHours(8); cookie.SlidingExpiration = true;
                 cookie.Events.OnRedirectToLogin = context => { context.Response.StatusCode = 401; return Task.CompletedTask; };
@@ -64,7 +67,7 @@ public static class ManagerApplication
             builder.Services.Configure<HostOptions>(host => host.ShutdownTimeout = TimeSpan.FromSeconds(30));
             await using var app = builder.Build();
             var forwarded = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto };
-            foreach (var address in (Environment.GetEnvironmentVariable("DFLEGACY_MANAGER_TRUSTED_PROXIES") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (var address in (config.ChapterTwoLocal ? "" : Environment.GetEnvironmentVariable("DFLEGACY_MANAGER_TRUSTED_PROXIES") ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 forwarded.KnownProxies.Add(IPAddress.Parse(address));
             if (updates is not null)
                 app.MapWhen(context => context.Connection.LocalPort == ClientUpdateStore.Port,
@@ -144,7 +147,7 @@ public static class ManagerApplication
             api.MapGet("/status", () =>
             {
                 var configuration = config.Read();
-                return new { server = supervisor.Snapshot, configuration.Configured, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
+                return new { server = supervisor.Snapshot, configuration.Configured, configuration.ChapterTwoLocal, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = !configuration.ChapterTwoLocal && File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
                     accountServiceUrl = configuration.Effective.AccountServiceUrl, entranceHost = configuration.Effective.AdvertisedHost,
                     gmPanelUrl = configuration.Effective.GmPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.GmPanelPort) : null,
                     playerPanelUrl = configuration.Effective.PlayerPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.PlayerPanelPort) : null,

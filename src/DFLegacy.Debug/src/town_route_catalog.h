@@ -47,4 +47,6 @@ namespace dfl::town_route
     // Worker-only, read-only bounded PVF load. Failure preserves output.
     // Only decoded areas/portals and SHA256 remain after archive bytes free.
     bool LoadCatalog(const wchar_t* path, Catalog& output, std::string& error) noexcept;
+    // Same catalog policy for the UUID-prefixed Chapter Two archive.
+    bool LoadChapterTwoCatalog(const wchar_t* path, Catalog& output, std::string& error) noexcept;
 }

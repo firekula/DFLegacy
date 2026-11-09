@@ -55,11 +55,13 @@ internal static class TestCeraSmokeTests
                     var saved = JsonNode.Parse(File.ReadAllText(options.DataPath))!;
                     persistedAtNotification = saved["Accounts"]!.AsArray().Any(a => a!["UserName"]!.GetValue<string>() == "testtopup" && a["Cash"]!.GetValue<int>() == cash);
                 });
-            async Task<Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult> Post(string body, string type = "application/x-www-form-urlencoded")
+            async Task<Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult> Post(string body, string type = "application/x-www-form-urlencoded",
+                Action<Microsoft.AspNetCore.Http.DefaultHttpContext>? configure = null)
             {
                 var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
                 context.Request.ContentType = type;
                 context.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(body));
+                configure?.Invoke(context);
                 var response = (Microsoft.AspNetCore.Http.HttpResults.ContentHttpResult)await TestCeraEndpoint.HandleAsync(context.Request, options, store, sessions, CancellationToken.None);
                 check(context.Response.Headers.CacheControl == "no-store", "HTML responses disable caching");
                 return response;
@@ -71,6 +73,37 @@ internal static class TestCeraSmokeTests
             var ordinarySuccess = await Post("characterName=Normal&amount=1");
             check(ordinarySuccess.StatusCode == 200 && (await store.GetAccountAsync("ordinary"))!.Cash == 8,
                 "form endpoint grants ordinary accounts by character name");
+            options.ChapterTwoLocalTestPaymentsOnly = true;
+            void Local(Microsoft.AspNetCore.Http.DefaultHttpContext context)
+            {
+                context.Connection.LocalIpAddress = System.Net.IPAddress.Parse("127.0.0.2");
+                context.Connection.LocalPort = 48091;
+                context.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+                context.Request.Scheme = "http";
+                context.Request.Host = new Microsoft.AspNetCore.Http.HostString("127.0.0.2", 48091);
+                context.Request.Headers.Origin = "http://127.0.0.2:48091";
+            }
+            var remote = await Post("characterName=Normal&amount=2", configure: context =>
+            {
+                Local(context);
+                context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("192.0.2.50");
+            });
+            var crossSite = await Post("characterName=Normal&amount=2", configure: context =>
+            {
+                Local(context);
+                context.Request.Headers.Origin = "https://example.invalid";
+            });
+            var wrongHost = await Post("characterName=Normal&amount=2", configure: context =>
+            {
+                Local(context);
+                context.Request.Host = new Microsoft.AspNetCore.Http.HostString("example.invalid", 48091);
+            });
+            check(remote.StatusCode == 403 && crossSite.StatusCode == 403 && wrongHost.StatusCode == 403
+                && (await store.GetAccountAsync("ordinary"))!.Cash == 8, "Chapter Two guards local grants against remote, cross-origin and rebound requests");
+            var local = await Post("characterName=Normal&amount=1", configure: Local);
+            check(local.StatusCode == 200 && (await store.GetAccountAsync("ordinary"))!.Cash == 9,
+                "Chapter Two same-origin page grants to an ordinary character");
+            options.ChapterTwoLocalTestPaymentsOnly = false;
             foreach (var body in new[] { "characterName=Target&amount=1.5", "characterName=Target&amount=+2", "characterName=Target&amount=1&amount=2" })
             {
                 var rejected = await Post(body);

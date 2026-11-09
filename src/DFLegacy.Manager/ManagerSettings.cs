@@ -2,6 +2,7 @@ namespace DFLegacy.Manager;
 
 public sealed record ManagerSettings
 {
+    public bool ChapterTwoLocal { get; init; }
     public string AdvertisedHost { get; init; } = "127.0.0.1";
     public string AccountServiceUrl { get; init; } = "http://127.0.0.1:8081";
     public bool RelayEnabled { get; init; }
@@ -43,6 +44,7 @@ public sealed record DeploymentConfig
     public double ClearExperienceMultiplier { get; init; } = 1;
     public double DropRatePercent { get; init; } = 100;
     public double DropEconomicRate { get; init; } = 1;
+    public bool ChapterTwoTestTopUpEnabled { get; init; }
     public string AccountServiceUrl { get; init; } = "http://127.0.0.1:8081";
     public bool RelayEnabled { get; init; }
     public string RelayPreference { get; init; } = "ipv6";
@@ -59,4 +61,7 @@ public sealed record DeploymentConfig
         .Concat(PlayerPanelEnabled ? new[] { (PlayerPanelHost, PlayerPanelPort) } : []);
 }
 
-public sealed record ConfigurationSnapshot(DeploymentConfig Saved, DeploymentConfig Effective, string[] EnvironmentOverrides, bool Configured);
+public sealed record ConfigurationSnapshot(DeploymentConfig Saved, DeploymentConfig Effective, string[] EnvironmentOverrides, bool Configured)
+{
+    public bool ChapterTwoLocal { get; init; }
+}

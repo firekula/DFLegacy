@@ -11,7 +11,10 @@ public static partial class GameProtocolEngine
 {
     public const byte BuyPrivateStoreCommand = 85, EnterPrivateStoreCommand = 86, ExitPrivateStoreCommand = 87,
         CreatePrivateStoreCommand = 88, RemovePrivateStoreCommand = 89, DisplayPrivateStoreCommand = 90;
+    public const byte PrivateStoreInfoNotification = 85;
     public const byte PrivateStoreServiceType = 8;
+    public const int ActOnePrivateStoreSlots = 7;
+    public const int ChapterTwoPrivateStoreSlots = 14;
 
     private static GameServerPacket StorePacket(byte type, byte id, Action<BinaryWriter> write)
     {
@@ -29,7 +32,7 @@ public static partial class GameProtocolEngine
     { w.Write(p.Town); w.Write(p.Area); w.Write(p.X); w.Write(p.Y); }
     private static void StoreGoods(BinaryWriter w, IReadOnlyList<PrivateStoreGoodsRow> goods)
     {
-        if (goods.Count > 14) throw new ArgumentOutOfRangeException(nameof(goods));
+        if (goods.Count > ChapterTwoPrivateStoreSlots) throw new ArgumentOutOfRangeException(nameof(goods));
         w.Write((byte)goods.Count);
         foreach (var g in goods)
         { w.Write(g.Slot); w.Write(g.UnitPrice); w.Write(g.ItemId); w.Write(g.AddInfo); w.Write(g.State); w.Write(g.Durability); }
@@ -58,7 +61,7 @@ public static partial class GameProtocolEngine
             { w.Write(s.OwnerUid); StoreText(w, s.Title, 40); w.Write(s.Completed ? (byte)1 : (byte)0); StorePosition(w, s.Position); }
         });
     public static GameServerPacket CreatePrivateStoreInfo(byte speechFlag, IReadOnlyList<PrivateStoreGoodsRow> goods) =>
-        StorePacket(0, 85, w => { w.Write(speechFlag); StoreGoods(w, goods); });
+        StorePacket(0, PrivateStoreInfoNotification, w => { w.Write(speechFlag); StoreGoods(w, goods); });
     public static GameServerPacket CreatePrivateStoreEnterReply(ushort uid, IReadOnlyList<PrivateStoreGoodsRow> goods) =>
         StorePacket(1, 86, w => { w.Write((byte)1); w.Write(uid); StoreGoods(w, goods); });
     public static GameServerPacket CreatePrivateStoreEnterFailure() => new(1, 86, [0]);
@@ -67,23 +70,24 @@ public static partial class GameProtocolEngine
         StorePacket(1, 85, w =>
         { w.Write((byte)1); w.Write(gold); w.Write(victoryPoints); w.Write(cash); w.Write(destinationSlot); w.Write(itemId); w.Write(addInfo); w.Write(state); w.Write(durability); });
 
-    public static bool TryReadPrivateStoreCreate(byte[] body, out PrivateStorePosition position)
+    public static bool TryReadPrivateStoreCreate(byte[] body, out PrivateStorePosition position, bool chapterTwo = false)
     {
         position = null!;
-        if (body.Length != 8) return false;
+        if (!HasCommandBodyLength(body, 8, chapterTwo)) return false;
         position = new(body[2], body[3], BinaryPrimitives.ReadInt16LittleEndian(body.AsSpan(4)), BinaryPrimitives.ReadInt16LittleEndian(body.AsSpan(6)));
         return true;
     }
-    public static bool TryReadPrivateStoreEnter(byte[] body, out uint uid)
-    { uid = 0; if (body.Length != 6) return false; uid = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(2)); return true; }
-    public static bool TryReadPrivateStoreBuy(byte[] body, out ushort slot, out uint addInfo)
+    public static bool TryReadPrivateStoreEnter(byte[] body, out uint uid, bool chapterTwo = false)
+    { uid = 0; if (!HasCommandBodyLength(body, 6, chapterTwo)) return false; uid = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(2)); return true; }
+    public static bool TryReadPrivateStoreBuy(byte[] body, out ushort slot, out uint addInfo, bool chapterTwo = false)
     {
         slot = 0; addInfo = 0;
-        if (body.Length != 8) return false;
+        if (!HasCommandBodyLength(body, 8, chapterTwo)) return false;
         slot = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2)); addInfo = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(4));
         return addInfo <= int.MaxValue;
     }
-    public static bool TryReadPrivateStoreDisplay(byte[] body, out byte[] title, out IReadOnlyList<PrivateStoreDisplayRequest> goods)
+    public static bool TryReadPrivateStoreDisplay(byte[] body, out byte[] title, out IReadOnlyList<PrivateStoreDisplayRequest> goods,
+        bool chapterTwo = false)
     {
         title = []; goods = [];
         if (body.Length < 8) return false;
@@ -91,7 +95,8 @@ public static partial class GameProtocolEngine
         if (length is < 1 or > 40 || length > body.Length - 7) return false;
         var offset = 6 + (int)length;
         var count = body[offset++];
-        if (count is < 1 or > 7 || body.Length != offset + count * 13) return false;
+        var capacity = chapterTwo ? ChapterTwoPrivateStoreSlots : ActOnePrivateStoreSlots;
+        if (count < 1 || count > capacity || !HasCommandBodyLength(body, offset + count * 13, chapterTwo)) return false;
         title = body.AsSpan(6, (int)length).ToArray();
         if (title.Contains((byte)0)) return false;
         var rows = new List<PrivateStoreDisplayRequest>();

@@ -194,20 +194,33 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
         if (created) await parties.TryLeavePartySilentlyAsync(id, ct);
         return created;
     }
-    public async Task<CharacterRecord?> DisplayAsync(Guid id, Guid session, byte[] title, IReadOnlyList<PrivateStoreDisplayRequest> goods, CancellationToken ct = default)
+    public async Task<CharacterRecord?> DisplayAsync(Guid id, Guid session, byte[] title, IReadOnlyList<PrivateStoreDisplayRequest>? goods,
+        CancellationToken ct = default, bool chapterTwo = false)
     {
         CharacterRecord? installed = null;
         await RunAsync(async d =>
         {
             var c = Current(id, session); if (c is null) return;
-            if (!_shops.TryGetValue(id, out var shop) || shop.Open) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, 57))); return; }
+            if (!_shops.TryGetValue(id, out var shop) || shop.Open)
+            {
+                d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, goods is null ? (byte)17 : (byte)57)));
+                return;
+            }
+            async Task RejectDraftAsync(byte error)
+            {
+                d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, error)));
+                // The Chapter Two client retains its local draft on rejection.
+                // Clear that draft before the caller refreshes the authoritative bag.
+                if (chapterTwo) await CloseCoreAsync(d, c, force: true, reply: false, ct);
+            }
+            if (goods is null) { await RejectDraftAsync(17); return; }
             var valid = false;
             try { var text = TextEncoding.GetString(title); valid = title.Length is > 0 and <= 40 && !text.Any(char.IsControl) && !string.IsNullOrWhiteSpace(text); }
             catch (DecoderFallbackException) { }
-            if (!valid) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, 159))); return; }
-            var result = await store.DisplayPrivateStoreAsync(id, shop.Token, goods, ct);
+            if (!valid) { await RejectDraftAsync(159); return; }
+            var result = await store.DisplayPrivateStoreAsync(id, shop.Token, goods, ct, chapterTwo);
             if (result.Status == DungeonRewardLedgerStatus.Unknown) { Kick(c); return; }
-            if (result.Status != DungeonRewardLedgerStatus.Committed) { d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, result.Error))); return; }
+            if (result.Status != DungeonRewardLedgerStatus.Committed) { await RejectDraftAsync(result.Error); return; }
             installed = result.Character!; shop.Open = true; shop.Title = title.ToArray();
             d.Add(new(c, EntranceService.CreateMainInventoryRefresh(installed.Gold, installed.VictoryPoints, installed.Inventory ?? [], items)));
             Area(d, shop, GameProtocolEngine.CreatePrivateStoreDisplayed(c.Uid, shop.Title));

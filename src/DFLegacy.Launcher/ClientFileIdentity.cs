@@ -13,6 +13,16 @@ internal static class ClientFileIdentity
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] private static extern uint GetFinalPathNameByHandle(SafeFileHandle handle,StringBuilder path,uint size,uint flags);
     [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] private static extern SafeFileHandle CreateFile(string path,uint access,uint share,IntPtr security,uint creation,uint flags,IntPtr template);
     [DllImport("kernel32.dll",SetLastError=true)] internal static extern bool GetProcessTimes(SafeProcessHandle process,out long created,out long exited,out long kernel,out long user);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool QueryFullProcessImageName(SafeProcessHandle process, int flags, StringBuilder path, ref int length);
+
+    internal static string ProcessImagePath(SafeProcessHandle process)
+    {
+        var path = new StringBuilder(32768);
+        var length = path.Capacity;
+        if (!QueryFullProcessImageName(process, 0, path, ref length)) throw new Win32Exception();
+        return WithoutDevicePrefix(path.ToString());
+    }
     internal static (uint,uint,uint) Of(SafeFileHandle handle)
     {
         if(!GetFileInformationByHandle(handle,out var info)) throw new Win32Exception();
@@ -22,9 +32,10 @@ internal static class ClientFileIdentity
     {
         var path = new StringBuilder(32768); var length=GetFinalPathNameByHandle(handle,path,(uint)path.Capacity,0);
         if(length==0 || length>=path.Capacity) throw new Win32Exception();
-        var value=path.ToString();
-        return value.StartsWith(@"\\?\UNC\",StringComparison.Ordinal) ? @"\\"+value[8..] : value.StartsWith(@"\\?\",StringComparison.Ordinal) ? value[4..] : value;
+        return WithoutDevicePrefix(path.ToString());
     }
+    private static string WithoutDevicePrefix(string path) =>
+        path.StartsWith(@"\\?\UNC\",StringComparison.Ordinal) ? @"\\"+path[8..] : path.StartsWith(@"\\?\",StringComparison.Ordinal) ? path[4..] : path;
     internal static void RequireSameDirectory(string first,string second)
     {
         using var a=CreateFile(Path.GetFullPath(first),0,7,IntPtr.Zero,3,0x02000000,IntPtr.Zero);

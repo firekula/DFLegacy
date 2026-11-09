@@ -24,7 +24,8 @@ public sealed record TownEntryRequest(
     short Y,
     byte Direction,
     Func<GameServerPacket, CancellationToken, ValueTask> SendAsync,
-    Func<bool>? IsInTown = null);
+    Func<bool>? IsInTown = null,
+    bool IsChapterTwo = false);
 
 /// <summary>目录成员的只读快照（日志与后台页用）。</summary>
 public sealed record TownMemberSnapshot(
@@ -61,8 +62,9 @@ internal sealed class TownMember
     public required byte[] CharacterNameBytes { get; init; }
     public required string DisplayName { get; init; }
     public required Func<GameServerPacket, CancellationToken, ValueTask> SendAsync { get; init; }
-    public GamePeerInfo? Peer { get; init; }
+    public volatile GamePeerInfo? Peer;
     public Func<bool>? IsInTown { get; init; }
+    public bool IsChapterTwo { get; init; }
     public TownAppearanceSnapshot? Appearance { get; set; }
     // Recovery notifications and entry snapshots can run on different sessions.
     // Keep each subject's basic/detail pair and later recovery updates ordered.
@@ -206,6 +208,7 @@ public sealed class TownSessionDirectory(
             DisplayName = request.DisplayName,
             SendAsync = request.SendAsync,
             IsInTown = request.IsInTown,
+            IsChapterTwo = request.IsChapterTwo,
             Peer = request.Peer,
             X = request.X,
             Y = request.Y,
@@ -433,7 +436,8 @@ public sealed class TownSessionDirectory(
         TownMemberTicket? ticket,
         GameServerPacket appearance,
         CancellationToken cancellationToken,
-        GameServerPacket? detail = null)
+        GameServerPacket? detail = null,
+        byte? vitality = null)
     {
         // 与位置更新同理：陈旧 ticket 不能把自己的外观重播给旧区域。
         if (!TryGetActiveMember(ticket, out var member))
@@ -458,6 +462,11 @@ public sealed class TownSessionDirectory(
             foreach (var other in others)
             {
                 await SendAppearanceAsync(other, member, snapshot, cancellationToken);
+            }
+
+            if (vitality is { } recovery)
+            {
+                await PublishTownVitalityAsync(member, recovery, cancellationToken);
             }
 
             // 新人进入时不同步发加入增量（见 EnterAsync）：客户端只为已有 USERINFO 记录的 uid
@@ -506,17 +515,20 @@ public sealed class TownSessionDirectory(
     public Task RefreshAppearanceRecoveryAsync(
         TownMemberTicket? ticket,
         byte recovery,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        bool updateCombatDetail = true) =>
         RefreshAppearanceDetailAsync(ticket,
-            appearance => appearance.Detail is { } detail
+            appearance => updateCombatDetail && appearance.Detail is { } detail
                 ? PartyMemberDetailProjection.WithStaminaRecovery(detail, recovery)
                 : null,
-            cancellationToken);
+            cancellationToken,
+            vitality: recovery);
 
     private async Task RefreshAppearanceDetailAsync(
         TownMemberTicket? ticket,
         Func<TownAppearanceSnapshot, GameServerPacket?> createDetail,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        byte? vitality = null)
     {
         if (!TryGetActiveMember(ticket, out var member)) return;
         await member.AppearanceDeliveryGate.WaitAsync(cancellationToken);
@@ -528,11 +540,18 @@ public sealed class TownSessionDirectory(
             }
 
             var detail = createDetail(appearance);
-            if (detail is null) return;
-            member.Appearance = appearance with { Detail = detail };
-            foreach (var other in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
+            if (detail is not null)
             {
-                await SendAppearanceDetailAsync(other, member, detail, cancellationToken);
+                member.Appearance = appearance with { Detail = detail };
+                foreach (var other in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
+                {
+                    await SendAppearanceDetailAsync(other, member, detail, cancellationToken);
+                }
+            }
+
+            if (vitality is { } recovery)
+            {
+                await PublishTownVitalityAsync(member, recovery, cancellationToken);
             }
         }
         finally
@@ -833,8 +852,36 @@ public sealed class TownSessionDirectory(
 
             await SendAsync(
                 recipient,
-                GameProtocolEngine.CreateUdpPeerInfo(peers),
+                GameProtocolEngine.CreateUdpPeerInfo(peers, chapterTwoTown: recipient.IsChapterTwo),
                 cancellationToken);
+        }
+    }
+
+    // Chapter Two uses one recovery percentage for both compact town bars.
+    // Send only the changed actor row once that actor is known to the client.
+    // The caller holds this subject's appearance delivery gate.
+    private async Task PublishTownVitalityAsync(TownMember member, byte recovery, CancellationToken cancellationToken)
+    {
+        if (member.Peer is not { } peer || peer.TownVitalityPercentage == recovery
+            || !IsRegistered(member) || !IsInTown(member))
+        {
+            return;
+        }
+
+        var updated = peer with { TownVitalityPercentage = recovery };
+        member.Peer = updated;
+        if (!options.TownSync.SendAreaPeerTable) return;
+
+        foreach (var recipient in SnapshotMembers(member.TownId, member.AreaId, member.Instance))
+        {
+            var self = ReferenceEquals(member, recipient);
+            if (!recipient.IsChapterTwo || !(self ? recipient.CombatDetailsReady : CanSendAppearanceDetail(recipient, member)))
+            {
+                continue;
+            }
+
+            var row = GameplayDatagramService.ApplyPeerEndpointOverride(updated, self, _peerEndpointOverride);
+            await SendAsync(recipient, GameProtocolEngine.CreateUdpPeerInfo([row], chapterTwoTown: true), cancellationToken);
         }
     }
 
@@ -852,20 +899,20 @@ public sealed class TownSessionDirectory(
         }
 
         var peers = new List<GamePeerInfo>(members.Length);
-        if (self.Peer is not null)
+        if (self.Peer is { } selfPeer)
         {
-            peers.Add(self.Peer);
+            peers.Add(selfPeer);
         }
 
         foreach (var member in members)
         {
-            if (!ReferenceEquals(member, recipient) && member.Peer is not null
+            if (!ReferenceEquals(member, recipient) && member.Peer is { } peer
                 && recipient.KnownAppearances.TryGetValue(member.AreaUserId, out var known)
                 && ReferenceEquals(known, member))
             {
                 // 别人的端点走"对端端点改写"（中继/黑洞实验）；自己的那条在上面已按原样加过。
                 peers.Add(GameplayDatagramService.ApplyPeerEndpointOverride(
-                    member.Peer,
+                    peer,
                     isSelf: false,
                     _peerEndpointOverride));
             }

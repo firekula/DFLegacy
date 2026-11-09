@@ -77,7 +77,7 @@ internal static class NewCharacterDefaultsSmokeTests
             && JsonGameStore.GetFatigueDayKey(resetBoundary.ToUniversalTime()) == 20261104,
             "a UTC host observes the 06:00 Beijing fatigue boundary");
         await store.SetCharacterUsedFatigueAsync(byUid.Id, 40);
-        await Select("ordinary", byUid.Slot, exerciseFatigueReset: true);
+        await Select("ordinary", byUid.Slot, exerciseIdleNotifications: true);
         Empty(check, (await store.GetCharactersAsync("ordinary")).Single(c => c.Id == byUid.Id), "first ordinary selection");
         await Select("testing", manual.Slot);
         Empty(check, (await store.GetCharactersAsync("testing")).Single(c => c.Id == manual.Id), "first manual test selection");
@@ -115,7 +115,7 @@ internal static class NewCharacterDefaultsSmokeTests
         Console.WriteLine($"New-character defaults checks: {checks}");
         Console.WriteLine($"New-character defaults artifacts: {root}");
 
-        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10, bool exerciseFatigueReset = false)
+        async Task Select(string userName, byte slot, bool expectEmpty = true, uint expectedRevivalCoins = 10, bool exerciseIdleNotifications = false)
         {
             var services = new ServiceCollection();
             services.AddLogging();
@@ -141,7 +141,7 @@ internal static class NewCharacterDefaultsSmokeTests
             var service = ActivatorUtilities.CreateInstance<EntranceService>(provider);
             await using var connection = await Connection.CreateAsync(service, options);
             await connection.LoginAsync(userName, slot);
-            if (exerciseFatigueReset)
+            if (exerciseIdleNotifications)
             {
                 var now = DateTimeOffset.UtcNow.ToOffset(shanghaiOffset);
                 var tomorrow = new DateTimeOffset(now.Date.AddDays(1).AddHours(6), shanghaiOffset);
@@ -169,6 +169,18 @@ internal static class NewCharacterDefaultsSmokeTests
                 var refreshed = await connection.ReadAsync(0, GameProtocolEngine.FatigueNotification);
                 check(BinaryPrimitives.ReadUInt16LittleEndian(refreshed.Payload) == 3,
                     "a delayed refresh uses current persisted fatigue instead of clearing new usage");
+
+                var mail = await store.SendCharacterMailAsync(byUid.Id, new("GM", "Idle notification"));
+                check(mail.Created && sessions.NotifyMailReceived(byUid.Id),
+                    "persisted mail signals the selected character session");
+                GameServerPacket? alarm = null;
+                try
+                {
+                    alarm = await connection.ReadAsync(0, GameProtocolEngine.MailboxAlarmNotification, TimeSpan.FromSeconds(2));
+                }
+                catch (TimeoutException) { }
+                check(alarm is not null && alarm.Payload.SequenceEqual(new byte[] { 1, 0 }),
+                    "an idle online player receives the new-mail alarm without sending a packet");
             }
             if (expectEmpty)
             {

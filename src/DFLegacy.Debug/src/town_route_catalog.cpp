@@ -225,25 +225,56 @@ namespace dfl::town_route
             Bytes raw;
             std::size_t body = 0;
             std::unordered_map<std::string, Entry> entries;
-            explicit Pvf(const wchar_t* path) : raw(ReadArchive(path))
+            explicit Pvf(const wchar_t* path, bool chapterTwo) : raw(ReadArchive(path))
             {
+                constexpr unsigned UuidSize = 36;
+                constexpr unsigned ChapterTwoFields = 4 + UuidSize + 4;
                 const std::string magic = "DNF_SCRIPT_PACK";
-                if (!std::equal(magic.begin(), magic.end(), raw.begin())) Bad("invalid_pvf");
-                const unsigned length = Read32(raw, 15), key = Read32(raw, 19), count = Read32(raw, 23);
-                if (!length || length % 4 || length > MaxTree || length > raw.size() - 27 || count > MaxFiles || count > length / 21) Bad("invalid_pvf");
-                body = 27 + length; auto tree = Decode(raw.data() + 27, length, key); std::size_t cursor = 0;
-                entries.reserve(count); std::unordered_set<unsigned> identifiers; identifiers.reserve(count);
+                const auto fields = chapterTwo ? ChapterTwoFields : magic.size();
+                if (chapterTwo)
+                {
+                    if (raw.size() < ChapterTwoFields + 12 || Read32(raw, 0) != UuidSize) Bad("invalid_pvf");
+                    for (unsigned i = 0; i < UuidSize; ++i)
+                    {
+                        const auto c = raw[4 + i];
+                        const bool separator = i == 8 || i == 13 || i == 18 || i == 23;
+                        if (separator ? c != '-' : !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+                            Bad("invalid_pvf");
+                    }
+                }
+                else if (!std::equal(magic.begin(), magic.end(), raw.begin())) Bad("invalid_pvf");
+                body = fields + 12;
+                const unsigned length = Read32(raw, fields), key = Read32(raw, fields + 4), count = Read32(raw, fields + 8);
+                if (!length || length % 4 || length > MaxTree || length > raw.size() - body || count > MaxFiles || count > length / 21)
+                    Bad("invalid_pvf");
+                auto tree = Decode(raw.data() + body, length, key);
+                body += length;
+                std::size_t cursor = 0;
+                entries.reserve(count);
+                std::unordered_set<unsigned> identifiers;
+                identifiers.reserve(count);
                 for (unsigned i = 0; i < count; ++i)
                 {
                     if (cursor > tree.size() || tree.size() - cursor < 20) Bad("invalid_pvf");
-                    const auto identifier = Read32(tree, cursor), offset = Read32(tree, cursor + 4), size = Read32(tree, cursor + 8);
-                    const auto crc = Read32(tree, cursor + 12), pathSize = Read32(tree, cursor + 16); cursor += 20;
+                    const auto identifier = Read32(tree, cursor);
+                    const auto pathSize = Read32(tree, cursor + (chapterTwo ? 4 : 16));
+                    if (!pathSize || pathSize > 4096 || pathSize > tree.size() - cursor - 20) Bad("invalid_pvf");
+                    const auto pathAt = cursor + (chapterTwo ? 8 : 20);
+                    const auto dataAt = chapterTwo ? pathAt + pathSize : cursor + 4;
+                    const auto offset = Read32(tree, dataAt + (chapterTwo ? 8 : 0));
+                    const auto size = Read32(tree, dataAt + (chapterTwo ? 0 : 4));
+                    const auto crc = Read32(tree, dataAt + (chapterTwo ? 4 : 8));
                     const std::uint64_t padded = (static_cast<std::uint64_t>(size) + 3) & ~std::uint64_t{3};
-                    if (size > MaxEntry || !pathSize || pathSize > 4096 || pathSize > tree.size() - cursor || offset % 4
-                        || static_cast<std::uint64_t>(body) + offset + padded > raw.size()) Bad("invalid_pvf");
-                    auto name = Cp949(tree.data() + cursor, pathSize, true); cursor += pathSize;
-                    while (!name.empty() && name.back() == '\0') name.pop_back(); name = Normalize(std::move(name), "invalid_pvf");
-                    if (!identifiers.insert(identifier).second || !entries.emplace(std::move(name), Entry{offset, size, crc}).second) Bad("invalid_pvf");
+                    if (size > MaxEntry || offset % 4 || static_cast<std::uint64_t>(body) + offset + padded > raw.size())
+                        Bad("invalid_pvf");
+                    auto name = Cp949(tree.data() + pathAt, pathSize, true);
+                    cursor += 20 + pathSize;
+                    while (!name.empty() && name.back() == '\0') name.pop_back();
+                    name = Normalize(std::move(name), "invalid_pvf");
+                    // Chapter Two's directory can reuse numeric file ids.
+                    // Script lookup uses normalized paths in both formats.
+                    if ((!chapterTwo && !identifiers.insert(identifier).second) || !entries.emplace(std::move(name), Entry{offset, size, crc}).second)
+                        Bad("invalid_pvf");
                 }
                 if (tree.size() - cursor > 3 || std::any_of(tree.begin() + static_cast<std::ptrdiff_t>(cursor), tree.end(), [](unsigned char b) { return b != 0; })) Bad("invalid_pvf");
             }
@@ -416,10 +447,17 @@ namespace dfl::town_route
         catch (const Failure& failure) { output.clear(); return Fail(error, failure.code); }
         catch (...) { output.clear(); return Fail(error, "invalid_catalog"); }
     }
-    bool LoadCatalog(const wchar_t* path, Catalog& output, std::string& error) noexcept
+    namespace
     {
-        try { Pvf pvf(path); auto candidate = ParseCatalog(pvf); candidate.pvfSha256 = Sha256(pvf.raw); output = std::move(candidate); error.clear(); return true; }
-        catch (const Failure& failure) { return Fail(error, failure.code); }
-        catch (...) { return Fail(error, "invalid_pvf"); }
+        bool LoadCatalogWithFormat(const wchar_t* path, Catalog& output, std::string& error, bool chapterTwo) noexcept
+        {
+            try { Pvf pvf(path, chapterTwo); auto candidate = ParseCatalog(pvf); candidate.pvfSha256 = Sha256(pvf.raw); output = std::move(candidate); error.clear(); return true; }
+            catch (const Failure& failure) { return Fail(error, failure.code); }
+            catch (...) { return Fail(error, "invalid_pvf"); }
+        }
     }
+    bool LoadCatalog(const wchar_t* path, Catalog& output, std::string& error) noexcept
+    { return LoadCatalogWithFormat(path, output, error, false); }
+    bool LoadChapterTwoCatalog(const wchar_t* path, Catalog& output, std::string& error) noexcept
+    { return LoadCatalogWithFormat(path, output, error, true); }
 }

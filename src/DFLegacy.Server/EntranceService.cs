@@ -567,7 +567,7 @@ public sealed class EntranceService(
                     knownMailboxIds.Clear();
                     knownMailboxIds.UnionWith(mails.Select(mail => mail.Id));
                     var mailboxPackets = GameProtocolEngine.CreateMailboxSnapshot(
-                        mails.Select(ToGameMailEntry).ToArray());
+                        mails.Select(ToGameMailEntry).ToArray(), chapterTwo: chapter2CheckConnectionAccepted);
                     foreach (var packet in mailboxPackets)
                     {
                         await packet.WriteAsync(stream, serverToken);
@@ -607,6 +607,12 @@ public sealed class EntranceService(
                     await store.AcknowledgeCharacterMailNotificationsAsync(
                         activeCharacter.Id,
                         serverToken);
+                }
+
+                async Task SendPendingMailAlarmAsync()
+                {
+                    if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0 && activeCharacter is not null)
+                        await SendNewMailAlarmAsync();
                 }
 
                 async Task SendPremiumServiceInfoAsync(
@@ -1099,7 +1105,11 @@ public sealed class EntranceService(
                         creatureInventory.Values,
                         HasActivePremiumService(
                             GameProtocolEngine.BlackDiamondServiceType),
-                        HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType), chapter2CheckConnectionAccepted);
+                        HasActivePremiumService(GameProtocolEngine.PrivateStoreServiceType),
+                        chapter2CheckConnectionAccepted,
+                        chapterTwoTownVitality: chapter2CheckConnectionAccepted && !isPvpChannel
+                            && currentDungeonId == 0 && !inDungeonSelection
+                            ? GetProjectedStaminaRecovery() : (byte)0);
 
                 // 与上面那条**成对**的"补模型"包（NOTI 2 mode 1）：客户端只有 mode 1/3 的详情
                 // 解析器（0x41A764）会建 `CNUser+0x110` 模型对象（0x417AB0 取不到 →
@@ -1159,7 +1169,8 @@ public sealed class EntranceService(
                         townTicket,
                         appearance,
                         serverToken,
-                        detail: SendTownAppearanceDetailPacket());
+                        detail: SendTownAppearanceDetailPacket(),
+                        vitality: GetProjectedStaminaRecovery());
 
                     // Mode zero is the compact town-actor appearance
                     // projection: Avatar slots 0..8, weapon slot 9, plus the
@@ -1227,7 +1238,7 @@ public sealed class EntranceService(
                         runtimeSession.Id,
                         localUserId,
                         out var peer)
-                            ? peer
+                            ? peer with { TownVitalityPercentage = GetProjectedStaminaRecovery() }
                             : null;
 
                     townTicket = await townDirectory.EnterAsync(
@@ -1244,7 +1255,8 @@ public sealed class EntranceService(
                             currentY,
                             currentDirection,
                             SendTownPacketAsync,
-                            IsInTown: () => currentDungeonId == 0 && !inDungeonSelection),
+                            IsInTown: () => currentDungeonId == 0 && !inDungeonSelection,
+                            IsChapterTwo: chapter2CheckConnectionAccepted),
                         cancellationToken);
 
                     // 组队名册**不在这里**发：必须等本成员的外观（USERINFO）广播出去之后，否则同区
@@ -2892,7 +2904,8 @@ public sealed class EntranceService(
                                         extraExperienceB: creditedMentorBonus,
                                         skillPoints: checked((ushort)Math.Min(
                                             currentSp,
-                                            ushort.MaxValue)));
+                                            ushort.MaxValue)),
+                                        chapterTwoVictoryPoints: chapter2CheckConnectionAccepted ? activeCharacter.VictoryPoints : null);
                                 await experienceGained.WriteAsync(
                                     stream,
                                     serverToken);
@@ -4251,7 +4264,8 @@ public sealed class EntranceService(
                             activeCharacter.Experience,
                             extraExperienceA: 0,
                             extraExperienceB: creditedMentorBonus,
-                            skillPoints: checked((ushort)Math.Min(currentSp, ushort.MaxValue)));
+                            skillPoints: checked((ushort)Math.Min(currentSp, ushort.MaxValue)),
+                            chapterTwoVictoryPoints: chapter2CheckConnectionAccepted ? activeCharacter.VictoryPoints : null);
                         await experienceGained.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
                         LogPacket("TX", runtimeSession, experienceGained);
@@ -4814,7 +4828,10 @@ public sealed class EntranceService(
                     }
 
 
+                    // Capture before draining so mail arriving during this pass still wakes the read.
+                    var partyMembershipChanged = partyMembershipWake.Capture();
                     await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
+                    await SendPendingMailAlarmAsync();
                     var sweepInstance = dungeonInstance;
                     var sweepGeneration = sweepInstance?.RoomGeneration;
                     foreach (var monsterId in bossDeathSweep.TakeDue(sweepInstance, DateTimeOffset.UtcNow))
@@ -4838,8 +4855,7 @@ public sealed class EntranceService(
                         // 稍后投递的；此刻信箱为空不代表下一次客户端发包前不会有邮件。
                         // 场景/会员期限的等待同样受 tick 上限约束，避免其它计时分支饿死邮箱。
                         // 单人（不在队伍）→ 与改造前完全一致的无限等待（零回归红线）。
-                        // 必须先捕获唤醒代次，再查成员状态：这两步之间入队也不会漏掉通知。
-                        var partyMembershipChanged = partyMembershipWake.Capture();
+                        // 唤醒代次在检查成员状态前捕获，期间入队也不会漏掉通知。
                         if (await RefreshPendingFatigueResetAsync() && currentDungeonId == 0)
                             await SendTownFatigueStateAsync();
 
@@ -5325,11 +5341,7 @@ public sealed class EntranceService(
                     await InstallPendingTradeAsync();
                     await InstallPendingDungeonGoldAsync();
 
-                    if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0
-                        && activeCharacter is not null)
-                    {
-                        await SendNewMailAlarmAsync();
-                    }
+                    await SendPendingMailAlarmAsync();
 
                     while (pendingPremiumUpdates.TryDequeue(out var premiumUpdate))
                     {
@@ -6500,7 +6512,7 @@ public sealed class EntranceService(
                                 switch (request.ProtocolId)
                                 {
                                     case GameProtocolEngine.CreatePrivateStoreCommand:
-                                        if (GameProtocolEngine.TryReadPrivateStoreCreate(request.Body, out var storePosition))
+                                        if (GameProtocolEngine.TryReadPrivateStoreCreate(request.Body, out var storePosition, chapter2Decoded))
                                         {
                                             if (await privateStoreService.CreateAsync(activeCharacter.Id, runtimeSession.Id, storePosition, serverToken))
                                             {
@@ -6512,14 +6524,19 @@ public sealed class EntranceService(
                                         else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(88, 62));
                                         break;
                                     case GameProtocolEngine.DisplayPrivateStoreCommand:
-                                        if (GameProtocolEngine.TryReadPrivateStoreDisplay(request.Body, out var storeTitle, out var storeGoods))
-                                            privateStoreState = await privateStoreService.DisplayAsync(activeCharacter.Id, runtimeSession.Id, storeTitle, storeGoods, serverToken);
+                                        var validStoreDisplay = GameProtocolEngine.TryReadPrivateStoreDisplay(
+                                            request.Body, out var storeTitle, out var storeGoods, chapter2Decoded);
+                                        if (validStoreDisplay || chapter2Decoded)
+                                        {
+                                            privateStoreState = await privateStoreService.DisplayAsync(activeCharacter.Id, runtimeSession.Id,
+                                                storeTitle, validStoreDisplay ? storeGoods : null, serverToken, chapter2Decoded);
+                                        }
                                         else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(90, 17));
                                         if (privateStoreState is null)
                                             await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values));
                                         break;
                                     case GameProtocolEngine.EnterPrivateStoreCommand:
-                                        if (GameProtocolEngine.TryReadPrivateStoreEnter(request.Body, out var storeOwner))
+                                        if (GameProtocolEngine.TryReadPrivateStoreEnter(request.Body, out var storeOwner, chapter2Decoded))
                                             await privateStoreService.EnterAsync(activeCharacter.Id, runtimeSession.Id, storeOwner, serverToken);
                                         else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreEnterFailure());
                                         break;
@@ -6527,7 +6544,7 @@ public sealed class EntranceService(
                                         if (request.Body.Length == 2) await privateStoreService.ExitAsync(activeCharacter.Id, runtimeSession.Id, serverToken);
                                         break;
                                     case GameProtocolEngine.BuyPrivateStoreCommand:
-                                        if (GameProtocolEngine.TryReadPrivateStoreBuy(request.Body, out var storeSlot, out var storeCount))
+                                        if (GameProtocolEngine.TryReadPrivateStoreBuy(request.Body, out var storeSlot, out var storeCount, chapter2Decoded))
                                             privateStoreState = await privateStoreService.BuyAsync(activeCharacter.Id, runtimeSession.Id, storeSlot, storeCount, serverToken);
                                         else await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreatePrivateStoreReply(85, 1));
                                         break;
@@ -6546,7 +6563,7 @@ public sealed class EntranceService(
                         {
                             // Native shop owners cannot mutate inventory through unrelated economic commands.
                             if (request.ProtocolId is 15 or 16) await LeavePrivateStoreAreaAsync(serverToken);
-                            else if (!PrivateStoreOwnerCommandAllowed(request.ProtocolId))
+                            else if (!PrivateStoreOwnerCommandAllowed(request.ProtocolId, chapter2CheckConnectionAccepted))
                             {
                                 if (request.ProtocolId == GameProtocolEngine.DeleteItemCommand)
                                 {
@@ -7114,7 +7131,7 @@ public sealed class EntranceService(
                                 || !TryReadMailboxState(
                                     request.Body,
                                     out var mailId,
-                                    out var mailState))
+                                    out var mailState, chapter2Decoded))
                             {
                                 var error = GameProtocolEngine.CreateCommandError(
                                     request,
@@ -7174,7 +7191,7 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.MailboxSendCommand)
                         {
                             if (activeCharacter is null
-                                || !TryReadMailboxSend(request.Body, out var sendRequest))
+                                || !TryReadMailboxSend(request.Body, out var sendRequest, chapter2Decoded))
                             {
                                 var error = GameProtocolEngine.CreateCommandError(
                                     request,
@@ -9292,7 +9309,8 @@ public sealed class EntranceService(
                                 ? CharacterInventorySorter.SortWarehouse(
                                     warehouseInventory,
                                     itemCatalog,
-                                    warehouseCapacity)
+                                    warehouseCapacity,
+                                    mergeStacks: chapter2CheckConnectionAccepted)
                                 : warehouseInventory;
                             var arrangedCreature = itemSpace == 7
                                 ? CharacterCreatureInventorySorter.Sort(creatureInventory)
@@ -10027,6 +10045,30 @@ public sealed class EntranceService(
                                         itemToMoveIntoEmptySlot.ItemId,
                                         destinationSlot,
                                         sourceSlot);
+                                    continue;
+                                }
+
+                                if (activeCharacter is not null && parsedMove && chapter2CheckConnectionAccepted
+                                    && sourceListType == 2 && destinationListType == 2 && tradeItemId == 0 && moveCount == 0
+                                    && TryPlanReverseWarehouseMove(warehouseInventory, warehouseCapacity,
+                                        sourceSlot, destinationSlot, out var warehouseMove))
+                                {
+                                    var savedWarehouseMove = await store.SaveCharacterItemSpacesAsync(
+                                        accountName, activeCharacter.Id, currentGold, mainInventory.Values,
+                                        equippedInventory.Values, warehouseMove.Values, serverToken);
+                                    if (savedWarehouseMove is null)
+                                    {
+                                        await SendInventoryMoveNoOpAsync(sourceListType, sourceSlot,
+                                            destinationListType, destinationSlot, "warehouse position persistence failed");
+                                        continue;
+                                    }
+
+                                    activeCharacter = savedWarehouseMove;
+                                    warehouseInventory = warehouseMove;
+                                    await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateMoveItemSpaceReply(
+                                        sourceListType, sourceSlot, warehouseMove[sourceSlot].CountOrValue,
+                                        destinationListType, destinationSlot));
+                                    await SendWarehouseStateAsync();
                                     continue;
                                 }
 
@@ -10778,19 +10820,17 @@ public sealed class EntranceService(
 
                             if (sourceListType == 2 || destinationListType == 2)
                             {
-                                if (sourceListType == 2 && destinationListType == 0)
+                                if (sourceListType == 2 && destinationListType == 0
+                                    || chapter2CheckConnectionAccepted && sourceListType == 0
+                                        && destinationListType == 2 && displacedItem is not null)
                                 {
-                                    // CMD 19 already removes a deposited item from the
-                                    // main inventory. A redundant full list-zero snapshot
-                                    // makes the old client select the category of the last
-                                    // reconstructed item, unexpectedly changing the active
-                                    // bag tab. Withdrawals still need the snapshot because
-                                    // automatic stacking can update more than one bag slot.
+                                    // A deposit into an occupied slot also changes the bag.
+                                    // Refresh it for Chapter Two while retaining the ordinary empty-deposit path.
                                     var refreshMain = CreateMainInventoryPacket(
                                         currentGold,
                                         currentVictoryPoints,
                                         mainInventory.Values,
-                                        preferredLastSlot: destinationSlot);
+                                        preferredLastSlot: sourceListType == 0 ? sourceSlot : destinationSlot);
                                     await refreshMain.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, refreshMain);
@@ -11054,33 +11094,53 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(mainInventory);
                             foreach (var (slot, requestedCount) in consumptionBySlot)
                             {
-                                var inventoryItem = mainInventory[slot];
+                                var inventoryItem = plannedInventory[slot];
                                 var remaining = inventoryItem.CountOrValue
                                     - checked((uint)requestedCount);
                                 if (remaining == 0)
                                 {
-                                    mainInventory.Remove(slot);
+                                    plannedInventory.Remove(slot);
                                 }
                                 else
                                 {
-                                    mainInventory[slot] = inventoryItem with
+                                    plannedInventory[slot] = inventoryItem with
                                     {
                                         CountOrValue = remaining
                                     };
                                 }
                             }
 
-                            activeCharacter = await store.SaveCharacterItemSpacesAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                currentGold,
-                                mainInventory.Values,
-                                equippedInventory.Values,
-                                warehouseInventory.Values,
-                                serverToken,
-                                avatarInventory: avatarInventory.Values) ?? activeCharacter;
+                            CharacterRecord? saved = null;
+                            try
+                            {
+                                saved = await store.SaveCharacterItemSpacesAsync(
+                                    accountName,
+                                    activeCharacter.Id,
+                                    currentGold,
+                                    plannedInventory.Values,
+                                    equippedInventory.Values,
+                                    warehouseInventory.Values,
+                                    serverToken,
+                                    avatarInventory: avatarInventory.Values);
+                            }
+                            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                            {
+                                logger.LogWarning(exception, "Could not save item destruction for {CharacterId}.", activeCharacter.Id);
+                            }
+                            if (saved is null)
+                            {
+                                var error = GameProtocolEngine.CreateDeleteItemError(listType, errorCode: 0x11);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                continue;
+                            }
+
+                            activeCharacter = saved;
+                            mainInventory = plannedInventory;
 
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
@@ -12728,6 +12788,7 @@ public sealed class EntranceService(
                                     out var requestedCount)
                                 || listType != 0
                                 || !mainInventory.TryGetValue(slot, out var soldItem)
+                                || soldItem.CountOrValue == 0
                                 || !itemCatalog.TryCalculateSellPrice(
                                     soldItem.ItemId,
                                     soldItem.Durability,
@@ -12769,25 +12830,55 @@ public sealed class EntranceService(
                                 requestedCount,
                                 1,
                                 (int)Math.Min(soldItem.CountOrValue, int.MaxValue));
+                            var saleGold = currentGold + (long)unitSellPrice * soldCount;
+                            if (saleGold > int.MaxValue)
+                            {
+                                var error = GameProtocolEngine.CreateCommandError(request, 0x11);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                continue;
+                            }
+
+                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(mainInventory);
                             var remaining = soldItem.CountOrValue - soldCount;
                             if (remaining == 0)
                             {
-                                mainInventory.Remove(slot);
+                                plannedInventory.Remove(slot);
                             }
                             else
                             {
-                                mainInventory[slot] = soldItem with { CountOrValue = remaining };
+                                plannedInventory[slot] = soldItem with { CountOrValue = remaining };
                             }
 
-                            currentGold = checked(currentGold
-                                + unitSellPrice * (int)soldCount);
-                            activeCharacter = await store.SaveCharacterInventoryAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                currentGold,
-                                mainInventory.Values,
-                                equippedInventory.Values,
-                                serverToken) ?? activeCharacter;
+                            CharacterRecord? saved = null;
+                            try
+                            {
+                                saved = await store.SaveCharacterInventoryAsync(
+                                    accountName,
+                                    activeCharacter.Id,
+                                    (int)saleGold,
+                                    plannedInventory.Values,
+                                    equippedInventory.Values,
+                                    serverToken,
+                                    isolateCommittedDiagnostics: true);
+                            }
+                            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                            {
+                                logger.LogWarning(exception, "Could not save item sale for {CharacterId}.", activeCharacter.Id);
+                            }
+                            if (saved is null)
+                            {
+                                var error = GameProtocolEngine.CreateCommandError(request, 0x11);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                continue;
+                            }
+
+                            activeCharacter = saved;
+                            mainInventory = plannedInventory;
+                            currentGold = saved.Gold;
                             var sellReply = GameProtocolEngine.CreateSellItemReply(
                                 updatedGold: checked((uint)currentGold),
                                 itemSpace: listType,
@@ -13774,6 +13865,8 @@ public sealed class EntranceService(
                             await fullStamina.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, fullStamina);
+                            await townDirectory.RefreshAppearanceRecoveryAsync(townTicket, DungeonWeaknessPolicy.FullStamina,
+                                serverToken, updateCombatDetail: false);
                             logger.LogInformation(
                                 "Recovered character {CharacterId} from weakness for {Cost} gold; remaining gold={Gold}.",
                                 activeCharacter.Id,
@@ -16195,7 +16288,8 @@ public sealed class EntranceService(
     /// 这条回归（与 <see cref="ClassifyUserInfoRequest"/> 同一套做法）；判据本身一个字未动。
     /// </summary>
     /// <returns>true = 这是一笔交易应答（已交给服务处理）；false = peerType != 1，调用方继续判组队应答。</returns>
-    internal static bool PrivateStoreOwnerCommandAllowed(byte command) => command is
+    internal static bool PrivateStoreOwnerCommandAllowed(byte command, bool chapterTwo = false) =>
+        chapterTwo && command == GameProtocolEngine.MailboxOpenCommand || command is
         GameProtocolEngine.CheckConnectionCommand or GameProtocolEngine.LoginCommand or GameProtocolEngine.SetUdpEndpointCommand
         or GameProtocolEngine.ExitCommand or GameProtocolEngine.SelectCharacterCommand or GameProtocolEngine.CreateCharacterCommand
         or GameProtocolEngine.DeleteCharacterCommand or GameProtocolEngine.ReturnSelectCharacterCommand or GameProtocolEngine.GetUserInfoCommand
@@ -16208,6 +16302,19 @@ public sealed class EntranceService(
         or GameProtocolEngine.CreatureSendMessageCommand or GameProtocolEngine.CreatureScriptMessageCommand
         or GameProtocolEngine.LegacyClientReportCommand or GameProtocolEngine.SdcDamageCheckCommand or GameProtocolEngine.AntibotCommand or GameProtocolEngine.DprotoCommand
         or GameProtocolEngine.Act1TraceErrorCommand or 141; // ACT1 diagnostics and clock synchronization.
+
+    internal static bool TryPlanReverseWarehouseMove(
+        IReadOnlyDictionary<ushort, CharacterItemRecord> warehouse, ushort capacity,
+        ushort emptySlot, ushort occupiedSlot, out Dictionary<ushort, CharacterItemRecord> planned)
+    {
+        planned = null!;
+        if (emptySlot >= capacity || occupiedSlot >= capacity || warehouse.ContainsKey(emptySlot)
+            || !warehouse.TryGetValue(occupiedSlot, out var item)) return false;
+        planned = warehouse.ToDictionary(pair => pair.Key, pair => pair.Value);
+        planned.Remove(occupiedSlot);
+        planned.Add(emptySlot, item with { Slot = emptySlot });
+        return true;
+    }
 
     internal static async Task<bool> TryHandleTradeResponseAsync(
         ItemTradeService itemTradeService,
@@ -16699,7 +16806,7 @@ public sealed class EntranceService(
         return output.AsSpan(0, bytesUsed).ToArray();
     }
 
-    private static bool TryPlanMailAttachment(
+    internal static bool TryPlanMailAttachment(
         IReadOnlyDictionary<ushort, CharacterItemRecord> inventory,
         IReadOnlyDictionary<ushort, CharacterItemRecord> avatarInventory,
         IReadOnlyDictionary<ushort, CharacterItemRecord> creatureInventory,
@@ -16821,7 +16928,8 @@ public sealed class EntranceService(
         IEnumerable<CharacterItemRecord> creatureInventory,
         bool hasBlackDiamond,
         bool hasPrivateStorePermission,
-        bool includeChapter2ActorFields)
+        bool includeChapter2ActorFields,
+        byte chapterTwoTownVitality = 0)
     {
         var equipmentSnapshot = equipment.ToArray();
 
@@ -16862,7 +16970,7 @@ public sealed class EntranceService(
                 .ToArray(),
             CreateEquippedCreatureAppearance(creatureInventory),
             hasBlackDiamond,
-            hasPrivateStorePermission, includeChapter2ActorFields);
+            hasPrivateStorePermission, includeChapter2ActorFields, chapterTwoTownVitality);
     }
 
     private GameCreatureAppearanceEntry? CreateEquippedCreatureAppearance(
@@ -18153,11 +18261,12 @@ public sealed class EntranceService(
     private static bool TryReadMailboxState(
         byte[] body,
         out uint mailId,
-        out ushort state)
+        out ushort state,
+        bool chapterTwo = false)
     {
         mailId = 0;
         state = 0;
-        if (body.Length != sizeof(ushort) + sizeof(uint) + sizeof(ushort))
+        if (!GameProtocolEngine.HasCommandBodyLength(body, sizeof(ushort) + sizeof(uint) + sizeof(ushort), chapterTwo))
         {
             return false;
         }
@@ -18171,7 +18280,8 @@ public sealed class EntranceService(
 
     private static bool TryReadMailboxSend(
         byte[] body,
-        out MailboxSendRequest request)
+        out MailboxSendRequest request,
+        bool chapterTwo = false)
     {
         request = default;
         if (!TryReadLengthPrefixedBytes(body, 2, out var recipientBytes, out var offset)
@@ -18202,7 +18312,7 @@ public sealed class EntranceService(
         offset += sizeof(uint);
         if (!TryReadLengthPrefixedBytes(body, offset, out var textBytes, out var endOffset)
             || textBytes.Length >= 512
-            || endOffset != body.Length)
+            || !GameProtocolEngine.HasCommandBodyLength(body, endOffset, chapterTwo))
         {
             return false;
         }

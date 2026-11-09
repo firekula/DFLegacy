@@ -52,24 +52,32 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
-    <EmbeddedResource Include="$(ClientBootstrapPrebuiltPath)" LogicalName="DFLegacy.Launcher.Bootstrap32.exe" />
+    <EmbeddedResource Include="$(ClientBootstrapPrebuiltPath)" LogicalName="DFLegacy.Launcher.Bootstrap32.exe" Condition="'$(ChapterTwoPayloadDir)' == ''" />
     <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
     <EmbeddedResource Include="../../third_party/detours/LICENSE" LogicalName="DFLegacy.Launcher.Detours.LICENSE" />
     <EmbeddedResource Include="../../third_party/detours/PROVENANCE.md" LogicalName="DFLegacy.Launcher.Detours.PROVENANCE" />
   </ItemGroup>
+  <ItemGroup Condition="'$(ChapterTwoPayloadDir)' != ''">
+    <EmbeddedResource Include="ChapterTwo\Start-Client.ps1" LogicalName="ChapterTwo.Start-Client.ps1" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\DNF-rebuilt-v3-probe.exe" LogicalName="ChapterTwo.DNF-rebuilt-v3-probe.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\s1c2_fixed_loader-weight-55c1cb8-runA.exe" LogicalName="ChapterTwo.ChapterTwoHost.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\Chapter2Launcher\dnf_startup_trace.exe" LogicalName="ChapterTwo.dnf_startup_trace.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPresentationHost)" LogicalName="ChapterTwo.ChapterTwoPresentation.exe" Condition="'$(ChapterTwoPresentationHost)' != ''" />
+    <EmbeddedResource Include="$(ChapterTwoStartupBroker)" LogicalName="ChapterTwo.QuietStartupBroker.exe" Condition="'$(ChapterTwoStartupBroker)' != ''" />
+  </ItemGroup>
   <Target Name="BuildStandaloneNative" BeforeTargets="PrepareForBuild"
-          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true'">
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true' and '$(ChapterTwoPayloadDir)' == ''">
     <Exec Command="pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(Ijl15BuildScript)&quot; -Configuration &quot;$(Configuration)&quot;" />
   </Target>
   <Target Name="ValidateStandaloneAssets" BeforeTargets="PrepareForBuild" DependsOnTargets="BuildStandaloneNative"
-          Condition="'$(DesignTimeBuild)' != 'true'">
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
     <Error Condition="!Exists('$(ClientPatchPrebuiltPath)')" Text="Required standalone x86 ClientPatchPrebuiltPath is missing: $(ClientPatchPrebuiltPath)" />
     <Error Condition="!Exists('$(ClientBootstrapPrebuiltPath)')" Text="Required standalone x86 ClientBootstrapPrebuiltPath is missing: $(ClientBootstrapPrebuiltPath)" />
   </Target>
-  <Target Name="CopyStandaloneToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+  <Target Name="CopyStandaloneToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
     <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(TargetDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
   </Target>
-  <Target Name="CopyStandaloneToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true'">
+  <Target Name="CopyStandaloneToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
     <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(PublishDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
   </Target>
 </Project>
