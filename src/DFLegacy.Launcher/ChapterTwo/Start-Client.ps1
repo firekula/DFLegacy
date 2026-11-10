@@ -15,6 +15,23 @@ $credentials = [Console]::In.ReadLine() | ConvertFrom-Json
 $arguments = '99?127.0.0.1?42311?{0}?{1}?0?0?0?0?0?0?0?0' -f $credentials.Account, $credentials.Password
 $credentials = $null
 
+function Initialize-ChapterTwoLoginInfo([string]$GameDirectory) {
+    # The RX game profile cannot create this native startup file itself.
+    # Never copy credentials or reopen/truncate an existing login file.
+    $path = Join-Path $GameDirectory 'loginInfo.inf'
+    if ([IO.File]::Exists($path)) { return }
+    try {
+        $file = [IO.File]::Open($path, 'CreateNew', 'Write', 'None')
+        $file.Dispose()
+    } catch [IO.IOException] {
+        # Another instance may have created it after the existence check.
+        # Only an actual file-exists collision is safe to ignore.
+        $errorCode = $_.Exception.HResult -band 0xffff
+        if ($errorCode -in @(80,183) -and [IO.File]::Exists($path)) { return }
+        throw
+    }
+}
+
 function Set-ProfileAcl([string]$Operation, [string]$Entry) {
     $aclMutex = [Threading.Mutex]::new($false, 'Local\DFLegacy.S1C2.FixedHostProbe.Acl')
     try {
@@ -36,6 +53,7 @@ foreach ($instance in @('A','B')) {
 if (!$mutex) { throw 'Both Chapter Two client instances are already in use.' }
 
 try {
+    Initialize-ChapterTwoLoginInfo $Game
     Get-ChildItem Env: | Where-Object Name -like 'DFL_S1C2_*' |
         ForEach-Object { [Environment]::SetEnvironmentVariable($_.Name, $null, 'Process') }
     $settings = @{
@@ -88,6 +106,18 @@ try {
                 if (Select-String -LiteralPath $log -SimpleMatch 'PREFERRED_BASE_UNAVAILABLE' -Quiet) { continue }
                 if (Select-String -LiteralPath $log -Pattern '^LOAD_IMPORT |^MISSING_IMPORT |^CREATE_ERROR |^STOP_BEFORE_PROTECTION_MODULE ' -Quiet) {
                     throw "The Chapter Two startup log reported a failure. See $log"
+                }
+                # The broker can exit successfully after the game has crashed.
+                $targetExits = [regex]::Matches([IO.File]::ReadAllText($log), '(?m)^EXIT ([^\r\n]*)\r?$')
+                if (!$targetExits.Count) { throw "The Chapter Two game did not report its exit status. See $log" }
+                foreach ($targetExit in $targetExits) {
+                    $exitCode = $targetExit.Groups[1].Value
+                    if ($exitCode -cnotmatch '\A[0-9a-fA-F]{1,8}[ \t]*\z') {
+                        throw "The Chapter Two game reported an invalid exit status. See $log"
+                    }
+                    if ([Convert]::ToUInt32($exitCode.Trim(), 16) -ne 0) {
+                        throw "The Chapter Two game exited with code $exitCode. See $log"
+                    }
                 }
                 Write-Output "Chapter Two instance $instance log: $log"
                 return

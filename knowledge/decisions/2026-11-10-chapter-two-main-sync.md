@@ -15,3 +15,7 @@
 新副本缺loginInfo.inf会在原生fopen失败后进入空文件指针路径。启动helper现在CreateNew预置空文件、保留已有字节，不复制旧登录信息，不扩大ACL；同时验证目标EXIT而不是仅看broker返回值。root专项74项通过，真实新副本复验待执行。
 
 构建、审计及原始记录在 dist/chapter-two-main-sync-20261110。普通交付资源与五品质DO-NOT-SHIP资源分开；后者仅供专门隔离副本测试。
+
+合并已提交35cdf41，双亲421a903与209a1da，主线仍为209a1da。后续完整C2宿主同时包含头像、字体生命周期和免费卡缓存修复，原生专项分别103547、2728、root2390检查无失败，TLS偏移保持8。新helper root专项74检查无失败。四份独立复核（merge/performance/startup/free-card）无确认缺陷，20项源/输入/产物摘要匹配。
+
+本次新宿主SHA256为1B8A8A956064EE6CFC5309D6494FB79E9CEEFE508D2CE363BE0366222DD75657。卡缓存的真实上游remaining初始化尚未完整静态恢复，严格frame/cursor交叉守卫不匹配时跳过，实际四端卡面及该现场关系仍需真机验证；上述专项不冒称完成此项。

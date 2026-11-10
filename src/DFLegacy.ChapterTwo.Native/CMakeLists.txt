@@ -18,6 +18,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoWarehouseUpgrade.cpp
     ChapterTwoInventoryTab.cpp
     ChapterTwoHudPortraitCache.cpp
+    ChapterTwoFreeCardDisplay.cpp
     ChapterTwoParty.cpp
     ChapterTwoTownMap.cpp
     "${DEBUG_NATIVE}/town_route_catalog.cpp"
@@ -68,6 +69,22 @@ add_executable(chapter_two_hud_portrait_cache_tests hud_portrait_cache_tests.cpp
 target_compile_options(chapter_two_hud_portrait_cache_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_options(chapter_two_hud_portrait_cache_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 target_link_libraries(chapter_two_hud_portrait_cache_tests PRIVATE chapter_two_presentation)
+
+add_executable(chapter_two_free_card_baseline_tests free_card_display_tests.cpp)
+target_compile_definitions(chapter_two_free_card_baseline_tests PRIVATE CHAPTER_TWO_CARDS_BASELINE)
+target_compile_options(chapter_two_free_card_baseline_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_free_card_baseline_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+
+add_executable(chapter_two_free_card_display_tests free_card_display_tests.cpp)
+target_compile_options(chapter_two_free_card_display_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_free_card_display_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+target_link_libraries(chapter_two_free_card_display_tests PRIVATE chapter_two_presentation)
+
+add_executable(chapter_two_performance_text_lifetime_tests performance_text_lifetime_tests.cpp)
+target_compile_features(chapter_two_performance_text_lifetime_tests PRIVATE cxx_std_17)
+target_compile_options(chapter_two_performance_text_lifetime_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_performance_text_lifetime_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+target_link_libraries(chapter_two_performance_text_lifetime_tests PRIVATE psapi)
 
 if(DEFINED CHAPTER_TWO_HOST_SOURCE)
     add_executable(chapter_two_presentation_host "${CHAPTER_TWO_HOST_SOURCE}")

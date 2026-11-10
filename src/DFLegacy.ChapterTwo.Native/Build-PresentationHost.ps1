@@ -72,6 +72,9 @@ $configure = @(
     '    if (dfl::chapter_two::InstallHudPortraitCache(base, nt->OptionalHeader.SizeOfImage))',
     '        OutputDebugStringA("DFLegacy Chapter Two: local HUD portrait cache patch installed.\n");',
     '    else OutputDebugStringA("DFLegacy Chapter Two: HUD portrait cache signature mismatch.\n");',
+    '    if (dfl::chapter_two::InstallFreeCardDisplay(base, nt->OptionalHeader.SizeOfImage))',
+    '        OutputDebugStringA("DFLegacy Chapter Two: local free card display patch installed.\n");',
+    '    else OutputDebugStringA("DFLegacy Chapter Two: free card display signature mismatch.\n");',
     '    if (dfl::chapter_two::InstallTownMapMovement(base, nt->OptionalHeader.SizeOfImage))',
     '        OutputDebugStringA("DFLegacy Chapter Two: town map right-click movement installed.\n");',
     $anchor
@@ -82,6 +85,7 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoWarehouseUpgrade.h"' + $nl +
     '#include "ChapterTwoInventoryTab.h"' + $nl +
     '#include "ChapterTwoHudPortraitCache.h"' + $nl +
+    '#include "ChapterTwoFreeCardDisplay.h"' + $nl +
     '#include "ChapterTwoParty.h"' + $nl +
     '#include "ChapterTwoTownMap.h"' + $nl +
     $original.Replace($anchor, $configure)
@@ -106,6 +110,10 @@ if ($LASTEXITCODE) { throw 'Chapter Two image adapter tests failed.' }
 if ($LASTEXITCODE) { throw 'Chapter Two inventory tab tests failed.' }
 & (Join-Path $build 'Release/chapter_two_hud_portrait_cache_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two HUD portrait cache tests failed.' }
+& (Join-Path $build 'Release/chapter_two_performance_text_lifetime_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two performance text lifetime tests failed.' }
+& (Join-Path $build 'Release/chapter_two_free_card_display_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two free card display tests failed.' }
 & (Join-Path $build 'Release/chapter_two_presentation_policy_tests.exe')
 if ($LASTEXITCODE) { throw 'Presentation policy tests failed.' }
 & (Join-Path $build 'Release/chapter_two_party_relay_tests.exe')
