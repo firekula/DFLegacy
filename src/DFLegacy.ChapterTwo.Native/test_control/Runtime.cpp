@@ -13,11 +13,12 @@
 namespace dfl::chapter_two::test_control { namespace {
 using U=std::uint32_t;
 template<class T>T Read(U a){return *reinterpret_cast<const T*>(a);}
+#include "CardControl.h"
 struct Target {U actor=0,uid=0,hp=0;};
 struct Coordinates {bool valid=false;float x=0,y=0,z=0;};
 struct Player {U uid=0,hp=0;bool dead=false;Coordinates position{};};
 struct Enemy {U uid=0,hp=0;bool dead=false,local=false;};
-struct Observation {State state{};std::array<Target,256> targets{};unsigned count=0;
+struct Observation {State state{};Cards cards{};std::array<Target,256> targets{};unsigned count=0;
  Coordinates position{};std::array<Player,4> players{};unsigned playerCount=0;
  std::array<Enemy,256> enemies{};unsigned enemyCount=0;};
 struct Published {Observation observation{};std::uint64_t request=0;unsigned applied=0;char reason[64]="none";};
@@ -188,7 +189,7 @@ bool Observe(Observation& o){
   if(o.count==o.targets.size())return false;
   for(unsigned i=0;i<o.count;++i)if(o.targets[i].uid==target.uid)return false;
   o.targets[o.count++]=target;
- }}o.state.valid=true;return true;
+ }}o.cards=ReadCards(o.state);o.state.valid=true;return true;
 }
 bool SameContext(const State&a,const State&b){return a.actor==b.actor&&a.map==b.map&&a.stage==b.stage&&a.uid==b.uid&&a.scene==b.scene;}
 const char* Apply(const Request&r,const Observation& before,unsigned& applied){
@@ -196,6 +197,7 @@ const char* Apply(const Request&r,const Observation& before,unsigned& applied){
  Consumed=r.id;State live=Identity;if(!Signatures()||!Context(live)||!SameContext(live,before.state))return "context_changed";
  if(r.operation==3)return TownWalk(r,live,applied);
  if(r.operation==2)return Position(r,live,applied);
+ if(r.operation>=4)return SelectCard(r,live,before.cards,applied);
  const auto begin=Read<U>(live.map+0x10),end=Read<U>(live.map+0x14);
  if(end<begin||(end-begin)%4||end-begin>4096)return "map_vector";
  Target found{};
@@ -236,7 +238,10 @@ void Save(const Published&p){
  std::fprintf(f,"],\"scene\":%u,\"position\":",s.scene);position(p.observation.position);std::fprintf(f,",\"players\":[");
  for(unsigned i=0;i<p.observation.playerCount;++i){const auto&row=p.observation.players[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":",i?",":"",row.uid);if(s.scene==1)std::fprintf(f,"null,\"dead\":null");else std::fprintf(f,"%u,\"dead\":%s",row.hp,row.dead?"true":"false");std::fprintf(f,",\"position\":");position(row.position);std::fprintf(f,"}");}
  std::fprintf(f,"],\"enemies\":[");for(unsigned i=0;i<p.observation.enemyCount;++i){const auto&e=p.observation.enemies[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":%u,\"dead\":%s,\"local\":%s}",i?",":"",e.uid,e.hp,e.dead?"true":"false",e.local?"true":"false");}
- std::fprintf(f,"]}\n");std::fclose(f);MoveFileExW(pending,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
+ const auto&c=p.observation.cards;
+ std::fprintf(f,"],\"cards\":{\"available\":%s,\"phase\":%u,\"count\":%u,\"slot\":%u,\"freeSelected\":%u,\"paidSelected\":%u,\"freePending\":%u,\"paidPending\":%u,\"columns\":[",c.screen?"true":"false",c.phase,c.count,c.slot,c.freeSelected,c.paidSelected,c.freePending,c.paidPending);
+ for(unsigned i=0;i<4;++i)std::fprintf(f,"%s{\"freeOwner\":%u,\"paidOwner\":%u,\"freeVisible\":%s,\"paidVisible\":%s}",i?",":"",c.free[i],c.paid[i],c.freeVisible[i]?"true":"false",c.paidVisible[i]?"true":"false");
+ std::fprintf(f,"]}}\n");std::fclose(f);MoveFileExW(pending,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
 }
 DWORD WINAPI Worker(void*){
  Request previous{};std::uint64_t exported=0;

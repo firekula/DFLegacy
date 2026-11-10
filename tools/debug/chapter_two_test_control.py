@@ -51,13 +51,22 @@ def fresh(s, now):
 
 def encode_request(s, operation, target, x, y, now, request_id):
     fresh(s, now)
-    require(operation in (1,2,3) and type(target) is int and 0<=target<=65535, 'Invalid semantic target')
+    require(operation in (1,2,3,4,5) and type(target) is int and 0<=target<=65535, 'Invalid semantic target')
     require((operation==3)==(s.get('scene',3)==1), 'Semantic scene mismatch')
     require(type(x) is int and type(y) is int and -32768<=x<=32767 and -32768<=y<=32767, 'Coordinate overflow')
     if operation==1:
         require(x==y==0, 'Kill cannot carry coordinates')
         require(target in [t['uid'] for t in s['targets']], 'Target is not a live local monster')
-    else:require(target==s['uid'], 'Position is self only')
+    elif operation in (2,3):require(target==s['uid'], 'Position is self only')
+    else:
+        c=s.get('cards',{});kind='free' if operation==4 else 'paid';unset=4294967295
+        require(target<4 and x==y==0 and c.get('available') is True and c.get('count')==4
+                and type(c.get('slot')) is int and 0<=c['slot']<4, 'Native card screen required')
+        columns=c.get('columns',[])
+        require(len(columns)==4 and c.get(kind+'Selected')==c.get(kind+'Pending')==unset,
+                'Native card already selected or pending')
+        require(columns[target].get(kind+'Visible') is True and columns[target].get(kind+'Owner')==unset
+                and all(row.get(kind+'Owner')!=c['slot'] for row in columns), 'Card is hidden or already owned')
     return struct.pack('<IIIIQQQQQIIIIIIii',0x43543244,2,s['pid'],operation,
         int(s['processStarted']),int(s['nonce']),request_id,now,int(s['snapshot']),
         s['actor'],s['map'],s['stage'],s['uid'],target,0,x,y)
@@ -121,11 +130,17 @@ def run_action(pid, operation, *, target=None, x=0, y=0, peers=(), timeout=3):
     elif operation in ('teleport','walk'):
         require(operation!='walk' or not peers, 'Town navigation uses one private observer')
         target=before[pid]['uid'];code=2 if operation=='teleport' else 3
+    elif operation in ('free-card','paid-card'):
+        require(not peers, 'Card selection invokes one exact private owner')
+        code=4 if operation=='free-card' else 5
     else:raise RuntimeError('Unknown semantic operation')
     native=submit(selected,code,target,x,y,before[selected])
     result=dict(pid=selected,target=target,operation=operation,applied=native['applied'],reason=native['reason'],
                 status='rejected',synchronization=dict(complete=False,clients={}))
     if not native['applied']:return result
+    if code>=4:
+        result['status']='native_selection_pending' if native['reason']=='applied_native_card_selection' else 'partial'
+        return result
     if code==3:
         result['status']='native_navigation_started' if native['reason']=='applied_native_town_walk' else 'partial'
         return result
@@ -146,7 +161,7 @@ def run_action(pid, operation, *, target=None, x=0, y=0, peers=(), timeout=3):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pid',type=int,required=True)
-    parser.add_argument('operation',choices=['status','kill','teleport','walk'])
+    parser.add_argument('operation',choices=['status','kill','teleport','walk','free-card','paid-card'])
     parser.add_argument('--uid',type=int)
     parser.add_argument('--x',type=int);parser.add_argument('--y',type=int)
     parser.add_argument('--peers',type=int,nargs='*',default=[])

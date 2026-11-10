@@ -35,5 +35,12 @@ int main(){
  Check(Validate(walk,s,18,10001)!=nullptr,"town navigation cannot run in dungeon");
  walk.operation=2;Check(Validate(walk,town,18,10001)!=nullptr,"dungeon teleport cannot run in town");
  walk.operation=1;walk.x=walk.y=0;Check(Validate(walk,town,18,10001)!=nullptr,"monster action cannot run in town");
+ for(unsigned operation:{4u,5u}){
+  auto card=r;card.operation=operation;card.target=3;
+  Check(!Validate(card,s,18,10001),"explicit native card column accepted in dungeon");
+  card.target=4;Check(Validate(card,s,18,10001)!=nullptr,"fifth card column refused");
+  card.target=0;card.x=1;Check(Validate(card,s,18,10001)!=nullptr,"card cannot carry position");
+  card.x=0;Check(Validate(card,town,18,10001)!=nullptr,"card cannot run in town");
+ }
  std::printf("C2 isolated test-control policy: %u checks, %u failures\n",Checks,Failures);return Failures?1:0;
 }

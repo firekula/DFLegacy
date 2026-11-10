@@ -22,6 +22,23 @@ def snapshot(pid=101, uid=1):
 
 
 class TestChapterTwoControl(unittest.TestCase):
+    def test_explicit_card_column_uses_native_ready_observation(self):
+        s=snapshot()
+        s['cards']=dict(available=True,count=4,slot=0,freeSelected=4294967295,
+            paidSelected=4294967295,freePending=4294967295,paidPending=4294967295,
+            columns=[dict(freeOwner=4294967295,paidOwner=4294967295,
+                          freeVisible=True,paidVisible=True) for _ in range(4)])
+        for operation in (4,5):
+            payload=control.encode_request(s,operation,3,0,0,1001,20)
+            self.assertEqual(struct.unpack('<IIIIQQQQQIIIIIIii',payload)[3],operation)
+            for changes in ({'available':False},{'freePending':3,'paidPending':3}):
+                bad=copy.deepcopy(s);bad['cards'].update(changes)
+                with self.assertRaises(RuntimeError):control.encode_request(bad,operation,3,0,0,1001,20)
+            for owner in (0,2):
+                bad=copy.deepcopy(s)
+                bad['cards']['columns'][3]['freeOwner' if operation==4 else 'paidOwner']=owner
+                with self.assertRaises(RuntimeError):control.encode_request(bad,operation,3,0,0,1001,20)
+
     def api(self, name):
         self.assertTrue(callable(getattr(control, name, None)), f'missing semantic {name}')
         return getattr(control, name)
