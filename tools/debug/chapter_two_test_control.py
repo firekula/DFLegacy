@@ -24,7 +24,15 @@ def owned(pid,started):
     finally:K.CloseHandle(h)
 
 def read(pid):
-    d=json.loads((ROOT/str(pid)/'state.json').read_text())
+    # Windows may briefly deny opening the destination while the native worker
+    # atomically replaces it. Retry the read only; never repeat an action here.
+    for attempt in range(5):
+        try:
+            d=json.loads((ROOT/str(pid)/'state.json').read_text())
+            break
+        except (PermissionError,FileNotFoundError):
+            if attempt==4:raise
+            time.sleep(.02)
     if d['pid']!=pid or not d['testOnly']:raise RuntimeError('Invalid isolated state identity')
     owned(pid,int(d['processStarted']))
     return d
@@ -38,7 +46,7 @@ def main():
     s=read(args.pid)
     if args.operation=='status':
         print(json.dumps({k:v for k,v in s.items() if k not in ('nonce','processStarted','actor','map','stage')},indent=2));return
-    if args.uid is None or not 1<=args.uid<=65535:raise RuntimeError('A single explicit monster UID is required')
+    if args.uid is None or not 0<=args.uid<=65535:raise RuntimeError('A single explicit monster UID is required')
     initial=(s['actor'],s['map'],s['stage'],s['uid'])
     for attempt in range(3):
         s=read(args.pid)

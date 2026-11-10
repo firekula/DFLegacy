@@ -9,12 +9,13 @@ Request Command(const State&s){Request r{};r.pid=s.pid;r.actor=s.actor;r.map=s.m
 }
 int main(){
  const auto s=Good();const auto r=Command(s);Check(Validate(r,s,18,10001)==nullptr,"fresh bound request accepted");
+ auto zero=r;zero.target=0;Check(Validate(zero,s,18,10001)==nullptr,"native monster UID zero is a valid explicit target");
  const char* errors[]={"disabled","layout","context"};
  for(unsigned i=0;i<3;++i){auto bad=s;if(i==0)bad.enabled=false;else if(i==1)bad.supported=false;else bad.valid=false;Check(Validate(r,bad,18,10001)&&std::strcmp(Validate(r,bad,18,10001),errors[i])==0,"invalid enable/layout/scene refused");}
  for(unsigned i=0;i<15;++i){auto bad=r;switch(i){
  case 0:bad.magic=0;break;case 1:bad.version=2;break;case 2:bad.pid++;break;case 3:bad.processStarted++;break;case 4:bad.nonce++;break;
  case 5:bad.actor++;break;case 6:bad.map++;break;case 7:bad.stage++;break;case 8:bad.uid++;break;case 9:bad.snapshot++;break;
- case 10:bad.id=18;break;case 11:bad.operation=2;break;case 12:bad.target=0;break;case 13:bad.target=65536;break;case 14:bad.reserved=1;break;}
+ case 10:bad.id=18;break;case 11:bad.operation=2;break;case 12:bad.target=UINT32_MAX;break;case 13:bad.target=65536;break;case 14:bad.reserved=1;break;}
  Check(Validate(bad,s,18,10001)!=nullptr,"mismatched or unsupported request refused");}
  Check(Validate(r,s,18,10751)!=nullptr,"expired snapshot refused");Check(Validate(r,s,18,9999)!=nullptr,"future snapshot refused");
  auto stale=r;stale.issued=9999;Check(Validate(stale,s,18,10001)!=nullptr,"request before snapshot refused");stale.issued=10002;Check(Validate(stale,s,18,10001)!=nullptr,"future request refused");

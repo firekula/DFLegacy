@@ -70,7 +70,7 @@ bool TargetFor(U actor,const State&s,Target& t){
  constexpr U offsets[]={0x2c,0x160,0x22c,0x354,0x3d0,0x3dc,0x3e0};
  constexpr U methods[]={0x486fb0,0x498ea0,0x6f48b0,0x6f4400,0x6f4500,0x499850,0x4daea0};
  for(unsigned i=0;i<7;++i)if(!Method(actor,offsets[i],methods[i]))return false;
- U uid=0,hp=0;if(!Secure(actor+0xe8,uid)||!uid||uid>65535||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
+ U uid=0,hp=0;if(!Secure(actor+0xe8,uid)||uid>65535||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
  t={actor,uid,hp};return true;
 }
 bool Observe(Observation& o){
