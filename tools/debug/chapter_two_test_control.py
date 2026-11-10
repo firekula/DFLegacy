@@ -71,6 +71,17 @@ def encode_request(s, operation, target, x, y, now, request_id):
         int(s['processStarted']),int(s['nonce']),request_id,now,int(s['snapshot']),
         s['actor'],s['map'],s['stage'],s['uid'],target,0,x,y)
 
+def publish_request(temporary, destination):
+    # The native file reader can briefly hold request.bin without delete sharing.
+    # Retry only this atomic rename of the SAME bytes/id, never another action.
+    for attempt in range(5):
+        try:
+            temporary.replace(destination)
+            return
+        except PermissionError as error:
+            if getattr(error,'winerror',None) not in (5,32) or attempt==4:raise
+            time.sleep(.02)
+
 def submit(pid, operation, target, x, y, initial):
     """Retry only an explicit no-mutation stale-snapshot refusal."""
     for attempt in range(3):
@@ -80,7 +91,7 @@ def submit(pid, operation, target, x, y, initial):
         payload=encode_request(s,operation,target,x,y,now,request_id)
         directory=ROOT/str(pid);temporary=directory/f'request.{os.getpid()}.pending'
         with temporary.open('xb') as f:f.write(payload)
-        temporary.replace(directory/'request.bin')
+        publish_request(temporary,directory/'request.bin')
         deadline=time.monotonic()+2
         while time.monotonic()<deadline:
             result=read(pid)

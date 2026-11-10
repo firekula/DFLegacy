@@ -22,6 +22,18 @@ def snapshot(pid=101, uid=1):
 
 
 class TestChapterTwoControl(unittest.TestCase):
+    def test_publishing_retries_only_the_same_atomic_file_replacement(self):
+        publish=self.api('publish_request')
+        sharing=PermissionError('native request reader briefly owns the file');sharing.winerror=5
+        source=control.Path('private.pending');destination=control.Path('request.bin')
+        with patch.object(control.Path,'replace',side_effect=[sharing,destination]) as rename,patch.object(control.time,'sleep'):
+            publish(source,destination)
+            self.assertEqual(rename.call_count,2)
+            self.assertTrue(all(call.args==(destination,) for call in rename.call_args_list))
+        with patch.object(control.Path,'replace',side_effect=FileNotFoundError('missing pending file')) as rename:
+            with self.assertRaises(FileNotFoundError):publish(source,destination)
+            self.assertEqual(rename.call_count,1)
+
     def test_explicit_card_column_uses_native_ready_observation(self):
         s=snapshot()
         s['cards']=dict(available=True,count=4,slot=0,freeSelected=4294967295,
