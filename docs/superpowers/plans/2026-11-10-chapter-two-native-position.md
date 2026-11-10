@@ -28,10 +28,10 @@ Files: src/DFLegacy.ChapterTwo.Native/test_control/{Policy.h,Policy.cpp,Runtime.
 
 Interface: request v2 adds int32 x/y and operation2=self-position; existing operation1=single monster. Export position and bounded player/enemy observations.
 
-- [ ] Confirm original C2 setters/getters/publication and original callers; retain read-only evidence.
-- [ ] Add policy and native original-image rejection tests; observe RED for positioning.
-- [ ] Implement native setter + full original publisher with fresh binding validation, protected position checks and per-frame context.
-- [ ] Run native checks and existing death contracts, build only private host; verify TLS delta8.
+- [x] Confirm original C2 setters/getters/publication and original callers; retain read-only evidence.
+- [x] Add policy and native original-image rejection tests; observe RED for positioning.
+- [x] Implement native setter + full original publisher with fresh binding validation, protected position checks and per-frame context.
+- [x] Run native checks and existing death contracts, build only private host; verify TLS delta8.
 
 ### Task 2: Reusable semantic CLI and outcome checks
 
@@ -39,15 +39,15 @@ Files: tools/debug/chapter_two_test_control.py; tests/test_chapter_two_test_cont
 
 Interfaces: status, teleport --x/--y, kill --uid, optional explicit peer process list. Every action uses request v2 and guards current process/context. Export distinguishes native call from peer confirmation.
 
-- [ ] Add failing tests for request serialization, self-only positioning, target ownership, unknown acknowledgement and changed-peer refusal.
-- [ ] Implement v2 commands and bounded peer polling without retrying an unknown mutation.
-- [ ] Run targeted tests plus existing test-control checks and document exact usage.
+- [x] Add failing tests for request serialization, self-only positioning, target ownership, unknown acknowledgement and changed-peer refusal.
+- [x] Implement v2 commands and bounded peer polling without retrying an unknown mutation.
+- [x] Run targeted tests plus existing test-control checks and document exact usage.
 
 ### Task 3: Isolated native acceptance and checkpoint
 
 Files: fresh DO-NOT-SHIP evidence directory, private host metadata, knowledge continuation and matrix report.
 
-- [ ] Preserve/exit old hosts normally; do not mutate a running image.
-- [ ] Deploy the verified private host only; restart isolated four-client run.
-- [ ] Use semantic positioning and target clearing to verify native changes, peer positions/deaths and normal door transitions; save screenshots and logs.
-- [ ] Record actual results and limitations, then resume the existing four-condition cards matrix with the new controls.
+- [x] Preserve/exit old hosts normally; do not mutate a running image.
+- [x] Deploy the verified private host only; restart isolated four-client run.
+- [x] Use semantic positioning and target clearing to verify native changes, peer positions/deaths and normal door transitions; save screenshots and logs.
+- [x] Record actual results and limitations, then resume the existing four-condition cards matrix with the new controls.
