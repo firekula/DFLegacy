@@ -91,7 +91,7 @@ internal static class RepairClient
             if(Core.InstallTransaction.HasPending(root))
             {
                 await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
-                progress?.Report(new("recover","",0,0,Detail:"正在恢复未完成事务；此阶段请勿退出。"));
+                progress?.Report(new("recover","",0,0,Detail:"请勿退出。"));
                 await Task.Run(()=>Core.InstallTransaction.Recover(root,progress),CancellationToken.None).ConfigureAwait(false);
             }
             var settings=ReadSettings(request with {Directory=root});
@@ -127,7 +127,7 @@ internal static class RepairClient
                 .Append(Path.Combine(root,"launcher.json"));
             await ReleaseLocksAsync(WithoutSupervisor(files),confirmClose,token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"正在提交修复；此阶段请勿退出。"));
+            progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"请勿退出。"));
             await Task.Run(()=>Core.InstallTransaction.Apply(root,staged,progress),CancellationToken.None).ConfigureAwait(false);
             var final=await engine.ValidateInstalledAsync(progress,CancellationToken.None).ConfigureAwait(false);
             if(!final.CanLaunch)throw new InvalidDataException(final.Message);
@@ -173,7 +173,7 @@ internal static class RepairClient
             if(!quiet){window=new Views.UpdateInstallWindow{Title="修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();}
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
-                var message=$"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path} {p.Detail}";
+                var message=UpdateProgressText.Format(p);
                 if(quiet)Console.WriteLine(message);
                 else if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
                 else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,

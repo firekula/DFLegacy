@@ -5,7 +5,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { randomUUID } = require("node:crypto");
 
-// Only the DOM boundary is simulated; the two production scripts build rows,
+// Only the DOM boundary is simulated; the production scripts build rows,
 // bind events, resolve items, serialize requests, and manage pending operations.
 class Element {
   constructor(tag = "div") {
@@ -58,9 +58,10 @@ class Element {
   focus() {}
 }
 
-function mailPage(saved, fetcher) {
+function mailPage(saved, fetcher, fullInitialization = false) {
   const document = new Element("document"), requests = [], storage = new Map(saved ?? []), ready = [];
   document.createElement = tag => new Element(tag);
+  document.getElementById = id => document.querySelector("#" + id);
   document.addEventListener = (name, callback) => { if (name === "DOMContentLoaded") ready.push(callback); };
   function node(tag, id, parent = document, props = {}) {
     const element = Object.assign(new Element(tag), { id }, props); parent.append(element); return element;
@@ -82,6 +83,15 @@ function mailPage(saved, fetcher) {
     node("form", id);
   node("select", "", document.querySelector("#victoryForm"), { name: "characterId" });
   node("input", "", document.querySelector("#victoryForm"), { name: "amount" });
+  const adminRoot = path.join(__dirname, "../../src/DFLegacy.Server/wwwroot/admin");
+  const html = fs.readFileSync(path.join(adminRoot, "index.html"), "utf8");
+  if (fullInitialization) {
+    // Include unrelated controls from the real page so DOMContentLoaded runs,
+    // while a removed legacy ID still correctly resolves to null.
+    for (const [, tag, id] of html.matchAll(/<([a-z]+)\b[^>]*\bid="([^"]+)"/gi))
+      if (!document.querySelector("#" + id)) node(tag, id);
+    document.body = node("body", "");
+  }
   const context = vm.createContext({ document, window: { confirm: () => true }, crypto: { randomUUID },
     sessionStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
     FormData: class {
@@ -98,14 +108,38 @@ function mailPage(saved, fetcher) {
     }
   });
   const run = code => vm.runInContext(code, context);
-  for (const name of ["admin.js", "admin-rewards.js"])
-    run(fs.readFileSync(path.join(__dirname, "../../src/DFLegacy.Server/wwwroot/admin", name), "utf8"));
-  run('auth.role = ROLE_ADMIN; auth.userName = "GM"; state.characters = [{ id: "hero-1", name: "Hero" }]; bindForms();');
-  // Initialize only this feature, avoiding unrelated login and server dashboards.
-  if (run('typeof bindMailAttachments === "function"')) run("bindMailAttachments()");
-  ready[1]();
+  for (const [, url] of html.matchAll(/<script[^>]+src="([^"]+)"/g)) {
+    const name = path.basename(url.split("?")[0]);
+    if (!fullInitialization && !["admin.js", "admin-rewards.js"].includes(name)) continue;
+    // Simulate a previously cached legacy script at its original URL. This
+    // binding is the old initialize() failure reported by existing users.
+    let script = fs.readFileSync(path.join(adminRoot, name), "utf8");
+    if (fullInitialization && url === "/admin/admin.js")
+      script = script.replace('document.addEventListener("DOMContentLoaded", initialize);',
+        'document.addEventListener("DOMContentLoaded", () => document.querySelector("#attachmentKind").addEventListener("change", () => {}));');
+    run(script);
+  }
+  if (fullInitialization) {
+    for (const initialize of ready) initialize();
+  } else {
+    run('auth.role = ROLE_ADMIN; auth.userName = "GM"; state.characters = [{ id: "hero-1", name: "Hero" }]; bindForms();');
+    // Other feature tests isolate mail state from unrelated login dashboards.
+    run("bindMailAttachments()");
+    ready[1]();
+  }
   return { run, form, requests, storage, get: selector => document.querySelector(selector), rows: () => document.querySelectorAll(".mail-attachment-row") };
 }
+
+test("upgraded page initializes and adds/removes attachments with legacy unversioned script cached", async () => {
+  const page = mailPage(undefined, undefined, true);
+  assert.equal(page.get("#attachmentKind"), null, "new page no longer has the legacy singleton");
+  await addItem(page, "101", "7");
+  await addItem(page, "202", "2");
+  assert.equal(page.rows().length, 2);
+  await page.rows()[0].querySelector(".remove-attachment").click();
+  assert.equal(page.rows().length, 1);
+  assert.equal(page.rows()[0].querySelector(".item-search").value, "202");
+});
 
 async function addItem(page, id, quantity = "1", kind = "1", ability = "0") {
   await page.get("#mailAddAttachment").click();

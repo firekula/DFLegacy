@@ -196,9 +196,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     {
         public void Report(Core.UpdateProgress p)
         {
-            var phase=p.Phase switch { "verify"=>"完整校验", "download"=>"下载", "retry"=>"等待重试", _=>p.Phase };
             progress?.Report(new(p.BytesReceived,p.TotalBytes,p.BytesPerSecond,p.Phase,p.Path,p.CompletedFiles,p.TotalFiles,
-                $"{phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path}"+(p.Detail is {} d?"；"+d:"")));
+                UpdateProgressText.Format(p)));
         }
     }
     public void Dispose() { legacy?.Dispose(); ownedHttp?.Dispose(); }

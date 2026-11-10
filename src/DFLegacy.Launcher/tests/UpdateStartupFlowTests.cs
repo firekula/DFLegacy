@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DFLegacy.Launcher.Controls;
@@ -8,7 +9,7 @@ using DFLegacy.Launcher.Views;
 
 internal static class UpdateStartupFlowTests
 {
-    internal static void RunOnSta(Action<bool,string> check)
+    internal static void RunOnSta(Action<bool,string> check, bool presentationOnly=false)
     {
         Exception? failure=null;
         var thread=new Thread(()=>
@@ -17,7 +18,7 @@ internal static class UpdateStartupFlowTests
             try
             {
                 SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
-                Run(check);
+                if(presentationOnly) CheckProgressPresentation(check); else Run(check);
             }
             catch(Exception ex) { failure=ex; }
             finally { app.Shutdown(); }
@@ -39,6 +40,7 @@ internal static class UpdateStartupFlowTests
 
     internal static void Run(Action<bool,string> check)
     {
+        CheckProgressPresentation(check);
         var strip=new OriginalProgressStrip {Width=258,Height=8};
         strip.Measure(new Size(258,8)); strip.Arrange(new Rect(0,0,258,8)); strip.Set(.5,true); strip.UpdateLayout();
         var fill=new RenderTargetBitmap(258,8,96,96,PixelFormats.Pbgra32); fill.Render(strip);
@@ -136,6 +138,60 @@ internal static class UpdateStartupFlowTests
         }
         finally { Directory.Delete(root,true); }
         Console.WriteLine("Automatic compact startup flow checks executed");
+    }
+
+    private static void CheckProgressPresentation(Action<bool,string> check)
+    {
+        var window=new UpdateInstallWindow();
+        try
+        {
+            foreach(var (phase,label) in new[]{("verify","完整校验"),("download","下载"),("retry","等待重试"),
+                ("prepared","准备安装"),("install","安装"),("recover","恢复"),("commit","保存更新记录"),("future-phase","处理更新")})
+            {
+                UpdateProgress? forwarded=null;
+                V4UpdateSession.Forward(new CaptureProgress(p=>forwarded=p)).Report(new(phase,"DFLegacy.Client.dll",1,8,Detail:"请勿退出。"));
+                check(forwarded?.Detail?.StartsWith(label+" 1/8",StringComparison.Ordinal)==true,"update phase has a Chinese display prefix: "+phase);
+                check(forwarded?.Phase==phase,"translated display keeps the engine phase intact: "+phase);
+            }
+            UpdateProgress? empty=null;
+            V4UpdateSession.Forward(new CaptureProgress(p=>empty=p)).Report(new("verify","",0,0));
+            check(empty?.Detail=="完整校验","unknown file totals do not display 0/0 or an empty colon");
+            var original="安装 0/8：正在提交修复；此阶段请勿退出。\r\n"+new string('长',180)+".npk";
+            window.Render(new UpdateInstallProgress(.85,original));
+            var status=window.FindName("InstallStatus") as TextBlock;
+            check(status is not null,"compact update status supports single-line ellipsis");
+            if(status is not null)
+            {
+                check(status.TextWrapping==TextWrapping.NoWrap&&status.TextTrimming==TextTrimming.CharacterEllipsis,
+                    "long update status remains one line with visible truncation");
+                check(!status.Text.Contains('\r')&&!status.Text.Contains('\n'),"embedded newlines cannot create an orphaned second line");
+                check((string?)status.ToolTip==original,"full installation details remain available without truncation");
+                var panel=(FrameworkElement)window.Content;
+                panel.Measure(new Size(286,104)); panel.Arrange(new Rect(0,0,286,104)); panel.UpdateLayout();
+                check(status.ActualWidth==249&&status.ActualHeight<=24,"long file names stay within the compact status area");
+                window.Render(new UpdateViewState(UpdatePhase.Downloading,original,
+                    Progress:new UpdateProgress(50,100,10,"download",Detail:original)));
+                check(!status.Text.Contains('\n')&&(string?)status.ToolTip==original,"download progress uses the same single-line treatment");
+                var images=Path.Combine(AppContext.BaseDirectory,"update-text-preview"); Directory.CreateDirectory(images);
+                foreach(var (name,progress) in new[]{
+                    ("install",new DFLegacy.UpdateCore.UpdateProgress("install","",0,8,Detail:"请勿退出。")),
+                    ("download-long",new DFLegacy.UpdateCore.UpdateProgress("download","ImagePacks2/"+new string('长',80)+".npk",2,8)),
+                    ("recover",new DFLegacy.UpdateCore.UpdateProgress("recover","DFLegacy.Client.dll",3,8))})
+                {
+                    window.Render(new UpdateInstallProgress(.85,UpdateProgressText.Format(progress)));
+                    panel.UpdateLayout();
+                    var bitmap=new RenderTargetBitmap(286,104,96,96,PixelFormats.Pbgra32); bitmap.Render(panel);
+                    var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                    using var output=File.Create(Path.Combine(images,name+".png")); encoder.Save(output);
+                }
+            }
+        }
+        finally { window.Finish(); }
+    }
+
+    private sealed class CaptureProgress(Action<UpdateProgress> capture):IProgress<UpdateProgress>
+    {
+        public void Report(UpdateProgress value)=>capture(value);
     }
 
     private static void CheckBootstrapHandoff(string root,PreparedUpdate package,string cachedObject,Func<Window> createOwner,Action<bool,string> check)
