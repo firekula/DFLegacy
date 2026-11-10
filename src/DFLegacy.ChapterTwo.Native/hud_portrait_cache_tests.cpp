@@ -22,7 +22,7 @@ namespace
 {
     constexpr std::uintptr_t Base = 0x400000;
     constexpr std::size_t ImageSize = 0xe57000;
-    constexpr std::array<std::uintptr_t, 3> Calls{0x91dbf6, 0x91dbff, 0x90e4fa};
+    constexpr std::array<std::uintptr_t, 4> Calls{0x91dbf6, 0x91dbff, 0x90e4fa, 0x53482f};
     unsigned Checks = 0;
     int Failures = 0;
     void Check(bool condition, const char* message)
@@ -82,8 +82,9 @@ namespace
             !InstallImage(image.data(), ImageSize - 1, &Write) &&
             !InstallImage(image.data(), ImageSize, nullptr) && Writes == 0,
             "invalid image, extent or writer makes no writes");
-        const std::array<std::pair<std::size_t, std::size_t>, 3> guards{
-            std::pair<std::size_t, std::size_t>{0x50e440, 0x11e}, {0x51dbe7, 0x1d}, {0x5c0e00, 0x70}};
+        const std::array<std::pair<std::size_t, std::size_t>, 6> guards{
+            std::pair<std::size_t, std::size_t>{0x50e440, 0x11e}, {0x51dbe7, 0x1d}, {0x5c0e00, 0x70},
+            {0x1347d3, 97}, {0x613a66, 24}, {0x8308e0, 4}};
         for (const auto& range : guards)
             for (std::size_t i = 0; i < range.second; ++i)
             {
@@ -92,9 +93,9 @@ namespace
                 const auto before = image;
                 Writes = 0;
                 Check(!InstallImage(image.data(), image.size(), &Write) && Writes == 0 && image == before,
-                    "every byte in all three calls and guarded contexts is checked before any write");
+                    "every byte in all four calls and guarded contexts is checked before any write");
             }
-        for (unsigned fail = 1; fail <= 3; ++fail)
+        for (unsigned fail = 1; fail <= 4; ++fail)
             for (const auto after : {false, true})
             {
                 image = original;
@@ -104,8 +105,8 @@ namespace
             }
         image = original;
         Writes = FailAt = 0;
-        Check(InstallImage(image.data(), image.size(), &Write) && Writes == 3,
-            "the production installer patches all three verified calls");
+        Check(InstallImage(image.data(), image.size(), &Write) && Writes == 4,
+            "the production installer patches all four verified calls");
         unsigned differences = 0;
         for (std::size_t i = 0; i < image.size(); ++i)
             if (image[i] != original[i])
@@ -115,7 +116,7 @@ namespace
                 for (auto call : Calls) inside = inside || (i >= call - Base && i < call - Base + 5);
                 Check(inside, "no coordinate, timer period, UID/dirty logic or slot code is changed");
             }
-        Check(differences > 0 && differences <= 12, "only relative call operands differ");
+        Check(differences > 0 && differences <= 16, "only relative call operands differ");
         Writes = 0;
         Check(InstallImage(image.data(), image.size(), &Write) && Writes == 0,
             "a complete matching reinstall writes nothing");

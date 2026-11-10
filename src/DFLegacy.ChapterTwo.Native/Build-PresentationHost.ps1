@@ -110,6 +110,8 @@ if ($LASTEXITCODE) { throw 'Chapter Two image adapter tests failed.' }
 if ($LASTEXITCODE) { throw 'Chapter Two inventory tab tests failed.' }
 & (Join-Path $build 'Release/chapter_two_hud_portrait_cache_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two HUD portrait cache tests failed.' }
+& (Join-Path $build 'Release/chapter_two_hud_portrait_fallback_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two private-room HUD portrait fallback tests failed.' }
 & (Join-Path $build 'Release/chapter_two_performance_text_lifetime_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two performance text lifetime tests failed.' }
 & (Join-Path $build 'Release/chapter_two_free_card_display_tests.exe') $image

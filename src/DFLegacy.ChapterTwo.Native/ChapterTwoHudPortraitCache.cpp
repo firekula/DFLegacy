@@ -13,7 +13,8 @@ namespace
     constexpr std::uintptr_t ImageBase = 0x400000;
     constexpr std::size_t ImageSize = 0xe57000;
     constexpr std::size_t CacheOffset = 0x50e440, DispatchOffset = 0x51dbe7, TimerOffset = 0x5c0e00;
-    constexpr std::array<std::size_t, 3> CallOffsets{0x51dbf6, 0x51dbff, 0x50e4fa};
+    constexpr std::size_t FallbackOffset = 0x1347d3;
+    constexpr std::array<std::size_t, 4> CallOffsets{0x51dbf6, 0x51dbff, 0x50e4fa, 0x13482f};
     // Original C2 cache creation, UID/dirty gates, shared timer, count&7,
     // clear/draw and cache commit. Output coordinates following it stay intact.
     constexpr std::array<unsigned char, 286> Cache{
@@ -49,6 +50,20 @@ namespace
         0x41,0x10,0x89,0x51,0x0c,0xb0,0x01,0x5e,0x5d,0xc2,0x04,0x00,0x89,0x41,0x0c,0xff,
         0x41,0x10,0xb0,0x01,0x5e,0x5d,0xc2,0x04,0x00,0x32,0xc0,0x5e,0x5d,0xc2,0x04,0x00
     };
+    constexpr std::array<unsigned char, 97> Fallback{
+        0x0f,0xb6,0x45,0x20,0x8b,0x4d,0xfc,0x8b,0x51,0x18,0x8b,0x0d,0xb8,0xa8,0xd7,0x00,
+        0x68,0x00,0x00,0x80,0x4f,0x68,0x00,0x00,0x80,0x4f,0xc1,0xe0,0x18,0x0d,0xff,0xff,
+        0xff,0x00,0x50,0x6a,0x00,0x68,0x00,0x00,0x80,0x3f,0x68,0x00,0x00,0x80,0x3f,0x52,
+        0xe8,0xf8,0x43,0x4f,0x00,0x8b,0x55,0x14,0x50,0xb8,0x18,0x00,0x00,0x00,0x2b,0xc2,
+        0x99,0x2b,0xc2,0x8b,0x55,0x10,0xd1,0xf8,0x2b,0xf0,0xb8,0x18,0x00,0x00,0x00,0x2b,
+        0xc2,0x99,0x2b,0xc2,0xd1,0xf8,0x56,0x2b,0xf8,0x57,0x8b,0xcb,0xe8,0xfc,0xa2,0x50,
+        0x00
+    };
+    constexpr std::array<unsigned char, 24> BlitFormats{
+        0x83,0xf8,0x08,0x74,0x13,0x83,0xf8,0x0e,0x74,0x0e,0x83,0xf8,0x0f,0x74,0x09,0x83,
+        0xf8,0x10,0x0f,0x85,0x84,0x01,0x00,0x00
+    };
+    constexpr std::uint32_t SimpleBlit = 0x00a139d0;
 
     using DrawGroup = void (__thiscall*)(void*);
     using CheckTimer = bool (__thiscall*)(void*, int);
@@ -97,6 +112,33 @@ namespace
         }
         return scope->result;
     }
+    void __fastcall DrawPrivateFallback(void* target, void*, int x, int y, void* sprite,
+        unsigned sx, unsigned sy, unsigned zero, unsigned color, unsigned px, unsigned py)
+    {
+        // C2's scaled sprite method accepts only the type7 main renderer. A
+        // private-room peer has no actor, so its job icon otherwise never reaches
+        // the type14 HUD cache. The native unscaled method supports 1555 targets.
+        auto* scope = RenderingThread.load(std::memory_order_relaxed) == GetCurrentThreadId() ? CurrentScope : nullptr;
+        if (scope && target && sprite &&
+            sx == 0x3f800000 && sy == 0x3f800000 && zero == 0 && color == 0xffffffff &&
+            px == 0x4f800000 && py == 0x4f800000 &&
+            *reinterpret_cast<const unsigned*>(static_cast<unsigned char*>(target) + 8) == 14 &&
+            *reinterpret_cast<const unsigned*>(static_cast<unsigned char*>(sprite) + 8) == 14)
+        {
+            auto** methods = *static_cast<void***>(sprite);
+            auto* surfaces = static_cast<unsigned char*>(scope->timer) - 0x40;
+            if (methods && methods[0xbc / 4] == reinterpret_cast<void*>(SimpleBlit))
+                for (unsigned slot = 0; slot < 8; ++slot)
+                    if (*reinterpret_cast<void**>(surfaces + slot * 4) == target)
+                    {
+                        using DrawSimple = void (__thiscall*)(void*, int, int, void*);
+                        reinterpret_cast<DrawSimple>(0xa3ea80)(target, x, y, sprite);
+                        return;
+                    }
+        }
+        using DrawScaled = void (__thiscall*)(void*, int, int, void*, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned);
+        reinterpret_cast<DrawScaled>(0xa3eb30)(target, x, y, sprite, sx, sy, zero, color, px, py);
+    }
     using Call = std::array<unsigned char, 5>;
     bool MakeCall(std::uintptr_t from, std::uintptr_t to, Call& call) noexcept
     {
@@ -116,23 +158,30 @@ bool dfl::chapter_two::hud_portrait_detail::InstallImage(
     if (!image || bytes != ImageSize || !write ||
         reinterpret_cast<std::uintptr_t>(image) > std::numeric_limits<std::uintptr_t>::max() - ImageSize)
         return false;
-    if (std::memcmp(image + TimerOffset, Timer.data(), Timer.size()) != 0) return false;
+    if (std::memcmp(image + TimerOffset, Timer.data(), Timer.size()) != 0 ||
+        std::memcmp(image + 0x613a66, BlitFormats.data(), BlitFormats.size()) != 0 ||
+        std::memcmp(image + 0x8308e0, &SimpleBlit, sizeof(SimpleBlit)) != 0) return false;
 
-    const std::array<std::uintptr_t, 3> targets{reinterpret_cast<std::uintptr_t>(&RenderBattle),
-        reinterpret_cast<std::uintptr_t>(&RenderTown), reinterpret_cast<std::uintptr_t>(&SampleTimer)};
-    std::array<Call, 3> calls{}, originals{};
+    const std::array<std::uintptr_t, 4> targets{reinterpret_cast<std::uintptr_t>(&RenderBattle),
+        reinterpret_cast<std::uintptr_t>(&RenderTown), reinterpret_cast<std::uintptr_t>(&SampleTimer),
+        reinterpret_cast<std::uintptr_t>(&DrawPrivateFallback)};
+    std::array<Call, 4> calls{}, originals{};
     for (std::size_t i = 0; i < calls.size(); ++i)
         if (!MakeCall(reinterpret_cast<std::uintptr_t>(image + CallOffsets[i]), targets[i], calls[i])) return false;
     auto patchedCache = Cache;
     auto patchedDispatch = Dispatch;
+    auto patchedFallback = Fallback;
     std::memcpy(patchedCache.data() + CallOffsets[2] - CacheOffset, calls[2].data(), calls[2].size());
     for (std::size_t i = 0; i < 2; ++i)
         std::memcpy(patchedDispatch.data() + CallOffsets[i] - DispatchOffset, calls[i].data(), calls[i].size());
+    std::memcpy(patchedFallback.data() + CallOffsets[3] - FallbackOffset, calls[3].data(), calls[3].size());
     if (std::memcmp(image + CacheOffset, patchedCache.data(), patchedCache.size()) == 0 &&
-        std::memcmp(image + DispatchOffset, patchedDispatch.data(), patchedDispatch.size()) == 0)
+        std::memcmp(image + DispatchOffset, patchedDispatch.data(), patchedDispatch.size()) == 0 &&
+        std::memcmp(image + FallbackOffset, patchedFallback.data(), patchedFallback.size()) == 0)
         return true;
     if (std::memcmp(image + CacheOffset, Cache.data(), Cache.size()) != 0 ||
-        std::memcmp(image + DispatchOffset, Dispatch.data(), Dispatch.size()) != 0)
+        std::memcmp(image + DispatchOffset, Dispatch.data(), Dispatch.size()) != 0 ||
+        std::memcmp(image + FallbackOffset, Fallback.data(), Fallback.size()) != 0)
         return false;
 
     // Validate every call and its context before the first mutation. This is
