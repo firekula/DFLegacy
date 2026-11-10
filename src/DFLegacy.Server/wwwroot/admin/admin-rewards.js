@@ -20,6 +20,7 @@ function rewardOperationId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 let activeMailBatch = null;
+let mailBatchRequestPending = false;
 let lastMailBatch = null;
 let lastVictoryOperation = null;
 let rewardsOwner = "";
@@ -36,6 +37,12 @@ function showPendingRewards() {
     ? `待核对操作：${lastVictoryOperation.operationId}；请按原角色及数量 ${lastVictoryOperation.amount} 重试。` : "";
   $("#mailBatchPending").classList.toggle("hidden", !activeMailBatch);
   $("#mailPendingId").textContent = activeMailBatch?.operationId || "";
+  $("#mailBatchRecover").disabled = mailBatchRequestPending;
+  $("#mailBatchConfirm").disabled = mailBatchRequestPending || activeMailBatch?.phase !== "prepared";
+  $("#mailBatchCancel").disabled = mailBatchRequestPending || ["sending", "completed"].includes(activeMailBatch?.phase);
+  $("#mailBatchNew").disabled = mailBatchRequestPending || activeMailBatch?.phase === "sending";
+  $("#mailBatchRetry").disabled = mailBatchRequestPending || activeMailBatch?.phase === "sending";
+  updateMailFormLock();
 }
 function restorePendingRewards() {
   if (!isAdmin() || !auth.userName || rewardsOwner === auth.userName.toUpperCase()) return;
@@ -50,13 +57,9 @@ function restorePendingRewards() {
     $('[name="amount"]', $("#victoryForm")).value = lastVictoryOperation.amount;
   }
   if (activeMailBatch) {
-    const form = $("#mailForm");
     $("#mailScope").value = "all";
-    for (const [name, value] of Object.entries(activeMailBatch.mail)) {
-      const input = $(`[name="${name}"]`, form);
-      if (input) input.value = value ?? "";
-    }
-    updateAttachmentFields(); updateMailScope();
+    restoreMailDraft(activeMailBatch.mail);
+    updateMailScope();
   }
   showPendingRewards();
 }
@@ -73,6 +76,7 @@ function refreshVictoryPointBalance() {
 }
 
 async function prepareBroadcastMail(mail, retryOf = null) {
+  if (mailBatchRequestPending) return;
   restorePendingRewards();
   const signature = JSON.stringify({ mail, retryOf });
   if (activeMailBatch?.phase === "sending" && activeMailBatch.signature !== signature)
@@ -80,17 +84,25 @@ async function prepareBroadcastMail(mail, retryOf = null) {
   if (!activeMailBatch || activeMailBatch.signature !== signature)
     activeMailBatch = { operationId: rewardOperationId(), signature, mail, retryOf, phase: "preview" };
   const batch = activeMailBatch;
-  savePendingRewards();
-  const result = await api("/api/admin/mail/broadcast/preview", {
-    method: "POST", body: JSON.stringify({ operationId: batch.operationId, mail, retryOf })
-  });
-  if (activeMailBatch !== batch) return;
-  if (result.status === "Completed") { renderMailBatchResult(result, batch.mail); return; }
-  batch.phase = "prepared"; savePendingRewards();
-  const attachment = mail.attachmentKind ? `；附件 ID ${mail.itemId} × ${mail.quantity}` : "；无附件";
-  $("#mailBatchPreviewText").textContent = `接收 ${result.targetCount} 个角色；发件人：${mail.sender}；金币：${mail.gold}${attachment}。正文：${mail.text || "（空）"}`;
-  $("#mailBatchConfirm").disabled = false;
-  $("#mailBatchPreview").classList.remove("hidden");
+  mailBatchRequestPending = true;
+  try {
+    savePendingRewards();
+    const result = await api("/api/admin/mail/broadcast/preview", {
+      method: "POST", body: JSON.stringify({ operationId: batch.operationId, mail, retryOf })
+    });
+    if (activeMailBatch !== batch) return;
+    if (result.status === "Completed") { renderMailBatchResult(result, batch.mail); return; }
+    batch.phase = "prepared"; savePendingRewards();
+    const attachments = mailAttachmentValues(batch.mail);
+    const kinds = ["", "普通道具 / 装备", "Avatar 装备", "宠物蛋"];
+    const details = attachments.map((item, index) =>
+      `物品格 ${index + 1}：ID ${item.itemId} × ${item.quantity}（${kinds[item.attachmentKind]}${item.attachmentKind === 2 ? `，能力索引 ${item.avatarAbilityIndex || 0}` : ""}）`).join("\n");
+    $("#mailBatchPreviewText").textContent = `接收 ${result.targetCount} 个角色，每人 ${Math.max(1, attachments.length)} 封邮件；发件人：${batch.mail.sender}；金币：${batch.mail.gold}（仅首封）。\n${details || "无物品附件"}\n正文：${batch.mail.text || "（空）"}`;
+    $("#mailBatchPreview").classList.remove("hidden");
+  } finally {
+    mailBatchRequestPending = false;
+    showPendingRewards();
+  }
 }
 
 function renderMailBatchResult(result, mail) {
@@ -100,6 +112,7 @@ function renderMailBatchResult(result, mail) {
   }
   lastMailBatch = { result, mail };
   $("#mailBatchPreview").classList.add("hidden");
+  updateMailFormLock();
   $("#mailBatchResult").classList.remove("hidden");
   $("#mailBatchId").textContent = result.operationId;
   $("#mailBatchSummary").textContent = `目标 ${result.targetCount} 个角色，发送成功 ${result.sentCount}，失败 ${result.failedCount}，已送达而跳过 ${result.skippedCount}。`;
@@ -124,25 +137,21 @@ function updateMailScope() {
 document.addEventListener("DOMContentLoaded", () => {
   if (!$("#victoryForm")) return;
   $("#mailScope").addEventListener("change", updateMailScope);
-  const invalidatePreview = () => {
-    if (activeMailBatch?.phase !== "sending") {
-      activeMailBatch = null;
-      savePendingRewards();
-    }
+  $("#mailBatchCancel").addEventListener("click", () => {
+    if (mailBatchRequestPending || ["sending", "completed"].includes(activeMailBatch?.phase)) return;
+    activeMailBatch = null;
+    savePendingRewards();
     $("#mailBatchPreview").classList.add("hidden");
-  };
-  $("#mailForm").addEventListener("input", invalidatePreview);
-  $("#mailForm").addEventListener("change", invalidatePreview);
-  $("#mailBatchCancel").addEventListener("click", () => $("#mailBatchPreview").classList.add("hidden"));
+  });
   $("#mailBatchNew").addEventListener("click", () => {
-    if (activeMailBatch?.phase === "sending") { showToast("请先恢复原批次结果。", true); return; }
+    if (mailBatchRequestPending || activeMailBatch?.phase === "sending") { showToast("请先恢复原批次结果。", true); return; }
     activeMailBatch = null; lastMailBatch = null;
     savePendingRewards();
     $("#mailBatchPreview").classList.add("hidden"); $("#mailBatchResult").classList.add("hidden");
   });
   $("#mailBatchConfirm").addEventListener("click", async event => {
-    const batch = activeMailBatch; if (!batch) return;
-    const button = event.currentTarget; button.disabled = true;
+    const batch = activeMailBatch; if (!batch || batch.phase !== "prepared" || mailBatchRequestPending) return;
+    mailBatchRequestPending = true;
     try {
       batch.phase = "sending";
       savePendingRewards();
@@ -150,10 +159,10 @@ document.addEventListener("DOMContentLoaded", () => {
       renderMailBatchResult(result, batch.mail);
       showToast(`全服邮件已处理：成功 ${result.sentCount}，失败 ${result.failedCount}`);
     } catch (error) { showToast(rewardErrorText(errorMessage(error)), true); }
-    finally { button.disabled = false; }
+    finally { mailBatchRequestPending = false; showPendingRewards(); }
   });
   $("#mailBatchRecover").addEventListener("click", async event => {
-    const batch = activeMailBatch; if (!batch) return;
+    const batch = activeMailBatch; if (!batch || mailBatchRequestPending) return;
     const button = event.currentTarget; button.disabled = true;
     try {
       // Preview replays the durable operation. It never sends; a completed
@@ -163,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     finally { button.disabled = false; }
   });
   $("#mailBatchRetry").addEventListener("click", async event => {
-    if (!lastMailBatch) return;
+    if (!lastMailBatch || mailBatchRequestPending) return;
     if (activeMailBatch?.phase === "sending") { showToast("请先恢复原批次结果。", true); return; }
     const button = event.currentTarget; button.disabled = true;
     try {

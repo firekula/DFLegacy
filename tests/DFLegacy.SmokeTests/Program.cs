@@ -76,6 +76,14 @@ if (args.Contains("--chapter-two-free-revival"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--forbidden-worldmap"))
+{
+    ForbiddenDungeonWorldMapSmokeTests.Run(Environment.GetEnvironmentVariable("DF2008_REAL_PVF_PATH") ?? "", Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Forbidden dungeon worldmap smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Length == 0 || args.Contains("--client-diagnostics"))
 {
     await ClientDiagnosticSmokeTests.RunAsync(Check);

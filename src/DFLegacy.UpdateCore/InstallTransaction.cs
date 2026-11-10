@@ -120,6 +120,7 @@ public static class InstallTransaction
                 throw new InvalidDataException("安装后配置迁移校验失败。");
             CommitChange(store, workspace, changes[^1], changes.Count - 1);
             if (store.ReadInstalled()?.Release.ManifestSha256 != staged.Release.ManifestSha256) throw new InvalidDataException("安装记录提交后校验失败。");
+            store.RecordValidation(receipt);
             progress?.Report(new("commit", "installed.json", changes.Count, changes.Count));
             PathPolicy.NoLinks(store.JournalPath); File.Delete(store.JournalPath);
         }
@@ -136,6 +137,7 @@ public static class InstallTransaction
         if (Directory.Exists(store.JournalPath)) throw new InvalidDataException("未决事务记录不是文件。");
         var journal = InstallationStore.ReadJson<Journal>(store.JournalPath, JournalLimit);
         ValidateJournal(store, journal);
+        store.InvalidateValidation();
         using var pins = new DirectoryPin(); pins.Ensure(store.StateDirectory);
         var workspace = Path.Combine(store.StateDirectory, "transactions", journal.Id); pins.Ensure(workspace);
         foreach (var change in journal.Changes) pins.Ensure(Path.GetDirectoryName(Destination(store, change.Path))!);

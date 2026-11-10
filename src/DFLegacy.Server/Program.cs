@@ -344,7 +344,16 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
 app.UseWebPanels(options);
 app.UseRouting();
 app.UseManagerControl(Environment.GetEnvironmentVariable(ManagerControl.TokenEnvironmentVariable));
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // Panel HTML and scripts must come from the same deployment. This also
+        // covers port roots rewritten to /admin/*.html by UseWebPanels above.
+        if (context.Context.Request.Path.StartsWithSegments("/admin"))
+            context.Context.Response.Headers.CacheControl = "no-store";
+    }
+});
 
 // 8081 管理接口鉴权。刻意集中成"路由表 + 一个中间件"而不是给三十多条路由各挂过滤器：
 // 集中判定漏一条一眼可见，逐路由挂则漏挂一处就是一个越权口子（判定表见 AdminAccessPolicy，
@@ -548,19 +557,13 @@ app.MapPost("/api/admin/characters/{characterId:guid}/mail", async (
     Guid characterId,
     AdminSendMailRequest request,
     JsonGameStore store,
-    ItemCatalog items,
     CharacterSessionRegistry sessions,
     CancellationToken token) =>
 {
-    if (!AdminMailComposer.TryCompose(request, items, out var mailRequest, out var error))
-    {
-        return Results.BadRequest(new { error });
-    }
-
     try
     {
-        _ = clientTextEncoding.GetBytes(mailRequest.Sender);
-        _ = clientTextEncoding.GetBytes(mailRequest.Text ?? string.Empty);
+        _ = clientTextEncoding.GetBytes(request.Sender ?? string.Empty);
+        _ = clientTextEncoding.GetBytes(request.Text ?? string.Empty);
     }
     catch (EncoderFallbackException)
     {
@@ -570,16 +573,22 @@ app.MapPost("/api/admin/characters/{characterId:guid}/mail", async (
         });
     }
 
-    var result = await store.SendCharacterMailAsync(characterId, mailRequest, token);
-    if (!result.Created)
+    var result = await store.SendAdminCharacterMailAsync(characterId, request, token);
+    if (result.Status == AdminOperationStatus.Unknown)
+    {
+        return Results.Json(new { result.Status, result.Error }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    if (result.Status != AdminOperationStatus.Completed)
     {
         return Results.BadRequest(new { error = result.Error });
     }
 
     var notifiedOnlineCharacter = sessions.NotifyMailReceived(characterId);
+    var firstMail = result.Mails[0];
     return Results.Created(
-        $"/api/characters/{characterId}/mail/{result.Mail!.Id}",
-        new { result.Mail, NotifiedOnlineCharacter = notifiedOnlineCharacter });
+        $"/api/characters/{characterId}/mail/{firstMail.Id}",
+        new { Mail = firstMail, result.Mails, MailIds = result.Mails.Select(mail => mail.Id).ToArray(),
+            NotifiedOnlineCharacter = notifiedOnlineCharacter });
 });
 
 app.MapAdminRewardEndpoints();

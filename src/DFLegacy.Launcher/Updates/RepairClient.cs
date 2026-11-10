@@ -73,7 +73,7 @@ internal static class RepairClient
 
     internal static async Task<RepairOutcome> RunAsync(RepairRequest request,Core.IReleaseProvider? provider=null,
         IProgress<Core.UpdateProgress>? progress=null,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirmClose=null,CancellationToken token=default,
-        Action<Core.ClientManifest>? validateManifest=null,bool bootstrapSupervisor=false)
+        Action<Core.ClientManifest>? validateManifest=null,bool bootstrapSupervisor=false,bool forceVerification=true)
     {
         var root=Path.GetFullPath(request.Directory);
         if(!Directory.Exists(root))throw new DirectoryNotFoundException("客户端目录不存在："+root);
@@ -91,7 +91,7 @@ internal static class RepairClient
             if(Core.InstallTransaction.HasPending(root))
             {
                 await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
-                progress?.Report(new("recover","",0,0,Detail:"正在恢复未完成事务；此阶段请勿退出。"));
+                progress?.Report(new("recover","",0,0,Detail:"请勿退出。"));
                 await Task.Run(()=>Core.InstallTransaction.Recover(root,progress),CancellationToken.None).ConfigureAwait(false);
             }
             var settings=ReadSettings(request with {Directory=root});
@@ -101,13 +101,13 @@ internal static class RepairClient
             var engine=new Core.UpdateEngine(root,provider);
             if(settings.NetworkDisabled)
             {
-                var local=await engine.ValidateInstalledAsync(progress,token).ConfigureAwait(false);
+                var local=await engine.ValidateInstalledAsync(progress,token,forceVerification:forceVerification).ConfigureAwait(false);
                 if(!local.CanLaunch)throw new InvalidDataException("已停用联网更新，无法修复不完整文件。请明确选择 V4 更新源后重试。"+local.Message);
                 validateManifest?.Invoke(new Core.InstallationStore(root).ReadInstalled()!.Release.Manifest);
                 report.Complete("offline-verified-network-disabled");
                 return new(true,true,"已停用联网更新；"+local.Message);
             }
-            var found=await engine.CheckAsync(progress,token).ConfigureAwait(false);
+            var found=await engine.CheckAsync(progress,token,forceVerification:forceVerification).ConfigureAwait(false);
             if(found.Target is {} target)validateManifest?.Invoke(target.Manifest);
             else if(found.Installed is {} installed)validateManifest?.Invoke(installed.Release.Manifest);
             if(found.Verification is {} verified)
@@ -127,7 +127,7 @@ internal static class RepairClient
                 .Append(Path.Combine(root,"launcher.json"));
             await ReleaseLocksAsync(WithoutSupervisor(files),confirmClose,token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"正在提交修复；此阶段请勿退出。"));
+            progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"请勿退出。"));
             await Task.Run(()=>Core.InstallTransaction.Apply(root,staged,progress),CancellationToken.None).ConfigureAwait(false);
             var final=await engine.ValidateInstalledAsync(progress,CancellationToken.None).ConfigureAwait(false);
             if(!final.CanLaunch)throw new InvalidDataException(final.Message);
@@ -173,7 +173,7 @@ internal static class RepairClient
             if(!quiet){window=new Views.UpdateInstallWindow{Title="修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();}
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
-                var message=$"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path} {p.Detail}";
+                var message=UpdateProgressText.Format(p);
                 if(quiet)Console.WriteLine(message);
                 else if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
                 else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,

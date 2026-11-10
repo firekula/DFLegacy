@@ -36,19 +36,19 @@ public static class DungeonRoomClearRules
         }
 
         var bossIds = room.Monsters
-            .Where(monster => monster.Type == GameDungeonMonsterTypes.Boss)
+            .Where(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss)
             .Select(monster => monster.UniqueId)
             .ToArray();
         if (bossIds.Length == 0)
         {
-            return aliveMonsterIds.Count == 0
+            return !room.Monsters.Any(monster => monster.IsHostile && aliveMonsterIds.Contains(monster.UniqueId))
                 ? new DungeonRoomClearDecision(
                     DungeonRoomClearReason.AllMonstersDefeated,
                     [])
                 : DungeonRoomClearDecision.None;
         }
 
-        if (defeatedMonster.Type == GameDungeonMonsterTypes.Boss
+        if (defeatedMonster.IsHostile && defeatedMonster.Type == GameDungeonMonsterTypes.Boss
             && !bossIds.Any(aliveMonsterIds.Contains))
         {
             return new DungeonRoomClearDecision(
@@ -66,7 +66,7 @@ public static class DungeonRoomClearRules
         return DungeonRoomClearDecision.None;
 
         ushort[] RemainingActiveMonsters() => room.Monsters
-            .Where(monster => aliveMonsterIds.Contains(monster.UniqueId)
+            .Where(monster => monster.IsHostile && aliveMonsterIds.Contains(monster.UniqueId)
                 && (destroyedPassiveObjects is null || monster.IsBoxMonster == 0
                     || destroyedPassiveObjects.Contains(monster.BoxIndex)))
             .Select(monster => monster.UniqueId).Order().ToArray();

@@ -14,7 +14,7 @@ public sealed class UpdateEngine
     {
         this.root = Path.GetFullPath(root); this.provider = provider; provider.Source.Validate(); store = new(this.root);
     }
-    public async Task<UpdateCheck> CheckAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default)
+    public async Task<UpdateCheck> CheckAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default, bool forceVerification = false)
     {
         if (InstallTransaction.HasPending(root)) throw new InvalidDataException("存在未完成安装，请先恢复后再启动。");
         VerifiedRelease? target = null; Exception? unavailable = null;
@@ -35,7 +35,7 @@ public sealed class UpdateEngine
                 if (unavailable != null) throw new IOException("无法连接更新源，也没有可完整校验的可信安装记录。", unavailable);
                 return new(null, null, null, false, false, false, "当前源尚未提供 V4 清单。");
             }
-            var local = await VerifyInstalled(installed, progress, token).ConfigureAwait(false);
+            var local = await VerifyInstalled(installed, progress, token, forceVerification).ConfigureAwait(false);
             return new(null, installed, local.Verification, false, local.CanLaunch, true,
                 local.CanLaunch ? $"文件符合缓存版本 {local.Version}，未确认线上最新版本。" : local.Message);
         }
@@ -52,6 +52,12 @@ public sealed class UpdateEngine
                 throw new InvalidDataException("新清单遗漏了旧受管理文件，且没有声明删除或解除管理。");
         }
         else if (manifest.MinimumSequence != 0) throw new InvalidDataException("此更新需要已验证的旧版本，请先安装桥接包。");
+        if (installed != null && installed.Release.ManifestSha256 == target.ManifestSha256)
+        {
+            var local = await VerifyInstalled(installed, progress, token, forceVerification).ConfigureAwait(false);
+            return new(target, installed, local.Verification, !local.CanLaunch, local.CanLaunch, false,
+                local.CanLaunch ? $"已确认当前版本 {manifest.Version}；使用已完成校验的安装记录。" : local.Message);
+        }
         var verification = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
         var configReady = ConfigurationReady(manifest);
         var needsInstall = installed == null || installed.Release.ManifestSha256 != target.ManifestSha256 || !verification.IsValid || !configReady;
@@ -59,20 +65,24 @@ public sealed class UpdateEngine
         return new(target, installed, verification, needsInstall, canLaunch, false,
             needsInstall ? $"已确认目标 {manifest.Version}；需要修复 {verification.Problems.Count} 个文件并核验配置。" : $"已完整校验 {manifest.Files.Length} 个文件，当前版本 {manifest.Version}。");
     }
-    public async Task<LaunchValidation> ValidateInstalledAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default)
+    public async Task<LaunchValidation> ValidateInstalledAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default, bool forceVerification = false)
     {
         using var lease = InstallationLease.Acquire(root);
         if (InstallTransaction.HasPending(root)) return new(false, "未知", "存在未完成安装，必须先恢复。");
         var installed = store.ReadInstalled();
         if (installed == null) return new(false, "未知", "没有已提交的 V4 安装记录。");
         installed.Release.Validate(provider.Source);
-        return await VerifyInstalled(installed, progress, token).ConfigureAwait(false);
+        return await VerifyInstalled(installed, progress, token, forceVerification).ConfigureAwait(false);
     }
-    private async Task<LaunchValidation> VerifyInstalled(InstalledReceipt installed, IProgress<UpdateProgress>? progress, CancellationToken token)
+    private async Task<LaunchValidation> VerifyInstalled(InstalledReceipt installed, IProgress<UpdateProgress>? progress, CancellationToken token, bool forceVerification = false)
     {
         var manifest = installed.Release.Manifest;
+        token.ThrowIfCancellationRequested();
+        if (!forceVerification && store.HasValidatedReceipt(installed) && ConfigurationReady(manifest))
+            return new(true, manifest.Version, $"文件符合已校验安装记录 {manifest.Version}，未确认线上最新版本。");
         var verification = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
         var good = verification.IsValid && ConfigurationReady(manifest);
+        if (good) store.RecordValidation(installed); else store.InvalidateValidation();
         return new(good, manifest.Version, good ? $"文件符合缓存版本 {manifest.Version}，未确认线上最新版本。" : "受管理文件或配置未通过完整校验，请修复后启动。", verification);
     }
     private bool ConfigurationReady(ClientManifest manifest)

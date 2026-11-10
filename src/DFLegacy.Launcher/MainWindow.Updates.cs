@@ -9,7 +9,6 @@ public partial class MainWindow
     internal void StartUpdates()
     {
         if (ChapterTwoClient.IsBundled) return;
-        if (App.BootstrapVerified) { Show(); return; }
         if (_windowClosed || updateCoordinator is not null) return;
         try
         {
@@ -19,7 +18,7 @@ public partial class MainWindow
         catch (Exception ex)
         {
             Show();
-            ClassicMessage.Show(this, "自动更新暂不可用，可继续登录。\n" + ex.Message);
+            ToolTip = "自动更新暂不可用，可继续登录。\n" + ex.Message;
         }
     }
 

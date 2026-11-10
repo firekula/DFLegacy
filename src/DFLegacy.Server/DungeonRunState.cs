@@ -133,10 +133,10 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         IReadOnlySet<ushort> defeated,
         IReadOnlySet<byte> destroyedPassiveObjects)
     {
-        var bosses = room.Monsters.Where(monster => monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
+        var bosses = room.Monsters.Where(monster => monster.IsHostile && monster.Type == GameDungeonMonsterTypes.Boss).ToArray();
         var allBossesDead = room.MapType == DungeonMapType.Boss && bosses.Length > 0
             && bosses.All(monster => defeated.Contains(monster.UniqueId));
-        return room.Monsters.All(monster => defeated.Contains(monster.UniqueId)
+        return room.Monsters.All(monster => !monster.IsHostile || defeated.Contains(monster.UniqueId)
             || allBossesDead && monster.IsBoxMonster != 0
                 && !destroyedPassiveObjects.Contains(monster.BoxIndex));
     }
@@ -353,7 +353,7 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         }
 
         if (_current.EncounterRoom.Monsters.All(monster =>
-                _current.DefeatedMonsterIds.Contains(monster.UniqueId)))
+                !monster.IsHostile || _current.DefeatedMonsterIds.Contains(monster.UniqueId)))
         {
             _current.HellEncounterCleared = true;
             _current.DestroyedPassiveObjectIds.UnionWith(

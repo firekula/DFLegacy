@@ -2204,7 +2204,7 @@ internal sealed class DungeonFixture : IDisposable
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"dflegacy-dungeon-party-{Guid.NewGuid():N}");
 
-    public DungeonFixture(string? bossMonsterRows = null)
+    public DungeonFixture(string? bossMonsterRows = null, string? bossMonsterTeams = null)
     {
         foreach (var directory in new[] { "dungeon", "map", "quest" })
         {
@@ -2232,7 +2232,9 @@ internal sealed class DungeonFixture : IDisposable
                 + $"[type] `[{(name == "boss" ? "boss" : "normal")}]`\n"
                 + "[greed]\n`P`\n[monster]\n"
                 + (name == "boss" && bossMonsterRows is not null ? bossMonsterRows : "1 1 1 100 100 0 1 1 `[fixed]` `[normal]`\n")
-                + "[/monster]\n");
+                + "[/monster]\n"
+                + (name == "boss" && bossMonsterTeams is not null
+                    ? "[monster team]\n" + bossMonsterTeams + "\n[/monster team]\n" : ""));
         }
 
         var options = new ServerOptions { ScriptPvfPath = "", SkillScriptPath = _root };

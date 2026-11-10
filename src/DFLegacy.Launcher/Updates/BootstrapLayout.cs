@@ -49,14 +49,63 @@ internal static class BootstrapLayout
         if(!Core.FileVerifier.MatchesAsync(Core.PathPolicy.Resolve(root,EntryName),entry.Size,entry.Sha256).GetAwaiter().GetResult())
             throw new InvalidDataException("此更新需要替换正在运行的固定入口。请使用新的完整启动包；当前入口和恢复副本已保留。");
     }
+    // This gate only reads completed evidence. It must never create a record or
+    // fall back to hashing resources before the repair progress UI is available.
+    internal static bool TryValidateCompleted(string root,string architecture,Core.ReleaseSource? providerSource=null,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();
+        using(var lease=Core.InstallationLease.Acquire(root))
+            if(HasPending(root))return false;
+        var settings=RepairClient.ReadSettings(new(root));
+        if(providerSource is not null&&providerSource!=settings.Source)throw new InvalidDataException("修复提供方与配置/安装记录的来源不一致。");
+        using(var lease=Core.InstallationLease.Acquire(root))
+        {
+            if(HasPending(root))return false;
+            var store=new Core.InstallationStore(root);
+            Core.InstalledReceipt? receipt;
+            try{receipt=store.ReadInstalled();}catch(InvalidDataException){return false;}
+            if(receipt is null)return false;
+            receipt.Release.Validate(settings.Source);
+            if(!store.HasValidatedReceipt(receipt))return false;
+            var migrations=receipt.Release.Manifest.Migrations;
+            if(migrations.Length>0)
+            {
+                var path=Core.PathPolicy.Resolve(root,"launcher.json",true);
+                if(File.Exists(path)&&new FileInfo(path).Length>Core.ConfigurationMigration.MaxBytes)throw new InvalidDataException("配置文件过大。");
+                if(!Core.ConfigurationMigration.IsSatisfied(File.Exists(path)?File.ReadAllBytes(path):"{}"u8.ToArray(),migrations))return false;
+            }
+            token.ThrowIfCancellationRequested();
+            try{RequireReceiptLayout(root,architecture,receipt);}catch(InvalidDataException){return false;}
+            return true;
+        }
+    }
+    private static bool HasPending(string root)
+    {
+        var legacy=Path.Combine(root,".dflegacy","pending.json");Core.PathPolicy.NoLinks(legacy);
+        return File.Exists(legacy)||Directory.Exists(legacy)||Core.InstallTransaction.HasPending(root);
+    }
     internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
     {
+        var settings=RepairClient.ReadSettings(new(root));
+        // The v0.1.8 updater can install this UI before it knows how to write
+        // validated.json. Verify that installation once; later handoffs reuse
+        // its receipt. This local operation never discovers or downloads releases.
+        using var http=Core.ReleaseProvider.CreateHttpClient();
+        var engine=new Core.UpdateEngine(root,new Core.ReleaseProvider(http,settings.Source));
+        var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
+        if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
         using var lease=Core.InstallationLease.Acquire(root);
         if(Core.InstallTransaction.HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");
-        var receipt=new Core.InstallationStore(root).ReadInstalled()??throw new InvalidDataException("缺少已验证的启动组件安装记录。");
+        token.ThrowIfCancellationRequested();
+        var store=new Core.InstallationStore(root);
+        var receipt=store.ReadInstalled()??throw new InvalidDataException("缺少已验证的启动组件安装记录。");
+        receipt.Release.Validate(settings.Source);
+        if(!store.HasValidatedReceipt(receipt))throw new InvalidDataException("启动组件校验记录无效；请使用原来的启动图标自动修复。");
+        RequireReceiptLayout(root,architecture,receipt);
+    }
+    private static void RequireReceiptLayout(string root,string architecture,Core.InstalledReceipt receipt)
+    {
         RequireManifest(receipt.Release.Manifest);
-        var result=await Core.FileVerifier.VerifyAsync(root,receipt.Release.Manifest,token:token).ConfigureAwait(false);
-        if(!result.IsValid)throw new InvalidDataException("启动组件未通过完整校验；请使用原来的启动图标自动修复。");
         var path=Core.PathPolicy.Resolve(root,DescriptorName);Core.PathPolicy.NoLinks(path);
         using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
         if(stream.Length>4096)throw new InvalidDataException("启动恢复描述文件过大。");

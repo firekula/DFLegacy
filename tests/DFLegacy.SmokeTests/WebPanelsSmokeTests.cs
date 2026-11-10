@@ -144,6 +144,7 @@ internal static class WebPanelsSmokeTests
                 using var gmRoot = await Get(gm, "/"); using var playerRoot = await Get(player, "/");
                 var gmHtml = await gmRoot.Content.ReadAsStringAsync();
                 check(gmRoot.StatusCode == HttpStatusCode.OK && gmHtml.Contains("admin.js"), "GM root serves actual GM page");
+                check(gmRoot.Headers.CacheControl?.NoStore == true, "GM root cannot retain a stale page across upgrades");
                 // A page can load while a separate listener silently rejects its feature scripts.
                 // Fetch every local script referenced by the actual page through the GM listener.
                 foreach (System.Text.RegularExpressions.Match script in System.Text.RegularExpressions.Regex.Matches(
@@ -154,11 +155,15 @@ internal static class WebPanelsSmokeTests
                     check(resource.StatusCode == HttpStatusCode.OK
                         && resource.Content.Headers.ContentType?.MediaType?.Contains("javascript") == true,
                         "GM page feature script is served on its separate listener: " + path);
+                    check(path.Contains("?v="), "GM script URL bypasses legacy unversioned caches: " + path);
+                    check(resource.Headers.CacheControl?.NoStore == true, "GM feature script cannot be reused without fetching: " + path);
                 }
                 check(playerRoot.StatusCode == HttpStatusCode.OK && (await playerRoot.Content.ReadAsStringAsync()).Contains("玩家"), "player root serves actual player page");
+                check(playerRoot.Headers.CacheControl?.NoStore == true, "player root cannot retain a stale page across upgrades");
                 foreach (var port in new[] { gm, player })
                 {
                     using var css = await Get(port, "/admin/admin.css"); check(css.StatusCode == HttpStatusCode.OK, "panel CSS works on port " + port);
+                    check(css.Headers.CacheControl?.NoStore == true, "panel styles cannot retain stale layout on port " + port);
                     client.DefaultRequestHeaders.Add(ManagerControl.TokenHeader, "panel-secret");
                     using var manager = await Get(port, "/internal/manager/status");
                     check(manager.StatusCode == HttpStatusCode.NotFound, "panel cannot reach manager control with correct secret");
@@ -191,6 +196,7 @@ internal static class WebPanelsSmokeTests
                 await ModerationHttpAsync(client, gm, player, adminToken, check);
                 client.DefaultRequestHeaders.Authorization = null;
                 using var oldPage = await Get(api, "/admin/index.html"); check(oldPage.StatusCode == HttpStatusCode.OK, "legacy API-port page remains compatible");
+                check(oldPage.Headers.CacheControl?.NoStore == true, "legacy API-port page also prevents stale cached markup");
                 using var playerLogin = await client.PostAsync($"http://127.0.0.1:{player}/api/auth/login", new StringContent("{\"userName\":\"paneladmin\",\"password\":\"panel-password\"}", Encoding.UTF8, "application/json"));
                 check(playerLogin.StatusCode == HttpStatusCode.OK, "player listener retains login API");
             }

@@ -59,6 +59,15 @@ struct Root {
         fs::copy_file(exe, state() / (hash + ".exe"), fs::copy_options::overwrite_existing);
         Write(state() / L"recovery.ini", DescriptorBytes(hash));
     }
+    void Completed(const fs::path& exe) {
+        Primary(exe); fs::copy_file(exe, path / L"DFLegacy.Launcher.App.exe");
+        auto descriptor = DescriptorBytes(Hash(exe));
+        descriptor.replace(descriptor.find(std::string(64, 'a')), 64, Hash(exe));
+        Write(path / L"DFLegacy.Bootstrap.ini", descriptor);
+        fs::create_directories(path / L".dflegacy/v4");
+        Write(path / L".dflegacy/v4/installed.json", "fixture verified installation");
+        Write(path / L".dflegacy/v4/validated.json", "fixture completed verification");
+    }
 };
 struct Observation { int result; fs::path image; fs::path root; std::vector<std::wstring> arguments; };
 std::vector<Observation> Observations(const Root& root) {
@@ -165,6 +174,53 @@ int wmain(int argc, wchar_t** argv) {
             Require(Run(root.path, {}).exitCode == 0, "recovery failed");
             auto observed = Observations(root); Require(observed.size() == 1 && observed[0].result == 0, "wrong recovery process");
         }
+    });
+    test("completed startup receipt opens app directly and invalidates on critical change", [&] {
+        Root root(++index); root.Completed(good);
+        Require(Run(root.path, {}).exitCode == 0, "initial verified updater failed");
+        Require(Run(root.path, {L"--self-test", L"中文 fast"}).exitCode == 0, "receipt fast launch failed");
+        auto observed = Observations(root);
+        Require(observed.size() == 2 && observed[1].image == root.path / L"DFLegacy.Launcher.App.exe" &&
+            observed[1].arguments == std::vector<std::wstring>{L"--self-test", L"中文 fast"}, "unchanged startup reran updater instead of app");
+        Write(root.path / L"reject-fast", "");
+        Require(Run(root.path, {}).exitCode == 0, "unready receipt app did not enter recovery");
+        observed = Observations(root);
+        Require(observed.size() == 4 && observed[2].image.parent_path() == root.path && observed[3].image.parent_path() != root.path,
+            "rejected app must exit before the verified worker takes over");
+        Require(Run(root.path, {L"--self-test"}).exitCode == 0, "headless app rejected before readiness must recover before executing the command");
+        fs::remove(root.path / L"reject-fast");
+        Write(root.path / L"DFLegacy.Launcher.App.exe", "damaged app");
+        Require(Run(root.path, {}).exitCode == 0 && Observations(root).back().image.parent_path() != root.path, "critical app corruption bypassed repair");
+    });
+    test("headless receipt command failure after readiness never repeats command", [&] {
+        Root root(++index); root.Completed(good);
+        fs::copy_file(terminal, root.path / L"DFLegacy.Launcher.App.exe", fs::copy_options::overwrite_existing);
+        auto descriptor = DescriptorBytes(Hash(good));
+        descriptor.replace(descriptor.find(std::string(64, 'a')), 64, Hash(terminal));
+        Write(root.path / L"DFLegacy.Bootstrap.ini", descriptor);
+        Require(Run(root.path, {}).exitCode == 0, "failed to establish terminal app receipt");
+        Require(Run(root.path, {L"--self-test"}).exitCode == 1, "terminal headless command was reported as success");
+        const auto observed = Observations(root);
+        Require(observed.size() == 2 && observed.back().image.parent_path() == root.path && observed.back().result == 3,
+            "completed headless command retried through a worker");
+    });
+    test("startup receipt rejects missing files tampering pending journals and another root", [&] {
+        for (const auto* changed : {L".dflegacy/bootstrap/startup.dat", L"DFLegacy.Launcher.App.exe", L"DFLegacy.Updater.exe",
+            L"DFLegacy.Bootstrap.ini", L".dflegacy/v4/installed.json", L".dflegacy/v4/validated.json",
+            L".dflegacy/v4/pending.json", L".dflegacy/pending.json"}) {
+            Root root(++index); root.Completed(good);
+            Require(Run(root.path, {}).exitCode == 0, "initial completion failed");
+            if (std::wstring(changed).ends_with(L".exe")) fs::remove(root.path / changed);
+            else Write(root.path / changed, "changed identity");
+            Require(Run(root.path, {L"--self-test"}).exitCode == 0, "receipt invalidation did not use available recovery");
+            const auto observed = Observations(root);
+            Require(observed.size() == 2 && observed.back().image.parent_path() != root.path, "invalid receipt or pending transaction launched app directly");
+        }
+        Root first(++index); first.Completed(good); Require(Run(first.path, {}).exitCode == 0, "source completion failed");
+        Root other(++index); other.Completed(good);
+        fs::copy_file(first.state() / L"startup.dat", other.state() / L"startup.dat");
+        Require(Run(other.path, {L"--self-test"}).exitCode == 0 && Observations(other).back().image.parent_path() != other.path,
+            "copied receipt authorized another installation root");
     });
     test("failed new updater preserves old receipt and retries different recovery once", [&] {
         Root root(++index); root.Primary(fail); root.Recovery(good);

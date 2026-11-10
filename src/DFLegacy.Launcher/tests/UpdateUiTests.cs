@@ -91,9 +91,16 @@ internal static class UpdateUiTests
         var compact=new UpdateInstallWindow { ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };
         try
         {
-            compact.Show(); compact.UpdateLayout(); check(compact.ActualWidth==286 && compact.ActualHeight==104,"install helper uses native 286x104 geometry"); check(compact.FindName("InstallStatus") is PixelText,"helper displays truthful phase without invented percentage");
+            compact.Show(); compact.UpdateLayout(); check(compact.ActualWidth==286 && compact.ActualHeight==104,"install helper uses native 286x104 geometry");
+            check(compact.FindName("InstallStatus") is TextBlock initialStatus
+                && initialStatus.Text.Contains("等待登录器退出") && !initialStatus.Text.Contains('%')
+                && initialStatus.TextAlignment==TextAlignment.Left
+                && initialStatus.TextWrapping==TextWrapping.NoWrap
+                && initialStatus.TextTrimming==TextTrimming.CharacterEllipsis,
+                "helper displays truthful phase without invented percentage");
             compact.Render(new UpdateViewState(UpdatePhase.Installing,"正在准备安全安装助手…",ReplacesScriptPvf:true));
-            check(compact.FindName("InstallStatus") is PixelText status && status.Text.Contains("替换 Script.pvf") && status.Text.Contains("备份已有文件"),
+            check(compact.FindName("InstallStatus") is TextBlock status && status.Text.Contains("替换 Script.pvf") && status.Text.Contains("备份已有文件")
+                && status.ToolTip is string details && details.Contains("替换 Script.pvf") && details.Contains("备份已有文件"),
                 "compact V3 auto-install status discloses PVF replacement and backup");
             compact.Render(new UpdateViewState(UpdatePhase.Downloading,"正在下载更新…",Progress:new(50,100,10))); compact.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");

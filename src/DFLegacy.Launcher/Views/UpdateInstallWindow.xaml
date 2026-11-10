@@ -5,7 +5,9 @@
  UseLayoutRounding="True" SnapsToDevicePixels="True" ShowInTaskbar="True">
  <Canvas Width="286" Height="104">
   <Image Source="../Assets/Skin/classic-install-panel.png" Width="286" Height="104"/>
-  <c:PixelText x:Name="InstallStatus" Canvas.Left="15" Canvas.Top="42" Width="256" Height="24" Text="正在等待登录器退出并安装更新…" FontSize="12" Foreground="#F4DCAF" TextAlignment="Center"/>
+  <TextBlock x:Name="InstallStatus" Canvas.Left="22" Canvas.Top="42" Width="249" Height="24" Padding="0,4,0,0"
+   Text="正在等待登录器退出并安装更新…" FontFamily="宋体" FontSize="12" Foreground="#F4DCAF" TextAlignment="Left"
+   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Aliased"/>
   <c:OriginalProgressStrip x:Name="InstallProgress" Canvas.Left="14" Canvas.Top="74" Width="258" Height="8"/>
  </Canvas>
 </Window>
