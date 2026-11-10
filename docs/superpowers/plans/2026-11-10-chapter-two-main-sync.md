@@ -29,9 +29,9 @@
 
 - [x] Back up the five paused free-card files and preserve stash 42ead8b3a819807a75e59b2f2a22dc492dab5b59 under a dedicated ref.
 - [x] Fetch origin without modifying main; confirm local main and origin/main both point to 209a1da.
-- [ ] Resolve MainWindow.Updates.cs by keeping the C2 guard and the new main background-discovery behavior; preserve both SmokeTests/Program.cs test entry sections.
-- [ ] Run the default server smoke suite, launcher/update tests, manager/browser tests and relevant native fixtures in new isolated artifact paths. Record failures before fixing them.
-- [ ] Review independent client and server/PVF audits. Generate new paired resources only if an evidenced C2 semantic delta requires them.
-- [ ] Commit the validated merge. Restore the paused free-card work from its exact ref and complete/test/review it as a separate change.
-- [ ] Build isolated server/launcher/native outputs. Continue the stopped native test matrix, including four-party displays, mail/stall second row, and the isolated empty-bag rarity fixture.
-- [ ] Preserve current test results and unfinished items in the report; cleanly stop owned test services at handoff.
+- [x] Resolve MainWindow.Updates.cs by keeping the C2 guard and the new main background-discovery behavior; preserve both SmokeTests/Program.cs test entry sections.
+- [x] Run the default server smoke suite, launcher/update tests, manager/browser tests and relevant native fixtures in new isolated artifact paths. Record failures before fixing them.
+- [x] Review independent client and server/PVF audits. Generate new paired resources only if an evidenced C2 semantic delta requires them. Existing ordinary C2 resource pair remains valid; C1-only IDs are not copied.
+- [x] Commit the validated merge. Restore the paused free-card work from its exact ref and complete/test/review it as a separate change. Merge 35cdf41; fixes 7cd7c4b, with native UI verification tracked separately.
+- [x] Build isolated server/launcher/native outputs. Continue the stopped native matrix: completed empty-bag five-rarity pickup/equip and new four-party private HUD acceptance; ordinary four-party first-room combat plus three-party next-room transition recorded. Full four-party cards and commercial drag/drop cases remain explicit follow-up work.
+- [x] Preserve current test results and unfinished items in the report; cleanly stop owned test services at handoff. Both four-client runs exited normally; final owned service saved/stopped and no .2 listeners remain.
