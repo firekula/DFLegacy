@@ -9,11 +9,17 @@
 #include <cstring>
 #include <cwchar>
 #include <climits>
+#include <cmath>
 namespace dfl::chapter_two::test_control { namespace {
 using U=std::uint32_t;
 template<class T>T Read(U a){return *reinterpret_cast<const T*>(a);}
 struct Target {U actor=0,uid=0,hp=0;};
-struct Observation {State state{};std::array<Target,256> targets{};unsigned count=0;};
+struct Coordinates {bool valid=false;float x=0,y=0,z=0;};
+struct Player {U uid=0,hp=0;bool dead=false;Coordinates position{};};
+struct Enemy {U uid=0,hp=0;bool dead=false,local=false;};
+struct Observation {State state{};std::array<Target,256> targets{};unsigned count=0;
+ Coordinates position{};std::array<Player,4> players{};unsigned playerCount=0;
+ std::array<Enemy,256> enemies{};unsigned enemyCount=0;};
 struct Published {Observation observation{};std::uint64_t request=0;unsigned applied=0;char reason[64]="none";};
 SRWLOCK Lock=SRWLOCK_INIT;
 Published Out{};Request Inbox{};bool Pending=false;
@@ -56,14 +62,23 @@ bool RegistryBinding(U registry,U uid,U user){
 }
 bool Context(State& s){
  const auto game=Read<U>(0xd564ac),registry=Read<U>(0xd56cf4),ui=Read<U>(0xd56d1c);
- U scene=0,hp=0,uid=0;if(!game||!registry||!ui||!Secure(game+0x10,scene)||scene!=3)return false;
+ U scene=0,hp=0,uid=0;if(!game||!registry||!ui||!Secure(game+0x10,scene))return false;
+ if(scene==1){
+  const auto user=Read<U>(registry+0x2c),actor=Read<U>(0xd7a8c0);
+  if(!user||!actor||Read<U>(actor)!=0xaea99c||Read<U>(user+0x164)!=actor)return false;
+  uid=Read<unsigned short>(user+8);if(!uid||!RegistryBinding(registry,uid,user))return false;
+  const auto map=Read<U>(actor+0xfc);if(!map)return false;const auto area=Read<U>(map+0x104);
+  if(!area||!Read<U>(area+0x50))return false;
+  s.actor=actor;s.map=map;s.stage=area;s.uid=uid;s.scene=1;return true;
+ }
+ if(scene!=3)return false;
  const auto actor=Read<U>(0xd7a8bc),user=Read<U>(registry+0x2c);
  if(!actor||!user||Read<U>(user+0x168)!=actor||!Secure(actor+0xe8,uid)||!uid||uid>65535||!RegistryBinding(registry,uid,user))return false;
  U globalUid=0;if(!Secure(0xd7a8e4,globalUid)||globalUid!=uid)return false;
  const auto map=Read<U>(actor+0xfc),stage=Read<U>(ui+0x200010);
  if(!map||!stage||Read<U>(stage+0xb0)!=map||Read<U>(actor+0x1524)||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
  if(!Method(actor,0x22c,0x6f48b0)||!Method(actor,0x3d0,0x6f4500))return false;
- s.actor=actor;s.map=map;s.stage=stage;s.uid=uid;return true;
+ s.actor=actor;s.map=map;s.stage=stage;s.uid=uid;s.scene=3;return true;
 }
 bool TargetFor(U actor,const State&s,Target& t){
  if(!actor||actor==s.actor||(Read<U>(actor+0xe0)&0x211)!=0x211||Read<U>(actor+0xfc)!=s.map||Read<U>(actor+0x4b4)!=s.actor||Read<U>(actor+0x1524))return false;
@@ -73,21 +88,114 @@ bool TargetFor(U actor,const State&s,Target& t){
  U uid=0,hp=0;if(!Secure(actor+0xe8,uid)||uid>65535||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
  t={actor,uid,hp};return true;
 }
+struct PositionBinding {U controller=0,vector=0;Coordinates position{};};
+bool PositionFor(U actor,PositionBinding& binding){
+ if(!actor||!Method(actor,0x84,0x487050)||!Method(actor,0x90,0x487070))return false;
+ const auto controller=Read<U>(actor+0xf4);if(!controller)return false;
+ if(Read<U>(controller+0x78)&&Read<unsigned char>(controller+0x7c))return false;
+ const auto vector=Read<U>(controller)?Read<U>(controller):controller+8;
+ const auto vt=Read<U>(vector);if(!vt)return false;
+ const auto getter=Read<U>(vt),setter=Read<U>(vt+4);
+ const bool plain=getter==0x489be0&&setter==0x489bf0,secure=getter==0x4f4210&&setter==0x4f4230;
+ if(!plain&&!secure)return false;
+ float values[3]{};
+ for(U axis=0;axis<3;++axis){
+  if(secure){U bits=0,mirror=0;if(!Secure(vector+0x35+8*axis,bits)||!Secure(vector+0x65+8*axis,mirror))return false;std::memcpy(values+axis,&bits,4);}
+  else values[axis]=Read<float>(vector+4+4*axis);
+  if(!std::isfinite(values[axis])||std::fabs(values[axis])>=1000000)return false;
+ }binding={controller,vector,{true,values[0],values[1],values[2]}};return true;
+}
+bool PositionSignatures(){
+ constexpr unsigned char setter[]={0x55,0x8b,0xec,0x8b,0x89,0xf4,0,0,0,0x5d,0xe9,0x71,0xbf,0x06,0};
+ constexpr unsigned char getter[]={0x55,0x8b,0xec,0x8b,0x89,0xf4,0,0,0,0x5d,0xe9,0xf1,0xbd,0x06,0};
+ constexpr unsigned char publisher[]={0x55,0x8b,0xec,0x83,0xec,0x50,0x56,0x8b,0xf1,0x8b,0x4e,0x74,0x85,0xc9,0x0f,0x84,0xa2,0x01,0,0,0xe8,0xd7,0x64,0xf9,0xff,0x84,0xc0};
+ constexpr unsigned char axis[]={0x55,0x8b,0xec,0x8b,0x01,0x85,0xc0,0xc6,0x81,0x8c,0,0,0,0x01};
+ return !std::memcmp(reinterpret_cast<void*>(0x487050),setter,sizeof(setter))&&
+ !std::memcmp(reinterpret_cast<void*>(0x487070),getter,sizeof(getter))&&
+ !std::memcmp(reinterpret_cast<void*>(0x4f36d0),publisher,sizeof(publisher))&&
+ !std::memcmp(reinterpret_cast<void*>(0x4f2fd0),axis,sizeof(axis))&&
+ Read<unsigned char>(0x4f388a)==0xc2&&Read<unsigned short>(0x4f388b)==8;
+}
+bool PublicationReady(const State&s,PositionBinding& binding){
+ if(!PositionSignatures()||!PositionFor(s.actor,binding)||Read<U>(binding.controller+0x74)!=s.actor||Read<U>(s.map+0x104)!=s.stage||!Read<U>(0xd68ef8))return false;
+ constexpr U offsets[]={0x3c,0x40,0x48,0x5c,0x160},methods[]={0x406aa0,0x406f00,0x406ab0,0x406ad0,0x4a8830};
+ for(unsigned i=0;i<5;++i)if(!Method(s.actor,offsets[i],methods[i]))return false;
+ const auto network=Read<U>(0xd56d1c),vt=Read<U>(network);if(!vt)return false;
+ constexpr U required[]={8,0x20,0x24,0x2c,0x34};for(const auto offset:required)if(!Read<U>(vt+offset))return false;
+ return true;
+}
+const char* Position(const Request&r,const State& live,unsigned& applied){
+ PositionBinding before{};if(!PublicationReady(live,before))return "position_publication_unavailable";
+ using Set=void(__thiscall*)(void*,int,int);using Get=int(__thiscall*)(void*,int);using Publish=void(__thiscall*)(void*,bool,int);
+ using Authority=bool(__thiscall*)(void*);auto*actor=reinterpret_cast<void*>(live.actor);
+ if(!reinterpret_cast<Authority>(0x489bc0)(actor))return "position_not_local_authority";
+ applied=1;
+ reinterpret_cast<Set>(0x487050)(actor,0,r.x);reinterpret_cast<Set>(0x487050)(actor,1,r.y);
+ State after=Identity;PositionBinding binding{};
+ if(!Context(after)||after.actor!=live.actor||after.map!=live.map||after.stage!=live.stage||after.uid!=live.uid||
+ !PublicationReady(after,binding)||binding.controller!=before.controller||binding.vector!=before.vector||
+ reinterpret_cast<Get>(0x487070)(actor,0)!=r.x||reinterpret_cast<Get>(0x487070)(actor,1)!=r.y)return "position_partial";
+ // Original reposition callers use (1,1): full publication and baseline update.
+ // A void native return is not proof that another client observed the position.
+ reinterpret_cast<Publish>(0x4f36d0)(reinterpret_cast<void*>(binding.controller),true,1);
+ return "applied_native_position";
+}
+bool TownPoint(U definition,int x,int y){
+ for(unsigned group=0;group<2;++group){const auto offset=group?0x164U:0x174U,stride=group?24U:16U;
+  const auto begin=Read<U>(definition+offset),end=Read<U>(definition+offset+4);
+  if(end<begin||(end-begin)%stride||end-begin>256*stride||(!begin&&end))return false;
+  for(auto at=begin;at<end;at+=stride){const auto left=Read<int>(at),top=Read<int>(at+4),width=Read<int>(at+8),height=Read<int>(at+12);
+   if(width<=0||height<=0||width>1000000||height>1000000)return false;
+   if(x>=left&&y>=top&&static_cast<std::int64_t>(x)<static_cast<std::int64_t>(left)+width&&static_cast<std::int64_t>(y)<static_cast<std::int64_t>(top)+height)return true;
+  }
+ }return false;
+}
+const char* TownWalk(const Request&r,const State&s,unsigned&applied){
+ constexpr unsigned char validate[]={0x55,0x8b,0xec,0x8b,0x45,0x10,0x85,0xc0,0x74,0x06,0xc7,0,0,0,0,0};
+ constexpr unsigned char destination[]={0x55,0x8b,0xec,0x8b,0x81,0xf4,0x04,0,0,0x85,0xc0,0x74,0x0a,0x8a,0x90,0xd8};
+ if(!Method(s.actor,0xac,0x492290)||!Method(s.actor,0x1a8,0x490e60)||
+ std::memcmp(reinterpret_cast<void*>(0x492290),validate,sizeof(validate))||std::memcmp(reinterpret_cast<void*>(0x490e60),destination,sizeof(destination)))return "town_signatures";
+ const auto transport=Read<U>(s.actor+0x4f4);
+ if((transport&&Read<unsigned char>(transport+0x1d8))||Read<unsigned char>(0xd586b0)>1||!TownPoint(Read<U>(s.stage+0x50),r.x,r.y))return "town_destination";
+ using ValidatePoint=bool(__thiscall*)(void*,int,int,int*);using Set=void(__thiscall*)(void*,int,int);
+ auto*actor=reinterpret_cast<void*>(s.actor);if(!reinterpret_cast<ValidatePoint>(0x492290)(actor,r.x,r.y,nullptr))return "town_native_validation";
+ applied=1;reinterpret_cast<Set>(0x490e60)(actor,r.x,r.y);
+ State after=Identity;if(!Context(after)||after.scene!=1||after.actor!=s.actor||after.map!=s.map||Read<int>(s.actor+0x278)!=r.x||Read<int>(s.actor+0x27c)!=r.y)return "town_navigation_partial";
+ // Same activation used by the existing C2 town route controller. The original
+ // native town loop performs travel, publication and any portal transition.
+ *reinterpret_cast<volatile unsigned char*>(0xd586b0)=1;return "applied_native_town_walk";
+}
 bool Observe(Observation& o){
  o={};o.state=Identity;o.state.snapshot=++Sequence;o.state.tick=GetTickCount64();
  o.state.supported=Signatures();if(!o.state.supported||!Context(o.state))return false;
+ if(o.state.scene==1){PositionBinding own{};if(PositionFor(o.state.actor,own))o.position=own.position;o.players[0]={o.state.uid,0,false,o.position};o.playerCount=1;o.state.valid=true;return true;}
  const auto begin=Read<U>(o.state.map+0x10),end=Read<U>(o.state.map+0x14);
  if(end<begin||(end-begin)%4||end-begin>4096)return false;
- for(auto at=begin;at<end;at+=4){Target target{};if(TargetFor(Read<U>(at),o.state,target)){
+ PositionBinding own{};if(PositionFor(o.state.actor,own))o.position=own.position;
+ for(auto at=begin;at<end;at+=4){const auto actor=Read<U>(at);if(!actor)continue;
+  const auto kind=Read<U>(actor+0xe0);U uid=0,hp=0;
+  if(kind==0x111&&Read<U>(actor+0xfc)==o.state.map&&Secure(actor+0xe8,uid)&&uid&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
+   if(o.playerCount==o.players.size())return false;
+   for(unsigned i=0;i<o.playerCount;++i)if(o.players[i].uid==uid)return false;
+   PositionBinding p{};PositionFor(actor,p);o.players[o.playerCount++]={uid,hp,Read<U>(actor+0x1524)!=0,p.position};
+  }
+  if((kind&0x211)==0x211&&Read<U>(actor+0xfc)==o.state.map&&Method(actor,0x22c,0x6f48b0)&&Method(actor,0x3d0,0x6f4500)&&Secure(actor+0xe8,uid)&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
+   if(o.enemyCount==o.enemies.size())return false;
+   for(unsigned i=0;i<o.enemyCount;++i)if(o.enemies[i].uid==uid)return false;
+   o.enemies[o.enemyCount++]={uid,hp,Read<U>(actor+0x1524)!=0,Read<U>(actor+0x4b4)==o.state.actor};
+  }
+  Target target{};if(TargetFor(actor,o.state,target)){
   if(o.count==o.targets.size())return false;
   for(unsigned i=0;i<o.count;++i)if(o.targets[i].uid==target.uid)return false;
   o.targets[o.count++]=target;
  }}o.state.valid=true;return true;
 }
-bool SameContext(const State&a,const State&b){return a.actor==b.actor&&a.map==b.map&&a.stage==b.stage&&a.uid==b.uid;}
+bool SameContext(const State&a,const State&b){return a.actor==b.actor&&a.map==b.map&&a.stage==b.stage&&a.uid==b.uid&&a.scene==b.scene;}
 const char* Apply(const Request&r,const Observation& before,unsigned& applied){
  const auto validation=Validate(r,before.state,Consumed,GetTickCount64());if(validation)return validation;
  Consumed=r.id;State live=Identity;if(!Signatures()||!Context(live)||!SameContext(live,before.state))return "context_changed";
+ if(r.operation==3)return TownWalk(r,live,applied);
+ if(r.operation==2)return Position(r,live,applied);
  const auto begin=Read<U>(live.map+0x10),end=Read<U>(live.map+0x14);
  if(end<begin||(end-begin)%4||end-begin>4096)return "map_vector";
  Target found{};
@@ -122,8 +230,12 @@ void Save(const Published&p){
  swprintf_s(pending,L"%s\\state.pending",Directory);swprintf_s(destination,L"%s\\state.json",Directory);
  FILE*f=nullptr;if(_wfopen_s(&f,pending,L"wb")||!f)return;
  const auto&s=p.observation.state;
- std::fprintf(f,"{\"testOnly\":true,\"pid\":%u,\"processStarted\":\"%llu\",\"nonce\":\"%llu\",\"snapshot\":\"%llu\",\"tick\":\"%llu\",\"enabled\":%s,\"supported\":%s,\"valid\":%s,\"actor\":%u,\"map\":%u,\"stage\":%u,\"uid\":%u,\"requestId\":\"%llu\",\"applied\":%u,\"reason\":\"%s\",\"targets\":[",s.pid,s.processStarted,s.nonce,s.snapshot,s.tick,s.enabled?"true":"false",s.supported?"true":"false",s.valid?"true":"false",s.actor,s.map,s.stage,s.uid,p.request,p.applied,p.reason);
+ std::fprintf(f,"{\"testOnly\":true,\"controlVersion\":2,\"pid\":%u,\"processStarted\":\"%llu\",\"nonce\":\"%llu\",\"snapshot\":\"%llu\",\"tick\":\"%llu\",\"enabled\":%s,\"supported\":%s,\"valid\":%s,\"actor\":%u,\"map\":%u,\"stage\":%u,\"uid\":%u,\"requestId\":\"%llu\",\"applied\":%u,\"reason\":\"%s\",\"targets\":[",s.pid,s.processStarted,s.nonce,s.snapshot,s.tick,s.enabled?"true":"false",s.supported?"true":"false",s.valid?"true":"false",s.actor,s.map,s.stage,s.uid,p.request,p.applied,p.reason);
  for(unsigned i=0;i<p.observation.count;++i){const auto&t=p.observation.targets[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":%u}",i?",":"",t.uid,t.hp);}
+ const auto position=[&](const Coordinates&c){if(c.valid)std::fprintf(f,"{\"x\":%.6f,\"y\":%.6f,\"z\":%.6f}",c.x,c.y,c.z);else std::fprintf(f,"null");};
+ std::fprintf(f,"],\"scene\":%u,\"position\":",s.scene);position(p.observation.position);std::fprintf(f,",\"players\":[");
+ for(unsigned i=0;i<p.observation.playerCount;++i){const auto&row=p.observation.players[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":",i?",":"",row.uid);if(s.scene==1)std::fprintf(f,"null,\"dead\":null");else std::fprintf(f,"%u,\"dead\":%s",row.hp,row.dead?"true":"false");std::fprintf(f,",\"position\":");position(row.position);std::fprintf(f,"}");}
+ std::fprintf(f,"],\"enemies\":[");for(unsigned i=0;i<p.observation.enemyCount;++i){const auto&e=p.observation.enemies[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":%u,\"dead\":%s,\"local\":%s}",i?",":"",e.uid,e.hp,e.dead?"true":"false",e.local?"true":"false");}
  std::fprintf(f,"]}\n");std::fclose(f);MoveFileExW(pending,destination,MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH);
 }
 DWORD WINAPI Worker(void*){
