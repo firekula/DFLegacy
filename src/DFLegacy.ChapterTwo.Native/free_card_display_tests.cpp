@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <cwchar>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -139,7 +140,8 @@ namespace
     void __cdecl Deallocate(void* memory) { std::free(memory); }
 #endif
     unsigned __fastcall Time(void*, void*) { return 1234; }
-    unsigned __fastcall OwnSlot(void*, void*) { return 0; }
+    unsigned ObserverSlot = 0;
+    unsigned __fastcall OwnSlot(void*, void*) { return ObserverSlot; }
     void PrepareDependencies()
     {
         // Only external metadata, sound and time are substituted. The original
@@ -221,6 +223,74 @@ namespace
         if (item) Check(rows[1].item == item && rows[1].value == 0, "native free vector contains this owner's actual item");
         Check(State.records[owner][1][0].value == 900 + owner && State.records[owner][2][0].value == 800 + owner,
             "personal reward groups keep their original records");
+    }
+    // Test-only DFC4 fixtures are emitted by the actual C2 catalog/store matrix.
+    // This executes the original C2 card parser/builders and the installed local
+    // patch. It is cache/ownership evidence, not a D3D screenshot or premium
+    // initialization-handler acceptance test.
+    void CheckMatrix(const wchar_t* path)
+    {
+        std::ifstream stream(path,std::ios::binary);
+        const std::vector<unsigned char> file((std::istreambuf_iterator<char>(stream)),{});
+        if(file.size()<8 || file.size()>4096 || std::memcmp(file.data(),"DFC4",4)!=0)
+        {Check(false,"matrix fixture has bounded DFC4 header");return;}
+        std::size_t at=4;
+        const auto take=[&](std::size_t count,void* destination) {
+            if(at>file.size() || count>file.size()-at)return false;
+            std::memcpy(destination,file.data()+at,count);at+=count;return true;
+        };
+        unsigned count=0;if(!take(4,&count)||count!=4){Check(false,"matrix fixture contains exactly four cases");return;}
+        for(unsigned n=0;n<4;++n)
+        {
+            unsigned char id=0,flags=0;std::array<unsigned char,4> freeOwners{},paidOwners{};
+            std::array<unsigned,4> gold{};std::array<unsigned short,4> item{},paidItem{};
+            if(!take(1,&id)||!take(1,&flags)||!take(4,freeOwners.data())||!take(4,paidOwners.data()))
+            {Check(false,"matrix case ownership header fits");return;}
+            if(id!=n+1 || flags!=(n==0?0:n==1?2:n==2?7:6))
+            {Check(false,"matrix fixture retains the four requested membership/manual/paid conditions");return;}
+            for(unsigned owner=0;owner<4;++owner)
+                if(!take(4,&gold[owner])||!take(2,&item[owner])||!take(2,&paidItem[owner]))
+                {Check(false,"matrix frozen owner contents fit");return;}
+            unsigned size=0;
+            if(!take(4,&size)||size<47||size>101||at>file.size()||size>file.size()-at||file[at]!=1)
+            {Check(false,"matrix actual publication is bounded and successful");return;}
+            std::vector<unsigned char> body(file.begin()+at+1,file.begin()+at+size);at+=size;
+            for(unsigned observer=0;observer<4;++observer)
+            {
+                ObserverSlot=observer;Reset();
+                // Reproduce the receiver's initial preview cached for every
+                // possible owner, including an empty receiver preview.
+                for(unsigned owner=0;owner<4;++owner)
+                {
+                    const auto vec=Addr(State.screen)+0x1b8+64*owner;
+                    At<void*>(vec+8)=State.records[owner][0].data();
+                    NativeAdd(State.screen.data(),0,gold[observer],owner,0);
+                    if(item[observer])NativeAdd(State.screen.data(),item[observer],0,owner,0);
+                }
+                const auto before=State.records;auto current=body;Replay(current);
+                for(unsigned col=0;col<4;++col)
+                {
+                    const auto owner=freeOwners[col];
+                    Check(owner<4,"matrix free card has a real owner");if(owner>=4)continue;
+                    CheckReward(owner,gold[owner],item[owner]);
+                    Check(At<int>(Addr(State.screen)+0x2cc+col*4)==owner,
+                        "all four observer contexts retain the actual cross-selected free owner");
+                    const auto buyer=paidOwners[col];
+                    Check(At<int>(Addr(State.screen)+0x304+col*4)==(buyer<4?buyer:-1),
+                        "all four observer contexts retain actual paid ownership, including unselected cards");
+                    if(buyer<4)
+                        Check(NativeCount(State.screen.data(),buyer,3)==(paidItem[buyer]?2u:1u) &&
+                            State.records[buyer][3][0].item==0 && State.records[buyer][3][0].value==0 &&
+                            (!paidItem[buyer]||State.records[buyer][3][1].item==paidItem[buyer]),
+                            "original paid builder retains this buyer's actual item or empty award");
+                }
+                for(unsigned owner=0;owner<4;++owner)for(unsigned group=1;group<=2;++group)
+                    Check(std::memcmp(State.records[owner][group].data(),before[owner][group].data(),sizeof(State.records[owner][group]))==0,
+                        "matrix free/paid updates preserve protected nonfree cached records");
+            }
+            std::printf("C2 offline matrix R%02u: four observer contexts; original free/paid parser and cache checks executed\n",id);
+        }
+        Check(at==file.size(),"matrix fixture consumed exactly");ObserverSlot=0;
     }
     void FourPersonRegression()
     {
@@ -562,7 +632,8 @@ namespace
 
 int wmain(int argc, wchar_t** argv)
 {
-    if (argc != 2 && argc != 3) return 2;
+    const bool matrix=argc==4 && std::wcscmp(argv[2],L"--matrix")==0;
+    if (argc != 2 && argc != 3 && !matrix) return 2;
     const auto image = ReadImage(argv[1]);
     Check(image.size() == ImageSize, "fixture loads the actual original C2 PE");
     if (image.empty()) return 2;
@@ -591,6 +662,7 @@ int wmain(int argc, wchar_t** argv)
     CheckAbiAndFrameBounds();CheckOriginalDestructorAndVectorBounds();
     if (argc==3) CheckActualPacket(argv[2]);
 #endif
+    if(matrix)CheckMatrix(argv[3]);
     if (allocated) VirtualFree(mapped, 0, MEM_RELEASE);
     std::printf("Chapter Two free card display: %u checks, %d failures\n", Checks, Failures);
     return Failures == 0 ? 0 : 1;
