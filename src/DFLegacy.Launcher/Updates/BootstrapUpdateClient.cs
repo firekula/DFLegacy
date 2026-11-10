@@ -140,7 +140,7 @@ internal static class BootstrapUpdateClient
             }
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
-                var message=$"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path} {p.Detail}";
+                var message=UpdateProgressText.Format(p);
                 if(quiet){Console.WriteLine(message);return;}
                 if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
                 else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,

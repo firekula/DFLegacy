@@ -344,7 +344,16 @@ await gameStore.MigrateLegacyQuestRewardsAsync(
 app.UseWebPanels(options);
 app.UseRouting();
 app.UseManagerControl(Environment.GetEnvironmentVariable(ManagerControl.TokenEnvironmentVariable));
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // Panel HTML and scripts must come from the same deployment. This also
+        // covers port roots rewritten to /admin/*.html by UseWebPanels above.
+        if (context.Context.Request.Path.StartsWithSegments("/admin"))
+            context.Context.Response.Headers.CacheControl = "no-store";
+    }
+});
 
 // 8081 管理接口鉴权。刻意集中成"路由表 + 一个中间件"而不是给三十多条路由各挂过滤器：
 // 集中判定漏一条一眼可见，逐路由挂则漏挂一处就是一个越权口子（判定表见 AdminAccessPolicy，

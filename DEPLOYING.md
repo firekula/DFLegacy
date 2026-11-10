@@ -208,3 +208,5 @@ HTTP 基本 JSON 兼容现有公网入口，设置明确显示未加密；建议
 ## v0.1.10 冰心少年与邮件更新
 
 本版只需把 .env 的 DFLEGACY_IMAGE 改为 ghcr.io/firekula/dflegacy:v0.1.10，再执行 podman compose pull 和 podman compose up -d。保留数据卷、原环境变量和端口；PVF 与 v0.1.8 相同，无需重复上传。客户端从 GitHub 对应架构自动更新。详见 [v0.1.10 升级说明](docs/releases/v0.1.10.md)。
+
+升级后若 GM 后台「添加物品格」无响应，控制台显示旧版 `admin.js:901` 的 `null.addEventListener`，请在后台页面按 **Ctrl＋F5** 强制刷新。这通常是新版 HTML 混用了旧版脚本；如使用反向代理并强制缓存 `/admin/*`，同时清除该缓存。无需重启游戏服务、重建账号或修改数据卷。未发布源码已给管理页资源增加版本查询串，并为 GM／玩家页面、脚本及样式返回 `Cache-Control: no-store`；该预防修复尚未包含在已发布的 v0.1.10 镜像中。

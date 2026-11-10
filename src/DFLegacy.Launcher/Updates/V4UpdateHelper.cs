@@ -73,6 +73,6 @@ public sealed partial class UpdateInstaller
     {
         public void Report(Core.UpdateProgress p)=>UpdateInstallProgress.Report(progress,
             p.TotalFiles>0?.85+.14*Math.Clamp((double)p.CompletedFiles/p.TotalFiles,0,1):.85,
-            $"{p.Phase} {p.CompletedFiles}/{p.TotalFiles}：{p.Path}");
+            UpdateProgressText.Format(p));
     }
 }
