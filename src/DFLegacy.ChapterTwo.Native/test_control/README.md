@@ -1,0 +1,11 @@
+# Isolated Chapter Two test control
+
+This directory is deliberately absent from the ordinary C2 CMake link. Only the separately generated DO-NOT-SHIP host includes `Install`, and it additionally requires the dedicated process-name prefix plus explicit output-root and run-nonce environment variables. Current semantic action: one explicitly identified, live, locally controlled monster in the current native dungeon. No arbitrary-address interface, persisted character edit, reward grant, or synthetic clear exists here.
+
+The game-frame entry checks original C2 method signatures, current native scene, local actor and own-user binding, protected actor/global identity, stage/map agreement, native health/dead state, exact current map membership and target authority. Each request binds the exact process creation time, run nonce, recent snapshot, actor/map/stage and monotonically increasing request identity. A worker handles file I/O; the original native setter is called on the game thread. Actual death, peer synchronization and settlement still need their own live evidence.
+
+The C1 own-user identity field cannot be copied into C2: real C2 observation showed it as zero while both native actor identity sources agreed. C2 identity is instead checked against the bounded, doubly linked player registry's key-to-own-user relation. The first native preflight refused to act because of this mismatch; a revised original-image fixture reproduced 11 failures before the correction and passed 27 checks afterward. That refusal is not a card test failure or a successful native kill.
+
+Reproducible local preparation is retained under `dist/chapter-two-cards-matrix-20261110`: original-image death-contract project (17 checks, dependencies explicitly substituted), policy project (26 checks), private native-control-host project (runtime guard fixture, 27 checks), build logs and the failed native preflight. The private host retains the required TLS delta of eight bytes. See its REPORT.md for current live acceptance status; offline checks are not rendering/death acceptance.
+
+The companion `tools/debug/chapter_two_test_control.py` only reads the fixed private output directory, verifies the dedicated host's process path/start time, and submits the bounded semantic request. UI operation and screenshots continue through Computer Use.
