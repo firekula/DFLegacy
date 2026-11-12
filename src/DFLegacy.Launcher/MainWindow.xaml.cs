@@ -41,7 +41,7 @@ public partial class MainWindow : System.Windows.Window
             Title = "地下城与勇士 · 第二章本机测试";
             AccountText.MaxLength = PasswordText.MaxLength = 16;
             var manager = new MenuItem { Header = "打开第二章服务管理器" };
-            manager.Click += (_, _) => OpenUrl("http://127.0.0.1:48092/");
+            manager.Click += (_, _) => OpenUrl($"http://{ChapterTwoClient.Host}:48092/");
             MoreServicesButton.ContextMenu.Items.Clear();
             MoreServicesButton.ContextMenu.Items.Add(manager);
             var cera = new MenuItem { Header = "本机测试点券" };

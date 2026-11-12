@@ -11,6 +11,8 @@ set(DEBUG_NATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Debug/src")
 add_library(chapter_two_presentation STATIC
     ChapterTwoPresentation.cpp
     ChapterTwoPerformance.cpp
+    ChapterTwoPerformancePanel.cpp
+    ChapterTwoSlowFrameTiming.cpp
     ChapterTwoPaymentProtocol.cpp
     ChapterTwoPaymentNavigation.cpp
     ChapterTwoPaymentViewport.cpp
@@ -33,7 +35,7 @@ target_include_directories(chapter_two_presentation PUBLIC "${CMAKE_CURRENT_SOUR
 target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}")
 target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
-target_link_libraries(chapter_two_presentation PUBLIC user32 psapi urlmon ole32 uuid bcrypt)
+target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32)
 
 add_executable(chapter_two_presentation_tests presentation_adapter_tests.cpp)
 target_compile_options(chapter_two_presentation_tests PRIVATE /W4 /WX /utf-8 /EHsc)
@@ -88,11 +90,12 @@ target_compile_options(chapter_two_free_card_display_tests PRIVATE /W4 /WX /utf-
 target_link_options(chapter_two_free_card_display_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 target_link_libraries(chapter_two_free_card_display_tests PRIVATE chapter_two_presentation)
 
-add_executable(chapter_two_performance_text_lifetime_tests performance_text_lifetime_tests.cpp)
+add_executable(chapter_two_performance_text_lifetime_tests
+    performance_text_lifetime_tests.cpp ChapterTwoPerformancePanel.cpp ChapterTwoSlowFrameTiming.cpp)
 target_compile_features(chapter_two_performance_text_lifetime_tests PRIVATE cxx_std_17)
 target_compile_options(chapter_two_performance_text_lifetime_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_options(chapter_two_performance_text_lifetime_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
-target_link_libraries(chapter_two_performance_text_lifetime_tests PRIVATE psapi)
+target_link_libraries(chapter_two_performance_text_lifetime_tests PRIVATE psapi user32 gdi32 imm32)
 
 if(DEFINED CHAPTER_TWO_HOST_SOURCE)
     add_executable(chapter_two_presentation_host "${CHAPTER_TWO_HOST_SOURCE}")

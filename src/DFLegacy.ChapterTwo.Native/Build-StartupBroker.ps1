@@ -22,9 +22,6 @@ $copy = Join-Path $out 'source'
 $container = Join-Path $copy 'container'
 New-Item -ItemType Directory -Path $container | Out-Null
 Copy-Item -LiteralPath (Join-Path $source 'LoopbackWire.h') -Destination $copy
-Copy-Item -LiteralPath (Join-Path $source 'container/LoopbackBroker.h') -Destination $container
-$code = [IO.File]::ReadAllText((Join-Path $source 'container/trace.cpp')).Replace("`r`n", "`n")
-
 function Replace-Verified([string]$Old, [string]$New) {
     $offset = $script:code.IndexOf($Old, [StringComparison]::Ordinal)
     if ($offset -lt 0 -or $script:code.IndexOf($Old, $offset + $Old.Length, [StringComparison]::Ordinal) -ge 0) {
@@ -32,6 +29,66 @@ function Replace-Verified([string]$Old, [string]$New) {
     }
     $script:code = $script:code.Remove($offset, $Old.Length).Insert($offset, $New)
 }
+
+$code = [IO.File]::ReadAllText((Join-Path $source 'container/LoopbackBroker.h')).Replace("`r`n", "`n")
+Replace-Verified 'endpoint.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'endpoint.sin_addr.s_addr=htonl(0x7f000002);'
+Replace-Verified 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(INADDR_ANY)' 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(0x7f000002) || address.sin_addr.s_addr==htonl(INADDR_ANY)'
+Replace-Verified 'address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'address.sin_addr.s_addr=htonl(0x7f000002);'
+$connectBind = @'
+                        sockaddr_in local{};
+                        int localLength=sizeof(local);
+                        if(getsockname(it->second,reinterpret_cast<sockaddr*>(&local),&localLength)==SOCKET_ERROR){
+                            reply.error=WSAGetLastError();
+                            if(reply.error!=WSAEINVAL)break;
+                            local.sin_family=AF_INET;
+                            local.sin_addr.s_addr=isolated.sin_addr.s_addr;
+                            local.sin_port=0;
+                            if(bind(it->second,reinterpret_cast<const sockaddr*>(&local),sizeof(local))==SOCKET_ERROR){
+                                reply.error=WSAGetLastError();
+                                break;
+                            }
+                        }
+                        reply.result=connect(it->second,reinterpret_cast<const sockaddr*>(&isolated),sizeof(isolated));
+'@
+Replace-Verified '                        reply.result=connect(it->second,reinterpret_cast<const sockaddr*>(&isolated),sizeof(isolated));' ($connectBind.Replace("`r`n", "`n"))
+$childHandles = @'
+    bool inherit(LPPROC_THREAD_ATTRIBUTE_LIST attributes,HANDLE (&handles)[2])
+    {
+        handles[0]=childRead_; handles[1]=childWrite_;
+        return UpdateProcThreadAttribute(attributes,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                         handles,sizeof(handles),nullptr,nullptr);
+    }
+'@
+$pipeHandles = @'
+    void writeChildHandles(HANDLE* handles) const
+    {
+        handles[0]=childRead_; handles[1]=childWrite_;
+    }
+'@
+Replace-Verified ($childHandles.Replace("`r`n", "`n")) $pipeHandles
+[IO.File]::WriteAllText((Join-Path $container 'LoopbackBroker.h'), $code)
+
+$code = [IO.File]::ReadAllText((Join-Path $source 'container/trace.cpp')).Replace("`r`n", "`n")
+Replace-Verified '#include "LoopbackBroker.h"' "#include `"LoopbackBroker.h`"`n#include `"ChapterTwoPerformanceLogHandles.h`""
+$originalInheritance = @'
+ HANDLE childPipes[2]{};
+ if(useBroker && !broker.inherit(si.lpAttributeList,childPipes)){
+    std::printf("BROKER_HANDLES_FAILED error=%lu\n",GetLastError());return 3;
+ }
+'@
+$performanceInheritance = @'
+ HANDLE childHandles[5]{};
+ ChapterTwoPerformanceLogHandles performanceLogs;
+ if(useBroker){
+    broker.writeChildHandles(childHandles);
+    const auto count=2+performanceLogs.Open(childHandles+2);
+    if(!UpdateProcThreadAttribute(si.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                 childHandles,count*sizeof(HANDLE),nullptr,nullptr)){
+       std::printf("BROKER_HANDLES_FAILED error=%lu\n",GetLastError());return 3;
+    }
+ }
+'@
+Replace-Verified ($originalInheritance.Replace("`r`n", "`n")) $performanceInheritance
 
 Replace-Verified ' const bool traceDispatch=' " const bool detailedDiagnostics=GetEnvironmentVariableW(L`"DFL_S1C2_DETAILED_DIAGNOSTICS`",nullptr,0)!=0;`n const bool traceDispatch="
 Replace-Verified 'if(s.fUnicode)std::wprintf(L"DEBUG %ls\n",(wchar_t*)b.data());else std::printf("DEBUG %s\n",b.data());' @'
@@ -70,6 +127,7 @@ Replace-Verified '       if(std::strstr(bp->second.name,"MessageBox")){' '      
 Replace-Verified '    if(++exceptions<100 || !x.dwFirstChance){' '    if(!x.dwFirstChance || (detailedDiagnostics && ++exceptions<100)){'
 
 [IO.File]::WriteAllText((Join-Path $container 'trace.cpp'), $code)
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoPerformanceLogHandles.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $source 'container/CMakeLists.txt') -Destination $container
 $build = Join-Path $out 'build'
 & $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64

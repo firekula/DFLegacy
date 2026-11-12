@@ -1,7 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
-#include <psapi.h>
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -51,42 +50,15 @@ namespace
         return read();
     }
 
-    char* SampleFrame(float fps) noexcept
+    char* MemoryText() noexcept
     {
-        static LARGE_INTEGER frequency = [] { LARGE_INTEGER value{}; QueryPerformanceFrequency(&value); return value; }();
-        static long long previous = 0, sampled = 0, longest = 0;
-        static unsigned slow = 0;
+        static unsigned previous = 0;
         static char memoryText[64] = "Committed : --";
-        LARGE_INTEGER now{};
-        QueryPerformanceCounter(&now);
-        if (previous != 0 && frequency.QuadPart > 0)
+        const auto current = dfl::chapter_two::PerformancePrivateMemoryTenthsMiB();
+        if (current != previous)
         {
-            const auto elapsed = (now.QuadPart - previous) * 1000 / frequency.QuadPart;
-            longest = std::max(longest, elapsed);
-            if (elapsed >= 50) ++slow;
-        }
-        previous = now.QuadPart;
-        if (sampled == 0 || now.QuadPart - sampled >= frequency.QuadPart * 2)
-        {
-            PROCESS_MEMORY_COUNTERS_EX counters{};
-            counters.cb = sizeof(counters);
-            const double committed = GetProcessMemoryInfo(GetCurrentProcess(),
-                reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters))
-                ? static_cast<double>(counters.PagefileUsage) / 1048576.0 : -1;
-            if (committed >= 0)
-                std::snprintf(memoryText, sizeof(memoryText), "Committed : %.1f MB", committed);
-            else
-                std::snprintf(memoryText, sizeof(memoryText), "Committed : --");
-            if (sampled != 0 && slow != 0)
-            {
-                char summary[128]{};
-                std::snprintf(summary, sizeof(summary), "CHAPTER_TWO_PERF fps=%.1f commitMiB=%.1f slowFrames=%u longestMs=%lld",
-                    static_cast<double>(fps), committed, slow, longest);
-                OutputDebugStringA(summary);
-            }
-            sampled = now.QuadPart;
-            longest = 0;
-            slow = 0;
+            previous = current;
+            std::snprintf(memoryText, sizeof(memoryText), "Committed : %u.%u MB", current / 10, current % 10);
         }
         return memoryText;
     }
@@ -98,6 +70,7 @@ namespace
         // Preserve the client's own diagnostics if its original flag is on.
         if (state && static_cast<unsigned char*>(state)[0x2f0] == 1)
             reinterpret_cast<Original>(GameImage + 0x512e00)(state);
+        dfl::chapter_two::RecordPerformanceFrame();
         auto* renderer = *reinterpret_cast<void**>(GameImage + 0xa01fd4);
         if (!renderer) return 0;
         auto** methods = *reinterpret_cast<void***>(renderer);
@@ -111,7 +84,7 @@ namespace
             lastFps = fps;
             std::snprintf(fpsText, sizeof(fpsText), "FPS : %.0f", static_cast<double>(fps));
         }
-        char* const memoryText = SampleFrame(fps);
+        char* const memoryText = MemoryText();
         TextState text{0, 1, -1, 1, 0, 0, *reinterpret_cast<std::uint32_t*>(GameImage + 0x954144)};
         // C2 BeginText (RVA 0x614f20) retains this pointer in renderer+0x40.
         // End our own batch before text expires; an active native batch belongs

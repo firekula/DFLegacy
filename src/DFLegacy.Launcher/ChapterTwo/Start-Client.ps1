@@ -12,7 +12,7 @@ $trace = Join-Path $PSScriptRoot 'dnf_startup_trace.exe'
 $logs = Join-Path $Game 'Logs\DFLegacy'
 $run = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $credentials = [Console]::In.ReadLine() | ConvertFrom-Json
-$arguments = '99?127.0.0.1?42311?{0}?{1}?0?0?0?0?0?0?0?0' -f $credentials.Account, $credentials.Password
+$arguments = '99?127.0.0.2?42311?{0}?{1}?0?0?0?0?0?0?0?0' -f $credentials.Account, $credentials.Password
 $credentials = $null
 
 function Initialize-ChapterTwoLoginInfo([string]$GameDirectory) {
@@ -83,6 +83,7 @@ try {
         for ($attempt = 1; $attempt -le 48; $attempt++) {
             $candidate = Join-Path $Game "s1c2_chapter2_host-$instance-$run-$attempt.exe"
             $log = Join-Path $logs "chapter-two-client-$instance-$run-$attempt.log"
+            $performancePrefix = Join-Path $logs "chapter-two-perf-$instance-$run-$attempt"
             # Vary Windows image placement only when the required address was occupied.
             $tag = [BitConverter]::ToUInt32([guid]::NewGuid().ToByteArray(), 0)
             [BitConverter]::GetBytes($tag).CopyTo($raw, $offset)
@@ -92,6 +93,7 @@ try {
                 finally { $file.Dispose() }
                 $writer = [IO.StreamWriter]::new($log, $false, [Text.UTF8Encoding]::new($false))
                 try {
+                    $env:DFL_S1C2_PERF_LOG_PREFIX = $performancePrefix
                     & $trace $candidate $arguments 2>&1 | ForEach-Object {
                         $line = [string]$_
                         if (!$line.StartsWith('LOCAL_PAY_REQUEST ', [StringComparison]::Ordinal)) { $writer.WriteLine($line) }
@@ -123,6 +125,12 @@ try {
                 return
             } finally {
                 Remove-Item -LiteralPath $candidate -ErrorAction SilentlyContinue
+                foreach ($scope in 'interval','total','slowframes') {
+                    $emptyLog = Get-Item -LiteralPath "$performancePrefix-$scope.csv" -ErrorAction SilentlyContinue
+                    if ($null -ne $emptyLog -and $emptyLog.Length -eq 0) {
+                        Remove-Item -LiteralPath $emptyLog.FullName -ErrorAction SilentlyContinue
+                    }
+                }
             }
         }
         throw "Windows could not allocate the required startup address. See $logs"

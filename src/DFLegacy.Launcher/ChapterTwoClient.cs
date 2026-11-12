@@ -9,7 +9,7 @@ namespace DFLegacy.Launcher;
 
 internal static class ChapterTwoClient
 {
-    private const string Host = "127.0.0.2";
+    internal const string Host = "127.0.0.2";
     private const int EntrancePort = 42312;
     private const int AccountPort = 48091;
     private const string ScriptName = "Start-Client.ps1";

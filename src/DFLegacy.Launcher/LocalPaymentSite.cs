@@ -14,8 +14,12 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
     internal string BaseUrl { get; } = baseUrl;
 
     internal static async Task<LocalPaymentSite> StartAsync(string serviceUrl, CancellationToken token,
-        bool useProxy = true, bool inlineStyle = false)
+        bool useProxy = true, bool inlineStyle = false, IPAddress? listenAddress = null)
     {
+        var address = listenAddress ?? IPAddress.Loopback;
+        if (!IPAddress.IsLoopback(address))
+            throw new ArgumentException("The local payment site requires a loopback address.", nameof(listenAddress));
+        var host = address.ToString();
         var service = ClientServiceConfiguration.NormalizeBaseUrl(serviceUrl);
         var prefix = "/" + Guid.NewGuid().ToString("N");
         var assembly = typeof(LocalPaymentSite).Assembly;
@@ -38,13 +42,13 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
         builder.Logging.ClearProviders();
         builder.WebHost.UseKestrel(options =>
         {
-            options.Listen(IPAddress.Loopback, 0);
+            options.Listen(address, 0);
             options.Limits.MaxRequestBodySize = 8192;
         });
         var app = builder.Build();
         app.Use(async (context, next) =>
         {
-            if (context.Request.Host.Host != "127.0.0.1" || context.Request.Host.Port != context.Connection.LocalPort)
+            if (context.Request.Host.Host != host || context.Request.Host.Port != context.Connection.LocalPort)
             {
                 context.Response.StatusCode = 400;
                 return;

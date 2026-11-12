@@ -32,6 +32,8 @@ New-Item -ItemType Directory -Path $loader | Out-Null
 Copy-Item -LiteralPath (Join-Path $source 'LoopbackWire.h') -Destination $copy
 Copy-Item -LiteralPath (Join-Path $source 'fixed-loader/LoopbackClient.h') -Destination $loader
 $original = [IO.File]::ReadAllText((Join-Path $source 'fixed-loader/main.cpp')).Replace("`r`n", "`n")
+$original = $original.Replace('#include <windows.h>', "#include <windows.h>`n#include `"ChapterTwoKeyboardTiming.h`"")
+$original = $original.Replace('static char ipv4[4]{127,0,0,1};', 'static char ipv4[4]{127,0,0,2};')
 $originalPartyRelay = @'
     if(name && std::strcmp(name,"127.0.0.2")==0){
         static char isolatedName[]="127.0.0.2";
@@ -51,13 +53,55 @@ $localPartyRelay = @'
     }
 '@
 $original = $original.Replace($originalPartyRelay, $localPartyRelay)
+$timedInput = @(
+    @{
+        Site = '    if(message==WM_KEYDOWN || message==WM_KEYUP){'
+        Code = '    const dfl::chapter_two::performance::FrameStageScope timing(dfl::chapter_two::performance::ClassifyKeyMessage(message,key,details));'
+    },
+    @{
+        Site = '        default: if(!scan)scan=MapVirtualKeyW(static_cast<UINT>(key),MAPVK_VK_TO_VSC);break;'
+        Replacement = '        default: if(!scan)scan=MapVirtualKeyW(imeKey ? imeKey : static_cast<UINT>(key),MAPVK_VK_TO_VSC);break;'
+    },
+    @{
+        Site = '        const auto flags=static_cast<DWORD>(details);'
+        Code = '        const auto imeKey=message==WM_KEYDOWN && key==VK_PROCESSKEY ? dfl::chapter_two::performance::TakeImeGameplayKey(window,details) : 0u;'
+    },
+    @{
+        Site = "            state.down=message==WM_KEYDOWN;`n            if(state.down)state.until=GetTickCount64()+60;"
+        Replacement = "            state.down=message==WM_KEYDOWN && !imeKey;`n            if(message==WM_KEYDOWN)state.until=GetTickCount64()+60;"
+    },
+    @{
+        Site = '    const HRESULT status=poll(device,size,state);'
+        Replacement = '    const HRESULT status=dfl::chapter_two::performance::MeasureKeyboardPoll(poll,device,size,state);'
+    },
+    @{
+        Site = '       GetWindowThreadProcessId(keyboardWindow,nullptr)==GetCurrentThreadId()){'
+        Append = '        const dfl::chapter_two::performance::FrameStageScope timing(dfl::chapter_two::performance::FrameStage::KeyboardMerge);'
+    }
+)
+foreach ($site in $timedInput) {
+    if (!$original.Contains($site.Site)) { throw 'Missing verified game input timing anchor.' }
+    $replacement = if ($site.Replacement) { $site.Replacement }
+        elseif ($site.Code) { $site.Code + "`n" + $site.Site }
+        else { $site.Site + "`n" + $site.Append }
+    $original = $original.Replace($site.Site, $replacement)
+}
 $anchor = '    auto* pebImageBase = reinterpret_cast<void**>(__readfsdword(0x30)+8);'
 if (!$original.Contains($anchor)) { throw 'Missing verified game entry anchor.' }
 $nl = [Environment]::NewLine
 $configure = @(
     '    dfl::chapter_two::ConfigurePresentation(base, nt->OptionalHeader.SizeOfImage);',
+    '    OutputDebugStringA(dfl::chapter_two::InstallKeyboardMessageTiming(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: keyboard message hooks installed.\n"',
+    '        : "DFLegacy Chapter Two: keyboard message hook signature mismatch.\n");',
     '    if (dfl::chapter_two::InstallPerformanceOverlay(base, nt->OptionalHeader.SizeOfImage))',
+    '    {',
+    '        const bool timingInstalled = dfl::chapter_two::InstallSlowFrameTiming(base, nt->OptionalHeader.SizeOfImage);',
+    '        dfl::chapter_two::StartPerformancePanel(timingInstalled);',
+    '        OutputDebugStringA(timingInstalled ? "DFLegacy Chapter Two: slow-frame timing installed.\n" :',
+    '            "DFLegacy Chapter Two: slow-frame timing signature mismatch.\n");',
     '        OutputDebugStringA("DFLegacy Chapter Two: FPS and memory display installed.\n");',
+    '    }',
     '    else OutputDebugStringA("DFLegacy Chapter Two: FPS display signature mismatch.\n");',
     '    if (dfl::chapter_two::InstallPaymentProtocol(base, nt->OptionalHeader.SizeOfImage))',
     '        OutputDebugStringA("DFLegacy Chapter Two: native payment URL installed.\n");',

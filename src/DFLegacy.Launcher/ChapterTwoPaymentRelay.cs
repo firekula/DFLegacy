@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -47,7 +48,8 @@ internal sealed class ChapterTwoPaymentRelay : IAsyncDisposable
     internal static async Task<ChapterTwoPaymentRelay> StartAsync(string runtime, string serviceUrl, CancellationToken token)
     {
         var directory = Path.Combine(runtime, "pay-" + Guid.NewGuid().ToString("N"));
-        var site = await LocalPaymentSite.StartAsync(serviceUrl, token, useProxy: false, inlineStyle: true);
+        var site = await LocalPaymentSite.StartAsync(serviceUrl, token, useProxy: false, inlineStyle: true,
+            listenAddress: IPAddress.Parse(ChapterTwoClient.Host));
         var relay = new ChapterTwoPaymentRelay(site, directory);
         try
         {

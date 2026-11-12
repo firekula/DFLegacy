@@ -35,7 +35,7 @@ namespace
 
     bool IsLocalOrigin(std::wstring_view value) noexcept
     {
-        constexpr std::wstring_view host = L"http://127.0.0.1:";
+        constexpr std::wstring_view host = L"http://127.0.0.2:";
         if (value.substr(0, host.size()) != host) return false;
         value.remove_prefix(host.size());
         const auto separator = value.find(L'/');

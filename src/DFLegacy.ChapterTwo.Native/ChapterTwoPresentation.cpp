@@ -1,4 +1,5 @@
 #include "ChapterTwoPresentation.h"
+#include "ChapterTwoFrameStages.h"
 #include "../DFLegacy.Ijl15/src/d3d8_hooks.h"
 #include "../DFLegacy.Ijl15/src/pe_import.h"
 #include "../DFLegacy.Ijl15/src/window_input_scaling.h"
@@ -65,6 +66,8 @@ namespace
 
     LRESULT WINAPI DispatchProxy(const MSG* message)
     {
+        using namespace dfl::chapter_two::performance;
+        FrameStageScope scope(FrameStage::WindowDispatch);
         MSG logical{};
         if (message && dfl::window_input_scaling::Translate(*message, logical))
             return OriginalDispatch(&logical);
