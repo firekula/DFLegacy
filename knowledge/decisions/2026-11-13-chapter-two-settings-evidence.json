@@ -1,0 +1,139 @@
+{
+  "settingsBefore": [
+    {
+      "Path": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\.dflegacy\\chapter-two\\settings\\DNF_CHINA.cfg",
+      "Hash": "8C924576DFB9430E0AD05C8DAD470A70A16BE83663AAF658CD57644B391F0DFB"
+    },
+    {
+      "Path": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\a43754a3.keyset",
+      "Hash": "BEA8FFE34CC18CF40B9A21EC9EDF1FD065400228D8735BA928B8B2C823E1F3DF"
+    }
+  ],
+  "settingsAfter": [
+    {
+      "Path": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\.dflegacy\\chapter-two\\settings\\DNF_CHINA.cfg",
+      "Hash": "8C924576DFB9430E0AD05C8DAD470A70A16BE83663AAF658CD57644B391F0DFB"
+    },
+    {
+      "Path": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\a43754a3.keyset",
+      "Hash": "BEA8FFE34CC18CF40B9A21EC9EDF1FD065400228D8735BA928B8B2C823E1F3DF"
+    }
+  ],
+  "muted": {
+    "time": "2026-11-13T23:04:52.9273829+08:00",
+    "pid": 36152,
+    "executable": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\s1c2_chapter2_host-A-20261113-230425-116-4.exe",
+    "volumes": [
+      0,
+      0,
+      0
+    ]
+  },
+  "normal": {
+    "time": "2026-11-13T23:09:44.5523925+08:00",
+    "pid": 38696,
+    "executable": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\s1c2_chapter2_host-A-20261113-230919-435-1.exe",
+    "volumes": [
+      1,
+      1,
+      1
+    ]
+  },
+  "uiToggle": {
+    "before": {
+      "time": "2026-11-13T23:19:11.448309+08:00",
+      "pid": 38284,
+      "executable": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\s1c2_chapter2_host-A-20261113-231830-584-2.exe",
+      "volumes": [
+        0,
+        0,
+        0
+      ]
+    },
+    "unchecked": {
+      "time": "2026-11-13T23:22:04.1825691+08:00",
+      "pid": 38284,
+      "executable": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\s1c2_chapter2_host-A-20261113-231830-584-2.exe",
+      "volumes": [
+        1,
+        1,
+        1
+      ]
+    },
+    "rechecked": {
+      "time": "2026-11-13T23:25:26.1618504+08:00",
+      "pid": 38284,
+      "executable": "F:\\codex-archives\\c2-transition-retest-20261113\\fixed-client\\s1c2_chapter2_host-A-20261113-231830-584-2.exe",
+      "volumes": [
+        0,
+        0,
+        0
+      ]
+    },
+    "userAssisted": true,
+    "gameSettingsUnchanged": true
+  },
+  "launcherSha256": "a27a82a0b3ca0a1c92a7341b4ca6d71dcaee9bfb7e5ac82d9bd26037c7e915fc",
+  "zipSha256": "43583716ba26a7a628b74e88102f21df5ced858a19ca262c78c386dd7fe311c4",
+  "audits": [
+    {
+      "file": "02-rollback-audit.json",
+      "version": "c1-bridge-20261113-b3",
+      "files": 538,
+      "result": "pass"
+    },
+    {
+      "file": "03-locked-refusal-audit.json",
+      "version": "c1-bridge-20261113-b3",
+      "files": 538,
+      "result": "pass"
+    },
+    {
+      "file": "04-reupgrade-audit.json",
+      "version": "c2-local-20261113-b7",
+      "files": 700,
+      "result": "pass"
+    },
+    {
+      "file": "06-fixed-upgrade.json",
+      "version": "c2-fixed-20261113",
+      "files": 703,
+      "result": "pass"
+    },
+    {
+      "file": "07-fixed-rollback-added-account.json",
+      "version": "c1-fixed-20261113",
+      "files": 541,
+      "result": "pass"
+    },
+    {
+      "file": "08-fixed-interruption-recovered.json",
+      "version": "c1-fixed-20261113",
+      "files": 541,
+      "result": "pass"
+    },
+    {
+      "file": "09-fixed-final-settings.json",
+      "version": "c2-settings-final-20261113",
+      "files": 703,
+      "result": "pass"
+    },
+    {
+      "file": "11-published-c2-upgrade.json",
+      "version": "c2-published-final-20261113",
+      "files": 703,
+      "result": "pass"
+    },
+    {
+      "file": "12-published-c1-rollback.json",
+      "version": "c1-published-entry-bridge",
+      "files": 541,
+      "result": "pass"
+    }
+  ],
+  "limits": [
+    "Published native entry plus bridge tested; original v0.1.10 managed updater remote discovery not exercised.",
+    "Download cancel button not counted as real-client pass.",
+    "Previous multiplayer and trade gaps are outside this acceptance batch."
+  ]
+}

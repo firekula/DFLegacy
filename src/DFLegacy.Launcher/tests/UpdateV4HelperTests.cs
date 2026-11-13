@@ -196,9 +196,20 @@ internal static class UpdateV4HelperTests
         check(parent.ExitCode==0 && File.Exists(Path.Combine(root,"helper.path")),"chapter helper authenticates actual parent ("+mode+")");
         var helper=File.ReadAllText(Path.Combine(root,"helper.path"));
         var outcome=Path.Combine(Path.GetDirectoryName(helper)!,"helper-outcome.json");
-        while(!File.Exists(outcome))await Task.Delay(30,timeout.Token);
-        using var result=JsonDocument.Parse(File.ReadAllBytes(outcome));
-        return result.RootElement.GetProperty("exitCode").GetInt32();
+        // File creation precedes close/flush. Wait for a complete readable result,
+        // not only its directory entry (observed sharing violation under load).
+        while(true)
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            try
+            {
+                using var result=JsonDocument.Parse(File.ReadAllBytes(outcome));
+                return result.RootElement.GetProperty("exitCode").GetInt32();
+            }
+            catch(IOException){ }
+            catch(JsonException){ }
+            await Task.Delay(30,timeout.Token);
+        }
     }
 
     private static string Hash(byte[] bytes)=>Convert.ToHexStringLower(SHA256.HashData(bytes));

@@ -156,6 +156,7 @@ internal static class ChapterTwoClient
             info.Environment["DFLEGACY_CH2_PAYMENT_REPLIES"] = payment.ReplyDirectory;
         }
         if (Program.DetailedCaptureEnabled) info.ArgumentList.Add("-DetailedDiagnostics");
+        info.Environment["DFLEGACY_CH2_SETTINGS_PATH"] = ChapterTwoGameSettings.Prepare(root);
         info.Environment.Remove("DFLEGACY_CH2_DEBUG_ITEMS");
         info.Environment.Remove("DFLEGACY_CH2_DEBUG_PVF");
         ChapterTwoDebugSession? debug = null;

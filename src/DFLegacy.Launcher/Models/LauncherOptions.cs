@@ -50,6 +50,7 @@ internal sealed class LauncherOptions
     public ChapterTwoDialogueOptions? ChapterTwoDialogue { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ChapterTwoDebugEnabled { get; set; }
+    public bool ChapterTwoTestMuteEnabled { get; set; } = true;
     private DFLegacy.Diagnostics.DiagnosticOptions diagnostics = new();
     public DFLegacy.Diagnostics.DiagnosticOptions Diagnostics
     {

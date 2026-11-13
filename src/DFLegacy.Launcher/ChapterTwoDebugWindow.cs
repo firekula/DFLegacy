@@ -26,6 +26,10 @@ internal sealed class ChapterTwoDebugWindow : Window
     private int searchVersion,previewVersion;
     private bool pending,disposed;
     private OwnedPanelCursor? pointer;
+    private readonly CheckBox testMute=new(){Content="测试静音（仅当前游戏）",Foreground=Brushes.WhiteSmoke};
+    private readonly TextBlock audioStatus=new(){Foreground=Brushes.LightSkyBlue};
+    internal bool TestMuted=>testMute.IsChecked==true;
+    internal event Action? TestMuteChanged;
     internal ChapterTwoDebugWindow(string clientDirectory,string account)
     {
         Title="第二章 Debug · 物品工具";Width=740;Height=800;MinWidth=620;MinHeight=650;
@@ -46,6 +50,19 @@ internal sealed class ChapterTwoDebugWindow : Window
         var loginButton=new Button{Content="登录"};login.Children.Add(loginButton);Add(root,login,1);
         loginButton.Click+=async(_,_)=>{loginButton.IsEnabled=false;try{await api.Login(user.Text.Trim(),password.Password);password.Clear();characters.ItemsSource=await api.Characters();characters.SelectedItem=((DebugCharacter[])characters.ItemsSource).FirstOrDefault(c=>c.UserName.Equals(account,StringComparison.OrdinalIgnoreCase)&&c.Online);status.Text="已登录。选择收件角色后搜索物品。";}catch(Exception e){status.Text=e.Message;}finally{loginButton.IsEnabled=true;}};
         var controls=new StackPanel();controls.Children.Add(Row(new TextBlock{Text="收件角色"},characters));
+        var audioOptions=new LauncherAccountStore(Program.LauncherConfigPath).Load();
+        testMute.IsChecked=audioOptions.ChapterTwoTestMuteEnabled;
+        controls.Children.Add(Row(testMute,audioStatus));
+        testMute.Click+=(_,_)=>
+        {
+            try
+            {
+                new LauncherAccountStore(Program.LauncherConfigPath).Update(o=>o.ChapterTwoTestMuteEnabled=TestMuted);
+                TestMuteChanged?.Invoke();
+            }
+            catch(Exception e) when(e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+            {audioStatus.Text="静音偏好保存失败："+e.Message;}
+        };
         var refresh=new Button{Content="刷新角色"};((StackPanel)controls.Children[0]).Children.Add(refresh);
         refresh.Click+=async(_,_)=>{try{var id=(characters.SelectedItem as DebugCharacter)?.Id;characters.ItemsSource=await api.Characters();characters.SelectedItem=((DebugCharacter[])characters.ItemsSource).FirstOrDefault(c=>c.Id==id);}catch(Exception e){status.Text=e.Message;}};
         var find=new Button{Content="搜索名称 / ID"};controls.Children.Add(Row(search,find));Add(root,controls,2);
@@ -108,6 +125,7 @@ internal sealed class ChapterTwoDebugWindow : Window
         finally{pending=false;if(!disposed)send.IsEnabled=api.Authenticated;}
     }
     internal void Finish(){disposed=true;pointer?.Dispose();pointer=null;api.Dispose();Close();}
+    internal void AudioStatus(string text)=>audioStatus.Text=text;
 }
 
 internal sealed class ChapterTwoDebugSession : IDisposable
@@ -115,11 +133,16 @@ internal sealed class ChapterTwoDebugSession : IDisposable
     private readonly DispatcherTimer timer;
     private readonly ChapterTwoDebugWindow window;
     private int gameId;private bool wasDown;
+    private ChapterTwoTestAudio? audio;
+    private long nextAudio;
+    private string lastAudioState="";
     internal ChapterTwoDebugSession(string root,string account)
     {
-        window=new(root,account);timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
+        window=new(root,account);window.TestMuteChanged+=()=>{nextAudio=0;UpdateAudio();};
+        timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
         timer.Tick+=(_,_)=>
         {
+            if(Environment.TickCount64>=nextAudio)UpdateAudio();
             bool down=(GetAsyncKeyState(0x11)&0x8000)!=0&&(GetAsyncKeyState(0x7a)&0x8000)!=0;
             var foreground=GetForegroundWindow();GetWindowThreadProcessId(foreground,out uint process);
             if(gameId>0&&down&&!wasDown&&(process==gameId||foreground==new WindowInteropHelper(window).Handle))
@@ -133,8 +156,26 @@ internal sealed class ChapterTwoDebugSession : IDisposable
             wasDown=down;
         };timer.Start();
     }
-    internal void Bind(int id)=>gameId=id;
-    public void Dispose(){timer.Stop();window.Finish();}
+    private void UpdateAudio()
+    {
+        nextAudio=Environment.TickCount64+1000;
+        if(audio is null)return;
+        try
+        {
+            var count=audio.SetMuted(window.TestMuted);
+            var state=$"enabled={window.TestMuted} sessions={count}";
+            if(state!=lastAudioState){Program.WriteLauncherLog($"Chapter Two test audio process={gameId} {state}.");lastAudioState=state;}
+            window.AudioStatus(window.TestMuted?(count>0?"当前游戏音量为 0":"等待游戏声音初始化…"):"使用游戏声音设置");
+        }
+        catch(Exception e) when(e is COMException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {window.AudioStatus("声音控制暂不可用，将重试");}
+    }
+    internal void Bind(int id)
+    {
+        if(gameId==id&&audio is not null)return;
+        audio?.Dispose();gameId=id;audio=ChapterTwoTestAudio.TryCreate(id);nextAudio=0;UpdateAudio();
+    }
+    public void Dispose(){timer.Stop();audio?.Dispose();audio=null;window.Finish();}
     [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
     [DllImport("user32.dll")]private static extern nint GetForegroundWindow();
     [DllImport("user32.dll")]private static extern uint GetWindowThreadProcessId(nint window,out uint process);

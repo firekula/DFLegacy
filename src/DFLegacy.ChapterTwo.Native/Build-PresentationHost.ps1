@@ -71,6 +71,19 @@ $original = $original.Replace('if (!confined())', 'if (!ordinaryDesktopProcess()
     'REFUSED: this diagnostic host requires a capability-free AppContainer',
     'REFUSED: this Chapter Two host requires an ordinary desktop process')
 $original = $original.Replace('containerFolder', 'sessionFolder')
+$settingsAnchor = 'if(lstrcmpiA(tail,"DNF_CHINA.cfg")==0)return profileDirectory+"\\DNF_CHINA.cfg";'
+if (!$original.Contains($settingsAnchor)) { throw 'Missing verified game settings path anchor.' }
+$settingsRouting = @'
+if(lstrcmpiA(tail,"DNF_CHINA.cfg")==0) {
+        static const std::string saved=[] {
+            char path[32768]{};
+            const auto size=GetEnvironmentVariableA("DFLEGACY_CH2_SETTINGS_PATH",path,_countof(path));
+            return size && size<_countof(path) ? std::string(path,size) : std::string{};
+        }();
+        return saved.empty() ? profileDirectory+"\\DNF_CHINA.cfg" : saved;
+    }
+'@
+$original = $original.Replace($settingsAnchor,$settingsRouting.Replace("`r`n","`n"))
 $debugArchiveAnchor = '    const auto path=ProfilePath(filename);'
 if (!$original.Contains($debugArchiveAnchor)) { throw 'Missing verified local file opening anchor.' }
 $debugArchiveCode = @'

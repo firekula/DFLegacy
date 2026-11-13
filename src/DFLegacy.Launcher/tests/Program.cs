@@ -36,6 +36,7 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 }
 
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
+if (ChapterTwoTestAudioTests.Dispatch(args) is int audioExit) return audioExit;
 if (await ChapterTwoDiagnosticTests.Dispatch(args) is int chapterTwoDiagnosticExit) return chapterTwoDiagnosticExit;
 if (await UpdateV4HelperTests.Dispatch(args) is int v4HelperExit) return v4HelperExit;
 if (await RepairClientTests.Dispatch(args) is int repairExit) return repairExit;
@@ -58,6 +59,14 @@ Directory.CreateDirectory(root);
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if(args.Contains("--chapter-two-settings-tests"))
+    {
+        ChapterTwoGameSettingsTests.Run(root,Check);
+        ChapterTwoTestAudioTests.Run(Check);
+        Console.WriteLine($"Chapter Two game settings: {checks} assertions, {failures} failures");
+        return failures==0?0:1;
+    }
+    if(args.Length==0)ChapterTwoGameSettingsTests.Run(root,Check);
     if (args.Contains("--chapter-update-layout"))
     {
         ChapterTransitionOfferTests.Run(root, Check);
