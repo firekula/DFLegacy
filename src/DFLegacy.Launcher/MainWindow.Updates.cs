@@ -8,7 +8,7 @@ public partial class MainWindow
     private UpdateCoordinator? updateCoordinator;
     internal void StartUpdates()
     {
-        if (ChapterTwoClient.IsBundled) return;
+        if (ChapterTwoClient.IsBundled&&!ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory)) return;
         if (_windowClosed || updateCoordinator is not null) return;
         try
         {
@@ -24,7 +24,7 @@ public partial class MainWindow
 
     private void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
-        if (ChapterTwoClient.IsBundled) return;
+        if (ChapterTwoClient.IsBundled&&!ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory)) return;
         if (App.BootstrapVerified) { App.RecheckBootstrap(); return; }
         // Reuse confirmed runtime options. Opening updates must not reload the legacy endpoint.
         if (updateCoordinator is null) StartUpdates();

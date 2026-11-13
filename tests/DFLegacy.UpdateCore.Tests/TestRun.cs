@@ -27,13 +27,16 @@ internal static class TestRun
     {
         if (await LocalBundleTests.Dispatch(args) is { } bundleResult) return bundleResult;
         if (TransactionTests.Dispatch(args) is { } child) return child;
+        if (ChapterTransitionTests.Dispatch(args) is { } chapterChild) return chapterChild;
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-v4-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
         {
+            ClientGameLeaseTests.Run(root);
             await ManifestTests.Run(root);
             await DownloadTests.Run(root);
             await ProviderTests.Run();
+            await LoopbackProviderTests.Run();
             MigrationTests.Run();
             await TransactionTests.Run(root);
             await EngineTests.Run(root);

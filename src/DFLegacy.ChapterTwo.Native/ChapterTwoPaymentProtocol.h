@@ -17,8 +17,8 @@ namespace dfl::chapter_two
 
     using PaymentFetch = bool (*)(std::string_view route, std::string_view form, PaymentReply& reply);
 
-    // Registers a process-local handler. All URLs outside this exact payment
-    // origin/prefix fall back to the normal, sandboxed browser protocol.
+    // Registers a process-local HTTP handler. URLs outside this exact payment
+    // origin/prefix are rejected without falling back to another HTTP handler.
     bool RegisterPaymentProtocol(std::wstring_view prefix, PaymentFetch fetch) noexcept;
 
     // Before the game CRT runs, redirect the verified native browser call.

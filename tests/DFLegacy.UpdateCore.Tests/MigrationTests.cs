@@ -49,5 +49,30 @@ internal static class MigrationTests
             TestRun.Reject(() => Apply(TestRun.Bytes(invalid), [ports]), "malformed/ambiguous configuration retained");
         TestRun.Reject(() => Apply(original, [Migration("unionPorts", "Relay.TcpPorts", "[0]")]), "invalid new port");
         TestRun.Reject(() => Apply(original, [Migration("setDefault", "Accounts.Password", "\"bad\"")]), "credential field migration");
+        var binding = Migration("bindLocalBridge", "UpdateSource",
+            """{"provider":"local","repository":"http://127.0.0.2:40123/c1","channel":"c1-bridge","architecture":"x64","flavor":"normal"}""",
+            "\"http://127.0.0.2:40123\"");
+        var bindingManifest = ManifestTests.Sample() with { Migrations = [binding] };
+        var parsedBinding = ManifestCodec.Parse(ManifestCodec.Serialize(bindingManifest)).Migrations.Single();
+        TestRun.Check(parsedBinding.Operation == "bindLocalBridge" && parsedBinding.Key == "UpdateSource",
+            "local enrollment binding survives actual release manifest parsing");
+        TestRun.Reject(() => ManifestCodec.Parse(ManifestCodec.Serialize(bindingManifest with
+            { Migrations = [binding with { Key = "Accounts.Password" }] })), "manifest rejects private field binding");
+        TestRun.Reject(() => ManifestCodec.Parse(ManifestCodec.Serialize(bindingManifest with
+            { Migrations = [binding with { When = JsonDocument.Parse("\"http://127.0.0.1:40123\"").RootElement.Clone() }] })),
+            "manifest rejects binding to mismatched legacy origin");
+        var selected = TestRun.Bytes("""{"UpdateServiceUrl":"http://127.0.0.2:40123","Account":"test","Password":"secret","Unknown":7}""");
+        var enrolled = Apply(selected, [binding]);
+        var settings = JsonNode.Parse(enrolled)!;
+        TestRun.Check(settings["UpdateProvider"]!.GetValue<string>() == "local"
+            && settings["UpdateRepository"]!.GetValue<string>() == "http://127.0.0.2:40123/c1"
+            && settings["UpdateChannel"]!.GetValue<string>() == "c1-bridge"
+            && settings["UpdateFlavor"]!.GetValue<string>() == "normal"
+            && settings["UpdateServiceUrl"]!.GetValue<string>() == ""
+            && settings["Password"]!.GetValue<string>() == "secret" && settings["Unknown"]!.GetValue<int>() == 7
+            && Satisfied(enrolled, [binding]), "local enrollment atomically updates only updater keys and is idempotent");
+        TestRun.Reject(() => Apply(original, [binding]), "local enrollment without selected hosted origin");
+        TestRun.Reject(() => Apply(TestRun.Bytes("""{"UpdateServiceUrl":"http://127.0.0.2:40123","UpdateChannel":"different"}"""), [binding]),
+            "local enrollment overriding custom channel");
     }
 }

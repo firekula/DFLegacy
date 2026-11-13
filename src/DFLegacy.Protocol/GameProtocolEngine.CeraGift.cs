@@ -23,9 +23,18 @@ public static partial class GameProtocolEngine
         }
     }
 
-    public static bool TryReadCeraGiftRecipient(byte[] body, out string name) =>
-        TryReadGiftName(body.AsSpan(Math.Min(2, body.Length)), out name, out var consumed)
-        && consumed == body.Length - 2;
+    public static bool TryReadCeraGiftRecipient(byte[] body, out string name,
+        bool allowChapterTwoPadding = false)
+    {
+        if (!TryReadGiftName(body.AsSpan(Math.Min(2, body.Length)), out name, out var consumed))
+            return false;
+        var suffix = body.AsSpan(sizeof(ushort) + consumed);
+        // C2 pads the payload after the sequence to a 16-byte boundary.
+        // Keep ACT1 strict and accept only the minimal all-zero suffix.
+        return suffix.IsEmpty || (allowChapterTwoPadding
+            && (body.Length - sizeof(ushort)) % 16 == 0
+            && suffix.Length < 16 && !suffix.ContainsAnyExcept((byte)0));
+    }
 
     private static bool TryReadGiftName(ReadOnlySpan<byte> body, out string name, out int consumed)
     {
@@ -41,7 +50,7 @@ public static partial class GameProtocolEngine
     }
 
     public static bool TryReadCeraShopPurchase(byte[] body, out GameCeraShopPurchaseRequest request,
-        bool allowChapterTwoPurchasePadding = false)
+        bool chapterTwoClient = false)
     {
         request = null!;
         if (body.Length < 4 || body[2] > 1) return false;
@@ -55,18 +64,23 @@ public static partial class GameProtocolEngine
         }
         if (offset >= body.Length) return false;
         var count = body[offset++];
-        var logicalLength = offset + count * 7;
+        // C2 94B770 appends a package selection-count byte to every row.
+        // Current catalog supports fixed rewards only; do not silently drop
+        // selections from a legacy selectable package.
+        var rowSize = chapterTwoClient ? 8 : 7;
+        var logicalLength = offset + count * rowSize;
         if (count is 0 or > 32 || logicalLength > body.Length) return false;
         var padding = body.AsSpan(logicalLength);
-        if (!padding.IsEmpty && (gift || !allowChapterTwoPurchasePadding
+        if (!padding.IsEmpty && (!chapterTwoClient
             || (body.Length - sizeof(ushort)) % 16 != 0
             || padding.Length >= 16 || padding.ContainsAnyExcept((byte)0)))
         {
             return false;
         }
         var products = new GameCeraShopPurchaseItem[count];
-        for (var i = 0; i < count; i++, offset += 7)
+        for (var i = 0; i < count; i++, offset += rowSize)
         {
+            if (chapterTwoClient && body[offset + 7] != 0) return false;
             var commodity = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(offset + 3));
             if (commodity == 0) return false;
             products[i] = new(body[offset], BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(offset + 1)), commodity);

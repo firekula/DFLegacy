@@ -6,7 +6,7 @@ namespace DFLegacy.UpdateCore;
 public static class PathPolicy
 {
     private static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase)
-    { "launcher.json", "launcher.txt", "Config.ini", "client-package.json", "client-update-v4.json", ".dflegacy", "Logs", "Screenshot", "Screenshots", "Save", "Saves", "Accounts", "CrashReports", "Diagnostics", "sessions", "collections", "captures", "queue", "events", "installations", "preference.json", "settings.json", "active.json", "preferences.json", "session.json", "closed.json", "drops.json" };
+    { "launcher.json", "launcher.chapter2.json", "launcher.txt", "Config.ini", "client-package.json", "client-update-v4.json", ".dflegacy", "Logs", "Screenshot", "Screenshots", "Save", "Saves", "Accounts", "CrashReports", "Diagnostics", "sessions", "collections", "captures", "queue", "events", "installations", "preference.json", "settings.json", "active.json", "preferences.json", "session.json", "closed.json", "drops.json" };
     public static void Validate(string relative, bool allowConfiguration = false)
     {
         if (string.IsNullOrEmpty(relative) || relative.Length > 1024 || !relative.IsNormalized(NormalizationForm.FormC)

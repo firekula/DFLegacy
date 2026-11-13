@@ -72,6 +72,13 @@ internal static class DiagnosticUpdateLifetimeTests
         session.WriteIncident(new DiagnosticIncident{Stage="after-failed-update"},"confirmed");
         check(await PendingStage("after-failed-update"),"new session still freezes reports after failed handoff");
         await AutomaticDiagnostics.SuspendForUpdateAsync(deadline.Token);
+        var handedOffSession=AutomaticDiagnostics.Session;
+        AutomaticDiagnostics.ResumeAfterUpdate(handedOff:true);
+        AutomaticDiagnostics.Configure(options,user,Start);
+        check(ReferenceEquals(handedOffSession,AutomaticDiagnostics.Session)&&handedOffSession!.IsClosed,
+            "successful chapter handoff keeps diagnostics suspended through late configuration callbacks");
+        using(var writable=new FileStream(helper,FileMode.Open,FileAccess.ReadWrite,FileShare.None))
+            check(writable.CanWrite,"chapter installer can retire the diagnostic image after successful handoff");
         user.SetEnabled(false);AutomaticDiagnostics.ResumeAfterUpdate();AutomaticDiagnostics.Configure(options,user,Start);
         check(!options.Diagnostics.Enabled&&AutomaticDiagnostics.Session!.Registration.LocalOnly,"package defaults preserve durable disabled choice");
     }

@@ -94,14 +94,26 @@ public sealed partial class UpdateInstaller
         if(plan.ParentId!=pipeServerId) throw new InvalidDataException("更新父进程不匹配。");
         using var parent=Process.GetProcessById(plan.ParentId);
         if(parent.StartTime.ToUniversalTime().Ticks!=plan.ParentStartTicks || parent.MainModule?.FileName is not { } actual ||
-           !Path.GetFullPath(actual).Equals(plan.ParentPath,StringComparison.OrdinalIgnoreCase) ||
-           !plan.ParentPath.Equals(Path.Combine(Path.GetFullPath(plan.Target),"DFLegacy.Launcher.exe"),StringComparison.OrdinalIgnoreCase))
+           !Path.GetFullPath(actual).Equals(plan.ParentPath,StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("更新父进程身份无效。");
         UpdateSafety.NoLinks(plan.ParentPath);
         if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("原登录器文件已改变。");
+        var root=Path.GetFullPath(plan.Target);
+        if(plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase)) return;
+        if(plan.V4==null || !plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.AppName),StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("更新父进程不属于目标安装。");
+        var receipt=new DFLegacy.UpdateCore.InstallationStore(root).ReadInstalled();
+        if(receipt==null || !receipt.Release.Manifest.Files.Any(file=>file.Path==BootstrapLayout.AppName&&file.Sha256==plan.ExecutableHash))
+            throw new InvalidDataException("更新父进程与已安装启动组件不匹配。");
     }
     private static void ValidateInputs(UpdatePlan plan)
     {
+        if(ChapterTwoClient.IsBundled && plan.V4==null)
+            throw new InvalidDataException("第二章启动器不能运行旧版安装交接。");
+        if(ChapterTwoClient.IsBundled && plan.V4!=null && !ChapterUpdatePolicy.IsManaged(plan.Target)
+            && !DFLegacy.UpdateCore.ChapterTransition.HasPending(plan.Target)
+            && !DFLegacy.UpdateCore.InstallTransaction.HasPending(plan.Target))
+            throw new InvalidDataException("第二章启动器只能维护已管理的安装。");
         if(plan.V4!=null) { ValidateV4Inputs(plan); return; }
         if((plan.Update==null)==(plan.Recovery==null)) throw new InvalidDataException("更新交接模式无效。");
         if(plan.Recovery is {} recovery) UpdateTransaction.ValidateRecovery(plan.Target,recovery,plan.ExecutableHash);
@@ -119,9 +131,12 @@ public sealed partial class UpdateInstaller
     }
     public static async Task<int> RunHelperAsync(string[] args)
         => (await RunHelperWithOutcomeAsync(args).ConfigureAwait(false)).ExitCode;
+    internal static bool IsHelperInvocation(string[] args) =>
+        args.Length==2 && args[0]=="--dflegacy-apply-update" && args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal)
+        && Guid.TryParseExact(args[1][16..],"N",out _);
     internal static async Task<UpdateHelperOutcome> RunHelperWithOutcomeAsync(string[] args,IProgress<UpdateInstallProgress>? progress=null)
     {
-        if(args.Length!=2 || args[0]!="--dflegacy-apply-update" || !args[1].StartsWith("dflegacy-update-",StringComparison.Ordinal) || !Guid.TryParseExact(args[1][16..],"N",out _)) return new(2);
+        if(!IsHelperInvocation(args)) return new(2);
         UpdatePlan? plan=null; bool parentExited=false;
         try
         {

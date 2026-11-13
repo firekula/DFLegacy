@@ -34,7 +34,10 @@ internal static class BootstrapLayout
     internal static void RequireManifest(Core.ClientManifest manifest)
     {
         Core.ManifestCodec.Validate(manifest);
-        foreach(var name in new[]{EntryName,AppName,UpdaterName,DescriptorName,"DFLegacy.Client.dll"})
+        var chapterManaged=manifest.Files.Any(f=>f.Path==Core.ClientChapterIdentity.FileName);
+        foreach(var name in new[]{EntryName,AppName,UpdaterName,DescriptorName}.Concat(chapterManaged
+                    ? new[]{Core.ClientChapterIdentity.FileName,"DNF.exe","Script.pvf"}
+                    : new[]{"DFLegacy.Client.dll"}))
         {
             var file=manifest.Files.SingleOrDefault(f=>f.Path==name);
             if(file is null||file.Size<=0||name==DescriptorName&&file.Size>4096)
@@ -82,7 +85,7 @@ internal static class BootstrapLayout
     private static bool HasPending(string root)
     {
         var legacy=Path.Combine(root,".dflegacy","pending.json");Core.PathPolicy.NoLinks(legacy);
-        return File.Exists(legacy)||Directory.Exists(legacy)||Core.InstallTransaction.HasPending(root);
+        return File.Exists(legacy)||Directory.Exists(legacy)||Core.InstallTransaction.HasPending(root)||Core.ChapterTransition.HasPending(root);
     }
     internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
     {
@@ -91,11 +94,13 @@ internal static class BootstrapLayout
         // validated.json. Verify that installation once; later handoffs reuse
         // its receipt. This local operation never discovers or downloads releases.
         using var http=Core.ReleaseProvider.CreateHttpClient();
-        var engine=new Core.UpdateEngine(root,new Core.ReleaseProvider(http,settings.Source));
+        var provider=V4UpdateSession.CreateProvider(http,settings.Source);
+        using var owned=provider as IDisposable;
+        var engine=new Core.UpdateEngine(root,provider);
         var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
         if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
         using var lease=Core.InstallationLease.Acquire(root);
-        if(Core.InstallTransaction.HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");
+        if(HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");
         token.ThrowIfCancellationRequested();
         var store=new Core.InstallationStore(root);
         var receipt=store.ReadInstalled()??throw new InvalidDataException("缺少已验证的启动组件安装记录。");
@@ -103,9 +108,28 @@ internal static class BootstrapLayout
         if(!store.HasValidatedReceipt(receipt))throw new InvalidDataException("启动组件校验记录无效；请使用原来的启动图标自动修复。");
         RequireReceiptLayout(root,architecture,receipt);
     }
-    private static void RequireReceiptLayout(string root,string architecture,Core.InstalledReceipt receipt)
+    internal static async Task ValidateChapterEntryAsync(string root,CancellationToken token=default)
+    {
+        var settings=RepairClient.ReadSettings(new(root));
+        using var http=Core.ReleaseProvider.CreateHttpClient();
+        var provider=V4UpdateSession.CreateProvider(http,settings.Source);
+        using var owned=provider as IDisposable;
+        var engine=new Core.UpdateEngine(root,provider);
+        var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
+        if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
+        var receipt=new Core.InstallationStore(root).ReadInstalled()??throw new InvalidDataException("缺少已验证的安装记录。");
+        var identity=ChapterUpdatePolicy.Validate(root,receipt.Release)??throw new InvalidDataException("缺少已验证的章别描述。");
+        if(identity.Entry!=EntryName)throw new InvalidDataException("当前安装的原启动入口不匹配。");
+    }
+    internal static bool IsSecondChapter(string root)
+    {
+        var receipt=new Core.InstallationStore(root).ReadInstalled();
+        return receipt!=null&&ChapterUpdatePolicy.Validate(root,receipt.Release)?.Chapter==Core.ClientChapterIdentity.ChapterTwo;
+    }
+    internal static void RequireReceiptLayout(string root,string architecture,Core.InstalledReceipt receipt)
     {
         RequireManifest(receipt.Release.Manifest);
+        ChapterUpdatePolicy.Validate(root,receipt.Release);
         var path=Core.PathPolicy.Resolve(root,DescriptorName);Core.PathPolicy.NoLinks(path);
         using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
         if(stream.Length>4096)throw new InvalidDataException("启动恢复描述文件过大。");

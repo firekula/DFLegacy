@@ -52,6 +52,7 @@ public partial class MainWindow : System.Windows.Window
             MoreServicesButton.ContextMenu.Items.Add(diamond);
         }
 
+        AddChapterTransitionMenu();
         ShowBanner(0);
         RefreshAccounts();
         AccountText.TextChanged += (_, _) => UpdateAccountHint();

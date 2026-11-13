@@ -28,6 +28,10 @@ public sealed record CeraShopProduct(
             "creature" => 3,
             _ => 2
         };
+
+    public int GetPurchaseResultCategory(bool isChapterTwo) =>
+        isChapterTwo && string.Equals(Section, "package", StringComparison.OrdinalIgnoreCase)
+            ? 4 : ClientCategory;
 }
 
 public sealed record PremiumContractDefinition(byte ServiceType, int Days);
@@ -76,7 +80,7 @@ public sealed class CeraShopCatalog
     private readonly Dictionary<uint, bool> _creatureGiftQuantityIsOne = new();
     private readonly ConcurrentDictionary<ushort, bool> _creatureGiftPermanent = new();
     private static readonly Encoding AvatarScriptEncoding = CreateAvatarScriptEncoding();
-    private int _maxGiftCount = 1; // ACT1 B539D4 default when PVF has no override.
+    private int? _maxGiftCountOverride;
 
     public CeraShopCatalog(
         ScriptFileSystem scripts,
@@ -93,7 +97,13 @@ public sealed class CeraShopCatalog
 
     public int Count => _products.Value.Count;
     public IEnumerable<CeraShopProduct> Products => _products.Value.Values;
-    public int MaxGiftCount { get { _ = _products.Value; return _maxGiftCount; } }
+    public int MaxGiftCount => GetMaxGiftCount(isChapterTwo: false);
+    public int GetMaxGiftCount(bool isChapterTwo)
+    {
+        _ = _products.Value;
+        // Native defaults: C1 B539D4=1; C2 D3F704=20. Explicit PVF values, including0, win.
+        return _maxGiftCountOverride ?? (isChapterTwo ? 20 : 1);
+    }
 
     public bool TryGetProduct(uint commodityNo, out CeraShopProduct product) =>
         _products.Value.TryGetValue(commodityNo, out product!);
@@ -231,7 +241,7 @@ public sealed class CeraShopCatalog
             }
             if (section == "max gift count")
             {
-                if (int.TryParse(line, out var max) && max is >= 0 and <= byte.MaxValue) _maxGiftCount = max;
+                if (int.TryParse(line, out var max) && max is >= 0 and <= byte.MaxValue) _maxGiftCountOverride = max;
                 continue;
             }
             if (!TryParseProductLine(section, line, out var product))
@@ -324,7 +334,8 @@ public sealed class CeraShopCatalog
             || !uint.TryParse(fields[0], out var commodityNo)
             || !ushort.TryParse(fields[1], out var itemId)
             || commodityNo == 0
-            || itemId == 0)
+            || itemId == 0
+            || _items.IsUnavailableChapterTwoCashItem(itemId))
         {
             return false;
         }
@@ -384,7 +395,7 @@ public sealed class CeraShopCatalog
         return true;
     }
 
-    private static bool TryResolveDirectCurrencyGrant(
+    internal static bool TryResolveDirectCurrencyGrant(
         ushort itemId,
         ItemDefinition definition,
         out CeraShopDirectCurrencyGrant grant)
@@ -436,7 +447,7 @@ public sealed class CeraShopCatalog
         return capacity != 0;
     }
 
-    private static bool TryResolvePremiumContract(
+    internal static bool TryResolvePremiumContract(
         ItemDefinition definition,
         out PremiumContractDefinition contract)
     {

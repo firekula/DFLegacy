@@ -32,7 +32,7 @@ internal sealed class LauncherAccountStore
         return options;
     }
 
-    private LauncherOptions LoadCurrent() => !File.Exists(_path) ? new LauncherOptions() :
+    internal LauncherOptions LoadCurrent() => !File.Exists(_path) ? new LauncherOptions() :
         JsonSerializer.Deserialize<LauncherOptions>(File.ReadAllText(_path), JsonOptions)
             ?? throw new InvalidDataException("launcher.json 不能为空。");
 
@@ -63,6 +63,8 @@ internal sealed class LauncherAccountStore
         FileStream? stream = null;
         try
         {
+            if(ChapterTransition.HasPending(Path.GetDirectoryName(Path.GetFullPath(_path))!))
+                throw new IOException("存在未完成跨章回退，请先恢复。");
             PathPolicy.NoLinks(_path);
             stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read);
             using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, true, 1024, leaveOpen: true);
@@ -89,7 +91,7 @@ internal sealed class LauncherAccountStore
 
     private void SaveCore(LauncherOptions options, string directory)
     {
-        if (InstallTransaction.HasPending(directory)) throw new IOException("存在未完成更新，请先恢复再保存配置。");
+        if (InstallTransaction.HasPending(directory)||ChapterTransition.HasPending(directory)) throw new IOException("存在未完成更新，请先恢复再保存配置。");
         PathPolicy.NoLinks(_path);
         // Merge into the original JSON so unknown fields inside known objects
         // survive, including fields introduced by a newer launcher version.

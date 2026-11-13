@@ -40,7 +40,17 @@ internal static class UpdateHelperTests
             catch(Exception ex) { File.WriteAllText(Path.Combine(target,"rejected.marker"),ex.GetType().Name); return 3; }
         }
         if(args.Length==0 && File.Exists(Path.Combine(AppContext.BaseDirectory,"fixture-owned.marker")))
-        { File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"restarted.marker"),"yes"); return 0; }
+        {
+            if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT")!=null &&
+                File.Exists(Path.Combine(AppContext.BaseDirectory,"chapter-ready-fixture")))
+            {
+                if(File.Exists(Path.Combine(AppContext.BaseDirectory,"fail-chapter-ready")))return 5;
+                BootstrapUpdateClient.SignalReady();
+                await Task.Delay(250);
+            }
+            File.WriteAllText(Path.Combine(AppContext.BaseDirectory,"restarted.marker"),"yes");
+            return 0;
+        }
         return null;
     }
     private static async Task SendRaw(UpdatePlan plan)

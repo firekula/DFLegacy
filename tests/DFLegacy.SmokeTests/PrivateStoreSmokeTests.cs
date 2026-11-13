@@ -637,10 +637,11 @@ internal static class PrivateStoreSmokeTests
             var rollback = pa.Skip(beforeFailure).ToArray();
             check(rejectedDraft is null && !service.IsOwner(f.A.Id)
                 && rollback.Any(p => p.Type == 1 && p.ProtocolId == 90 && p.Payload.SequenceEqual(new byte[] { 0, 17 }))
-                && rollback.LastOrDefault() is { Type: 0, ProtocolId: 80 }
+                && rollback.LastOrDefault() is { Type: 1, ProtocolId: 89 } ownerReset
+                && ownerReset.Payload.SequenceEqual(new byte[] { 1 })
                 && (await f.ReadA()) is { PrivateStoreStock: null } restored
                 && restored.Inventory!.Single(i => i.Slot == 73).CountOrValue == 10,
-                "Chapter Two rejects a mixed draft atomically and closes the preview before restoring the bag");
+                "Chapter Two rejects a mixed draft atomically and resets the owner's native stall mode before restoring the bag");
             check(await service.CreateAsync(f.A.Id, sessionA, new(1, 0, 1000, 250)),
                 "the rejected Chapter Two draft releases the stall and commerce reservation");
             await service.DisplayAsync(f.A.Id, sessionA, [83, 72, 79, 80], [new(0, 101, 0, 73, 5)]);

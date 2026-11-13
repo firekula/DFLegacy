@@ -1911,7 +1911,9 @@ public static partial class GameProtocolEngine
         using var writer = new BinaryWriter(payload);
         writer.Write((byte)1);
         writer.Write((byte)(isGift ? 1 : 0));
-        writer.Write(Math.Clamp(shopCategory, 0, 3));
+        // C2's original result handler indexes a fifth raw [package] vector.
+        // Existing C1 callers still supply the visible categories 0..3.
+        writer.Write(Math.Clamp(shopCategory, 0, 4));
         writer.Write(commodityNo);
         // The DF2008 client keys its Cera result-item map by these values.
         // Keeping them equal also selects the normal purchase-completion path.

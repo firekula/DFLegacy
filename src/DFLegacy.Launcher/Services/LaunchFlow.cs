@@ -25,6 +25,7 @@ internal static class LaunchFlow
         Program.RegisterDiagnosticSecrets(options);
         Program.Incidents.RegisterSecret(account.Account);
         Program.Incidents.RegisterSecret(account.Password);
+        using var gameLease=DFLegacy.UpdateCore.ClientGameLease.AcquireShared(Path.GetDirectoryName(clientPath)!);
         if (ChapterTwoClient.IsBundled)
         {
             await ChapterTwoClient.RunAsync(clientPath, options, account, cancellationToken);

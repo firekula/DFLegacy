@@ -25,19 +25,40 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     {
         root=Path.GetFullPath(installation); this.options=options; store=new(root);
         var source=SourceFor(root,options);
-        if(provider==null) { ownedHttp=Core.ReleaseProvider.CreateHttpClient(); provider=new Core.ReleaseProvider(ownedHttp,source); }
+        if(provider==null) { ownedHttp=Core.ReleaseProvider.CreateHttpClient(); provider=CreateProvider(ownedHttp,source); }
         if(provider.Source!=source) throw new InvalidDataException("测试或更新来源与登录器配置不一致。");
         this.provider=provider; engine=new(root,provider);
         legacyActive=source.Provider=="github" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
     }
+
+    internal static Core.IReleaseProvider CreateProvider(HttpClient http,Core.ReleaseSource source) =>
+        source.Provider=="local" ? new Core.LoopbackReleaseProvider(source) : new Core.ReleaseProvider(http,source);
+
+    internal static string ConfigurationName(Core.InstalledReceipt? receipt)
+    {
+        if(receipt!=null)
+        {
+            var files=receipt.Release.Manifest.Files.Select(file=>file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // A repair may need to restore the descriptor itself. Classify only
+            // which private file to open from the receipt's mandatory layout;
+            // launch still requires the authenticated descriptor and resources.
+            if(files.Contains(Core.ClientChapterIdentity.FileName)&&files.Contains("DNF.exe")&&!files.Contains("DFLegacy.Client.dll"))
+                return "launcher.chapter2.json";
+        }
+        return "launcher.json";
+    }
+
     internal static Core.ReleaseSource SourceFor(string installation,LauncherOptions options)
     {
         var arch=RuntimeInformation.ProcessArchitecture==Architecture.X86?"x86":"x64";
         var flavor=options.UpdateFlavor;
-        Core.ReleaseSource? installedSource=null;
-        try { installedSource=new Core.InstallationStore(installation).ReadInstalled()?.Release.Source; }catch(InvalidDataException) { }
+        Core.InstalledReceipt? receipt=null;
+        try { receipt=new Core.InstallationStore(installation).ReadInstalled(); }catch(InvalidDataException) { }
+        var installedSource=receipt?.Release.Source;
+        var configuration=ConfigurationName(receipt);
+        if(configuration=="launcher.chapter2.json" && installedSource!=null) return installedSource;
         var explicitKeys=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var configPath=Path.Combine(installation,"launcher.json");Core.PathPolicy.NoLinks(configPath);
+        var configPath=Path.Combine(installation,configuration);Core.PathPolicy.NoLinks(configPath);
         if(File.Exists(configPath))
         {
             if(new FileInfo(configPath).Length>4*1024*1024)throw new InvalidDataException("配置文件超过更新来源读取上限。");
@@ -66,7 +87,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         // source when runtime options contain only defaults; explicit keys win.
         var provider=installedSource!=null&&options.UpdateProvider=="github"&&!explicitKeys.Contains("UpdateProvider")?installedSource.Provider:options.UpdateProvider;
         var channel=installedSource!=null&&options.UpdateChannel=="stable"&&!explicitKeys.Contains("UpdateChannel")?installedSource.Channel:options.UpdateChannel;
-        var source=new Core.ReleaseSource(provider,options.UpdateRepository,channel,arch,string.IsNullOrWhiteSpace(flavor)?"normal":flavor);
+        var repository=installedSource!=null&&!explicitKeys.Contains("UpdateRepository")?installedSource.Repository:options.UpdateRepository;
+        var source=new Core.ReleaseSource(provider,repository,channel,arch,string.IsNullOrWhiteSpace(flavor)?"normal":flavor);
         source.Validate(); return source;
     }
     private UpdateSession Legacy=>legacy??=new UpdateSession(root,options);
@@ -85,11 +107,12 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     public UpdateRecovery? ReadRecovery()
     {
         if(File.Exists(Path.Combine(root,".dflegacy","pending.json"))) { legacyActive=true; return Legacy.ReadRecovery(); }
-        if(!Core.InstallTransaction.HasPending(root)) return null;
-        var path=Path.Combine(root,"DFLegacy.Launcher.exe"); Core.PathPolicy.NoLinks(path);
+        var chapterPending=Core.ChapterTransition.HasPending(root);
+        if(!chapterPending&&!Core.InstallTransaction.HasPending(root)) return null;
+        var path=Path.Combine(root,BootstrapLayout.EntryName); Core.PathPolicy.NoLinks(path);
         var file=new UpdateFile("DFLegacy.Launcher.exe",UpdateSafety.Hash(path),new FileInfo(path).Length);
-        var journal=Path.Combine(store.StateDirectory,"pending.json");
-        return new("v4",UpdateSafety.Hash(journal),ReadState()?.Version??"待恢复",file,file,true);
+        var journal=chapterPending?UpdateInstaller.ChapterRollbackJournal(root):Path.Combine(store.StateDirectory,"pending.json");
+        return new(chapterPending?"chapter-rollback":"v4",UpdateSafety.Hash(journal),ReadState()?.Version??"待恢复",file,file,true);
     }
     public UpdateApplyResult? ReadLastResult()=>new UpdateInstaller(root).ReadLastResult();
     public async Task<UpdateRelease?> CheckAsync(long installed,CancellationToken token)
@@ -137,9 +160,10 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         }
         var release=pending.Target!; var manifest=release.Manifest;
         var origin=provider.Source.Provider switch {"gitea"=>Core.ReleaseSource.GiteaOrigin,"gitee"=>"https://gitee.com",_=>"https://github.com"};
+        var uri=provider.Source.Provider=="local"?new Uri(provider.Source.Repository+"/"+provider.Source.ManifestAssetName):
+            new Uri($"{origin}/{provider.Source.Repository}/releases/download/{release.Tag}/{provider.Source.ManifestAssetName}");
         return new(manifest.Sequence,manifest.Version,DateTimeOffset.UtcNow,true,
-            new Uri($"{origin}/{provider.Source.Repository}/releases/download/{release.Tag}/{provider.Source.ManifestAssetName}"),
-            manifest.Files.Sum(f=>f.Size),release.ManifestSha256);
+            uri,manifest.Files.Sum(f=>f.Size),release.ManifestSha256);
     }
     public async Task<PreparedUpdate> DownloadAsync(UpdateRelease release,string attempt,IProgress<UpdateProgress> progress,CancellationToken token)
     {
@@ -162,6 +186,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         var m=staged!.Release.Manifest;
         if(!Core.FileVerifier.VerifyAsync(root,m).GetAwaiter().GetResult().IsValid) return false;
         if(m.Migrations.Length>0 || m.Retired.Any(r=>r.Action=="delete")) return false;
+        using var maintenance=Core.ClientGameLease.EnterMaintenance(root);
         Core.InstallTransaction.Apply(root,staged); return true;
     }
     private void RequireStaged(PreparedUpdate update)
@@ -174,7 +199,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         RequireStaged(update); return new UpdateInstaller(root).PrepareV4Async(staged,null,token);
     }
     public Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)
-        =>recovery.IsV4?new UpdateInstaller(root).PrepareV4Async(null,recovery.JournalSha256,token):Legacy.PrepareRecoveryAsync(recovery,token);
+        =>recovery.TransactionId=="chapter-rollback"?new UpdateInstaller(root).PrepareChapterRecoveryAsync(recovery.JournalSha256,token):
+            recovery.IsV4?new UpdateInstaller(root).PrepareV4Async(null,recovery.JournalSha256,token):Legacy.PrepareRecoveryAsync(recovery,token);
     public Task<UpdateHelperHandle> StartAsync(UpdateHandoff handoff,CancellationToken token)=>new UpdateInstaller(root).StartHelperAsync(handoff,token);
     public Task<IReadOnlyList<FileLockOwner>> InspectLocksAsync(CancellationToken token)=>Task.Run<IReadOnlyList<FileLockOwner>>(()=>
     {
@@ -200,5 +226,5 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
                 UpdateProgressText.Format(p)));
         }
     }
-    public void Dispose() { legacy?.Dispose(); ownedHttp?.Dispose(); }
+    public void Dispose() { legacy?.Dispose(); if(ownedHttp!=null && provider is IDisposable local) local.Dispose(); ownedHttp?.Dispose(); }
 }

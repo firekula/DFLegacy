@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include "ChapterTwoPerformance.h"
+#include "ChapterTwoLootGather.h"
 
 namespace
 {
@@ -65,6 +66,7 @@ namespace
 
     int __fastcall DrawPerformance(void* state, void*) noexcept
     {
+        dfl::chapter_two::OnLootGatherFrame();
         using Original = int(__thiscall*)(void*);
         using DrawText = int(__thiscall*)(void*, int, int, int, char*);
         // Preserve the client's own diagnostics if its original flag is on.

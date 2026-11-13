@@ -15,6 +15,7 @@ internal static partial class CeraGiftSmokeTests
             "ACT1 CMD67 failure has unused-byte/error-byte prefix and four 32-bit fields");
         Wire(check);
         await Transactions(check);
+        await ChapterTwoGiftLimits(check);
         await Rejections(check);
         await Concurrency(check);
         await Faults(check);

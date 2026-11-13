@@ -9,6 +9,8 @@
 #include "ChapterTwoPerformance.h"
 #include "ChapterTwoPerformanceHistory.h"
 #include "ChapterTwoPerformanceLog.h"
+#include "ChapterTwoType16Audio.h"
+#include "ChapterTwoPanelCursor.h"
 
 namespace
 {
@@ -39,6 +41,7 @@ namespace
     // Odd epochs capture. A new epoch discards the interval across a focus change.
     std::atomic<unsigned> CaptureEpoch{0};
     HWND Panel = nullptr, GameWindow = nullptr;
+    dfl::chapter_two::PanelCursor PanelPointer;
     bool Visible = false;
     ULONGLONG NextPaint = 0, NextMemory = 0;
     HFONT BodyFont = nullptr, HeadingFont = nullptr;
@@ -201,6 +204,7 @@ namespace
     void HidePanel() noexcept
     {
         Visible = false;
+        PanelPointer.Release();
         ShowWindow(Panel, SW_HIDE);
     }
 
@@ -208,6 +212,16 @@ namespace
     {
         switch (message)
         {
+        case WM_SETCURSOR:
+            PanelPointer.Update(window,Visible);
+            ::SetCursor(dfl::chapter_two::PanelCursor::Shape(LOWORD(lParam)));
+            return TRUE; // Do not forward cursor hiding to the game owner.
+        case WM_SHOWWINDOW:
+            if(!wParam)PanelPointer.Release();
+            break;
+        case WM_DESTROY:
+            PanelPointer.Release();
+            break;
         case WM_CLOSE:
             HidePanel();
             return 0;
@@ -244,17 +258,19 @@ namespace
     void PlaceBesideGame() noexcept
     {
         RECT game{};
-        GetWindowRect(GameWindow, &game);
+        if (!IsWindow(GameWindow) || !GetWindowRect(GameWindow, &game)) return;
         MONITORINFO monitor{};
         monitor.cbSize = sizeof(monitor);
         if (!GetMonitorInfoW(MonitorFromWindow(GameWindow, MONITOR_DEFAULTTONEAREST), &monitor)) return;
         const auto work = monitor.rcWork;
-        const LONG width = std::min<LONG>(PanelWidth, work.right - work.left);
-        const LONG height = std::min<LONG>(PanelHeight, work.bottom - work.top);
-        const LONG x = game.right + 10 + width <= work.right ? game.right + 10 :
-            game.left - 10 - width >= work.left ? game.left - 10 - width : work.right - width;
-        const auto y = std::clamp(game.top, work.top, work.bottom - height);
-        SetWindowPos(Panel, nullptr, x, y, width, height, SWP_NOACTIVATE | SWP_NOZORDER);
+        RECT current{};
+        GetWindowRect(Panel, &current);
+        const LONG width = std::min<LONG>(current.right-current.left, work.right-work.left);
+        const LONG height = std::min<LONG>(current.bottom-current.top, work.bottom-work.top);
+        // Keep one owned pair in the normal z-order; never pin above other apps.
+        if (current.left != game.right || current.top != game.top ||
+            current.right-current.left != width || current.bottom-current.top != height)
+            SetWindowPos(Panel, nullptr, game.right, game.top, width, height, SWP_NOACTIVATE | SWP_NOZORDER);
     }
 
     void TogglePanel(HWND game, HINSTANCE instance) noexcept
@@ -265,14 +281,15 @@ namespace
         {
             Panel = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, WindowClass, L"第二章 Debug · 性能面板",
                 WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME,
-                CW_USEDEFAULT, CW_USEDEFAULT, PanelWidth, PanelHeight, nullptr, nullptr, instance, nullptr);
+                CW_USEDEFAULT, CW_USEDEFAULT, PanelWidth, PanelHeight, game, nullptr, instance, nullptr);
             if (!Panel)
             {
                 OutputDebugStringA("DFLegacy Chapter Two: performance panel window creation failed.\n");
                 return;
             }
-            PlaceBesideGame();
         }
+        SetWindowLongPtrW(Panel, GWLP_HWNDPARENT, reinterpret_cast<LONG_PTR>(game));
+        PlaceBesideGame();
         NextPaint = 0;
         Visible = true;
         SetWindowPos(Panel, HWND_TOP, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
@@ -289,6 +306,17 @@ namespace
             && !IsIconic(foreground);
         if (down && !wasDown && gameFocused && instance) TogglePanel(foreground, instance);
         wasDown = down;
+        if (Visible && Panel)
+        {
+            if (!IsWindow(GameWindow)) HidePanel();
+            else if (IsIconic(GameWindow)) ShowWindow(Panel, SW_HIDE);
+            else
+            {
+                PlaceBesideGame();
+                if (!IsWindowVisible(Panel)) ShowWindow(Panel, SW_SHOWNOACTIVATE);
+            }
+        }
+        PanelPointer.Update(Panel,Visible);
         SetCapture(gameFocused);
         if (now >= NextMemory)
         {
@@ -345,6 +373,7 @@ namespace
                 const auto now = GetTickCount64();
                 UpdatePanel(instance, now);
                 if (now - periodTick < LogPeriodMs) continue;
+                dfl::chapter_two::LogType16AudioDiagnostics();
                 SYSTEMTIME ended{};
                 GetSystemTime(&ended);
                 AcquireSRWLockExclusive(&FrameLock);
@@ -374,6 +403,7 @@ namespace
         }
         KillTimer(nullptr, timer);
         SetCapture(false);
+        PanelPointer.Release();
         if (Panel) DestroyWindow(Panel);
         DeleteObject(HeadingFont);
         DeleteObject(BodyFont);

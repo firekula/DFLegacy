@@ -10,10 +10,17 @@ public sealed record ReleaseSource(string Provider, string Repository, string Ch
     [JsonIgnore] public string ManifestAssetName => $"DFLegacy-client-update-v4-{Channel}-{Flavor}-win-{Architecture}.json";
     public void Validate()
     {
-        if (Provider is not ("github" or "gitee" or "gitea") || Repository != "firekula/DFLegacy" || !ManifestCodec.IsName(Channel)
+        if ((Provider == "local" ? !IsLocalRepository(Repository)
+                : Provider is not ("github" or "gitee" or "gitea") || Repository != "firekula/DFLegacy") || !ManifestCodec.IsName(Channel)
             || Provider == "gitea" && Channel != "gitea-test"
             || Architecture is not ("x86" or "x64") || Flavor is not ("normal" or "test")) throw new InvalidDataException("更新源配置无效。");
     }
+
+    private static bool IsLocalRepository(string repository) =>
+        repository is { Length: < 1024 }
+        && System.Text.RegularExpressions.Regex.IsMatch(repository,
+            @"\Ahttp://127\.0\.0\.2:[1-9][0-9]{0,4}(?:/[A-Za-z0-9_-]+)*\z")
+        && Uri.TryCreate(repository, UriKind.Absolute, out var uri) && uri.Port is > 0 and <= 65535;
 }
 public sealed record VerifiedRelease(ReleaseSource Source, string Tag, string ManifestSha256, byte[] ManifestBytes)
 {
@@ -27,6 +34,7 @@ public sealed record VerifiedRelease(ReleaseSource Source, string Tag, string Ma
         var manifest = Manifest;
         if (manifest.Version != Tag || manifest.Channel != Source.Channel || manifest.Architecture != Source.Architecture || manifest.Flavor != Source.Flavor)
             throw new InvalidDataException("更新目标的版本/渠道/架构与配置不一致。");
+        _ = ConfigurationMigration.ValidateReleaseBindings(manifest.Migrations, Source);
     }
 }
 public interface IReleaseProvider : IResourceTransport

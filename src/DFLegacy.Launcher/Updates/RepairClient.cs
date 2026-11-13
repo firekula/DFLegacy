@@ -43,7 +43,13 @@ internal static class RepairClient
     internal static RepairSettings ReadSettings(RepairRequest request)
     {
         using var lease=Core.InstallationLease.Acquire(request.Directory);
-        var path=Path.Combine(request.Directory,"launcher.json");Core.PathPolicy.NoLinks(path);
+        if(Core.ChapterTransition.HasPending(request.Directory)||Core.InstallTransaction.HasPending(request.Directory))
+            throw new InvalidDataException("请先恢复未完成的安装。");
+        Core.InstalledReceipt? receipt=null;
+        try { receipt=new Core.InstallationStore(request.Directory).ReadInstalled(); }
+        catch(InvalidDataException) { /* Trusted online metadata can repair a corrupt receipt; never delete it here. */ }
+        var configuration=V4UpdateSession.ConfigurationName(receipt);
+        var path=Path.Combine(request.Directory,configuration);Core.PathPolicy.NoLinks(path);
         var explicitKeys=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if(File.Exists(path))
         {
@@ -52,10 +58,15 @@ internal static class RepairClient
             if(json.RootElement.ValueKind!=JsonValueKind.Object)throw new InvalidDataException("配置文件必须是 JSON 对象；原文件已保留。");
             foreach(var property in json.RootElement.EnumerateObject())if(!explicitKeys.Add(property.Name))throw new InvalidDataException("配置含有重复字段；原文件已保留。");
         }
-        var options=new LauncherAccountStore(path).Load();Program.RegisterDiagnosticSecrets(options);
-        Core.InstalledReceipt? receipt=null;
-        try { receipt=new Core.InstallationStore(request.Directory).ReadInstalled(); }
-        catch(InvalidDataException) { /* Trusted online metadata can repair a corrupt receipt; never delete it here. */ }
+        var options=new LauncherAccountStore(path).LoadCurrent();Program.RegisterDiagnosticSecrets(options);
+        if(configuration=="launcher.chapter2.json")
+        {
+            if(request.Provider!=null || request.Channel!=null || request.Flavor!=null)
+                throw new InvalidDataException("第二章修复必须使用当前安装绑定的来源。");
+            var bound=receipt!.Release.Source;
+            if(bound.Architecture!=BootstrapLayout.Architecture)throw new InvalidDataException("第二章安装与修复工具架构不一致。");
+            return new(bound,options.DisableGitHubUpdates);
+        }
         var source=receipt?.Release.Source??V4UpdateSession.SourceFor(request.Directory,options);
         source=source with {
             Provider=request.Provider??(explicitKeys.Contains("UpdateProvider")?options.UpdateProvider:source.Provider),
@@ -88,15 +99,27 @@ internal static class RepairClient
         try
         {
             token.ThrowIfCancellationRequested();
+            if(Core.ChapterTransition.HasPending(root))
+            {
+                await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
+                using var maintenance=Core.ClientGameLease.EnterMaintenance(root);
+                progress?.Report(new("recover","",0,0,Detail:"请勿退出。"));
+                await Task.Run(()=>Core.ChapterTransition.Recover(root),CancellationToken.None).ConfigureAwait(false);
+                var restored=new Core.InstallationStore(root).ReadInstalled()??throw new InvalidDataException("缺少已恢复的第一章安装记录。");
+                validateManifest?.Invoke(restored.Release.Manifest);
+                report.Complete("chapter-rollback-recovered");
+                return new(true,true,"已恢复第一章。可从原启动入口继续。");
+            }
             if(Core.InstallTransaction.HasPending(root))
             {
                 await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
+                using var maintenance=Core.ClientGameLease.EnterMaintenance(root);
                 progress?.Report(new("recover","",0,0,Detail:"请勿退出。"));
                 await Task.Run(()=>Core.InstallTransaction.Recover(root,progress),CancellationToken.None).ConfigureAwait(false);
             }
             var settings=ReadSettings(request with {Directory=root});
             using var http=provider is null?Core.ReleaseProvider.CreateHttpClient():null;
-            provider??=new Core.ReleaseProvider(http!,settings.Source);
+            using var owned=provider is null?(provider=V4UpdateSession.CreateProvider(http!,settings.Source)) as IDisposable:null;
             if(provider.Source!=settings.Source)throw new InvalidDataException("修复提供方与配置/安装记录的来源不一致。");
             var engine=new Core.UpdateEngine(root,provider);
             if(settings.NetworkDisabled)
@@ -128,6 +151,7 @@ internal static class RepairClient
             await ReleaseLocksAsync(WithoutSupervisor(files),confirmClose,token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
             progress?.Report(new("install","",0,staged.Release.Manifest.Files.Length,Detail:"请勿退出。"));
+            using var installMaintenance=Core.ClientGameLease.EnterMaintenance(root);
             await Task.Run(()=>Core.InstallTransaction.Apply(root,staged,progress),CancellationToken.None).ConfigureAwait(false);
             var final=await engine.ValidateInstalledAsync(progress,CancellationToken.None).ConfigureAwait(false);
             if(!final.CanLaunch)throw new InvalidDataException(final.Message);
@@ -144,7 +168,7 @@ internal static class RepairClient
         Core.InstalledReceipt? receipt=null;
         try { receipt=new Core.InstallationStore(root).ReadInstalled(); }catch(InvalidDataException) { }
         return (receipt?.Release.Manifest.Files.Select(f=>Core.PathPolicy.Resolve(root,f.Path))??[])
-            .Concat(new[]{"DFLegacy.Launcher.exe","DFLegacy.Launcher.App.exe","DFLegacy.Updater.exe","DFLegacy.Client.dll","DNF.exe","Script.pvf","launcher.json"}.Select(f=>Path.Combine(root,f)));
+            .Concat(new[]{"DFLegacy.Launcher.exe","DFLegacy.Launcher.App.exe","DFLegacy.Updater.exe","DFLegacy.Client.dll","DNF.exe","Script.pvf","launcher.json","launcher.chapter2.json"}.Select(f=>Path.Combine(root,f)));
     }
     private static async Task ReleaseLocksAsync(IEnumerable<string> files,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirm,CancellationToken token)
     {

@@ -27,16 +27,19 @@ internal sealed class ClientPackageManifest
         try
         {
             directory = Path.GetFullPath(directory);
-            if(DFLegacy.UpdateCore.InstallTransaction.HasPending(directory)) throw new InvalidDataException("存在未完成的 V4 更新，请先恢复。");
+            if(DFLegacy.UpdateCore.InstallTransaction.HasPending(directory)||DFLegacy.UpdateCore.ChapterTransition.HasPending(directory))
+                throw new InvalidDataException("存在未完成的更新，请先恢复。");
             var receipt = new DFLegacy.UpdateCore.InstallationStore(directory).ReadInstalled();
             if(receipt!=null)
             {
                 var target=receipt.Release.Manifest;
                 var verification=DFLegacy.UpdateCore.FileVerifier.VerifyAsync(directory,target).GetAwaiter().GetResult();
                 if(!verification.IsValid) throw new InvalidDataException("V4 文件校验失败："+string.Join("、",verification.Problems.Take(5).Select(p=>p.Path)));
-                if(!target.Files.Any(f=>f.Path=="DFLegacy.Launcher.exe") || !target.Files.Any(f=>f.Path=="DFLegacy.Client.dll"))
+                var chapter=ChapterUpdatePolicy.Validate(directory,receipt.Release);
+                var chapterTwo=chapter?.Chapter==DFLegacy.UpdateCore.ClientChapterIdentity.ChapterTwo;
+                if(!target.Files.Any(f=>f.Path=="DFLegacy.Launcher.exe") || !chapterTwo && !target.Files.Any(f=>f.Path=="DFLegacy.Client.dll"))
                     throw new InvalidDataException("V4 清单缺少登录器或客户端补丁。");
-                if(target.Flavor=="test" && !target.Files.Any(f=>f.Path=="debug.dll"))
+                if(!chapterTwo && target.Flavor=="test" && !target.Files.Any(f=>f.Path=="debug.dll"))
                     throw new InvalidDataException("V4 测试版本缺少受管理的 debug.dll，不能加载遗留的未知模块。");
                 if(target.Migrations.Length>0)
                 {

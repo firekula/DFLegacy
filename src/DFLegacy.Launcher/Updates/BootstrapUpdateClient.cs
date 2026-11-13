@@ -72,6 +72,9 @@ internal static class BootstrapUpdateClient
         return outcome;
     }
     internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token)
+        =>await LaunchAndConfirmAsync(start,token,null).ConfigureAwait(false);
+
+    internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token,Action? confirmReady)
     {
         var eventName="Local\\DFLegacy.Startup."+Guid.NewGuid().ToString("N");
         using var ready=new EventWaitHandle(false,EventResetMode.ManualReset,eventName);
@@ -92,7 +95,11 @@ internal static class BootstrapUpdateClient
                 token.ThrowIfCancellationRequested();
                 // Signal is sent only after validated UI creation. An error dialog
                 // must never bless a failed updater as the recovery engine.
-                if(ready.WaitOne(0)&&(!process.HasExited||process.ExitCode==0))return;
+                if(ready.WaitOne(0)&&(!process.HasExited||process.ExitCode==0))
+                {
+                    confirmReady?.Invoke();
+                    return;
+                }
                 if(process.HasExited)throw new InvalidOperationException($"登录器启动后提前退出（{process.ExitCode}）；保留恢复组件供下次重试。");
                 await Task.Delay(100,token).ConfigureAwait(false);
             }

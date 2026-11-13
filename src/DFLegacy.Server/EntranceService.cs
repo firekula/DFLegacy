@@ -326,6 +326,18 @@ public sealed class EntranceService(
             var dungeonCurrencyGate = new SemaphoreSlim(1, 1);
             var currentCash = 0;
             uint currentVictoryPoints = 0;
+
+            CharacterRecord SnapshotCeraItemState(CharacterRecord character) => character with
+            {
+                Gold = currentGold,
+                VictoryPoints = currentVictoryPoints,
+                WarehouseCapacity = warehouseCapacity,
+                Inventory = mainInventory.Values.ToList(),
+                Equipment = equippedInventory.Values.ToList(),
+                AvatarInventory = avatarInventory.Values.ToList(),
+                CreatureInventory = creatureInventory.Values.ToList()
+            };
+
             byte currentTownId = 1;
             byte currentAreaId = 1;
             ushort currentDungeonId = 0;
@@ -621,6 +633,23 @@ public sealed class EntranceService(
                 {
                     if (Interlocked.Exchange(ref pendingMailAlarm, 0) != 0 && activeCharacter is not null)
                         await SendNewMailAlarmAsync();
+                }
+
+                async Task SendCeraPremiumGrantsAsync(IReadOnlyList<PremiumServicePurchaseGrant> grants,
+                    IReadOnlyList<CharacterRecord> accountCharacters, Guid actorId)
+                {
+                    if (grants.Count == 0) return;
+                    var states = await store.GetPremiumServicesAsync(accountName, serverToken);
+                    foreach (var serviceType in grants.Select(grant => grant.ServiceType).Distinct())
+                    {
+                        var state = states.FirstOrDefault(state => state.ServiceType == serviceType);
+                        if (state?.Active != true) continue;
+                        await SendPremiumServiceInfoAsync(serviceType, state.RemainingSeconds);
+                        foreach (var other in accountCharacters.Where(character => character.Id != actorId))
+                        {
+                            characterSessions.NotifyPremiumInfo(other.Id, serviceType, state.RemainingSeconds);
+                        }
+                    }
                 }
 
                 async Task SendPremiumServiceInfoAsync(
@@ -6669,8 +6698,7 @@ public sealed class EntranceService(
                                     ClientEncoding.GetString(messageRequest.MessageBytes),
                                     dungeonInstance, activeCharacter.Id, localUserId,
                                     dungeonCharacterAlive, isPvpChannel,
-                                    packet => SendTownPacketAsync(packet, serverToken),
-                                    nativeSupported: !chapter2CheckConnectionAccepted))
+                                    packet => SendTownPacketAsync(packet, serverToken)))
                             {
                                 logger.LogInformation(
                                     "Solo loot gather authorized for user {UserId} in dungeon {DungeonId}, room ({RoomX},{RoomY}), generation={RoomGeneration}.",
@@ -8760,14 +8788,8 @@ public sealed class EntranceService(
                                     out var lotteryPlan,
                                     out var lotteryFailure))
                             {
-                                var errorCode = lotteryFailure switch
-                                {
-                                    LotteryUseFailure.LevelTooLow => (byte)14,
-                                    LotteryUseFailure.InsufficientGold => (byte)19,
-                                    LotteryUseFailure.InventoryFull => (byte)4,
-                                    LotteryUseFailure.GoldLimit => (byte)19,
-                                    _ => (byte)17
-                                };
+                                var errorCode = LotteryItemPlanner.GetClientErrorCode(
+                                    lotteryFailure, chapter2CheckConnectionAccepted);
                                 var error = GameProtocolEngine.CreateCommandError(
                                     request,
                                     errorCode);
@@ -9849,6 +9871,129 @@ public sealed class EntranceService(
                                 out var moveCount,
                                 out var destinationListType,
                                 out var destinationSlot);
+                            if (parsedMove && destinationSlot == ChapterTwoQuickStorePlanner.DestinationMarker)
+                            {
+                                var quickWithdrawal = sourceListType == 2 && destinationListType == 0;
+                                async Task CompleteQuickStoreAsync(string? reason = null)
+                                {
+                                    // Do not echo the reserved destination into the old move
+                                    // applier. Release both native pending queues, then install
+                                    // authoritative snapshots, including on rejection.
+                                    foreach (var refresh in new[]
+                                             {
+                                                 GameProtocolEngine.CreateMoveItemSpaceSnapshotReply(
+                                                     quickWithdrawal ? (byte)2 : (byte)0,
+                                                     quickWithdrawal ? (byte)0 : (byte)2),
+                                                 CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values),
+                                                 CreateWarehousePacket(warehouseInventory.Values, warehouseCapacity)
+                                             })
+                                    {
+                                        await refresh.WriteAsync(stream, serverToken);
+                                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                                        LogPacket("TX", runtimeSession, refresh);
+                                    }
+                                    if (reason is not null)
+                                    {
+                                        logger.LogInformation("Quick storage refused: {Reason}.", reason);
+                                        if (chapter2CheckConnectionAccepted)
+                                        {
+                                            // The snapshot completion deliberately does not enter the
+                                            // legacy move-error handler. Explain a refusal only after
+                                            // both native queues and item views have been refreshed.
+                                            var message = reason switch
+                                            {
+                                                "no slot can hold the complete quantity" => quickWithdrawal
+                                                    ? "背包对应分类没有足够空间。\n请腾出空位或减少取出数量后重试。\n物品未移动。"
+                                                    : "仓库空间不足。\n请腾出空位或减少存入数量后重试。\n物品未移动。",
+                                                "inventory weight limit exceeded" => "取出后会超出负重上限。\n请减轻负重或减少取出数量后重试。\n物品未移动。",
+                                                "quick storage persistence failed or state changed" => "存取未完成，状态已刷新。\n请稍后重试。\n物品未移动。",
+                                                _ => "当前物品无法按所选数量存取。\n请确认物品、数量和仓库状态后重试。\n物品未移动。"
+                                            };
+                                            var notice = GameProtocolEngine.CreatePopupNotification(ClientEncoding.GetBytes(message));
+                                            await notice.WriteAsync(stream, serverToken);
+                                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                                            LogPacket("TX", runtimeSession, notice);
+                                        }
+                                    }
+                                }
+                                if (activeCharacter is null || !chapter2CheckConnectionAccepted
+                                    || (!quickWithdrawal && (sourceListType != 0 || destinationListType != 2)) || currentDungeonId != 0)
+                                {
+                                    await CompleteQuickStoreAsync("quick storage is not available in this context");
+                                    continue;
+                                }
+                                bool IsQuickStoreReserved(byte list, CharacterItemRecord item) =>
+                                    itemTradeService.IsEscrowed(activeCharacter.Id, list, item.Slot)
+                                    || itemTradeService.IsEscrowedInstance(activeCharacter.Id, item.InstanceId);
+                                ChapterTwoQuickStorePlan quickStore;
+                                string quickStoreFailure;
+                                var quickPlanned = quickWithdrawal
+                                    ? ChapterTwoQuickStorePlanner.TryPlanWithdrawal(mainInventory, warehouseInventory,
+                                        sourceSlot, tradeItemId, (uint)moveCount, warehouseCapacity, itemCatalog,
+                                        IsQuickStoreReserved, GetInventoryWeightLimit(activeCharacter), out quickStore, out quickStoreFailure)
+                                    : ChapterTwoQuickStorePlanner.TryPlan(mainInventory, warehouseInventory,
+                                        sourceSlot, tradeItemId, (uint)moveCount, warehouseCapacity, itemCatalog,
+                                        IsQuickStoreReserved, out quickStore, out quickStoreFailure);
+                                if (!quickPlanned)
+                                {
+                                    await CompleteQuickStoreAsync(quickStoreFailure);
+                                    continue;
+                                }
+                                var expectedSpaces = activeCharacter with
+                                {
+                                    Gold = currentGold, Inventory = mainInventory.Values.ToList(),
+                                    Equipment = equippedInventory.Values.ToList(), Warehouse = warehouseInventory.Values.ToList()
+                                };
+                                CharacterRecord? stored = null;
+                                var storageIoFailed = false;
+                                try
+                                {
+                                    stored = await store.SaveCharacterItemSpacesAsync(accountName, activeCharacter.Id,
+                                        currentGold, quickStore.Inventory.Values, equippedInventory.Values,
+                                        quickStore.Warehouse.Values, serverToken, expectedCharacter: expectedSpaces);
+                                }
+                                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                                {
+                                    storageIoFailed = true;
+                                    logger.LogWarning(error, "Quick storage could not persist for {CharacterId}.", activeCharacter.Id);
+                                }
+                                if (stored is null)
+                                {
+                                    if (!storageIoFailed)
+                                    {
+                                        // A failed comparison means the session may be stale.
+                                        // Preserve trade delivery/ack ordering, then refresh
+                                        // economic fields without overwriting transient state.
+                                        await InstallPendingTradeAsync();
+                                        var latest = await store.GetCharacterAsync(accountName, activeCharacter.Id, serverToken);
+                                        if (latest is not null)
+                                        {
+                                            var equipmentChanged = !equippedInventory.Values.OrderBy(item => item.Slot)
+                                                .SequenceEqual((latest.Equipment ?? []).OrderBy(item => item.Slot));
+                                            currentGold = latest.Gold;
+                                            mainInventory = (latest.Inventory ?? []).ToDictionary(item => item.Slot);
+                                            equippedInventory = (latest.Equipment ?? []).ToDictionary(item => item.Slot);
+                                            warehouseInventory = (latest.Warehouse ?? []).ToDictionary(item => item.Slot);
+                                            warehouseCapacity = CharacterWarehouseProgression.Normalize(latest.WarehouseCapacity);
+                                            activeCharacter = activeCharacter with
+                                            {
+                                                Gold = latest.Gold, Inventory = latest.Inventory, Equipment = latest.Equipment,
+                                                Warehouse = latest.Warehouse, WarehouseCapacity = latest.WarehouseCapacity
+                                            };
+                                            if (equipmentChanged) await SendCurrentEquipmentStateAsync();
+                                        }
+                                    }
+                                    await CompleteQuickStoreAsync("quick storage persistence failed or state changed");
+                                    continue;
+                                }
+                                activeCharacter = stored;
+                                mainInventory = quickStore.Inventory;
+                                warehouseInventory = quickStore.Warehouse;
+                                await CompleteQuickStoreAsync();
+                                logger.LogInformation("Quick warehouse transfer item {ItemId} count {Count} from {SourceList}:{SourceSlot} to {DestinationList}:{DestinationSlot}.",
+                                    tradeItemId, moveCount, sourceListType, sourceSlot, destinationListType, quickStore.DestinationSlot);
+                                continue;
+                            }
                             // 交易栏（listType 4）不是背包空间：src 或 dest 命中就走交易服务，
                             // 由它按服务端托管表校验并成对发出「操作者 CMD 19 结果 + 对端 NOTI 15」。
                             if (activeCharacter is not null
@@ -10781,12 +10926,16 @@ public sealed class EntranceService(
 
                             destinationSpace.TryGetValue(destinationSlot, out var displacedItem);
                             var movesWarehouseItem = sourceListType == 2 || destinationListType == 2;
-                            if (displacedItem is not null
+                            var needsCategoryReturn = displacedItem is not null
                                 && !IsCompatibleInventorySlot(
                                     sourceListType,
                                     displacedItem,
                                     sourceSlot,
-                                    warehouseCapacity))
+                                    warehouseCapacity);
+                            var chapter2CategorySwap = chapter2CheckConnectionAccepted
+                                && sourceListType == 0 && destinationListType == 2
+                                && needsCategoryReturn;
+                            if (needsCategoryReturn && !chapter2CategorySwap)
                             {
                                 await SendInventoryMoveNoOpAsync(
                                     sourceListType,
@@ -10806,6 +10955,80 @@ public sealed class EntranceService(
                                 await SendInventoryMoveNoOpAsync(
                                     sourceListType, sourceSlot, destinationListType, destinationSlot,
                                     "the destination item is escrowed in an open trade");
+                                continue;
+                            }
+
+                            if (chapter2CategorySwap)
+                            {
+                                // The displaced item belongs to another bag category.
+                                // Plan the whole exchange before changing either live space;
+                                // weight is checked after removing the outgoing item.
+                                var remainingBag = mainInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
+                                remainingBag.Remove(sourceSlot);
+                                var returnedItem = new CharacterMailAttachmentRecord(
+                                    displacedItem!.ItemId, displacedItem.CountOrValue,
+                                    displacedItem.State, displacedItem.Durability, displacedItem.SealState,
+                                    EquipmentQualitySeed: displacedItem.EquipmentQualitySeed,
+                                    InstanceId: displacedItem.InstanceId);
+                                if (!CharacterInventoryPlanner.TryPlace(
+                                        remainingBag, returnedItem, itemCatalog,
+                                        GetInventoryWeightLimit(activeCharacter),
+                                        out var returnPlan, out var returnFailure))
+                                {
+                                    await SendInventoryMoveNoOpAsync(
+                                        sourceListType, sourceSlot, destinationListType, destinationSlot,
+                                        $"warehouse category exchange failed: {returnFailure}");
+                                    continue;
+                                }
+
+                                // Placement may merge into several existing stacks. Do not
+                                // change any stack reserved by an open trade.
+                                if (returnPlan.ChangedSlots.Any(slot =>
+                                        itemTradeService.IsEscrowed(activeCharacter.Id, 0, slot)
+                                        || (mainInventory.TryGetValue(slot, out var existing)
+                                            && itemTradeService.IsEscrowedInstance(activeCharacter.Id, existing.InstanceId))))
+                                {
+                                    await SendInventoryMoveNoOpAsync(
+                                        sourceListType, sourceSlot, destinationListType, destinationSlot,
+                                        "warehouse category exchange would change an escrowed item");
+                                    continue;
+                                }
+
+                                var exchangedWarehouse = warehouseInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
+                                exchangedWarehouse[destinationSlot] = CharacterItemIdentity.MoveToSlot(
+                                    sourceItem, destinationSlot, itemCatalog);
+                                var savedExchange = await store.SaveCharacterItemSpacesAsync(
+                                    accountName, activeCharacter.Id, currentGold,
+                                    returnPlan.Inventory.Values, equippedInventory.Values,
+                                    exchangedWarehouse.Values, serverToken,
+                                    avatarInventory: avatarInventory.Values);
+                                if (savedExchange is null)
+                                {
+                                    await SendInventoryMoveNoOpAsync(
+                                        sourceListType, sourceSlot, destinationListType, destinationSlot,
+                                        "warehouse category exchange persistence failed");
+                                    continue;
+                                }
+
+                                activeCharacter = savedExchange;
+                                mainInventory = returnPlan.Inventory;
+                                warehouseInventory = exchangedWarehouse;
+                                foreach (var refresh in new[]
+                                         {
+                                             GameProtocolEngine.CreateMoveItemSpaceSnapshotReply(sourceListType, destinationListType),
+                                             CreateMainInventoryPacket(currentGold, currentVictoryPoints,
+                                                 mainInventory.Values, returnPlan.DestinationSlot),
+                                             CreateWarehousePacket(warehouseInventory.Values, warehouseCapacity)
+                                         })
+                                {
+                                    await refresh.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, refresh);
+                                }
+                                logger.LogInformation(
+                                    "Exchanged cargo item {ItemId} from bag {SourceSlot} into cargo {DestinationSlot}; returned {ReturnedItemId} to bag {ReturnSlot}.",
+                                    sourceItem.ItemId, sourceSlot, destinationSlot,
+                                    displacedItem.ItemId, returnPlan.DestinationSlot);
                                 continue;
                             }
 
@@ -11402,7 +11625,8 @@ public sealed class EntranceService(
                                 || listType is not (0 or 7)
                                 || consumedItem is null
                                 || consumedItem.CountOrValue == 0
-                                || listType == 0 && IsEquipmentItem(consumedItem.ItemId)
+                                || listType == 0 && (IsEquipmentItem(consumedItem.ItemId)
+                                    || itemCatalog.IsUnavailableChapterTwoCashItem(consumedItem.ItemId))
                                 || listType == 7
                                     && consumedItem.ItemId != CreatureHungerPlanner.FoodItemId)
                             {
@@ -11809,10 +12033,12 @@ public sealed class EntranceService(
                             if (itemCatalog.TryGetDefinition(
                                     consumedItem.ItemId,
                                     out var boosterItemDefinition)
-                                && boosterItemDefinition.CeraBooster is not null)
+                                && (boosterItemDefinition.CeraBooster is not null
+                                    || itemCatalog.UsesChapterTwoCashContainerPolicy
+                                        && boosterItemDefinition.CeraPackage is not null))
                             {
                                 CeraBoosterOpeningPlan boosterPlan = null!;
-                                var boosterFailure = "Cera boosters can only be opened in town";
+                                var boosterFailure = "Cera containers can only be opened in town";
                                 var canOpenBooster = currentDungeonId == 0
                                     && CeraBoosterOpeningPlanner.TryCreate(
                                         mainInventory,
@@ -11823,7 +12049,10 @@ public sealed class EntranceService(
                                         GetInventoryWeightLimit(activeCharacter),
                                         GameRandomSource.Shared,
                                         out boosterPlan,
-                                        out boosterFailure);
+                                        out boosterFailure,
+                                        currentGold,
+                                        currentVictoryPoints,
+                                        warehouseCapacity);
                                 if (!canOpenBooster)
                                 {
                                     var error = GameProtocolEngine.CreateUseStackableItemError(
@@ -11833,7 +12062,7 @@ public sealed class EntranceService(
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, error);
                                     logger.LogWarning(
-                                        "Rejected Cera booster item {ItemId} at slot {Slot}; dungeon={DungeonId}, failure={Failure}.",
+                                        "Rejected Cera container item {ItemId} at slot {Slot}; dungeon={DungeonId}, failure={Failure}.",
                                         consumedItem.ItemId,
                                         slot,
                                         currentDungeonId,
@@ -11841,11 +12070,6 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
-                                var warehouseUpgradeSettlement =
-                                    PlanWarehouseUpgradeSettlement(
-                                        boosterPlan.MainInventory.Values,
-                                        warehouseInventory.Values,
-                                        boosterPlan.Rewards.Select(reward => reward.ItemId));
                                 var hasWarehouseUpgradeReward = boosterPlan.Rewards.Any(reward =>
                                     CharacterWarehouseProgression.TryGetItemTargetCapacity(
                                         reward.ItemId,
@@ -11854,21 +12078,35 @@ public sealed class EntranceService(
                                     boosterPlan.OverflowItems.Where(item =>
                                         !CharacterWarehouseProgression
                                             .TryGetItemTargetCapacity(item.ItemId, out _)),
-                                    "Cera booster reward");
-                                var savedCharacter = await store.SaveCharacterItemSpacesAsync(
-                                    accountName,
-                                    activeCharacter.Id,
-                                    currentGold,
-                                    warehouseUpgradeSettlement.Inventory,
-                                    equippedInventory.Values,
-                                    warehouseUpgradeSettlement.Warehouse,
-                                    serverToken,
-                                    overflowMails,
-                                    boosterPlan.AvatarInventory.Values,
-                                    boosterPlan.CreatureInventory.Values,
-                                    warehouseCapacity:
-                                        warehouseUpgradeSettlement.Capacity,
-                                    expectedWarehouseCapacity: warehouseCapacity);
+                                    "Cera container reward");
+                                CharacterRecord? savedCharacter = null;
+                                try
+                                {
+                                    if (boosterPlan.ImmediateEffects is not null)
+                                    {
+                                        savedCharacter = await store.SaveCharacterCeraContainerOpeningAsync(
+                                            accountName, SnapshotCeraItemState(activeCharacter), boosterPlan,
+                                            overflowMails, serverToken);
+                                    }
+                                    else
+                                    {
+                                        var warehouseUpgradeSettlement = PlanWarehouseUpgradeSettlement(
+                                            boosterPlan.MainInventory.Values, warehouseInventory.Values,
+                                            boosterPlan.Rewards.Select(reward => reward.ItemId));
+                                        savedCharacter = await store.SaveCharacterItemSpacesAsync(
+                                            accountName, activeCharacter.Id, currentGold,
+                                            warehouseUpgradeSettlement.Inventory, equippedInventory.Values,
+                                            warehouseUpgradeSettlement.Warehouse, serverToken, overflowMails,
+                                            boosterPlan.AvatarInventory.Values, boosterPlan.CreatureInventory.Values,
+                                            warehouseCapacity: warehouseUpgradeSettlement.Capacity,
+                                            expectedWarehouseCapacity: warehouseCapacity);
+                                    }
+                                }
+                                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                                {
+                                    logger.LogWarning(exception, "Could not save Cera container use for {CharacterId}.",
+                                        activeCharacter.Id);
+                                }
                                 if (savedCharacter is null)
                                 {
                                     var error = GameProtocolEngine.CreateUseStackableItemError(
@@ -11878,7 +12116,7 @@ public sealed class EntranceService(
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
                                     LogPacket("TX", runtimeSession, error);
                                     logger.LogWarning(
-                                        "Could not persist Cera booster item {ItemId} at slot {Slot}.",
+                                        "Could not persist Cera container item {ItemId} at slot {Slot}.",
                                         consumedItem.ItemId,
                                         slot);
                                     continue;
@@ -11886,6 +12124,8 @@ public sealed class EntranceService(
 
                                 var warehouseCapacityChanged =
                                     AdoptSavedWarehouseUpgradeState(savedCharacter);
+                                currentGold = savedCharacter.Gold;
+                                currentVictoryPoints = savedCharacter.VictoryPoints;
                                 avatarInventory = (savedCharacter.AvatarInventory ?? [])
                                     .ToDictionary(item => item.Slot);
                                 creatureInventory = (savedCharacter.CreatureInventory ?? [])
@@ -11924,6 +12164,12 @@ public sealed class EntranceService(
                                 if (warehouseCapacityChanged || hasWarehouseUpgradeReward)
                                 {
                                     await SendWarehouseStateAsync();
+                                }
+
+                                if (boosterPlan.ImmediateEffects?.PremiumServices is { Count: > 0 } openingGrants)
+                                {
+                                    await SendCeraPremiumGrantsAsync(openingGrants,
+                                        await store.GetCharactersAsync(accountName, serverToken), activeCharacter.Id);
                                 }
 
                                 // CMD 47 has no result vector. Do not synthesize a CMD 67
@@ -11966,13 +12212,13 @@ public sealed class EntranceService(
                                 }
 
                                 logger.LogInformation(
-                                    "Opened Cera booster item {ItemId} at slot {Slot}; rewards={Rewards}, overflowMails={OverflowMailCount}.",
+                                    "Opened Cera container item {ItemId} at slot {Slot}; rewards={Rewards}, overflowMails={OverflowMailCount}.",
                                     boosterPlan.BoosterItemId,
                                     slot,
                                     string.Join(
                                         ", ",
                                         boosterPlan.Rewards.Select(reward =>
-                                            $"{reward.Kind}:{reward.ItemId}x{reward.Count}")),
+                                            $"{reward.ItemId}x{reward.Count}")),
                                     overflowMails.Length);
                                 continue;
                             }
@@ -12053,7 +12299,8 @@ public sealed class EntranceService(
                             && request.ProtocolId == GameProtocolEngine.QueryCeraGiftRecipientCommand)
                         {
                             var query = activeCharacter is not null
-                                && GameProtocolEngine.TryReadCeraGiftRecipient(request.Body, out var recipientName)
+                                && GameProtocolEngine.TryReadCeraGiftRecipient(request.Body, out var recipientName,
+                                    chapter2Decoded)
                                     ? await store.QueryCeraGiftRecipientAsync(activeCharacter.Id, recipientName, serverToken)
                                     : new CeraGiftQueryResult(2);
                             GameServerPacket giftWireReply;
@@ -12111,7 +12358,8 @@ public sealed class EntranceService(
                             if (purchaseRequest.IsGift)
                             {
                                 var gift = await store.GiftCeraShopAsync(accountName, activeCharacter.Id,
-                                    purchaseRequest.RecipientName, requestedProducts, ceraShopCatalog, serverToken);
+                                    purchaseRequest.RecipientName, requestedProducts, ceraShopCatalog, serverToken,
+                                    isChapterTwo: chapter2CheckConnectionAccepted);
                                 if (gift.Status != DungeonRewardLedgerStatus.Committed)
                                 {
                                     var rejection = GameProtocolEngine.CreateCeraShopBuyError(gift.Error,
@@ -12298,17 +12546,8 @@ public sealed class EntranceService(
                                             itemCatalog,
                                             GetInventoryWeightLimit(activeCharacter),
                                             GameRandomSource.Shared,
-                                            rewardItemId =>
-                                                CharacterWarehouseProgression
-                                                    .TryGetItemTargetCapacity(
-                                                        rewardItemId,
-                                                        out _)
-                                                || ceraShopCatalog.TryGetPremiumContract(
-                                                    rewardItemId,
-                                                    out _)
-                                                || ceraShopCatalog.TryGetDirectCurrencyGrant(
-                                                    rewardItemId,
-                                                    out _),
+                                            rewardItemId => CeraShopContentPlanner.ShouldSettleAsEffect(
+                                                itemCatalog, rewardItemId),
                                             out var contentsPlan,
                                             out var contentsFailure))
                                     {
@@ -12321,42 +12560,9 @@ public sealed class EntranceService(
                                         break;
                                     }
 
-                                    var contentEffectsValid = true;
-                                    foreach (var reward in contentsPlan.Rewards)
-                                    {
-                                        if (ceraShopCatalog.TryGetPremiumContract(
-                                                reward.ItemId,
-                                                out var rewardContract))
-                                        {
-                                            var grantedDays = (long)rewardContract.Days
-                                                * reward.Count;
-                                            if (grantedDays is <= 0 or > int.MaxValue)
-                                            {
-                                                contentEffectsValid = false;
-                                                break;
-                                            }
-
-                                            premiumServiceGrants.Add(new(
-                                                rewardContract.ServiceType,
-                                                checked((int)grantedDays)));
-                                        }
-                                        else if (ceraShopCatalog.TryGetDirectCurrencyGrant(
-                                                     reward.ItemId,
-                                                     out var rewardCurrencyGrant)
-                                            && !CeraShopDirectCurrencyPlanner.TryApply(
-                                                plannedGold,
-                                                plannedVictoryPoints,
-                                                rewardCurrencyGrant,
-                                                reward.Count,
-                                                out plannedGold,
-                                                out plannedVictoryPoints))
-                                        {
-                                            contentEffectsValid = false;
-                                            break;
-                                        }
-                                    }
-
-                                    if (!contentEffectsValid)
+                                    if (!CeraShopContentPlanner.TrySettleImmediateEffects(contentsPlan.Rewards,
+                                            itemCatalog, plannedGold, plannedVictoryPoints, plannedWarehouseCapacity,
+                                            out var contentEffects))
                                     {
                                         purchaseValid = false;
                                         errorProduct = requestedProduct;
@@ -12365,6 +12571,9 @@ public sealed class EntranceService(
                                             product.ItemId);
                                         break;
                                     }
+                                    plannedGold = contentEffects.Gold;
+                                    plannedVictoryPoints = contentEffects.VictoryPoints;
+                                    premiumServiceGrants.AddRange(contentEffects.PremiumServices);
 
                                     // Original Cera-shop processing expands both
                                     // [cera booster] and [cera package] during the
@@ -12521,8 +12730,10 @@ public sealed class EntranceService(
                             }
 
                             var nextCash = currentCash - checked((int)totalCashPrice);
-                            var savedCharacter =
-                                await store.SaveCharacterCeraShopPurchaseAsync(
+                            CharacterRecord? savedCharacter = null;
+                            try
+                            {
+                                savedCharacter = await store.SaveCharacterCeraShopPurchaseAsync(
                                     accountName,
                                     activeCharacter.Id,
                                     nextCash,
@@ -12538,7 +12749,15 @@ public sealed class EntranceService(
                                     expectedVictoryPoints: currentVictoryPoints,
                                     expectedCash: currentCash,
                                     warehouseCapacity: plannedWarehouseCapacity,
-                                    expectedWarehouseCapacity: warehouseCapacity);
+                                    expectedWarehouseCapacity: warehouseCapacity,
+                                    expectedCharacter: itemCatalog.UsesChapterTwoCashContainerPolicy
+                                        ? SnapshotCeraItemState(activeCharacter) : null);
+                            }
+                            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                            {
+                                logger.LogWarning(exception, "Could not save Cera-shop purchase for {CharacterId}.",
+                                    activeCharacter.Id);
+                            }
                             if (savedCharacter is null)
                             {
                                 var error = GameProtocolEngine.CreateCeraShopBuyError(
@@ -12574,34 +12793,7 @@ public sealed class EntranceService(
                                 characterSessions.NotifyMailReceived(activeCharacter.CharacterNo);
                             }
 
-                            if (premiumServiceGrants.Count > 0)
-                            {
-                                var premiumStates = await store.GetPremiumServicesAsync(
-                                    accountName,
-                                    serverToken);
-                                foreach (var serviceType in premiumServiceGrants
-                                             .Select(grant => grant.ServiceType)
-                                             .Distinct())
-                                {
-                                    var premiumState = premiumStates.FirstOrDefault(state =>
-                                        state.ServiceType == serviceType);
-                                    if (premiumState?.Active == true)
-                                    {
-                                        await SendPremiumServiceInfoAsync(
-                                            serviceType,
-                                            premiumState.RemainingSeconds);
-                                        foreach (var accountCharacter in accountCharacters.Where(
-                                                     character => character.Id
-                                                         != activeCharacter.Id))
-                                        {
-                                            characterSessions.NotifyPremiumInfo(
-                                                accountCharacter.Id,
-                                                serviceType,
-                                                premiumState.RemainingSeconds);
-                                        }
-                                    }
-                                }
-                            }
+                            await SendCeraPremiumGrantsAsync(premiumServiceGrants, accountCharacters, activeCharacter.Id);
                             for (var index = 0; index < requestedProducts.Length; index++)
                             {
                                 var requestedProduct = requestedProducts[index];
@@ -12616,7 +12808,7 @@ public sealed class EntranceService(
                                     out var purchasedProduct);
                                 var buyReply =
                                     GameProtocolEngine.CreateCeraShopBuyReply(
-                                        purchasedProduct.ClientCategory,
+                                        purchasedProduct.GetPurchaseResultCategory(chapter2CheckConnectionAccepted),
                                         requestedProduct.CommodityNo,
                                         purchaseReplyRewards[index]);
                                 await buyReply.WriteAsync(stream, serverToken);
@@ -17877,7 +18069,9 @@ public sealed class EntranceService(
         }
 
         sourceSlot = (ushort)signedSourceSlot;
-        destinationSlot = signedDestinationSlot < 0
+        destinationSlot = signedDestinationSlot == -2
+            ? ChapterTwoQuickStorePlanner.DestinationMarker
+            : signedDestinationSlot < 0
             ? ushort.MaxValue
             : (ushort)signedDestinationSlot;
         return true;

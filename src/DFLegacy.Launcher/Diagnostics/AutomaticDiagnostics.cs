@@ -96,8 +96,11 @@ internal static class AutomaticDiagnostics
         catch(OperationCanceledException) when(!token.IsCancellationRequested){throw new IOException("自动诊断助手尚未退出，请稍后重试更新。");}
         lock(Gate)foreach(var child in owned){if(helpers.Remove(child))child.Process.Dispose();}
     }
-    internal static void ResumeAfterUpdate()
+    internal static void ResumeAfterUpdate(bool handedOff=false)
     {
+        // Once the installer owns the handoff, late UI cleanup must not restart
+        // a child that locks files the installer is about to replace or retire.
+        if(handedOff)return;
         LauncherOptions? options;DiagnosticSettings? settings;Func<DiagnosticSession,Process?>? factory;string? directory;Func<ProcessStartInfo,Process?>? starter;
         lock(Gate){if(!suspended)return;suspended=false;options=configuredOptions;settings=configuredSettings;factory=helperFactory;directory=configuredHelperDirectory;starter=configuredStarter;}
         if(options is not null)Configure(options,settings,factory,directory,starter);

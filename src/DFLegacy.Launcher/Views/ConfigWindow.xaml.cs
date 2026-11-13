@@ -178,6 +178,8 @@ public partial class ConfigWindow : System.Windows.Window
                 DialogueGapBox.ItemsSource = ChapterTwoDialogueOptions.LineGaps;
                 DialogueSizeBox.SelectedItem = dialogue.FontSize;
                 DialogueGapBox.SelectedItem = dialogue.LineGap;
+                ChapterTwoDebugBox.Visibility = Visibility.Visible;
+                ChapterTwoDebugBox.IsChecked = _options.ChapterTwoDebugEnabled;
             }
             if (!chapterTwo) _display = ClientDisplayConfiguration.Load(_options.ClientPath);
             var width = _display?.Width ?? displayOptions.Width;
@@ -271,6 +273,7 @@ public partial class ConfigWindow : System.Windows.Window
                 _store.Update(options =>
                 {
                     options.ChapterTwoDisplay = filter == "legacy" ? null : new(preview.Width, preview.Height, filter);
+                    options.ChapterTwoDebugEnabled = ChapterTwoDebugBox.IsChecked == true;
                     if (DialogueSizeBox.SelectedItem is int size && DialogueGapBox.SelectedItem is int gap)
                     {
                         var dialogue = new ChapterTwoDialogueOptions(size, gap);

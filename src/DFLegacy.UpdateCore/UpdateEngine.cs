@@ -16,14 +16,14 @@ public sealed class UpdateEngine
     }
     public async Task<UpdateCheck> CheckAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default, bool forceVerification = false)
     {
-        if (InstallTransaction.HasPending(root)) throw new InvalidDataException("存在未完成安装，请先恢复后再启动。");
+        RequireNoPending();
         VerifiedRelease? target = null; Exception? unavailable = null;
         try { target = await provider.FindAsync(token).ConfigureAwait(false); }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is HttpRequestException or TimeoutException or OperationCanceledException)
         { unavailable = ex; }
         using var lease = InstallationLease.Acquire(root);
-        if (InstallTransaction.HasPending(root)) throw new InvalidDataException("存在未完成安装，请先恢复后再启动。");
+        RequireNoPending();
         InstalledReceipt? installed;
         try { installed = store.ReadInstalled(); }
         catch (InvalidDataException) when (target != null) { installed = null; }
@@ -65,10 +65,38 @@ public sealed class UpdateEngine
         return new(target, installed, verification, needsInstall, canLaunch, false,
             needsInstall ? $"已确认目标 {manifest.Version}；需要修复 {verification.Problems.Count} 个文件并核验配置。" : $"已完整校验 {manifest.Files.Length} 个文件，当前版本 {manifest.Version}。");
     }
+    public async Task<UpdateCheck> CheckChapterUpgradeAsync(bool explicitSelection, IProgress<UpdateProgress>? progress = null,
+        CancellationToken token = default)
+    {
+        if (!explicitSelection) throw new InvalidDataException("必须主动选择跨章节升级。");
+        RequireNoPending();
+        var target = await provider.FindAsync(token).ConfigureAwait(false);
+        using var lease = InstallationLease.Acquire(root);
+        RequireNoPending();
+        var installed = store.ReadInstalled() ?? throw new InvalidDataException("缺少已校验的第一章桥接安装。");
+        var first = ClientChapterIdentity.Read(root, installed.Release);
+        if (first.Chapter != ClientChapterIdentity.ChapterOne || installed.Release.Source == provider.Source
+            || installed.Release.Source.Architecture != provider.Source.Architecture)
+            throw new InvalidDataException("当前章别或目标来源不支持跨章升级。");
+        var baseline = await VerifyInstalled(installed, progress, token, true).ConfigureAwait(false);
+        if (!baseline.CanLaunch) throw new InvalidDataException("第一章桥接安装未通过完整校验。");
+        if (target == null) return new(null, installed, baseline.Verification, false, true, false, "所选来源未提供跨章更新。");
+        target.Validate(provider.Source);
+        var manifest = target.Manifest;
+        if (ClientChapterIdentity.Descriptor(target) == null || installed.Release.Manifest.Sequence < manifest.MinimumSequence
+            || manifest.Migrations.Length != 0)
+            throw new InvalidDataException("所选来源缺少可用的跨章更新。");
+        var declared = manifest.Files.Select(file => file.Path).Concat(manifest.Retired.Select(file => file.Path))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (installed.ManagedHistory.Any(path => !declared.Contains(path)))
+            throw new InvalidDataException("第二章清单没有声明旧文件去向。");
+        var verification = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
+        return new(target, installed, verification, true, true, false, $"已确认跨章目标 {manifest.Version}。");
+    }
     public async Task<LaunchValidation> ValidateInstalledAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default, bool forceVerification = false)
     {
         using var lease = InstallationLease.Acquire(root);
-        if (InstallTransaction.HasPending(root)) return new(false, "未知", "存在未完成安装，必须先恢复。");
+        if (HasPending()) return new(false, "未知", "存在未完成安装，必须先恢复。");
         var installed = store.ReadInstalled();
         if (installed == null) return new(false, "未知", "没有已提交的 V4 安装记录。");
         installed.Release.Validate(provider.Source);
@@ -78,12 +106,24 @@ public sealed class UpdateEngine
     {
         var manifest = installed.Release.Manifest;
         token.ThrowIfCancellationRequested();
-        if (!forceVerification && store.HasValidatedReceipt(installed) && ConfigurationReady(manifest))
+        var chapterReady = IsChapterReady(installed);
+        if (!forceVerification && chapterReady && store.HasValidatedReceipt(installed) && ConfigurationReady(manifest))
             return new(true, manifest.Version, $"文件符合已校验安装记录 {manifest.Version}，未确认线上最新版本。");
         var verification = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
-        var good = verification.IsValid && ConfigurationReady(manifest);
+        var good = verification.IsValid && chapterReady && ConfigurationReady(manifest);
         if (good) store.RecordValidation(installed); else store.InvalidateValidation();
         return new(good, manifest.Version, good ? $"文件符合缓存版本 {manifest.Version}，未确认线上最新版本。" : "受管理文件或配置未通过完整校验，请修复后启动。", verification);
+    }
+    private bool IsChapterReady(InstalledReceipt installed)
+    {
+        if (ClientChapterIdentity.Descriptor(installed.Release) == null) return true;
+        try { _ = ClientChapterIdentity.Read(root, installed.Release); return true; }
+        catch (Exception ex) when (ex is InvalidDataException or FileNotFoundException or DirectoryNotFoundException) { return false; }
+    }
+    private bool HasPending() => InstallTransaction.HasPending(root) || ChapterTransition.HasPending(root);
+    private void RequireNoPending()
+    {
+        if (HasPending()) throw new InvalidDataException("存在未完成安装，请先恢复后再启动。");
     }
     private bool ConfigurationReady(ClientManifest manifest)
     {
@@ -102,7 +142,7 @@ public sealed class UpdateEngine
         ManagedFile[] changed;
         using (InstallationLease.Acquire(root))
         {
-            if (InstallTransaction.HasPending(root)) throw new InvalidDataException("请先恢复未完成安装。");
+            RequireNoPending();
             current = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
             var needed = new HashSet<string>(current.Problems.Select(p => p.Path), StringComparer.OrdinalIgnoreCase);
             changed = manifest.Files.Where(f => needed.Contains(f.Path)).ToArray();

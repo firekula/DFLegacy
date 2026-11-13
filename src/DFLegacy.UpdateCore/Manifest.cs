@@ -109,10 +109,9 @@ public static class ManifestCodec
         var ids = new HashSet<string>(StringComparer.Ordinal);
         foreach (var migration in m.Migrations)
         {
-            if (migration == null || !IsName(migration.Id) || !ids.Add(migration.Id)
-                || migration.File != "launcher.json" || migration.Operation is not ("unionPorts" or "setDefault" or "replaceIf")
-                || migration.Key is not ("Relay.TcpPorts" or "Relay.UdpPorts" or "Relay.Enabled" or "Relay.Preference"))
-                throw new InvalidDataException("配置迁移无效或不支持该字段。");
+            if (migration == null || !IsName(migration.Id) || !ids.Add(migration.Id))
+                throw new InvalidDataException("配置迁移名称无效或重复。");
+            ConfigurationMigration.ValidateMigration(migration);
         }
     }
 }

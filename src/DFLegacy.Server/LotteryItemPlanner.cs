@@ -7,7 +7,8 @@ public enum LotteryUseFailure
     LevelTooLow,
     InsufficientGold,
     InventoryFull,
-    GoldLimit
+    GoldLimit,
+    Overweight
 }
 
 public sealed record LotteryItemPlacementPlan(
@@ -24,6 +25,17 @@ public sealed record LotteryItemPlacementPlan(
 
 public static class LotteryItemPlanner
 {
+    public static byte GetClientErrorCode(LotteryUseFailure failure, bool chapterTwo) => failure switch
+    {
+        LotteryUseFailure.LevelTooLow => 14,
+        LotteryUseFailure.InsufficientGold or LotteryUseFailure.GoldLimit => 19,
+        LotteryUseFailure.InventoryFull => 4,
+        // Chapter One keeps its existing handling; Chapter Two's local patch
+        // has a dedicated jar weight explanation for this reason.
+        LotteryUseFailure.Overweight => chapterTwo ? (byte)21 : (byte)4,
+        _ => 17
+    };
+
     public static bool TryCreate(
         IReadOnlyDictionary<ushort, CharacterItemRecord> mainInventory,
         IReadOnlyDictionary<ushort, CharacterItemRecord> avatarInventory,
@@ -199,9 +211,11 @@ public static class LotteryItemPlanner
                         catalog,
                         weightLimit,
                         out var inventoryPlacement,
-                        out _))
+                        out var placementFailure))
                 {
-                    failure = LotteryUseFailure.InventoryFull;
+                    failure = placementFailure == InventoryPlacementFailure.Overweight
+                        ? LotteryUseFailure.Overweight
+                        : LotteryUseFailure.InventoryFull;
                     return false;
                 }
 

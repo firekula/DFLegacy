@@ -308,6 +308,19 @@ public sealed class ItemCatalog
 
     public int CeraPackageCount => _state.Value.CeraPackageCount;
 
+    internal bool UsesChapterTwoCashContainerPolicy => _skipUnsupportedChapterTwoCashContainers;
+
+    internal bool IsUnavailableChapterTwoCashItem(ushort itemId) =>
+        _skipUnsupportedChapterTwoCashContainers
+        && (itemId is 9 or 11 or 29 || _state.Value.ExcludedCashContainers.Contains(itemId));
+
+    private static bool IsRestoredChapterTwoCashContainer(ushort itemId, string typeTag) => typeTag switch
+    {
+        "cera booster" => itemId is >= 38 and <= 41 or >= 52 and <= 56,
+        "cera package" => itemId == 49,
+        _ => false
+    };
+
     public int SkillPointBookCount => _state.Value.SkillPointBookCount;
 
     public int ExperienceBookCount => _state.Value.ExperienceBookCount;
@@ -495,25 +508,28 @@ public sealed class ItemCatalog
 
     private CatalogState Load()
     {
-        if (_skipUnsupportedChapterTwoCashContainers)
-        {
-            _logger.LogWarning("Chapter Two lab profile excludes Cera booster and package items.");
-        }
-
         var definitions = new Dictionary<ushort, ItemDefinition>();
+        var excludedCashContainers = new HashSet<ushort>();
         var missingScripts = 0;
         LoadList(
             EquipmentListPath,
             "equipment",
             ItemScriptKind.Equipment,
             definitions,
+            excludedCashContainers,
             ref missingScripts);
         LoadList(
             StackableListPath,
             "stackable",
             ItemScriptKind.Stackable,
             definitions,
+            excludedCashContainers,
             ref missingScripts);
+        if (excludedCashContainers.Count > 0)
+        {
+            _logger.LogInformation("Chapter Two lab profile excluded {Count} unverified Cera containers.",
+                excludedCashContainers.Count);
+        }
         var priceRates = LoadPriceRates();
 
         var categories = definitions.Values
@@ -561,7 +577,8 @@ public sealed class ItemCatalog
                     Type: not IncreaseStatusType.SkillPoints
                         and not IncreaseStatusType.Experience
                 }),
-            priceRates);
+            priceRates,
+            excludedCashContainers);
     }
 
     private PriceRates LoadPriceRates()
@@ -609,6 +626,7 @@ public sealed class ItemCatalog
         string scriptRoot,
         ItemScriptKind scriptKind,
         Dictionary<ushort, ItemDefinition> definitions,
+        HashSet<ushort> excludedCashContainers,
         ref int missingScripts)
     {
         if (!_scripts.FileExists(listPath))
@@ -640,7 +658,7 @@ public sealed class ItemCatalog
                 StringComparison.OrdinalIgnoreCase)
                 ? relativePath
                 : $"{scriptRoot}/{relativePath}";
-            if (definitions.ContainsKey(itemId))
+            if (definitions.ContainsKey(itemId) || excludedCashContainers.Contains(itemId))
             {
                 throw new InvalidDataException(
                     $"Item id {itemId} is duplicated by '{scriptPath}' in {listPath}.");
@@ -663,8 +681,10 @@ public sealed class ItemCatalog
                     : StackableTypePattern,
                 text);
             if (_skipUnsupportedChapterTwoCashContainers
-                && typeTag is "cera booster" or "cera package")
+                && (typeTag is "cera booster" or "cera package")
+                && !IsRestoredChapterTwoCashContainer(itemId, typeTag))
             {
+                excludedCashContainers.Add(itemId);
                 continue;
             }
 
@@ -1207,7 +1227,8 @@ public sealed class ItemCatalog
         int SkillPointBookCount,
         int ExperienceBookCount,
         int AttributeStoneCount,
-        PriceRates PriceRates);
+        PriceRates PriceRates,
+        IReadOnlySet<ushort> ExcludedCashContainers);
 
     private readonly record struct PriceRates(
         int NormalSellRatePerMille,

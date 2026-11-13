@@ -69,7 +69,7 @@ namespace
             if (!url || !sink || !bind) return E_POINTER;
             const std::wstring_view full(url);
             if (full.size() <= _prefix.size() || full.compare(0, _prefix.size(), _prefix) != 0 ||
-                full[_prefix.size()] != L'/') return INET_E_USE_DEFAULT_PROTOCOLHANDLER;
+                full[_prefix.size()] != L'/') return INET_E_RESOURCE_NOT_FOUND;
             const auto path = full.substr(_prefix.size());
             const auto route = std::find_if(std::begin(Routes), std::end(Routes),
                 [path](const Route& candidate) { return candidate.path == path; });

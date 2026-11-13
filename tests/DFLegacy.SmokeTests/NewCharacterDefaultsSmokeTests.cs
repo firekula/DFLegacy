@@ -113,10 +113,13 @@ internal static class NewCharacterDefaultsSmokeTests
         check((await afterSelection.GetAccountAsync("ordinary"))!.Cash == 23400,
             "selection and reload preserve existing account Cash");
 
-        var saturday = new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(shanghaiOffset).Date.AddDays(2).AddHours(6), shanghaiOffset);
+        // The reset fixture above already advanced to tomorrow and spent three points.
+        // Keep the Friday before this Saturday strictly later than that fixture day.
+        var saturday = new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(shanghaiOffset).Date.AddDays(3).AddHours(6), shanghaiOffset);
         while (saturday.DayOfWeek != DayOfWeek.Saturday)
             saturday = saturday.AddDays(1);
-        await store.ResetFatigueForCurrentDayAsync(saturday.AddSeconds(-1).ToUniversalTime());
+        var beforeWeekend = await store.ResetFatigueForCurrentDayAsync(saturday.AddSeconds(-1).ToUniversalTime());
+        check(beforeWeekend.NewFatigueDay, "the weekend fixture starts on a new Friday after the earlier reset fixture");
         await Select("ordinary", byUid.Slot, expectedRevivalCoins: 0, expectedFatigue: (156, 0),
             exerciseWeekend: saturday);
         await store.ResetFatigueForCurrentDayAsync(saturday.AddDays(7).ToUniversalTime());
@@ -189,7 +192,10 @@ internal static class NewCharacterDefaultsSmokeTests
                 check(BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply!.Payload.AsSpan(7)) == 0
                     && BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(9)) == limits.Maximum
                     && BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(11)) == limits.Premium,
-                    $"{userName} selection sends fatigue maximum {limits.Maximum} and premium {limits.Premium}");
+                    $"{userName} selection sends fatigue maximum {limits.Maximum} and premium {limits.Premium}; actual used/max/premium="
+                    + $"{BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(7))}/"
+                    + $"{BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(9))}/"
+                    + $"{BinaryPrimitives.ReadUInt16LittleEndian(connection.SelectReply.Payload.AsSpan(11))}, day={store.ActiveFatigueDayKey}");
             }
             if (exerciseWeekend is { } start)
             {
@@ -353,6 +359,21 @@ internal static class NewCharacterDefaultsSmokeTests
             return frame.Encode();
         }
         internal async Task SendAsync(byte[] bytes) => await _peer.GetStream().WriteAsync(bytes, _stop.Token);
+
+        internal async Task EnableChapterTwoAsync()
+        {
+            var plain = new byte[18];
+            BinaryPrimitives.WriteUInt16LittleEndian(plain, ++_sequence);
+            var wire = plain.ToArray();
+            using var aes = System.Security.Cryptography.Aes.Create();
+            var key = new byte[16];
+            "dfls-local"u8.CopyTo(key);
+            aes.Key = key;
+            aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), System.Security.Cryptography.PaddingMode.None);
+            await SendAsync(new PacketFrame(1, GameProtocolEngine.CheckConnectionCommand,
+                Crc32.Compute(plain), wire).Encode());
+            await ReadAsync(0, GameProtocolEngine.ChannelInfoNotification);
+        }
         internal async Task<GameServerPacket> ReadAsync(byte? type, byte id, TimeSpan? timeout = null,
             Action<GameServerPacket>? observe = null)
         {

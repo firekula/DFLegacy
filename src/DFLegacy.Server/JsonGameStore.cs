@@ -647,8 +647,9 @@ public sealed partial class JsonGameStore(
         TimeProvider? avatarTimeProvider = null)
         : this(options, logger, experienceCatalog, itemCatalog, statCatalog, avatarTimeProvider: avatarTimeProvider) => _rewardWriter = writer;
 
-    internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, AtomicSnapshotReplacement replacement)
-        : this(options, logger)
+    internal JsonGameStore(ServerOptions options, ILogger<JsonGameStore> logger, AtomicSnapshotReplacement replacement,
+        ItemCatalog? itemCatalog = null)
+        : this(options, logger, itemCatalog: itemCatalog)
     {
         _snapshotReplacement = replacement;
         _rewardWriter = new DungeonRewardSnapshotWriter(replacement);
@@ -4001,7 +4002,8 @@ public sealed partial class JsonGameStore(
         IEnumerable<CharacterItemRecord>? avatarInventory = null,
         IEnumerable<CharacterItemRecord>? creatureInventory = null,
         ushort? warehouseCapacity = null,
-        ushort? expectedWarehouseCapacity = null)
+        ushort? expectedWarehouseCapacity = null,
+        CharacterRecord? expectedCharacter = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -4028,6 +4030,13 @@ public sealed partial class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (expectedCharacter is not null
+                && (character.Id != expectedCharacter.Id || character.Gold != expectedCharacter.Gold
+                    || !ItemsEqual(character.Inventory, expectedCharacter.Inventory ?? [])
+                    || !ItemsEqual(character.Equipment, expectedCharacter.Equipment ?? [])
+                    || !ItemsEqual(character.Warehouse, expectedCharacter.Warehouse ?? [])
+                    || character.WarehouseCapacity != expectedCharacter.WarehouseCapacity))
+                return null;
             if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
                     character,
@@ -4090,10 +4099,27 @@ public sealed partial class JsonGameStore(
         }
     }
 
+    internal Task<CharacterRecord?> SaveCharacterCeraContainerOpeningAsync(
+        string userName,
+        CharacterRecord expectedCharacter,
+        CeraBoosterOpeningPlan opening,
+        IReadOnlyList<CreateCharacterMailRequest> generatedMails,
+        CancellationToken cancellationToken = default)
+    {
+        if (opening.ImmediateEffects is not { } effects) return Task.FromResult<CharacterRecord?>(null);
+
+        return SaveCharacterCeraShopPurchaseAsync(userName, expectedCharacter.Id, null, effects.Gold,
+            opening.MainInventory.Values, expectedCharacter.Equipment ?? [], cancellationToken, generatedMails,
+            opening.AvatarInventory.Values, opening.CreatureInventory.Values, effects.PremiumServices,
+            victoryPoints: effects.VictoryPoints, expectedVictoryPoints: expectedCharacter.VictoryPoints,
+            warehouseCapacity: effects.WarehouseCapacity, expectedWarehouseCapacity: expectedCharacter.WarehouseCapacity,
+            expectedCharacter: expectedCharacter);
+    }
+
     public async Task<CharacterRecord?> SaveCharacterCeraShopPurchaseAsync(
         string userName,
         Guid characterId,
-        int cash,
+        int? cash,
         int gold,
         IEnumerable<CharacterItemRecord> inventory,
         IEnumerable<CharacterItemRecord> equipment,
@@ -4106,7 +4132,8 @@ public sealed partial class JsonGameStore(
         int? expectedCash = null,
         ushort? warehouseCapacity = null,
         ushort? expectedWarehouseCapacity = null,
-        uint? expectedVictoryPoints = null)
+        uint? expectedVictoryPoints = null,
+        CharacterRecord? expectedCharacter = null)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -4155,6 +4182,16 @@ public sealed partial class JsonGameStore(
             }
 
             var character = account.Characters[index];
+            if (expectedCharacter is not null
+                && (character.Id != expectedCharacter.Id || character.Gold != expectedCharacter.Gold
+                    || !ItemsEqual(character.Inventory, expectedCharacter.Inventory ?? [])
+                    || !ItemsEqual(character.Equipment, expectedCharacter.Equipment ?? [])
+                    || !ItemsEqual(character.AvatarInventory, expectedCharacter.AvatarInventory ?? [])
+                    || !ItemsEqual(character.CreatureInventory, expectedCharacter.CreatureInventory ?? [])))
+            {
+                logger.LogWarning("Rejected stale Cera item-space update for character {CharacterId}.", characterId);
+                return null;
+            }
             if (!IsVictoryPointUpdateCurrent(character, victoryPoints, expectedVictoryPoints)) return null;
             if (!HasDungeonGoldCapacity(character, gold)) return null;
             if (!TryResolveWarehouseCapacityUpdate(
@@ -4188,7 +4225,7 @@ public sealed partial class JsonGameStore(
 
             var updated = character with
             {
-                Cash = Math.Max(0, cash),
+                Cash = Math.Max(0, cash ?? accountCash),
                 Gold = Math.Max(0, gold),
                 VictoryPoints = victoryPoints ?? character.VictoryPoints,
                 Inventory = inventory.OrderBy(item => item.Slot).ToList(),
@@ -4201,12 +4238,26 @@ public sealed partial class JsonGameStore(
                 Mailbox = mailbox
             };
             updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
-            account.Characters[index] = updated;
             account = SetAccountCash(account, updated.Cash);
-            updated = account.Characters[index];
-            _accounts[accountIndex] = account;
-            await SaveLockedAsync(cancellationToken);
-            LogGeneratedMails(characterId, createdMailCount);
+            account.Characters[index] = updated;
+            var previousAccounts = _accounts;
+            // SaveLocked also normalizes warehouse upgrade items; keep its work on a
+            // separate snapshot so even unrelated character lists cannot change on failure.
+            _accounts = previousAccounts.Select((candidate, candidateIndex) => candidateIndex == accountIndex
+                ? account : candidate with { Characters = [.. candidate.Characters] }).ToList();
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                if (!snapshotCommitted) _accounts = previousAccounts;
+                throw;
+            }
+            try { LogGeneratedMails(characterId, createdMailCount); }
+            catch (Exception) { /* Diagnostics must not turn a committed purchase into a retry. */ }
             return updated;
         }
         finally

@@ -69,7 +69,63 @@ Replace-Verified ($childHandles.Replace("`r`n", "`n")) $pipeHandles
 [IO.File]::WriteAllText((Join-Path $container 'LoopbackBroker.h'), $code)
 
 $code = [IO.File]::ReadAllText((Join-Path $source 'container/trace.cpp')).Replace("`r`n", "`n")
-Replace-Verified '#include "LoopbackBroker.h"' "#include `"LoopbackBroker.h`"`n#include `"ChapterTwoPerformanceLogHandles.h`""
+# Ordinary desktop mode is the only launch mode. Keep the verified debugger,
+# mitigation, explicit handle inheritance and loopback transport intact.
+Replace-Verified "#include <userenv.h>`n#include <sddl.h>`n#pragma comment(lib, `"userenv.lib`")`n" ''
+Replace-Verified "#pragma comment(lib, `"ole32.lib`")`n" ''
+$containerIdentity = @'
+ std::wstring profileName=L"DFLegacy.S1C2.78687eb.PartyProbe";
+ wchar_t instance[2]{};
+ if(GetEnvironmentVariableW(L"DFL_S1C2_INSTANCE",instance,_countof(instance))==1){
+    if(instance[0]!=L'A' && instance[0]!=L'B')return 2;
+    profileName+=L'.';profileName+=instance[0];
+ }
+ const wchar_t* profile=profileName.c_str();
+ if(argc==2 && wcscmp(argv[1],L"--cleanup")==0) return FAILED(DeleteAppContainerProfile(profile));
+ if(argc!=3)return 2;
+ PSID sid=nullptr;
+ auto hr=CreateAppContainerProfile(profile,profile,L"Local S1C2 startup probe",nullptr,0,&sid);
+ if(hr==HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS))hr=DeriveAppContainerSidFromAppContainerName(profile,&sid);
+ if(FAILED(hr)){std::printf("PROFILE_ERROR %08lx\n",hr);return 3;}
+ if(wcscmp(argv[1],L"--sid")==0){
+  LPWSTR encoded=nullptr;if(!ConvertSidToStringSidW(sid,&encoded))return 3;
+  std::wprintf(L"%ls\n",encoded);LocalFree(encoded);FreeSid(sid);return 0;
+ }
+ LPWSTR containerSid=nullptr,containerFolder=nullptr;
+ if(ConvertSidToStringSidW(sid,&containerSid)){
+    if(SUCCEEDED(GetAppContainerFolderPath(containerSid,&containerFolder))){
+       SetEnvironmentVariableW(L"DFL_S1C2_CONTAINER_DATA",containerFolder);
+       CoTaskMemFree(containerFolder);
+    }
+    LocalFree(containerSid);
+ }
+'@
+Replace-Verified ($containerIdentity.Replace("`r`n", "`n")) ' if(argc!=3)return 2;'
+Replace-Verified ' const DWORD attributeCount=useBroker?3:2;' ' const DWORD attributeCount=useBroker?2:1;'
+$containerCapabilities = @'
+ SECURITY_CAPABILITIES security{}; security.AppContainerSid=sid;
+ if(!UpdateProcThreadAttribute(si.lpAttributeList,0,PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,&security,sizeof(security),nullptr,nullptr))return 3;
+'@
+$attributeCleanup = @'
+ struct AttributeListCleanup {
+    LPPROC_THREAD_ATTRIBUTE_LIST list;
+    ~AttributeListCleanup(){if(list)DeleteProcThreadAttributeList(list);}
+ } attributeCleanup{si.lpAttributeList};
+'@
+Replace-Verified ($containerCapabilities.Replace("`r`n", "`n")) ($attributeCleanup.Replace("`r`n", "`n"))
+Replace-Verified ' DeleteProcThreadAttributeList(si.lpAttributeList); FreeSid(sid);' ' DeleteProcThreadAttributeList(si.lpAttributeList); attributeCleanup.list=nullptr;'
+Replace-Verified ' HANDLE token=nullptr; DWORD confined=0,size=0;' ' HANDLE token=nullptr; DWORD confined=1,size=0;'
+Replace-Verified '    || confined!=1){' '    || confined!=0){'
+Replace-Verified '  std::puts("NO_APPCONTAINER");TerminateProcess(pi.hProcess,0xEC);return 3;' @'
+  std::printf("ORDINARY_PROCESS_IDENTITY_FAILED appcontainer=%lu error=%lu\n",confined,GetLastError());
+  if(token)CloseHandle(token);
+  TerminateProcess(pi.hProcess,0xEC);CloseHandle(pi.hThread);CloseHandle(pi.hProcess);return 3;
+'@
+Replace-Verified 'std::puts("APPCONTAINER_NO_NETWORK_CAPABILITIES");' 'std::puts("ORDINARY_DESKTOP_PROCESS appcontainer=0");'
+Replace-Verified '#include "LoopbackBroker.h"' "#include `"LoopbackBroker.h`"`n#include `"ChapterTwoPerformanceLogHandles.h`"`n#include `"ChapterTwoDiagnosticEvents.h`""
+Replace-Verified ' PROCESS_INFORMATION pi{};' " ChapterTwoDiagnosticEvents diagnosticEvents;`n PROCESS_INFORMATION pi{};"
+Replace-Verified ' CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);' " diagnosticEvents.Started(pi.dwProcessId);`n CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);"
+Replace-Verified '  if(ev.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT && ev.dwProcessId==pi.dwProcessId)' "  diagnosticEvents.Observe(ev);`n  if(ev.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT && ev.dwProcessId==pi.dwProcessId)"
 $originalInheritance = @'
  HANDLE childPipes[2]{};
  if(useBroker && !broker.inherit(si.lpAttributeList,childPipes)){
@@ -103,6 +159,7 @@ else if(GetEnvironmentVariableW(L"DFLEGACY_CH2_PAYMENT_URL",nullptr,0) &&
     }
 }
 else if(detailedDiagnostics || std::strstr(b.data(),"DFLegacy Chapter Two:") ||
+        std::strstr(b.data(),"LOCAL_PAYMENT_INITIALIZATION_FAILED") ||
         std::strstr(b.data(),"CHAPTER_TWO_PERF ") || std::strstr(b.data(),"PREFERRED_BASE_UNAVAILABLE") ||
         std::strstr(b.data(),"LOAD_IMPORT ") || std::strstr(b.data(),"MISSING_IMPORT "))
     std::printf("DEBUG %s\n",b.data());
@@ -128,6 +185,7 @@ Replace-Verified '    if(++exceptions<100 || !x.dwFirstChance){' '    if(!x.dwFi
 
 [IO.File]::WriteAllText((Join-Path $container 'trace.cpp'), $code)
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoPerformanceLogHandles.h') -Destination $container
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoDiagnosticEvents.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $source 'container/CMakeLists.txt') -Destination $container
 $build = Join-Path $out 'build'
 & $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64

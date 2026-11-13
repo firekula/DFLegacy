@@ -217,9 +217,10 @@ public sealed class PrivateStoreService(JsonGameStore store, ItemCatalog items, 
             async Task RejectDraftAsync(byte error)
             {
                 d.Add(new(c, GameProtocolEngine.CreatePrivateStoreReply(90, error)));
-                // The Chapter Two client retains its local draft on rejection.
-                // Clear that draft before the caller refreshes the authoritative bag.
-                if (chapterTwo) await CloseCoreAsync(d, c, force: true, reply: false, ct);
+                // Chapter Two's viewer force-close only hides the draft window;
+                // the owner close reply also releases its native placement mode.
+                // Complete that reset before the caller restores the authoritative bag.
+                if (chapterTwo) await CloseCoreAsync(d, c, force: true, reply: true, ct);
             }
             if (goods is null) { await RejectDraftAsync(17); return; }
             var valid = false;

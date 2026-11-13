@@ -52,14 +52,18 @@ internal static class ChapterTwoClient
         options.SelectedServerId = "chapter-two-local";
         options.StartServer = false;
         options.Relay = new();
-        options.DisableGitHubUpdates = true;
-        options.UpdateServiceUrl = "";
-        options.UpdateRepository = "";
+        if (!Updates.ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory))
+        {
+            options.DisableGitHubUpdates = true;
+            options.UpdateServiceUrl = "";
+            options.UpdateRepository = "";
+        }
         options.Diagnostics.Enabled = false;
         options.Diagnostics.ServiceUrl = "";
     }
 
     internal const string CredentialHint = "第二章账号需要 4–16 位英文字母或数字，密码需要 6–16 位英文字母或数字。";
+    private const string LoginCredentialHint = "第二章账号需要 4–16 位英文字母或数字，登录密码需要 1–16 位英文字母或数字。";
 
     internal static bool IsValidCredential(string value, int minimum) =>
         value.Length >= minimum && value.Length <= 16 && value.All(char.IsAsciiLetterOrDigit);
@@ -71,7 +75,11 @@ internal static class ChapterTwoClient
         VerifyFile(clientPath, "4E59EE7346D92DC3E3374E171269CBC4EE4E97807013B18306EAD160829AB7E6");
         VerifyFile(Path.Combine(root, "Script.pvf"),
             "0CB607B9502084ECB9E8CD45A67087E1E96F58F4AC5420D3FC673ADC73788AE0",
-            "FB0EEF35483852E0689D037FA6B5018B750940B0E35FD8A73FD35395C0396144");
+            "FB0EEF35483852E0689D037FA6B5018B750940B0E35FD8A73FD35395C0396144",
+            "4FA23E0270CCA7BD3D97F333C9F8F406193DB77B37FF3CACFCD3DCB34C2BCA00",
+            "C20741D48A641A525F7C214FBEDE555783FB737B344D14EEADA47AECA8337669",
+            "639489430820E62F50D5D239B1C16AB8B65AFCE97C528BEBB03E3B723CE55D85",
+            "06734F9C5B23CF3BCE364890403AE1661311447CA8ADEBD1B79FCFD8E00FAB9B");
         var images = Path.Combine(root, "ImagePacks2");
         if (!Directory.Exists(images) || ClientLogPaths.HasLink(images))
             throw new InvalidDataException("请将第二章启动器放在原版 DNFS1C2 客户端目录，与 DNF.exe 和 ImagePacks2 同层。");
@@ -79,17 +87,27 @@ internal static class ChapterTwoClient
 
     internal static void VerifyEmbeddedPayload()
     {
+        RequireOrdinaryProcessComponents();
         foreach (var (name, hash) in Binaries)
             VerifyResource(name, hash);
-        if (HasPresentationPreview) VerifyMachine(PreviewName, Machine.I386);
-        if (HasQuietBroker) VerifyMachine(QuietBrokerName, Machine.Amd64);
+        VerifyMachine(PreviewName, Machine.I386);
+        VerifyMachine(QuietBrokerName, Machine.Amd64);
+    }
+
+    private static void RequireOrdinaryProcessComponents()
+    {
+        if (!HasPresentationPreview || !HasQuietBroker)
+            throw new InvalidDataException("第二章普通启动组件不完整，请使用完整的第二章启动器。");
     }
 
     internal static async Task RunAsync(string clientPath, LauncherOptions options, LauncherAccountProfile account,
         CancellationToken cancellationToken)
     {
-        if (!IsValidCredential(account.Account, 4) || !IsValidCredential(account.Password, 6))
-            throw new InvalidDataException(CredentialHint);
+        // Existing C1 accounts may have short passwords. Creation/reset policy
+        // must not prevent the server from authenticating those unchanged accounts.
+        if (!IsValidCredential(account.Account, 4) || !IsValidCredential(account.Password, 1))
+            throw new InvalidDataException(LoginCredentialHint);
+        RequireOrdinaryProcessComponents();
         ValidateSource(clientPath);
         Program.LogClientPath = clientPath;
         await Program.EnsureServerReadyAsync(options);
@@ -99,12 +117,10 @@ internal static class ChapterTwoClient
         var root = Path.GetDirectoryName(clientPath)!;
         var display = DisplayOptions(options);
         var dialogue = ChapterTwoDialogueOptions.Normalize(options.ChapterTwoDialogue);
-        var useNewHost = HasPresentationPreview &&
-            (HasQuietBroker || display.Filter != "legacy" || dialogue != ChapterTwoDialogueOptions.Default);
-        var hostName = useNewHost ? PreviewName : HostName;
-        var brokerName = HasQuietBroker ? QuietBrokerName : BrokerName;
-        var hostHash = useNewHost ? HashResource(hostName) : HostHash;
-        var brokerHash = HasQuietBroker ? HashResource(brokerName) : BrokerHash;
+        var hostName = PreviewName;
+        var brokerName = QuietBrokerName;
+        var hostHash = HashResource(hostName);
+        var brokerHash = HashResource(brokerName);
         var scriptHash = HashResource(ScriptName);
         var version = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(hostHash + brokerHash + scriptHash)));
         var runtime = Path.Combine(root, ".dflegacy", "chapter-two", version[..16]);
@@ -115,9 +131,7 @@ internal static class ChapterTwoClient
         EnsureExtracted(ScriptName, Path.Combine(runtime, ScriptName), scriptHash);
         var host = Path.Combine(runtime, hostName);
         EnsureExtracted(hostName, host, hostHash);
-        await using var payment = useNewHost && HasQuietBroker
-            ? await ChapterTwoPaymentRelay.StartAsync(runtime, options.ResolveAccountServiceUrl(), cancellationToken)
-            : null;
+        await using var payment = await ChapterTwoPaymentRelay.StartAsync(runtime, options.ResolveAccountServiceUrl(), cancellationToken);
 
         var info = new ProcessStartInfo
         {
@@ -141,13 +155,28 @@ internal static class ChapterTwoClient
             info.Environment["DFLEGACY_CH2_PAYMENT_URL"] = payment.BaseUrl;
             info.Environment["DFLEGACY_CH2_PAYMENT_REPLIES"] = payment.ReplyDirectory;
         }
+        if (Program.DetailedCaptureEnabled) info.ArgumentList.Add("-DetailedDiagnostics");
+        info.Environment.Remove("DFLEGACY_CH2_DEBUG_ITEMS");
+        info.Environment.Remove("DFLEGACY_CH2_DEBUG_PVF");
+        ChapterTwoDebugSession? debug = null;
+        if (options.ChapterTwoDebugEnabled)
+        {
+            var view = await Task.Run(() => new ChapterTwoDebugResources(Path.Combine(root, "Script.pvf"))
+                .BuildDebugView(Path.Combine(root, ".dflegacy", "chapter-two", "debug-items")), cancellationToken);
+            info.Environment["DFLEGACY_CH2_DEBUG_ITEMS"] = "1";
+            info.Environment["DFLEGACY_CH2_DEBUG_PVF"] = view.Path;
+            Program.WriteLauncherLog($"Chapter Two debug labels enabled: {view.Count} item scripts; private view={Path.GetFileName(view.Path)}.");
+            debug = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => new ChapterTwoDebugSession(root, account.Account));
+        }
 
-        Program.WriteLauncherLog("Starting Chapter Two client with the isolated local profile.");
+        Program.WriteLauncherLog("Starting Chapter Two ordinary desktop process with the isolated local profile.");
+        try
+        {
         await ClientProcessLifetime.RunAsync(
             () => Process.Start(info) ?? throw new InvalidOperationException("第二章启动进程未创建。"),
             async (process, token) =>
             {
-                var stdout = ObserveClientOutputAsync(process, root, payment, token);
+                var stdout = ObserveClientOutputAsync(process, root, payment, debug, token);
                 var stderr = process.StandardError.ReadToEndAsync(token);
                 await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { account.Account, account.Password }));
                 process.StandardInput.Close();
@@ -158,18 +187,35 @@ internal static class ChapterTwoClient
                     throw new InvalidOperationException(error.Length > 0 ? error : "请检查 Logs/DFLegacy 下的第二章启动日志。");
                 Program.WriteLauncherLog("Chapter Two client exited.");
             }, handoffOnSuccess: false, cancellationToken);
+        }
+        finally
+        {
+            if (debug is not null) await System.Windows.Application.Current.Dispatcher.InvokeAsync(debug.Dispose);
+        }
     }
 
     private static async Task ObserveClientOutputAsync(Process bootstrap, string gameDirectory,
-        ChapterTwoPaymentRelay? payment, CancellationToken token)
+        ChapterTwoPaymentRelay? payment, ChapterTwoDebugSession? debug, CancellationToken token)
     {
-        using var owned = new ChapterTwoOwnedGame(bootstrap.StartTime, gameDirectory);
+        using var owned = new Diagnostics.ChapterTwoLaunchDiagnostics(bootstrap.StartTime, gameDirectory);
+        try
+        {
         while (await bootstrap.StandardOutput.ReadLineAsync(token) is { } line)
         {
             var fields = line.Split(' ');
-            if (fields.Length == 2 && fields[0] == "OWNED_PID" && ReadProcessId(fields[1], out var childId))
+            if (fields.Length == 4 && fields[0] == "CHAPTER_TWO_ATTEMPT")
+            {
+                owned.Begin(fields[1], fields[2], fields[3]);
+            }
+            else if (fields.Length == 2 && fields[0] == "CHAPTER_TWO_FINISH" && fields[1] is "retry" or "final")
+            {
+                owned.Finish(fields[1] == "retry", token.IsCancellationRequested);
+            }
+            else if (fields.Length == 2 && fields[0] == "OWNED_PID" && ReadProcessId(fields[1], out var childId))
             {
                 owned.SetGame(childId);
+                if (debug is not null && owned.IsRunning(childId))
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => debug.Bind(childId));
             }
             else if (payment is not null && fields.Length == 5 && fields[0] == "LOCAL_PAY_REQUEST" &&
                 ReadProcessId(fields[1], out var gameId))
@@ -184,53 +230,12 @@ internal static class ChapterTwoClient
                 Program.WriteLauncherLog(line);
             }
         }
+        }
+        finally { owned.Finish(false, token.IsCancellationRequested); }
     }
 
     private static bool ReadProcessId(string value, out int id) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out id) && id > 0;
-
-    private sealed class ChapterTwoOwnedGame(DateTime bootstrapStarted, string gameDirectory) : IDisposable
-    {
-        private Process? game;
-
-        internal void SetGame(int id)
-        {
-            if (game is { HasExited: false }) return;
-            Dispose();
-            Process? candidate = null;
-            try
-            {
-                candidate = Process.GetProcessById(id);
-                // The initial notification can arrive before the game initializes its module list.
-                var path = ClientFileIdentity.ProcessImagePath(candidate.SafeHandle);
-                if (candidate.StartTime < bootstrapStarted ||
-                    !string.Equals(Path.GetDirectoryName(path), gameDirectory, StringComparison.OrdinalIgnoreCase) ||
-                    !Path.GetFileName(path).StartsWith("s1c2_chapter2_host-", StringComparison.OrdinalIgnoreCase))
-                {
-                    Program.WriteLauncherLog("Chapter Two game image did not match the active launch.");
-                    return;
-                }
-
-                // Keep the process handle so the identifier cannot be reused while this game is owned.
-                game = candidate;
-                candidate = null;
-            }
-            catch (Exception error) when (error is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
-            {
-                Dispose();
-                Program.WriteLauncherLog("Chapter Two game window ownership could not be verified.");
-            }
-            finally { candidate?.Dispose(); }
-        }
-
-        internal bool IsRunning(int id) => game is not null && game.Id == id && !game.HasExited;
-
-        public void Dispose()
-        {
-            game?.Dispose();
-            game = null;
-        }
-    }
 
     private static Stream OpenResource(string name) => typeof(ChapterTwoClient).Assembly
         .GetManifestResourceStream(ResourcePrefix + name)

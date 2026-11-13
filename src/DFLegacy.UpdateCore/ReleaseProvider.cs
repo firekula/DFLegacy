@@ -16,7 +16,12 @@ public sealed class ReleaseProvider : IReleaseProvider
     { "github" => "https://api.github.com", "gitea" => ReleaseSource.GiteaOrigin + "/api/v1", _ => "https://gitee.com/api/v5" };
     private int PageSize => Source.Provider == "gitea" ? 50 : 100;
     private sealed record Attachment(string Name, long Size, Uri Url, string? Digest, long Id, long ReleaseId = 0);
-    public ReleaseProvider(HttpClient http, ReleaseSource source) { source.Validate(); this.http = http; Source = source; }
+    public ReleaseProvider(HttpClient http, ReleaseSource source)
+    {
+        source.Validate();
+        if (source.Provider == "local") throw new InvalidDataException("本机来源需要独立的本机更新提供方。");
+        this.http = http; Source = source;
+    }
     public static HttpClient CreateHttpClient() => new(new HttpClientHandler
     { AllowAutoRedirect = false, UseCookies = false, UseDefaultCredentials = false, Credentials = null }) { Timeout = Timeout.InfiniteTimeSpan };
     private void AnonymousOnly()

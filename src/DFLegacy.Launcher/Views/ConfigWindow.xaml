@@ -74,6 +74,7 @@
                   <StackPanel Grid.Column="2"><c:PixelText Text="对白行距（像素）" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="DialogueGapBox" AutomationProperties.Name="对白行距"/></StackPanel>
                 </Grid>
                 <Border Height="1" Background="#625638" Margin="0,20,0,15"/>
+                <CheckBox x:Name="ChapterTwoDebugBox" Visibility="Collapsed" Margin="0,0,0,12"><TextBlock Text="第二章调试模式：物品名称显示 ID，Ctrl+F11 打开物品工具" TextWrapping="Wrap"/></CheckBox>
                 <Expander Header="客户端与最近运行信息">
                   <StackPanel><c:PixelText Text="当前配置的客户端" Style="{StaticResource ClassicLabel}"/><c:PixelText x:Name="DisplayTargetText" Foreground="{StaticResource ClassicSecondary}"/>
                     <c:PixelText Text="最近一次实际运行" Style="{StaticResource ClassicLabel}" Margin="0,15,0,7"/><c:PixelText x:Name="DisplayRuntimeText" Foreground="{StaticResource ClassicSecondary}"/>

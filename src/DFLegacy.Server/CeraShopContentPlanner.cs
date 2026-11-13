@@ -13,8 +13,49 @@ public sealed record CeraShopContentPlacementPlan(
     IReadOnlyList<CharacterMailAttachmentRecord> OverflowItems,
     IReadOnlyList<CeraShopContentReward> Rewards);
 
+public sealed record CeraContainerImmediateEffects(
+    int Gold,
+    uint VictoryPoints,
+    ushort WarehouseCapacity,
+    IReadOnlyList<PremiumServicePurchaseGrant> PremiumServices);
+
 public static class CeraShopContentPlanner
 {
+    internal static bool ShouldSettleAsEffect(ItemCatalog catalog, ushort itemId) =>
+        CharacterWarehouseProgression.TryGetItemTargetCapacity(itemId, out _)
+        || catalog.TryGetDefinition(itemId, out var definition)
+            && (CeraShopCatalog.TryResolvePremiumContract(definition, out _)
+                || CeraShopCatalog.TryResolveDirectCurrencyGrant(itemId, definition, out _));
+
+    internal static bool TrySettleImmediateEffects(
+        IReadOnlyList<CeraShopContentReward> rewards, ItemCatalog catalog,
+        int gold, uint victoryPoints, ushort warehouseCapacity,
+        out CeraContainerImmediateEffects effects)
+    {
+        effects = null!;
+        var premiumServices = new List<PremiumServicePurchaseGrant>();
+        foreach (var reward in rewards)
+        {
+            if (!catalog.TryGetDefinition(reward.ItemId, out var definition)) return false;
+            if (CeraShopCatalog.TryResolvePremiumContract(definition, out var contract))
+            {
+                var days = (long)contract.Days * reward.Count;
+                if (days is <= 0 or > int.MaxValue) return false;
+                premiumServices.Add(new(contract.ServiceType, (int)days));
+            }
+            else if (CeraShopCatalog.TryResolveDirectCurrencyGrant(reward.ItemId, definition, out var grant)
+                && !CeraShopDirectCurrencyPlanner.TryApply(gold, victoryPoints, grant, reward.Count,
+                    out gold, out victoryPoints))
+            {
+                return false;
+            }
+            warehouseCapacity = CharacterWarehouseProgression.ApplyItemTarget(warehouseCapacity, reward.ItemId);
+        }
+
+        effects = new(gold, victoryPoints, warehouseCapacity, premiumServices.AsReadOnly());
+        return true;
+    }
+
     public static bool TryCreatePurchase(
         IReadOnlyDictionary<ushort, CharacterItemRecord> mainInventory,
         IReadOnlyDictionary<ushort, CharacterItemRecord> avatarInventory,
@@ -30,9 +71,9 @@ public static class CeraShopContentPlanner
     {
         plan = null!;
         failure = string.Empty;
-        if (containerCount == 0)
+        if (containerCount == 0 || catalog.IsUnavailableChapterTwoCashItem(containerDefinition.Id))
         {
-            failure = "the Cera-shop container quantity is zero";
+            failure = "the Cera-shop container is unavailable or has zero quantity";
             return false;
         }
 
@@ -110,9 +151,10 @@ public static class CeraShopContentPlanner
         foreach (var reward in rewards)
         {
             if (reward.Count == 0
-                || !catalog.TryGetDefinition(reward.ItemId, out var rewardDefinition))
+                || !catalog.TryGetDefinition(reward.ItemId, out var rewardDefinition)
+                || catalog.IsUnavailableChapterTwoCashItem(reward.ItemId))
             {
-                failure = $"reward item {reward.ItemId} is not present in the item catalog";
+                failure = $"reward item {reward.ItemId} is unavailable or has zero quantity";
                 return false;
             }
 

@@ -53,7 +53,7 @@ public sealed partial class JsonGameStore
 
     public async Task<CeraGiftResult> GiftCeraShopAsync(string userName, Guid senderId, string recipientName,
         IReadOnlyList<GameCeraShopPurchaseItem> requests, CeraShopCatalog catalog,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool isChapterTwo = false)
     {
         await _gate.WaitAsync(cancellationToken);
         try
@@ -118,8 +118,8 @@ public sealed partial class JsonGameStore
             if (cash < total) return Reject(11);
             var yearMonth = GiftYearMonth;
             var received = ReceivedGifts(recipientAccount, yearMonth);
-            // ACT1 exposes the cap in UI; recheck under the transaction gate to stop stale/concurrent bypasses.
-            if ((long)received + requests.Count > catalog.MaxGiftCount) return Reject(4);
+            // Both clients expose their cap in UI; recheck under the gate to stop stale/concurrent bypasses.
+            if ((long)received + requests.Count > catalog.GetMaxGiftCount(isChapterTwo)) return Reject(4);
             if (!TryAppendGeneratedMailsLocked(recipient, mailRequests, out var mailbox, out _, out _)) return Reject(4);
 
             var accounts = CopyStoreAccountsLocked();

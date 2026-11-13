@@ -12,13 +12,19 @@ public static class ConfigurationMigration
         try
         {
             if (json.Length is 0 or > MaxBytes || migrations == null) throw new InvalidDataException("配置大小或迁移集合无效。");
-            using var document = JsonDocument.Parse(new UTF8Encoding(false, true).GetString(json), new JsonDocumentOptions { MaxDepth = 64 });
+            var options = new JsonDocumentOptions { MaxDepth = 64, CommentHandling = JsonCommentHandling.Skip };
+            using var document = JsonDocument.Parse(new UTF8Encoding(false, true).GetString(json), options);
             ValidateObjectNames(document.RootElement);
             if (document.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("配置必须是 JSON 对象；原始文件已保留。");
-            var root = JsonNode.Parse(json)!.AsObject(); var changed = false;
+            var root = JsonNode.Parse(json, documentOptions: options)!.AsObject(); var changed = false;
             foreach (var migration in migrations)
             {
                 ValidateMigration(migration);
+                if (migration.Operation == "bindLocalBridge")
+                {
+                    changed |= BindLocalBridge(root, migration);
+                    continue;
+                }
                 var relayName = Find(root, "Relay");
                 if (relayName == null && migration.Operation == "replaceIf") continue;
                 if (relayName == null) { relayName = "Relay"; root[relayName] = new JsonObject(); changed = true; }
@@ -70,8 +76,13 @@ public static class ConfigurationMigration
         return text.Split([',', ';', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(p => int.TryParse(p, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 65535 ? number : throw new InvalidDataException("端口超出有效范围。")).ToArray();
     }
-    private static void ValidateMigration(ConfigMigration m)
+    internal static void ValidateMigration(ConfigMigration m)
     {
+        if (m?.Operation == "bindLocalBridge")
+        {
+            _ = ReadLocalBridge(m);
+            return;
+        }
         if (m == null || !ManifestCodec.IsName(m.Id) || m.File != "launcher.json" || m.Operation is not ("unionPorts" or "setDefault" or "replaceIf")
             || m.Key is not ("Relay.TcpPorts" or "Relay.UdpPorts" or "Relay.Enabled" or "Relay.Preference")
             || m.Operation == "replaceIf" && m.When == null || m.Operation != "replaceIf" && m.When != null)
@@ -87,6 +98,51 @@ public static class ConfigurationMigration
             else if (m.Key == "Relay.Enabled" && when.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
                 || m.Key == "Relay.Preference" && !Preference(when)) throw new InvalidDataException("配置迁移条件类型无效。");
         }
+    }
+    internal static ReleaseSource? ValidateReleaseBindings(ConfigMigration[] migrations, ReleaseSource source)
+    {
+        var bindings = migrations.Where(m => m.Operation == "bindLocalBridge").ToArray();
+        if (bindings.Length == 0) return null;
+        if (bindings.Length != 1 || ReadLocalBridge(bindings[0]) != source)
+            throw new InvalidDataException("第一章桥接配置与清单来源不符。");
+        return source;
+    }
+    private static ReleaseSource ReadLocalBridge(ConfigMigration migration)
+    {
+        if (!ManifestCodec.IsName(migration.Id) || migration.File != "launcher.json" || migration.Key != "UpdateSource"
+            || migration.Value.ValueKind != JsonValueKind.Object || migration.When is not { ValueKind: JsonValueKind.String } when)
+            throw new InvalidDataException("第一章桥接配置迁移无效。");
+        ManifestCodec.RejectDuplicateKeys(migration.Value);
+        var source = migration.Value.Deserialize<ReleaseSource>(ManifestCodec.Json);
+        if (source?.Provider != "local") throw new InvalidDataException("桥接配置仅接受本机来源。");
+        source.Validate();
+        if (source.Repository != when.GetString() + "/c1")
+            throw new InvalidDataException("新旧桥接来源不在同一回环地址。");
+        return source;
+    }
+    private static bool BindLocalBridge(JsonObject root, ConfigMigration migration)
+    {
+        var source = ReadLocalBridge(migration);
+        var hosted = migration.When!.Value.GetString();
+        var values = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["UpdateProvider"] = source.Provider, ["UpdateRepository"] = source.Repository,
+            ["UpdateChannel"] = source.Channel, ["UpdateFlavor"] = source.Flavor, ["UpdateServiceUrl"] = ""
+        };
+        string? Read(string field, string? fallback = null)
+        {
+            var key = Find(root, field);
+            if (key == null) return fallback;
+            if (root[key] is JsonValue value && value.TryGetValue<string>(out var text)) return text;
+            throw new InvalidDataException("桥接配置字段类型不符：" + field);
+        }
+        if (values.All(pair => Read(pair.Key) == pair.Value)) return false;
+        if (Read("UpdateServiceUrl") != hosted || Read("UpdateProvider", "github") != "github"
+            || Read("UpdateRepository", "firekula/DFLegacy") != "firekula/DFLegacy" || Read("UpdateChannel", "stable") != "stable"
+            || Read("UpdateFlavor", "") is not { } flavor || flavor != "" && flavor != source.Flavor)
+            throw new InvalidDataException("旧更新配置与所选本机桥接来源不符。");
+        foreach (var (field, value) in values) root[Find(root, field) ?? field] = value;
+        return true;
     }
     private static bool Preference(JsonElement value) => value.ValueKind == JsonValueKind.String && value.GetString()?.ToLowerInvariant() is "ipv4" or "ipv6";
     private static void ValidateObjectNames(JsonElement element)

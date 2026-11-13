@@ -451,6 +451,24 @@ public static class CharacterInventoryPlanner
 
             var identifiedItem = CharacterItemIdentity.Ensure(item, definition);
 
+            // A creature's CountOrValue is its persistent UID, including for eggs.
+            // It occupies one slot; splitting it as a stack clones the pet and loses
+            // status in ordinary mail, whose attachment format cannot retain it.
+            if (CharacterCreatureInventoryLayout.IsCreature(definition))
+            {
+                var target = item.Slot < capacity && !normalized.ContainsKey(item.Slot)
+                    ? item.Slot
+                    : FindFreeWarehouseSlot(normalized, capacity);
+                if (target == ushort.MaxValue)
+                {
+                    throw new InvalidDataException(
+                        $"Warehouse has no slot for creature {item.ItemId}/{item.InstanceId}; preserve the source save for explicit recovery.");
+                }
+
+                normalized.Add(target, identifiedItem with { Slot = target });
+                continue;
+            }
+
             var remaining = item.CountOrValue;
             var perSlotLimit = definition.IsStackable
                 ? GetStackLimit(definition)

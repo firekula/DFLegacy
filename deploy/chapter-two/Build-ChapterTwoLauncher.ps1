@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$NativeAssetsDirectory,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [string]$PresentationHost,
-    [string]$StartupBroker
+    [Parameter(Mandatory)][string]$PresentationHost,
+    [Parameter(Mandatory)][string]$StartupBroker
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path

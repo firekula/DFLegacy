@@ -43,6 +43,20 @@ class FileFixture(unittest.TestCase):
                     minimum_sequence=0, includes=['**'], **kwargs)
 
 class Resources(FileFixture):
+    def test_both_chapter_configurations_and_backups_never_ship(self):
+        self.put('DNF.exe', b'game')
+        private = [prefix + name + suffix
+                   for prefix in ('', 'nested/')
+                   for name in ('launcher.json', 'launcher.chapter2.json', 'LAUNCHER.CHAPTER2.JSON')
+                   for suffix in ('', '.tmp', '.backup', '~')]
+        for name in private:
+            self.put(name, b'PRIVATE-ACCOUNT')
+        preview = v4.plan_resources(**self.options())
+        self.assertEqual([f['path'] for f in preview['manifest']['files']], ['DNF.exe'])
+        for name in private:
+            with self.subTest(retirement=name), self.assertRaises(v4.ReleaseError):
+                v4.build_manifest(**self.options(retired=[dict(path=name, action='delete', sequence=1)]))
+
     def test_nested_arbitrary_resources_and_private_runtime_exclusions(self):
         for name in ['DNF.exe', 'data/deep/map.npk', 'web/index.html', 'empty.bin']:
             self.put(name, b'' if name == 'empty.bin' else b'abc')

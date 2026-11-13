@@ -36,6 +36,7 @@ if (args.Length == 2 && args[0] == "--startup-test-child")
 }
 
 if (await UpdateHelperTests.Dispatch(args) is int helperExit) return helperExit;
+if (await ChapterTwoDiagnosticTests.Dispatch(args) is int chapterTwoDiagnosticExit) return chapterTwoDiagnosticExit;
 if (await UpdateV4HelperTests.Dispatch(args) is int v4HelperExit) return v4HelperExit;
 if (await RepairClientTests.Dispatch(args) is int repairExit) return repairExit;
 if (await BootstrapUpdateTests.Dispatch(args) is int bootstrapUpdateExit) return bootstrapUpdateExit;
@@ -57,6 +58,26 @@ Directory.CreateDirectory(root);
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if (args.Contains("--chapter-update-layout"))
+    {
+        ChapterTransitionOfferTests.Run(root, Check);
+        ChapterUpdateLayoutTests.Run(root, Check);
+        Console.WriteLine($"Chapter update layout: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
+    if (args.Length==2 && args[0]=="--chapter-two-debug-tests")
+    {
+        ChapterTwoDebugTests.Run(root,Path.GetFullPath(args[1]),Check);
+        await ChapterTwoDebugTests.Api(Check);
+        Console.WriteLine($"Chapter Two debug: {checks} assertions, {failures} failures");
+        return failures==0?0:1;
+    }
+    if (args.Contains("--chapter-two-diagnostic-tests") || args.Length == 2 && args[0] == "--chapter-two-native-diagnostic-tests")
+    {
+        await ChapterTwoDiagnosticTests.Run(root, Check, args[0] == "--chapter-two-native-diagnostic-tests" ? Path.GetFullPath(args[1]) : null);
+        Console.WriteLine($"Chapter Two diagnostics: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
     if (args.Contains("--chapter-two-isolation-tests"))
     {
         await ChapterTwoIsolationTests.Run(root, Check);
@@ -79,8 +100,9 @@ try
     if(args.Contains("--gitea-source-tests")) { await GiteaSourceTests.RunV4(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Gitea source tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--repair-tests")) { await RepairClientTests.Run(root,Check); await GiteaSourceTests.RunRepair(root,Check); Console.WriteLine($"Repair tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--update-v4-tests")) { await UpdateV4Tests.Run(root,Check); await GiteaSourceTests.RunV4(root,Check); await FileLockOwnerTests.Run(root,Check); await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--update-v4-helper-tests")) { await UpdateV4HelperTests.Run(root,Check); Console.WriteLine($"Update V4 helper: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--incident-tests")) { IncidentTests.Run(root,Check); Console.WriteLine($"Incident tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
-    if(args.Length==0) IncidentTests.Run(root,Check);
+    if(args.Length==0) { IncidentTests.Run(root,Check); await ChapterTwoDiagnosticTests.Run(root,Check); }
     if(args.Contains("--pvp-relay-ports")) { PvpRelayPortTests.Run(Check); Console.WriteLine($"PvP relay ports: {checks} assertions, {failures} failures"); return failures == 0 ? 0 : 1; }
     if(args.Contains("--update-public-smoke")) { await UpdatePublicSmokeTests.Run(root); return 0; }
     if(args.Contains("--update-text-tests")) { UpdateStartupFlowTests.RunOnSta(Check,presentationOnly:true); Console.WriteLine($"Update text tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }

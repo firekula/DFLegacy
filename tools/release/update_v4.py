@@ -29,7 +29,7 @@ GITEA_ORIGIN = 'http://firekula.site:3000'
 GITEA_ATTACHMENT_LIMIT = 100_000_000
 MAX_METADATA = 16 * 1024 * 1024
 MAX_LONG = 2**63 - 1
-PROTECTED = {'launcher.json', 'launcher.txt', 'config.ini', 'client-package.json',
+PROTECTED = {'launcher.json', 'launcher.chapter2.json', 'launcher.txt', 'config.ini', 'client-package.json',
              'client-update-v4.json', '.dflegacy', 'logs', 'screenshot', 'screenshots',
              'save', 'saves', 'accounts', 'crashreports'}
 PRIVATE = {'.git', '.svn', '.hg', '.vs', '.vscode', '__pycache__', 'node_modules',
@@ -73,7 +73,7 @@ def validate_path(value):
         require(0 < len(part) <= 255 and part not in ('.', '..') and not part.endswith(('.', ' '))
                 and not re.search(r'~[0-9]',part)
                 and not re.match(r'^(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)', part, re.I), 'unsafe Windows resource path')
-    require(value.split('/')[0].casefold() not in PROTECTED, 'protected resource path')
+    require(not private_path(value), 'protected/private resource path')
 
 
 def private_path(value):
@@ -110,6 +110,18 @@ def load_json(path):
 
 
 def migration_valid(m):
+    if isinstance(m, dict) and m.get('operation') == 'bindLocalBridge':
+        v = m.get('value')
+        origin = m.get('when')
+        match = re.fullmatch(r'http://127\.0\.0\.2:([1-9][0-9]{0,4})', origin) if isinstance(origin, str) else None
+        require(set(m) == {'id','file','operation','key','value','when'} and name(m['id'])
+                and m['file'] == 'launcher.json' and m['key'] == 'UpdateSource'
+                and match and int(match[1]) <= 65535 and isinstance(v,dict)
+                and set(v) == {'provider','repository','channel','architecture','flavor'}
+                and v['provider'] == 'local' and v['repository'] == origin + '/c1'
+                and name(v['channel']) and v['architecture'] in ('x86','x64') and v['flavor'] in ('normal','test'),
+                'invalid local bridge configuration binding')
+        return
     require(isinstance(m, dict) and {'id', 'file', 'operation', 'key', 'value'} <= m.keys()
             and m.keys() <= {'id', 'file', 'operation', 'key', 'value', 'when'} and name(m['id'])
             and m['file'] == 'launcher.json' and m['operation'] in ('unionPorts', 'setDefault', 'replaceIf')

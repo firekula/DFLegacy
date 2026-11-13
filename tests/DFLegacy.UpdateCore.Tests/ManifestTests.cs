@@ -43,6 +43,15 @@ internal static class ManifestTests
         var retirement = m with { Retired = [new("old/patch.dll", "delete", 1), new("custom.dat", "unmanage", 1)] };
         TestRun.Check(ManifestCodec.Parse(ManifestCodec.Serialize(retirement)).Retired.Length == 2, "explicit retirement actions");
         TestRun.Reject(() => ManifestCodec.Parse(ManifestCodec.Serialize(m with { Retired = [new("Logs/player.txt", "delete", 1)] })), "protected retirement");
+        foreach (var config in new[] { "launcher.json", "launcher.chapter2.json", "LAUNCHER.CHAPTER2.JSON" })
+        foreach (var suffix in new[] { "", ".tmp", ".backup", "~" })
+        foreach (var prefix in new[] { "", "nested/" })
+        {
+            var privatePath = prefix + config + suffix;
+            Bad(o => o["files"]![0]!["path"] = privatePath, "private chapter configuration " + privatePath);
+            TestRun.Reject(() => ManifestCodec.Parse(ManifestCodec.Serialize(m with
+                { Retired = [new(privatePath, "delete", 1)] })), "private chapter configuration retirement " + privatePath);
+        }
         foreach (var (file, content) in m.Files.Zip(new[] { "abc", "pvf", "dll", "" }))
         {
             var path = PathPolicy.Resolve(root, file.Path); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path, content);

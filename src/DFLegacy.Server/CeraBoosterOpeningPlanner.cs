@@ -7,7 +7,8 @@ public sealed record CeraBoosterOpeningPlan(
     Dictionary<ushort, CharacterItemRecord> AvatarInventory,
     Dictionary<ushort, CharacterItemRecord> CreatureInventory,
     IReadOnlyList<CharacterMailAttachmentRecord> OverflowItems,
-    IReadOnlyList<CeraBoosterRewardDefinition> Rewards);
+    IReadOnlyList<CeraShopContentReward> Rewards,
+    CeraContainerImmediateEffects? ImmediateEffects = null);
 
 public static class CeraBoosterOpeningPlanner
 {
@@ -20,15 +21,31 @@ public static class CeraBoosterOpeningPlanner
         uint weightLimit,
         IDropRandomSource random,
         out CeraBoosterOpeningPlan plan,
-        out string failure)
+        out string failure,
+        int gold = 0,
+        uint victoryPoints = 0,
+        ushort warehouseCapacity = CharacterWarehouseProgression.InitialCapacity)
     {
         plan = null!;
         failure = string.Empty;
         if (!CharacterInventoryLayout.IsMainItemSlot(sourceSlot)
             || !mainInventory.TryGetValue(sourceSlot, out var sourceItem)
+            || sourceItem.Slot != sourceSlot
             || sourceItem.CountOrValue == 0
-            || !catalog.TryGetDefinition(sourceItem.ItemId, out var sourceDefinition)
-            || sourceDefinition.CeraBooster is null)
+            || !catalog.TryGetDefinition(sourceItem.ItemId, out var sourceDefinition))
+        {
+            failure = "the selected item is not a usable Cera container";
+            return false;
+        }
+
+        if (catalog.UsesChapterTwoCashContainerPolicy)
+        {
+            return TryCreateChapterTwo(mainInventory, avatarInventory, creatureInventory, sourceItem,
+                sourceDefinition, catalog, weightLimit, random, gold, victoryPoints, warehouseCapacity,
+                out plan, out failure);
+        }
+
+        if (sourceDefinition.CeraBooster is null)
         {
             failure = "the selected item is not a usable Cera booster";
             return false;
@@ -170,8 +187,46 @@ public static class CeraBoosterOpeningPlanner
             plannedAvatar,
             plannedCreature,
             overflow.AsReadOnly(),
-            rewards);
+            rewards.Select(reward => new CeraShopContentReward(reward.ItemId, reward.Count,
+                reward.AvatarAbilityIndex, reward.AvatarPeriodDays)).ToArray());
         return true;
     }
 
+    private static bool TryCreateChapterTwo(
+        IReadOnlyDictionary<ushort, CharacterItemRecord> mainInventory,
+        IReadOnlyDictionary<ushort, CharacterItemRecord> avatarInventory,
+        IReadOnlyDictionary<ushort, CharacterItemRecord> creatureInventory,
+        CharacterItemRecord sourceItem, ItemDefinition sourceDefinition, ItemCatalog catalog,
+        uint weightLimit, IDropRandomSource random, int gold, uint victoryPoints, ushort warehouseCapacity,
+        out CeraBoosterOpeningPlan plan, out string failure)
+    {
+        plan = null!;
+        var plannedMain = mainInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
+        if (sourceItem.CountOrValue == 1)
+        {
+            plannedMain.Remove(sourceItem.Slot);
+        }
+        else
+        {
+            plannedMain[sourceItem.Slot] = sourceItem with { CountOrValue = sourceItem.CountOrValue - 1 };
+        }
+
+        if (!CeraShopContentPlanner.TryCreatePurchase(plannedMain, avatarInventory, creatureInventory,
+            sourceDefinition, 1, catalog, weightLimit, random,
+            itemId => CeraShopContentPlanner.ShouldSettleAsEffect(catalog, itemId), out var placement, out failure))
+        {
+            return false;
+        }
+
+        if (!CeraShopContentPlanner.TrySettleImmediateEffects(placement.Rewards, catalog, gold, victoryPoints,
+            warehouseCapacity, out var effects))
+        {
+            failure = "the Cera container effects could not be settled";
+            return false;
+        }
+
+        plan = new(sourceItem.Slot, sourceItem.ItemId, placement.MainInventory, placement.AvatarInventory,
+            placement.CreatureInventory, placement.OverflowItems, placement.Rewards, effects);
+        return true;
+    }
 }

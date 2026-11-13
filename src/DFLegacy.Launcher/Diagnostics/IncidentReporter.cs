@@ -100,13 +100,13 @@ internal sealed class IncidentReporter
         long total=0;
         for(var i=0;i<files.Length;i++) { total+=files[i].Length; if(i>=maxFiles || total>maxBytes || files[i].LastWriteTimeUtc<DateTime.UtcNow.AddDays(-14)) try { files[i].Delete(); } catch(IOException) { } }
     }
-    internal string? ReportExit(int processId,int exitCode,bool cancelled)
+    internal string? ReportExit(int processId,int exitCode,bool cancelled,string? nativeReport=null)
     {
         if(exitCode==0||cancelled)return null;
-        string? native=null;
+        string? native=nativeReport;
         try
         {
-            if(Directory.Exists(directory))
+            if(native is null && Directory.Exists(directory))
                 foreach(var path in Directory.EnumerateFiles(directory,$"crash-*-{processId}-*.log"))
                 {
                     if(ClientLogPaths.HasLink(path)||new FileInfo(path).Length>65536)continue;

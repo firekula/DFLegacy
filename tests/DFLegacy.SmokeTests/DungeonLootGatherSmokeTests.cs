@@ -78,6 +78,10 @@ internal static class DungeonLootGatherSmokeTests
         check(requesterPackets is [var liveNotification] && liveNotification.Type == 0 && liveNotification.ProtocolId == 12
                 && liveNotification.Payload.SequenceEqual(expected) && otherPackets.Count == 0,
             "the type-2 command sends one private marker using the real requester uid, not the request target field");
+        var chapterTwoNotification = ChapterTwoPacketProjection.Apply(requesterPackets.Single());
+        check(chapterTwoNotification.Type == 0 && chapterTwoNotification.ProtocolId == 12
+                && chapterTwoNotification.Payload.SequenceEqual(expected),
+            "Chapter Two keeps the same private marker type, word uid and exact body for its verified native handler");
         check(instance.Snapshot().Version == before.Version && instance.GetRoomGroundItems(0, 0).SequenceEqual(groundBefore)
                 && !instance.TryBeginLootPickup(characterId, drop, false, [], _ => 0, out var retry)
                 && retry.Outcome == LootPickupOutcome.PickupInProgress,

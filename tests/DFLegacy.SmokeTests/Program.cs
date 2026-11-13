@@ -9,6 +9,39 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+ChapterTwoCeraGiftPaddingSmokeTests.Run(Check);
+if (args.Contains("--cera-gift-padding"))
+{
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Cera gift padding smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+ChapterTwoCeraShopReplySmokeTests.Run(Check);
+if (args.Contains("--cera-result-category"))
+{
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Cera result category smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args is ["--chapter-two-cera-containers", var chapterOneContainers, var chapterTwoContainers, ..])
+{
+    await ChapterTwoCeraContainerSmokeTests.RunAsync(chapterOneContainers, chapterTwoContainers,
+        args.Contains("--restored-shop"), Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two Cera containers smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--creature-warehouse-migration"))
+{
+    CreatureWarehouseMigrationSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Creature warehouse migration smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--atomic-snapshot-replace-real", var replacementArtifacts])
 {
     await AtomicSnapshotReplacementSmokeTests.RunRealFilesAsync(Check, replacementArtifacts);
@@ -178,6 +211,22 @@ if (args.Contains("--item-spaces"))
     await ItemSpaceSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Item spaces smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--c2-quick-store"))
+{
+    await ChapterTwoQuickStoreSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"C2 quick store smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--c2-warehouse-swap"))
+{
+    await ChapterTwoWarehouseSwapSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"C2 warehouse swap smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
 }
 
@@ -536,6 +585,7 @@ await PvpProtocolRatingSmokeTests.RunAsync(Check);
 await AvatarLifetimeSmokeTests.RunAsync(Check);
 await CeraGiftSmokeTests.RunAsync(Check);
 await ItemSpaceSmokeTests.RunAsync(Check);
+await ChapterTwoWarehouseSwapSmokeTests.RunAsync(Check);
 await AvatarPurchaseSmokeTests.RunAsync(Check);
 await PrivateStoreSmokeTests.RunAsync(Check);
 await PartyMemberDetailSmokeTests.RunAsync(Check);
@@ -3804,6 +3854,24 @@ try
         && fullLotteryFailure == LotteryUseFailure.InventoryFull
         && fullLotteryInventory[43].CountOrValue == 1,
         "a full lottery destination rejects the draw without consuming the source item");
+    var overweightLotteryInventory = new Dictionary<ushort, CharacterItemRecord>
+    {
+        [43] = new(43, 7_143, 2)
+    };
+    Check(!LotteryItemPlanner.TryCreate(
+            overweightLotteryInventory,
+            new Dictionary<ushort, CharacterItemRecord>(),
+            new Dictionary<ushort, CharacterItemRecord>(), 43, 60, 1_000, 0, 0,
+            smokeItemCatalog, out var rejectedWeightPlan, out var weightLotteryFailure)
+        && weightLotteryFailure == LotteryUseFailure.Overweight
+        && rejectedWeightPlan is null
+        && overweightLotteryInventory.Count == 1
+        && overweightLotteryInventory[43].CountOrValue == 2,
+        "overweight lottery keeps source untouched and exposes no gold settlement plan");
+    Check(LotteryItemPlanner.GetClientErrorCode(weightLotteryFailure, true) == 21
+        && LotteryItemPlanner.GetClientErrorCode(fullLotteryFailure, true) == 4
+        && LotteryItemPlanner.GetClientErrorCode(weightLotteryFailure, false) == 4,
+        "Chapter Two jar weight explanation is distinct while Chapter One remains compatible");
     var questCharacter = new CharacterRecord(
         Guid.NewGuid(), "QuestTest", 0, 2, 60, 500, 50_000);
     Check(questCatalog.GetAcceptableQuestIds(questCharacter, [], [], 2)
