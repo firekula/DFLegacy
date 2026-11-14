@@ -281,6 +281,12 @@ public sealed class QuestCatalog
         return definition is not null;
     }
 
+    public bool IsUnavailableInChapterTwo(ushort questId) =>
+        // A missing catalog is a resource/configuration failure, not evidence
+        // that every accepted quest was retired. Keep progress in that case.
+        _definitions.Value.Count > 0
+        && (!TryGetDefinition(questId, out _) || _chapterTwoHiddenQuestIds.Value.Contains(questId));
+
     private IReadOnlySet<ushort> LoadChapterTwoHiddenQuestIds()
     {
         // The Chinese native client resolves category 11 quest text while loading

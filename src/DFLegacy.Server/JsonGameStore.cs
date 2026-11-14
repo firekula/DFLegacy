@@ -360,6 +360,11 @@ public sealed record CharacterRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<Guid>? ExpiredAvatarInstanceIds { get; init; }
 
+    // Retired/unrenderable C2 quests no longer consume active slots. Preserve
+    // their original triggers for inspection without granting completion/rewards.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<CharacterQuestRecord>? ChapterTwoArchivedQuests { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }

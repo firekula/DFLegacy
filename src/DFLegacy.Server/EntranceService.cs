@@ -6338,6 +6338,10 @@ public sealed class EntranceService(
                                             $"{refund.SkillId}:{refund.PreviousLevel}->{refund.CurrentLevel}(+{refund.SkillPoints})")));
                             }
 
+                            if (chapter2CheckConnectionAccepted)
+                                activeCharacter = await store.ArchiveUnavailableChapterTwoQuestsAsync(
+                                    accountName, character.Id, questCatalog, serverToken) ?? activeCharacter;
+
                             currentQuests = (activeCharacter.Quests ?? [])
                                 .Where(quest => quest.QuestId != ushort.MaxValue)
                                 .DistinctBy(quest => quest.QuestId)

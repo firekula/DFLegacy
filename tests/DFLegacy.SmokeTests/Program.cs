@@ -9,6 +9,14 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Contains("--chapter-two-retired-quests"))
+{
+    await ChapterTwoRetiredQuestSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two retired quests smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 ChapterTwoCeraGiftPaddingSmokeTests.Run(Check);
 if (args.Contains("--cera-gift-padding"))
 {
@@ -601,6 +609,7 @@ PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 ChapterTwoQuestVisibilitySmokeTests.Run(Check);
+await ChapterTwoRetiredQuestSmokeTests.RunAsync(Check);
 QuestMapSmokeTests.Run(Check);
 DungeonMapSelectionSmokeTests.Run(Check);
 QuestPvpRankSmokeTests.Run(Check);
