@@ -5,7 +5,7 @@ param(
     [ValidateSet('none','ntsc-svideo','ntsc-composite','ntsc-rf','crt-rgb','xbrz','crt')][string]$PostProcess = 'none',
     [int]$Width = 640,
     [int]$Height = 480,
-    [ValidateSet('12','14','16','18')][int]$DialogueFontSize = 12,
+    [ValidateSet('12','14','16','18')][int]$DialogueFontSize = 16,
     [ValidateRange(0,4)][int]$DialogueLineGap = 3,
     [string]$RemoteIpv4,
     [string]$RelayIpv4,

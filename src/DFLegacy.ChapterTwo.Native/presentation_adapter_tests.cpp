@@ -82,15 +82,21 @@ namespace
         return 0;
     }
 
-    bool ExerciseDialogueFont(const std::vector<unsigned char>& image)
+    bool ExerciseDialogueFont(const std::vector<unsigned char>& image, int expectedSize)
     {
         auto* mapped = static_cast<unsigned char*>(VirtualAlloc(nullptr, image.size(),
             MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
         if (!mapped) return false;
         std::memcpy(mapped, image.data(), image.size());
         bool passed = false;
-        if (dfl::chapter_two::InstallNpcDialogueLayout(mapped, image.size()))
+        constexpr unsigned PrepareCall = 0xb893, BodyCall = 0x4f129c;
+        if (dfl::chapter_two::InstallNpcDialogueLayout(mapped, image.size()) &&
+            std::memcmp(mapped + PrepareCall + 1, image.data() + PrepareCall + 1, 4) != 0 &&
+            std::memcmp(mapped + BodyCall + 1, image.data() + BodyCall + 1, 4) != 0)
         {
+            fontCreates = 0;
+            measuredFontHeight = 20;
+            definedFontSize = 0;
             void* fontMethods[14]{};
             fontMethods[2] = reinterpret_cast<void*>(&DefineFixtureFont);
             fontMethods[5] = reinterpret_cast<void*>(&MeasureFixtureFont);
@@ -105,7 +111,6 @@ namespace
             void* widget[27]{};
             void* body[19]{};
             widget[26] = body;
-            constexpr unsigned PrepareCall = 0xb893, BodyCall = 0x4f129c;
             using Prepare = int (__fastcall*)(void*, void*);
             using SetBody = void (__fastcall*)(void*, void*, void*);
             const auto destination = [mapped](unsigned offset) {
@@ -119,7 +124,7 @@ namespace
             {
                 setBody(widget, nullptr, &compact);
                 setBody(widget, nullptr, &compact);
-                passed = fontCreates == 1 && definedFontSize == 18 && body[18] == &bodyFixture;
+                passed = fontCreates == 1 && definedFontSize == expectedSize && body[18] == &bodyFixture;
                 measuredFontHeight = 21;
                 compact.initialized = 0;
                 passed = prepare(&compact, nullptr) == 1 && passed;
@@ -244,6 +249,7 @@ int wmain(int argc, wchar_t** argv)
         constexpr unsigned BodyFontOperand = 0x4f1291;
         constexpr unsigned BodyGapOperand = 0x4f126e;
         constexpr unsigned BodyFontCall = 0x4f129c;
+        constexpr unsigned PrepareFontCall = 0xb893;
         constexpr unsigned CompactFontSize = 0xb8db;
         SetEnvironmentVariableA("DFL_S1C2_DIALOGUE_SIZE", nullptr);
         SetEnvironmentVariableA("DFL_S1C2_DIALOGUE_GAP", nullptr);
@@ -256,11 +262,17 @@ int wmain(int argc, wchar_t** argv)
             return 1;
         }
         dialogue = original;
+        if (!ExerciseDialogueFont(original, 16))
+        {
+            std::puts("FAIL: the default NPC font hook did not install and apply size 16");
+            return 1;
+        }
+        SetEnvironmentVariableA("DFL_S1C2_DIALOGUE_SIZE", "12");
         if (Read(dialogue, BodyFontOperand) != 0xd54148 ||
             !dfl::chapter_two::InstallNpcDialogueLayout(dialogue.data(), dialogue.size()) ||
             Read(dialogue, BodyFontOperand) != 0xd54144)
         {
-            std::puts("FAIL: the verified Chapter Two NPC body did not select the compact Chinese font");
+            std::puts("FAIL: explicit size 12 did not select the compact Chinese font");
             return 1;
         }
         dialogue[BodyFontOperand] = original[BodyFontOperand];
@@ -279,7 +291,7 @@ int wmain(int argc, wchar_t** argv)
             std::puts("FAIL: the requested NPC body size and spacing did not reach the native widget");
             return 1;
         }
-        if (!ExerciseDialogueFont(original))
+        if (!ExerciseDialogueFont(original, 18))
         {
             std::puts("FAIL: the real native widget did not receive the cached font and the fallback");
             return 1;
@@ -298,16 +310,18 @@ int wmain(int argc, wchar_t** argv)
         dialogue = original;
         if (!dfl::chapter_two::InstallNpcDialogueLayout(dialogue.data(), dialogue.size()) ||
             dialogue[BodyGapOperand] != 0 ||
-            Read(dialogue, BodyFontCall + 1) != Read(original, BodyFontCall + 1))
+            !ExerciseDialogueFont(original, 16))
         {
-            std::puts("FAIL: an invalid font size should fall back without discarding a valid gap");
+            std::puts("FAIL: an invalid font size should apply size 16 without discarding a valid gap");
             return 1;
         }
         dialogue[BodyGapOperand] = original[BodyGapOperand];
         dialogue[BodyFontOperand] = original[BodyFontOperand];
+        for (const auto call : {PrepareFontCall, BodyFontCall})
+            std::memcpy(dialogue.data() + call + 1, original.data() + call + 1, sizeof(std::uint32_t));
         if (dialogue != original)
         {
-            std::puts("FAIL: an NPC spacing change modified unrelated text");
+            std::puts("FAIL: the NPC layout changed unrelated code or text");
             return 1;
         }
         SetEnvironmentVariableA("DFL_S1C2_DIALOGUE_SIZE", nullptr);

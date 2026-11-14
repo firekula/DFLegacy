@@ -58,6 +58,7 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
         DetailedAtLaunch=[Collections.Generic.List[bool]]::new(); EventsAtLaunch=[Collections.Generic.List[string]]::new()
         Sessions=[Collections.Generic.List[string]]::new(); ProfileCalls=0
         PostProcesses=[Collections.Generic.List[string]]::new()
+        DialogueSizes=[Collections.Generic.List[string]]::new()
     }
     $broker = Join-Path $Case.Root 'dnf_startup_trace.exe'
     $acl = Join-Path $env:SystemRoot 'System32/icacls.exe'
@@ -78,6 +79,7 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
         $state.EventsAtLaunch.Add($env:DFLEGACY_CH2_DIAGNOSTIC_EVENTS)
         $state.Sessions.Add($env:DFL_S1C2_SESSION_DATA)
         $state.PostProcesses.Add($env:DFL_S1C2_POST_PROCESS)
+        $state.DialogueSizes.Add($env:DFL_S1C2_DIALOGUE_SIZE)
         $index = [Math]::Min($state.Launches, $state.Attempts.Count - 1)
         $state.Launches++
         foreach ($line in $state.Attempts[$index]) { $line }
@@ -120,6 +122,7 @@ Run-Case 'post-process-default' {
     $case = New-Case 'post-process-default'
     $r = Invoke-Case $case @(,$normal)
     Check (!$r.Error -and $r.State.PostProcesses[0] -eq 'none') 'missing effect explicitly selects no post-process'
+    Check ($r.State.DialogueSizes[0] -eq '16') 'missing dialogue size selects size 16 for the native host'
 }
 Run-Case 'post-process-legacy' {
     $case = New-Case 'post-process-legacy'

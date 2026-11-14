@@ -72,8 +72,8 @@ internal static class DisplayConfigurationTests
                 check(Equals(effect.SelectedValue, "none"), "invalid saved post-process defaults off");
                 save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 check(store.Load().ChapterTwoPostProcess is null, "saving off omits the optional post-process setting");
-                check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 3),
-                    "an older Chapter Two config opens with the current default body layout");
+                check(Equals(font.SelectedItem, 16) && Equals(gap.SelectedItem, 3),
+                    "a Chapter Two config without dialogue options opens with size 16");
                 font.SelectedItem = 18;
                 gap.SelectedItem = 1;
                 save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -90,8 +90,14 @@ internal static class DisplayConfigurationTests
                     "a partial configuration uses the default for its missing gap");
                 store.Update(options => options.ChapterTwoDialogue = new(100, 0));
                 reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 0),
+                check(Equals(font.SelectedItem, 16) && Equals(gap.SelectedItem, 0),
                     "an invalid size falls back without losing a valid gap");
+                font.SelectedItem = 12;
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(font.SelectedItem, 12) && store.Load().ChapterTwoDialogue == new ChapterTwoDialogueOptions(12, 0),
+                    "an explicit compact size 12 remains selected and persisted");
+                font.SelectedItem = 16;
                 gap.SelectedItem = 3;
                 save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 check(store.Load().ChapterTwoDialogue is null, "saving defaults restores the legacy config shape");

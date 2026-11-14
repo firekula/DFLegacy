@@ -81,7 +81,7 @@ internal sealed class LauncherOptions
 
 internal sealed record ChapterTwoDisplayOptions(int Width, int Height, string Filter);
 
-internal sealed record ChapterTwoDialogueOptions(int FontSize = 12, int LineGap = 3)
+internal sealed record ChapterTwoDialogueOptions(int FontSize = 16, int LineGap = 3)
 {
     internal static readonly ChapterTwoDialogueOptions Default = new();
     internal static IReadOnlyList<int> FontSizes { get; } = Array.AsReadOnly(new[] { 12, 14, 16, 18 });

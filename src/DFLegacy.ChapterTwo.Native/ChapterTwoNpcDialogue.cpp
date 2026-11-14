@@ -20,12 +20,13 @@ namespace
     constexpr std::size_t PrepareFont = 0x63d820;
     constexpr std::size_t SetWidgetFont = 0x638af0;
     constexpr int CompactSize = 12;
+    constexpr int DefaultSize = 16;
     constexpr int DefaultGap = 3;
 
     unsigned char* gameImage = nullptr;
     void* customFont = nullptr;
     bool fontAttempted = false;
-    int bodyFontSize = CompactSize;
+    int bodyFontSize = DefaultSize;
 
     template <typename Function>
     Function VirtualMethod(void* instance, std::size_t index) noexcept
@@ -110,8 +111,8 @@ bool dfl::chapter_two::InstallNpcDialogueLayout(unsigned char* image, std::size_
     char sizeText[4]{};
     const auto sizeLength = GetEnvironmentVariableA("DFL_S1C2_DIALOGUE_SIZE", sizeText, _countof(sizeText));
     const int size = sizeLength == 2 && sizeText[0] == '1' &&
-        (sizeText[1] == '4' || sizeText[1] == '6' || sizeText[1] == '8')
-        ? 10 + sizeText[1] - '0' : CompactSize;
+        (sizeText[1] == '2' || sizeText[1] == '4' || sizeText[1] == '6' || sizeText[1] == '8')
+        ? 10 + sizeText[1] - '0' : DefaultSize;
     char gapText[3]{};
     const auto gapLength = GetEnvironmentVariableA("DFL_S1C2_DIALOGUE_GAP", gapText, _countof(gapText));
     const int gap = gapLength == 1 && gapText[0] >= '0' && gapText[0] <= '4'
