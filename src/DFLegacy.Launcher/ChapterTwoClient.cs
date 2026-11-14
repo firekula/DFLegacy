@@ -81,7 +81,15 @@ internal static class ChapterTwoClient
         var root = Path.GetDirectoryName(clientPath)!;
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory, root);
         VerifyFile(clientPath, "4E59EE7346D92DC3E3374E171269CBC4EE4E97807013B18306EAD160829AB7E6");
-        VerifyFile(Path.Combine(root, "Script.pvf"),
+        var pvf = Path.Combine(root, "Script.pvf");
+        if (!ClientLogPaths.HasLink(pvf) && File.Exists(pvf))
+        {
+            using var source = File.OpenRead(pvf);
+            Span<byte> prefix = stackalloc byte[15];
+            if (source.ReadAtLeast(prefix, prefix.Length, false) == prefix.Length && prefix.SequenceEqual("DNF_SCRIPT_PACK"u8))
+                throw new InvalidDataException("当前 Script.pvf 是服务端格式，第二章游戏不能直接读取。请使用同一版本配套的客户端 Script.pvf，并保留服务端原文件。");
+        }
+        VerifyFile(pvf,
             "0CB607B9502084ECB9E8CD45A67087E1E96F58F4AC5420D3FC673ADC73788AE0",
             "FB0EEF35483852E0689D037FA6B5018B750940B0E35FD8A73FD35395C0396144",
             "4FA23E0270CCA7BD3D97F333C9F8F406193DB77B37FF3CACFCD3DCB34C2BCA00",

@@ -446,7 +446,8 @@ public partial class MainWindow : System.Windows.Window
     private void ShowBanner(int index)
     {
         index = Math.Clamp(index, 0, 4); BannerImage.Source = Artwork($"classic-banner{index}.png");
-        BannerCaption.Text = ChapterTwoClient.IsBundled ? "第二章 · 本机测试" : BannerTitles[index];
+        BannerCaption.Text = ChapterTwoClient.IsBundled && _options.ChapterTwoServerHost is null && _options.ChapterTwoServerIpv4 is null
+            ? "第二章 · 本机测试" : BannerTitles[index];
         var buttons = new[] { Slide0, Slide1, Slide2, Slide3, Slide4 };
         for (var i = 0; i < buttons.Length; i++)
         {

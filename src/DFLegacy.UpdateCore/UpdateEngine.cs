@@ -43,8 +43,16 @@ public sealed class UpdateEngine
         if (installed != null)
         {
             var previous = installed.Release.Manifest;
-            if (manifest.Sequence < previous.Sequence || manifest.Sequence == previous.Sequence && target.ManifestSha256 != installed.Release.ManifestSha256)
-                throw new InvalidDataException("线上清单发生回退或同序号内容被替换，已停止更新。");
+            if (manifest.Sequence < previous.Sequence)
+            {
+                // A standalone distribution can precede its online publication.
+                // Verify its own receipt, and never expose the older release as an install target.
+                var local = await VerifyInstalled(installed, progress, token, true).ConfigureAwait(false);
+                return new(null, installed, local.Verification, false, local.CanLaunch, false,
+                    local.CanLaunch ? $"更新源版本 {manifest.Version} 早于本地版本 {local.Version}；已校验并保留本地版本，继续等待后续更新。" : local.Message);
+            }
+            if (manifest.Sequence == previous.Sequence && target.ManifestSha256 != installed.Release.ManifestSha256)
+                throw new InvalidDataException("线上清单的同序号内容被替换，已停止更新。");
             if (previous.Sequence < manifest.MinimumSequence) throw new InvalidDataException("当前版本不在支持的升级范围，请先安装桥接包。");
             var targets = new HashSet<string>(manifest.Files.Select(f => f.Path), StringComparer.OrdinalIgnoreCase);
             var retired = new HashSet<string>(manifest.Retired.Select(f => f.Path), StringComparer.OrdinalIgnoreCase);

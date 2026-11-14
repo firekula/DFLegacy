@@ -50,6 +50,9 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
                (architecture, flavor, 'stable'), 'incompatible baseline variant/source')
     v4.require(chapter != 'chapter2' or old is not None, 'Chapter Two requires a verified full bridge baseline')
     if chapter == 'chapter2':
+        with (root/'Script.pvf').open('rb') as pvf:
+            v4.require(pvf.read(15) != b'DNF_SCRIPT_PACK',
+                       'Chapter Two client cannot use a server-format PVF; export the matching native client view')
         required.update(chapter_image_resources(root))
         v4.require(not any((root/name).exists() for name in ('DFLegacy.Client.dll','DFLegacy.Debug.dll','debug.dll')),
                    'Second Chapter contains a First Chapter module')

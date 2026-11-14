@@ -69,8 +69,26 @@ internal static class EngineTests
         provider.Unavailable = false;
         var before = provider.Target;
         var old = m with { Sequence = 1 }; raw = ManifestCodec.Serialize(old); provider.Target = new(source, old.Version, TestRun.Hash(raw), raw);
-        await TestRun.RejectAsync(async () => await engine.CheckAsync(), "remote sequence rollback");
+        File.Delete(marker); // Freshly extracted full packages have no machine-bound validation stamp.
+        var downloadsBeforeOlderCheck = provider.Downloads.Count;
+        check = await engine.CheckAsync();
+        TestRun.Check(check.CanLaunch && !check.NeedsInstall && check.Target is null && check.Verification?.IsValid == true
+            && check.Installed?.Release.ManifestSha256 == release.ManifestSha256 && File.Exists(marker),
+            "newer full package remains launchable after complete local verification against an older online release");
+        await TestRun.RejectAsync(async () => await engine.DownloadAsync(check), "older online release cannot be downloaded as an update");
+        TestRun.Check(provider.Downloads.Count == downloadsBeforeOlderCheck
+            && new InstallationStore(root).ReadInstalled()!.Release.ManifestSha256 == release.ManifestSha256,
+            "older release does not overwrite local installation or fetch content");
+        File.WriteAllText(Path.Combine(root, "ImagePacks2/a.npk"), "bad");
+        check = await engine.CheckAsync();
+        TestRun.Check(!check.CanLaunch && !check.NeedsInstall && check.Target is null,
+            "older online release cannot bless a damaged newer full package");
+        File.WriteAllBytes(Path.Combine(root, "ImagePacks2/a.npk"), provider.Blobs[m.Files[0].Sha256]);
+        var rewritten = m with { Commit = new string('b', 40) };
+        raw = ManifestCodec.Serialize(rewritten); provider.Target = new(source, rewritten.Version, TestRun.Hash(raw), raw);
+        await TestRun.RejectAsync(async () => await engine.CheckAsync(), "same sequence replacement remains rejected");
         provider.Target = before;
+        TestRun.Check((await engine.CheckAsync()).NeedsInstall, "genuine later updates remain discoverable after an older release was skipped");
         // A publisher omitting retirement must never silently drop an old DLL from verification.
         var omitted = next with { Files = next.Files.Where(f => f.Path != "DFLegacy.Client.dll").ToArray() }; raw = ManifestCodec.Serialize(omitted);
         provider.Target = new(source, omitted.Version, TestRun.Hash(raw), raw);

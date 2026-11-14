@@ -58,6 +58,15 @@ class ChapterPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
             self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
 
+    def test_second_chapter_refuses_server_format_pvf_before_packaging(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        (second/'Script.pvf').write_bytes(b'DNF_SCRIPT_PACK' + bytes(64))
+        with self.assertRaisesRegex(v4.ReleaseError, 'server-format PVF'):
+            self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
+        self.assertFalse((self.base/'b').exists())
+
     def test_second_chapter_preserves_distinct_image_groups_in_manifest_and_starter(self):
         first = self.stage('chapter1', 'c1')
         a = self.build(first, 'chapter1', 'a')
@@ -121,6 +130,25 @@ class ChapterPackageTests(unittest.TestCase):
         manifest = a['manifest']; manifest['architecture'] = 'x86'
         with self.assertRaisesRegex(v4.ReleaseError, 'baseline'):
             self.build(self.stage('chapter2','c2'), 'chapter2','b',baseline=manifest)
+
+    def test_official_starter_keeps_github_updates_on_and_debug_off(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        (second/'launcher.chapter2.json').write_text(json.dumps(dict(
+            ChapterTwoDebugEnabled=True, ChapterTwoTestMuteEnabled=True, Account='private-player', Password='private')))
+        self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
+        package.create_starter(self.base/'standalone.zip', second, self.base/'b')
+        with zipfile.ZipFile(self.base/'standalone.zip') as archive:
+            config=json.loads(archive.read('launcher.chapter2.json'))
+            self.assertFalse(config['DisableGitHubUpdates'])
+            self.assertFalse(config['ChapterTwoDebugEnabled'])
+            self.assertFalse(config['ChapterTwoTestMuteEnabled'])
+            self.assertFalse(config['StartServer'])
+            self.assertEqual(config['ChapterTwoServerHost'], 'games.firekula.site')
+            self.assertNotIn('Account', config)
+            self.assertNotIn('Password', config)
+            self.assertIn('.dflegacy/v4/installed.json', archive.namelist())
 
     def test_second_chapter_patch_reuses_previous_resources_and_preserves_retirements(self):
         first = self.stage('chapter1', 'c1')
