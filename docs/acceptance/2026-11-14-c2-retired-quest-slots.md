@@ -14,3 +14,11 @@
 - `quest-visibility.log` / `quest-map.log`：现有任务可见性和地图回归，零失败。
 
 本轮电脑控制因用户按 Esc 停止，没有把这些自动服务测试描述为客户端手工实测。容器构建与发布结果另见归档记录；尚未完成的项目不据此宣称通过。上线生效方式为更新第二章镜像后重新选角色，无需删除或重建存档，也无需更换服务器 PVF。部署前保留停服备份。
+
+## 镜像验收与发布
+
+- `image-quest-tests-final.log`：直接使用镜像里的服务端及依赖执行上述任务迁移、可见性和任务地图回归，三项均零失败。服务端 DLL SHA-256：`21c42119c7a93b69454d2964f3ca14ef67553af04e5cc8a8e207a3444881d26e`。
+- `image-management-smoke.log`：临时独立存档、无外部网络，管理器启停、服务就绪、账号重启后登录、原有 TCP/UDP 监听通过；临时容器已清理。
+- 已发布 `ghcr.io/firekula/dflegacy-chapter-two:v1.0.2`（Linux amd64）。摘要：`sha256:9f163eeca7f32c31e406fbd4c7bc36b5d5923a65f5ee2063695594e8e486a0a2`。
+- `anonymous-image-pull.log` / `image-publication.json`：在空 Docker 认证配置下拉取成功，摘要一致。
+- 仅替换上一版镜像中的服务端运行文件；沿用原管理器、启动默认值和 PVF 挂载，不包含用户存档，未操作线上容器。
