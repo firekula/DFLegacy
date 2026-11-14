@@ -26,6 +26,10 @@ class ChapterPackageTests(unittest.TestCase):
         for path in required: (root / path).write_bytes(path.encode())
         (root / 'ImagePacks2').mkdir()
         (root / 'ImagePacks2/a.npk').write_bytes(b'public resource')
+        if chapter == 'chapter2':
+            (root / 'ImagePacks3').mkdir()
+            (root / 'ImagePacks4').mkdir()
+            (root / 'ImagePacks4/a.npk').write_bytes(b'second chapter resource')
         (root / 'DFLegacy.Chapter.json').write_text(json.dumps(dict(schema=1, chapter=chapter,
             entry='DFLegacy.Launcher.exe', requiredFiles=required)))
         return root
@@ -54,6 +58,40 @@ class ChapterPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
             self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
 
+    def test_second_chapter_preserves_distinct_image_groups_in_manifest_and_starter(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        (second/'ImagePacks3/a.npk').write_bytes(b'third group')
+        b = self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
+        names = {row['path'] for row in b['manifest']['files']}
+        for group in ('ImagePacks2', 'ImagePacks3', 'ImagePacks4'):
+            self.assertIn(group+'/a.npk', names)
+        package.create_starter(self.base/'client.zip', second, self.base/'b')
+        with zipfile.ZipFile(self.base/'client.zip') as archive:
+            for group in ('ImagePacks2', 'ImagePacks3', 'ImagePacks4'):
+                name = group+'/a.npk'
+                self.assertEqual(archive.read(name), (second/name).read_bytes())
+
+    def test_public_second_chapter_rejects_stage_missing_original_image_group(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        (second/'ImagePacks4/a.npk').unlink()
+        with self.assertRaisesRegex(v4.ReleaseError, 'ImagePacks4'):
+            self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
+        self.assertFalse((self.base/'b').exists())
+
+    def test_starter_rejects_resources_added_after_manifest_was_built(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
+        (second/'ImagePacks4/new.npk').write_bytes(b'cannot silently omit')
+        with self.assertRaisesRegex(v4.ReleaseError, 'resource.*manifest'):
+            package.create_starter(self.base/'client.zip', second, self.base/'b')
+        self.assertFalse((self.base/'client.zip').exists())
+
     def test_private_files_and_debug_never_ship_in_official_second_chapter(self):
         first = self.stage('chapter1', 'c1')
         a = self.build(first, 'chapter1', 'a')
@@ -72,6 +110,7 @@ class ChapterPackageTests(unittest.TestCase):
             self.assertNotIn('Password', config)
             self.assertNotIn('logs/account.txt', archive.namelist())
             self.assertIn('.dflegacy/v4/installed.json', archive.namelist())
+            self.assertIn('ImagePacks3/', archive.namelist())
         (second/'debug.dll').write_bytes(b'old patch')
         with self.assertRaisesRegex(v4.ReleaseError, 'First Chapter module'):
             self.build(second, 'chapter2', 'bad', baseline=self.base/'a'/a['manifestAsset'])
@@ -82,5 +121,39 @@ class ChapterPackageTests(unittest.TestCase):
         manifest = a['manifest']; manifest['architecture'] = 'x86'
         with self.assertRaisesRegex(v4.ReleaseError, 'baseline'):
             self.build(self.stage('chapter2','c2'), 'chapter2','b',baseline=manifest)
+
+    def test_second_chapter_patch_reuses_previous_resources_and_preserves_retirements(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        baseline = self.base/'a'/a['manifestAsset']
+        b = self.build(second, 'chapter2', 'b', baseline=baseline)
+        (second/'ImagePacks4/new.npk').write_bytes(b'new resource')
+        c = package.build(second, self.base/'c', chapter='chapter2', architecture='x64', flavor='normal',
+            version='v1.0.2', commit='b'*40, sequence=6, baseline=baseline,
+            previous=self.base/'b'/b['manifestAsset'])
+        self.assertEqual(c['manifest']['retired'], b['manifest']['retired'])
+        self.assertEqual(c['manifest']['minimumSequence'], 4)
+        self.assertEqual(len(c['assets']), 1)
+        for row in c['manifest']['files']:
+            self.assertEqual({part['release'] for part in row['parts']},
+                {'v1.0.2' if row['path']=='ImagePacks4/new.npk' else 'v1.0.1'})
+        package.create_starter(self.base/'patch-client.zip', second, self.base/'c')
+        with zipfile.ZipFile(self.base/'patch-client.zip') as archive:
+            self.assertEqual(archive.read('ImagePacks4/new.npk'), b'new resource')
+
+    def test_second_chapter_previous_must_have_same_variant_and_increasing_sequence(self):
+        first = self.stage('chapter1', 'c1')
+        a = self.build(first, 'chapter1', 'a')
+        second = self.stage('chapter2', 'c2')
+        baseline = self.base/'a'/a['manifestAsset']
+        b = self.build(second, 'chapter2', 'b', baseline=baseline)
+        for arch, sequence in (('x86', 6), ('x64', 5)):
+            previous = dict(b['manifest'], architecture=arch)
+            with self.assertRaises(v4.ReleaseError):
+                package.build(second, self.base/f'bad-{arch}', chapter='chapter2', architecture='x64',
+                    flavor='normal', version='v1.0.2', commit='b'*40, sequence=sequence,
+                    baseline=baseline, previous=previous)
+            self.assertFalse((self.base/f'bad-{arch}').exists())
 
 if __name__ == '__main__': unittest.main()
