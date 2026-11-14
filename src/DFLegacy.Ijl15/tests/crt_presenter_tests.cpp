@@ -5,7 +5,10 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <vector>
+#include <cwchar>
+#include "crt_pipeline_fixture.h"
 
 namespace
 {
@@ -40,7 +43,7 @@ namespace
     {
         return presenter.Render(source, target, plan, p::PostProcess::PhosphorLine);
     }
-    void Fill(void* surface, bool picture)
+    void Fill(void* surface, bool picture, DWORD flat=0xff808080)
     {
         a::LockedRect lock{};
         Check(SUCCEEDED(a::Call<HRESULT>(surface, 9, &lock, static_cast<const RECT*>(nullptr), DWORD(0))), "source locks");
@@ -48,7 +51,7 @@ namespace
         constexpr DWORD bars[]{0xffff8080,0xffffff80,0xff80ff80,0xff80ffff,0xff8080ff,0xffff80ff,0xffdddddd,0xff303030};
         for (unsigned y=0;y<480;++y) for(unsigned x=0;x<640;++x)
         {
-            DWORD pixel=0xff808080;
+            DWORD pixel=flat;
             if(picture)
             {
                 pixel=bars[x/80];
@@ -83,10 +86,94 @@ namespace
         stream.write(reinterpret_cast<const char*>(pixels.data()),pixels.size()*4);
         Check(stream.good(),"actual GPU image is saved");
     }
+    void FillBloomPattern(void* surface)
+    {
+        a::LockedRect lock{};
+        Check(SUCCEEDED(a::Call<HRESULT>(surface,9,&lock,static_cast<const RECT*>(nullptr),DWORD(0))),
+            "bloom pattern source locks");
+        if(!lock.Bits)return;
+        for(unsigned y=0;y<480;++y)
+        {
+            auto* row=reinterpret_cast<DWORD*>(static_cast<unsigned char*>(lock.Bits)+y*lock.Pitch);
+            std::fill_n(row,640,0xff000000);
+            row[160]=0xff606060;
+            row[320]=0xffffffff;
+            row[480]=0xffff0000;
+        }
+        reinterpret_cast<DWORD*>(static_cast<unsigned char*>(lock.Bits)+240*lock.Pitch)[80]=0xffffffff;
+        Check(SUCCEEDED(a::Call<HRESULT>(surface,10)),"bloom pattern source unlocks");
+    }
+    void CheckBloom(void* device,void* source,DWORD format,const p::Capabilities& capabilities,
+        const std::filesystem::path& evidence)
+    {
+        dfl::d3d8_presenter::Presenter renderer(device,DeviceTable);
+        for(const unsigned width:{640u,1280u})for(const bool forcePot:{false,true})
+        {
+            FillBloomPattern(source);
+            auto caps=capabilities;
+            caps.PowerOfTwo=caps.PowerOfTwo||forcePot;
+            const unsigned height=width*3/4;
+            const auto plan=p::MakePlan(width,height,p::Mode::Point,caps);
+            Ref target;
+            Check(SUCCEEDED(a::Call<HRESULT>(device,25,width,height,format,DWORD(0),BOOL(TRUE),&target.Value)),
+                "bloom output target allocates");
+            if(!target.Value)continue;
+            const auto rendered=renderer.Render(source,target.Value,plan,p::PostProcess::PhosphorLine);
+            Check(SUCCEEDED(rendered.Status)&&SUCCEEDED(rendered.RestoreStatus),"bright-pass bloom renders");
+            if(FAILED(rendered.Status))continue;
+            const auto pixels=Read(target.Value,width,height);
+            Check(pixels.size()==std::size_t(width)*height,"bloom result is readable");
+            if(pixels.empty())continue;
+            const auto pixel=[&](unsigned x,unsigned y)
+            {
+                const auto tx=unsigned((float(x)+.5f)*float(width)/640.f);
+                const auto ty=unsigned((float(y)+.5f)*float(height)/480.f);
+                return pixels[std::size_t(ty)*width+tx];
+            };
+            const auto red=[&](unsigned x,unsigned y){return (pixel(x,y)>>16)&255;};
+            Check(red(320,240)>=125&&red(320,240)>3*std::max(red(318,240),red(322,240)),
+                "bright source keeps a distinct center beneath the scanline mask");
+            constexpr unsigned minimum[]{10,5,2,1};
+            for(unsigned distance=2;distance<=5;++distance)
+                Check(red(320-distance,240)>=minimum[distance-2]&&red(320+distance,240)>=minimum[distance-2],
+                    "bright vertical line emits a horizontal two-to-five-source-pixel glow");
+            Check(red(314,240)<=1&&red(326,240)<=1,"horizontal bloom tail remains bounded");
+            Check(red(160,240)>=45&&red(160,240)<=73&&red(158,240)==0&&red(162,240)==0,
+                "below-threshold detail receives only narrow base reconstruction without wide bloom");
+            Check(red(482,240)>=10&&((pixel(482,240)>>8)&255)<=1&&(pixel(482,240)&255)<=1,
+                "red phosphor emits red light without turning its halo white");
+            Check(red(82,240)>=8&&red(80,238)==0&&red(80,242)==0,
+                "a bright point spreads horizontally without a vertical blur");
+            if(!evidence.empty())
+            {
+                std::filesystem::create_directories(evidence);
+                Save(evidence/(L"crt-bloom-"+std::to_wstring(width)+(forcePot?L"-pot.bmp":L".bmp")),pixels,width,height);
+            }
+            const auto scanlineRange=[&](DWORD color)
+            {
+                Fill(source,false,color);
+                Check(SUCCEEDED(renderer.Render(source,target.Value,plan,p::PostProcess::PhosphorLine).Status),
+                    "uniform highlight renders through bounded bloom");
+                const auto uniform=Read(target.Value,width,height);
+                if(uniform.size()!=std::size_t(width)*height)return std::pair<DWORD,DWORD>{0,0};
+                const auto first=(uniform[std::size_t(height/2)*width+width/2]>>16)&255;
+                const auto next=(uniform[std::size_t(height/2+1)*width+width/2]>>16)&255;
+                return std::pair<DWORD,DWORD>{std::min(first,next),std::max(first,next)};
+            };
+            const auto white=scanlineRange(0xffffffff);
+            Check(white.first>=170&&white.first<=190&&white.second>=245,
+                "bright white preserves roughly thirty-percent scanline contrast");
+            const auto light=scanlineRange(0xffd0d0d0);
+            Check(light.second>=205&&light.second<=235,
+                "bright grey retains highlight detail without additive white clipping");
+        }
+        Fill(source,false);
+    }
 }
 
 int wmain(int argc,wchar_t** argv)
 {
+    if(argc==2 && std::wcscmp(argv[1],L"--headless")==0)return crt_headless::Run();
     const auto instance=GetModuleHandleW(nullptr);
     HWND window=CreateWindowExW(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,L"STATIC",L"CRT offscreen acceptance",
         WS_POPUP,0,0,1280,960,nullptr,nullptr,instance,nullptr);
@@ -181,6 +268,8 @@ int wmain(int argc,wchar_t** argv)
                     Fill(source.Value,false);
                 }
             }
+            if(cycle==0)CheckBloom(device.Value,source.Value,display.Format,capabilities,
+                argc==2?std::filesystem::path(argv[1]):std::filesystem::path{});
             a::Call<HRESULT>(device.Value,88,DWORD(0));
             for(DWORD stage=0;stage<4;++stage)a::Call<HRESULT>(device.Value,61,stage,static_cast<void*>(nullptr));
             a::Call<HRESULT>(device.Value,90,savedShader);

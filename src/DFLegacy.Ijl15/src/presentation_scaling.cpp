@@ -4,23 +4,55 @@
 
 namespace dfl::presentation
 {
+    namespace
+    {
+        struct PostProcessOption { PostProcess Effect; std::string_view Name; int Preset = -1; };
+        constexpr PostProcessOption PostProcessOptions[]{
+            {PostProcess::None, "none"},
+            {PostProcess::PhosphorLine, "crt"},
+            {PostProcess::Xbrz, "xbrz"},
+            {PostProcess::NtscSVideo, "ntsc-svideo", 0},
+            {PostProcess::NtscComposite, "ntsc-composite", 1},
+            {PostProcess::NtscRf, "ntsc-rf", 2},
+            {PostProcess::CrtRgb, "crt-rgb", 3},
+        };
+
+        bool CaseInsensitiveEqual(std::string_view left, std::string_view right) noexcept
+        {
+            if (left.size() != right.size()) return false;
+            for (std::size_t index = 0; index < left.size(); ++index)
+            {
+                const char letter = left[index];
+                const char lower = letter >= 'A' && letter <= 'Z' ? static_cast<char>(letter + ('a' - 'A')) : letter;
+                if (lower != right[index]) return false;
+            }
+            return true;
+        }
+    }
+
     PostProcess ParsePostProcess(const char* value) noexcept
     {
         if (!value) return PostProcess::None;
         std::string_view text(value);
         while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.remove_prefix(1);
         while (!text.empty() && (text.back() == ' ' || text.back() == '\t')) text.remove_suffix(1);
-        if (text.size() == 4 && (text[0] == 'x' || text[0] == 'X') && (text[1] == 'b' || text[1] == 'B') &&
-            (text[2] == 'r' || text[2] == 'R') && (text[3] == 'z' || text[3] == 'Z')) return PostProcess::Xbrz;
-        if (text.size() != 3) return PostProcess::None;
-        return (text[0] == 'c' || text[0] == 'C') && (text[1] == 'r' || text[1] == 'R') &&
-            (text[2] == 't' || text[2] == 'T') ? PostProcess::PhosphorLine : PostProcess::None;
+        for (const auto& option : PostProcessOptions)
+            if (CaseInsensitiveEqual(text, option.Name)) return option.Effect;
+        return PostProcess::None;
     }
 
     const char* PostProcessName(PostProcess effect) noexcept
     {
-        if(effect==PostProcess::Xbrz)return "xbrz";
-        return effect == PostProcess::PhosphorLine ? "crt" : "none";
+        for (const auto& option : PostProcessOptions)
+            if (effect == option.Effect) return option.Name.data();
+        return "none";
+    }
+
+    int NtscPreset(PostProcess effect) noexcept
+    {
+        for (const auto& option : PostProcessOptions)
+            if (effect == option.Effect) return option.Preset;
+        return -1;
     }
 
     Mode ParseMode(const char* value) noexcept
@@ -31,15 +63,7 @@ namespace dfl::presentation
         while (!text.empty() && (text.back() == ' ' || text.back() == '\t')) text.remove_suffix(1);
         for (const auto mode : {Mode::Sharp, Mode::Point, Mode::Linear})
         {
-            const std::string_view name(ModeName(mode));
-            if (name.size() != text.size()) continue;
-            bool same = true;
-            for (std::size_t i = 0; i < name.size(); ++i)
-            {
-                const char lower = text[i] >= 'A' && text[i] <= 'Z' ? static_cast<char>(text[i] + ('a' - 'A')) : text[i];
-                same = same && lower == name[i];
-            }
-            if (same) return mode;
+            if (CaseInsensitiveEqual(text, ModeName(mode))) return mode;
         }
         return Mode::Legacy;
     }

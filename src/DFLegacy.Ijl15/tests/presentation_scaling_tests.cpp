@@ -40,6 +40,15 @@ int main()
     check(ParseMode(" SHARP ") == Mode::Sharp && ParseMode("point") == Mode::Point && ParseMode("linear") == Mode::Linear,
         "managed/native mode spellings agree");
     check(ParsePostProcess("xbrz") != PostProcess::None, "xBRZ is an explicit independent post-process choice");
+    constexpr const char* crtNames[]{"ntsc-svideo", "ntsc-composite", "ntsc-rf", "crt-rgb"};
+    for (const auto* name : crtNames)
+    {
+        const auto effect = ParsePostProcess(name);
+        check(effect != PostProcess::None && std::strcmp(PostProcessName(effect), name) == 0,
+            "each CRT connection is a distinct round-trippable choice");
+    }
+    check(ParsePostProcess(" NTSC-COMPOSITE\t") == ParsePostProcess("ntsc-composite") &&
+        ParsePostProcess("ntsc-composite") != PostProcess::None, "CRT keys tolerate case and whitespace");
     check(ParsePostProcess(nullptr)==PostProcess::None&&ParsePostProcess("invalid")==PostProcess::None,
         "missing and invalid post-process values default off");
     if (failed == 0) std::printf("Presentation scaling policy: %d checks passed\n",checks);

@@ -2,6 +2,11 @@
 #ifdef DFL_CHAPTER_TWO_XBRZ
 #include "xbrz_frame.h"
 #endif
+#ifdef DFL_CHAPTER_TWO_NTSC
+#include "ChapterTwoNtscRenderer.h"
+#include <cstring>
+#include <vector>
+#endif
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -22,7 +27,14 @@ namespace
         Reference& operator=(const Reference&) = delete;
     };
     struct Vertex {float X,Y,Z,Rhw,U,V;};
-    struct CrtVertex {float X,Y,Z,Rhw,U,V,LeftU,LeftV,RightU,RightV,MaskU,MaskV;};
+    struct CrtVertex {float X,Y,Z,Rhw; std::array<float,8> Coordinates;};
+    struct CrtSample
+    {
+        void* Texture = nullptr;
+        UINT Width = 0, Height = 0, AllocationWidth = 0, AllocationHeight = 0;
+        float OffsetX = 0;
+        bool Linear = true, ScreenMask = false;
+    };
 #ifdef DFL_CHAPTER_TWO_XBRZ
     double Microseconds() noexcept
     {
@@ -40,13 +52,18 @@ namespace dfl::d3d8_presenter
         void* Device;
         void** Table;
         Reference SourceTexture,SourceSurface,IntermediateTexture,IntermediateSurface;
-        Reference CrtMask;
-        DWORD CrtShader = 0;
+        Reference CrtMask,CrtBrightTexture,CrtBrightSurface,CrtBlurTexture,CrtBlurSurface;
+        DWORD CrtBrightShader = 0,CrtBlurShader = 0,CrtCompositeShader = 0;
 #ifdef DFL_CHAPTER_TWO_XBRZ
         Reference XbrzReadback,XbrzTexture;
         std::unique_ptr<presentation::XbrzFrame> Xbrz;
         UINT XbrzFactor=0,XbrzAllocationWidth=0,XbrzAllocationHeight=0;
         DWORD XbrzFormat=0;
+#endif
+#ifdef DFL_CHAPTER_TWO_NTSC
+        Reference NtscReadback, NtscTexture;
+        chapter_two::NtscRenderer Ntsc;
+        std::vector<std::uint32_t> NtscPixels;
 #endif
         presentation::PostProcess ActiveEffect=presentation::PostProcess::None;
         presentation::Plan Cached{};
@@ -56,15 +73,65 @@ namespace dfl::d3d8_presenter
         template<class... Args> HRESULT D(std::size_t index,Args... args) { return a::CallTable<HRESULT>(Device,Table,index,args...); }
         void Clear() noexcept
         {
-            if(CrtShader){D(90,CrtShader);CrtShader=0;}
+            for(auto* shader:{&CrtBrightShader,&CrtBlurShader,&CrtCompositeShader})
+                if(*shader){D(90,*shader);*shader=0;}
             CrtMask.Reset();
+            CrtBlurSurface.Reset();CrtBlurTexture.Reset();CrtBrightSurface.Reset();CrtBrightTexture.Reset();
 #ifdef DFL_CHAPTER_TWO_XBRZ
             Xbrz.reset();XbrzReadback.Reset();XbrzTexture.Reset();
             XbrzFactor=XbrzAllocationWidth=XbrzAllocationHeight=0;XbrzFormat=0;
 #endif
+#ifdef DFL_CHAPTER_TWO_NTSC
+            Ntsc.Clear();
+            NtscReadback.Reset();
+            NtscTexture.Reset();
+            NtscPixels.clear();
+#endif
             IntermediateSurface.Reset();IntermediateTexture.Reset();SourceSurface.Reset();SourceTexture.Reset();
             Format=0;Cached={};
         }
+#ifdef DFL_CHAPTER_TWO_NTSC
+        HRESULT PrepareNtsc(void* source, const presentation::Plan& plan, DWORD format, int preset)
+        {
+            constexpr UINT width = 640, height = 480, rowBytes = width * 4;
+            if (format != 21 && format != 22) return a::InvalidCall;
+            if (!NtscReadback.Value)
+            {
+                HRESULT hr = D(27, width, height, format, &NtscReadback.Value);
+                if (FAILED(hr)) return hr;
+                hr = D(20, plan.SourceAllocationWidth, plan.SourceAllocationHeight, UINT(1),
+                    DWORD(0x200), format, DWORD(0), &NtscTexture.Value);
+                if (FAILED(hr)) return hr;
+                NtscPixels.resize(std::size_t(width) * height);
+            }
+
+            HRESULT hr = D(28, source, static_cast<const RECT*>(nullptr), UINT(0),
+                NtscReadback.Value, static_cast<const POINT*>(nullptr));
+            if (FAILED(hr)) return hr;
+            a::LockedRect read{};
+            hr = a::Call<HRESULT>(NtscReadback.Value, 9, &read, static_cast<const RECT*>(nullptr), DWORD(0x10));
+            if (FAILED(hr)) return hr;
+            hr = read.Bits && read.Pitch >= static_cast<int>(rowBytes)
+                ? Ntsc.Render(read.Bits, std::size_t(read.Pitch), preset, NtscPixels.data(), rowBytes)
+                : a::InvalidCall;
+            const HRESULT unlocked = a::Call<HRESULT>(NtscReadback.Value, 10);
+            if (FAILED(unlocked) && (SUCCEEDED(hr) || Lost(unlocked))) return unlocked;
+            if (FAILED(hr)) return hr;
+
+            a::LockedRect upload{};
+            hr = a::Call<HRESULT>(NtscTexture.Value, 16, UINT(0), &upload, static_cast<const RECT*>(nullptr), DWORD(0x2000));
+            if (FAILED(hr)) return hr;
+            if (upload.Bits && upload.Pitch >= static_cast<int>(rowBytes))
+            {
+                for (UINT row = 0; row < height; ++row)
+                    std::memcpy(static_cast<unsigned char*>(upload.Bits) + std::size_t(row) * upload.Pitch,
+                        NtscPixels.data() + std::size_t(row) * width, rowBytes);
+            }
+            else hr = a::InvalidCall;
+            const HRESULT uploaded = a::Call<HRESULT>(NtscTexture.Value, 17, UINT(0));
+            return FAILED(uploaded) && (SUCCEEDED(hr) || Lost(uploaded)) ? uploaded : hr;
+        }
+#endif
 #ifdef DFL_CHAPTER_TWO_XBRZ
         HRESULT EnsureXbrz(UINT factor,DWORD format)
         {
@@ -114,31 +181,55 @@ namespace dfl::d3d8_presenter
             times.UploadUs=Microseconds()-uploadStart;return hr;
         }
 #endif
-        HRESULT EnsureCrt()
+        HRESULT EnsureCrt(const presentation::Plan& plan,DWORD format)
         {
-            if(CrtShader && CrtMask.Value)return S_OK;
-            // Authored for this presenter: a three-tap horizontal beam profile,
-            // followed by the screen-space phosphor/scanline mask. ps_1_1.
-            // tex t0 / tex t1 / tex t2 / tex t3
-            // mul r0,t0,c0 / mad r0,t1,c1,r0 / mad r0,t2,c1,r0 / mul r0,r0,t3
-            constexpr DWORD program[]{
+            if(CrtBrightShader && CrtBlurShader && CrtCompositeShader && CrtMask.Value &&
+                CrtBrightTexture.Value && CrtBlurTexture.Value)return S_OK;
+            // All three authored programs fit ps_1_1. The bright render target
+            // clamps the threshold subtraction to zero before horizontal blur.
+            // Keep constants inside the ps_1_1 [-1,1] range. Two additions
+            // supply the remaining normalization gain without a >1 constant.
+            // tex t0 / sub r0,t0,c0 / mul r0,r0,c1 / add r0,r0,r0 (twice)
+            constexpr DWORD bright[]{
+                0xffff0101,0x42,0xb00f0000,
+                0x03,0x800f0000,0xb0e40000,0xa0e40000,
+                0x05,0x800f0000,0x80e40000,0xa0e40001,
+                0x02,0x800f0000,0x80e40000,0x80e40000,
+                0x02,0x800f0000,0x80e40000,0x80e40000,0xffff
+            };
+            // Four bilinear samples, reused at two horizontal radii.
+            constexpr DWORD blur[]{
                 0xffff0101,0x42,0xb00f0000,0x42,0xb00f0001,0x42,0xb00f0002,0x42,0xb00f0003,
                 0x05,0x800f0000,0xb0e40000,0xa0e40000,
                 0x04,0x800f0000,0xb0e40001,0xa0e40001,0x80e40000,
                 0x04,0x800f0000,0xb0e40002,0xa0e40001,0x80e40000,
-                0x05,0x800f0000,0x80e40000,0xb0e40003,0xffff
+                0x04,0x800f0000,0xb0e40003,0xa0e40000,0x80e40000,0xffff
             };
-            HRESULT hr=D(87,program,&CrtShader);
+            // Screen-combine light only into the remaining headroom, then apply
+            // the phosphor mask so bright areas retain visible scanlines.
+            // (base + bloom * strength * (1 - base)) * mask
+            constexpr DWORD composite[]{
+                0xffff0101,0x42,0xb00f0000,0x42,0xb00f0001,0x42,0xb00f0002,
+                0x03,0x800f0000,0xa0e40001,0xb0e40000,
+                0x05,0x800f0000,0x80e40000,0xb0e40001,
+                0x04,0x800f0000,0x80e40000,0xa0e40000,0xb0e40000,
+                0x05,0x800f0000,0x80e40000,0xb0e40002,0xffff
+            };
+            HRESULT hr=D(87,bright,&CrtBrightShader);
+            if(SUCCEEDED(hr))hr=D(87,blur,&CrtBlurShader);
+            if(SUCCEEDED(hr))hr=D(87,composite,&CrtCompositeShader);
+            if(SUCCEEDED(hr))hr=Texture(plan.SourceAllocationWidth,plan.SourceAllocationHeight,format,CrtBrightTexture,CrtBrightSurface);
+            if(SUCCEEDED(hr))hr=Texture(plan.SourceAllocationWidth,plan.SourceAllocationHeight,format,CrtBlurTexture,CrtBlurSurface);
             if(FAILED(hr))return hr;
             hr=D(20,UINT(4),UINT(32),UINT(1),DWORD(0),DWORD(21),DWORD(1),&CrtMask.Value);
             if(FAILED(hr))return hr;
             a::LockedRect locked{};
             hr=a::Call<HRESULT>(CrtMask.Value,16,UINT(0),&locked,static_cast<const RECT*>(nullptr),DWORD(0));
             if(FAILED(hr))return hr;
-            constexpr float phosphors[4][3]{{1.f,.92f,.92f},{.92f,1.f,.92f},{.92f,.92f,1.f},{.94f,.94f,.94f}};
+            constexpr float phosphors[4][3]{{1.f,.988f,.988f},{.988f,1.f,.988f},{.988f,.988f,1.f},{.995f,.995f,.995f}};
             for(unsigned y=0;y<32;++y)for(unsigned x=0;x<4;++x)
             {
-                const float beam=.88f+.12f*std::cos(6.28318530718f*static_cast<float>(y)/32.f);
+                const float beam=.85f+.15f*std::cos(6.28318530718f*static_cast<float>(y)/32.f);
                 DWORD pixel=0xff000000;
                 for(unsigned channel=0;channel<3;++channel)
                     pixel|=static_cast<DWORD>(255.f*beam*phosphors[x][2-channel]+.5f)<<(channel*8);
@@ -211,24 +302,83 @@ namespace dfl::d3d8_presenter
             return D(63,DWORD(1),DWORD(4),DWORD(1));
         }
 
-        HRESULT ConfigureCrt(void* texture)
+        HRESULT DrawCrtPass(void* target,UINT outputW,UINT outputH,DWORD shader,
+            const std::array<CrtSample,4>& samples,const std::array<float,8>& constants)
         {
-            HRESULT hr=D(76,DWORD(0x404));if(FAILED(hr))return hr; // XYZRHW | TEX4
-            hr=D(88,CrtShader);if(FAILED(hr))return hr;
-            constexpr float weights[]{.94f,.94f,.94f,.94f,.08f,.08f,.08f,.08f};
-            hr=D(91,DWORD(0),weights,DWORD(2));if(FAILED(hr))return hr;
-            for(DWORD stage=1;stage<=3;++stage)
+            HRESULT hr=S_OK;
+            for(DWORD stage=0;stage<samples.size();++stage)
+            {hr=D(61,stage,static_cast<void*>(nullptr));if(FAILED(hr))return hr;}
+            hr=D(31,target,static_cast<void*>(nullptr));if(FAILED(hr))return hr;
+            const a::Viewport viewport{0,0,outputW,outputH,0.f,1.f};
+            hr=D(40,&viewport);if(FAILED(hr))return hr;
+            hr=D(76,DWORD(0x404));if(FAILED(hr))return hr; // XYZRHW | TEX4
+            hr=D(88,shader);if(FAILED(hr))return hr;
+            hr=D(91,DWORD(0),constants.data(),DWORD(2));if(FAILED(hr))return hr;
+            for(DWORD stage=0;stage<samples.size();++stage)
             {
-                hr=D(61,stage,stage==3?CrtMask.Value:texture);if(FAILED(hr))return hr;
+                const auto& sample=samples[stage];
+                hr=D(61,stage,sample.Texture);if(FAILED(hr))return hr;
+                const DWORD address=sample.ScreenMask?1U:3U;
+                const DWORD filter=sample.Linear?2U:1U;
                 for(const auto state:std::array<std::pair<DWORD,DWORD>,8>{{
-                    {11,stage},{13,stage==3?1U:3U},{14,stage==3?1U:3U},
-                    {16,stage==3?1U:2U},{17,stage==3?1U:2U},{18,0},{24,0},{28,1}}})
+                    {11,stage},{13,address},{14,address},{16,filter},{17,filter},{18,0},{24,0},{28,1}}})
                 {hr=D(63,stage,state.first,state.second);if(FAILED(hr))return hr;}
             }
-            return S_OK;
+
+            // Split at every sample's clamp boundary. Each interpolated UV then
+            // clamps to valid pixels even when the render target has POT padding.
+            const float width=float(outputW),height=float(outputH);
+            std::array<float,10> xs{0,width},ys{0,height};
+            std::size_t columns=2,rows=2;
+            const auto add=[](auto& edges,std::size_t& count,float value,float limit)
+            {
+                if(value>0 && value<limit)edges[count++]=value;
+            };
+            for(const auto& sample:samples)
+            {
+                if(!sample.Texture || sample.ScreenMask)continue;
+                add(xs,columns,(.5f-sample.OffsetX)*width/sample.Width,width);
+                add(xs,columns,(float(sample.Width)-.5f-sample.OffsetX)*width/sample.Width,width);
+                add(ys,rows,.5f*height/sample.Height,height);
+                add(ys,rows,(float(sample.Height)-.5f)*height/sample.Height,height);
+            }
+            std::sort(xs.begin(),xs.begin()+columns);
+            std::sort(ys.begin(),ys.begin()+rows);
+            columns=std::size_t(std::unique(xs.begin(),xs.begin()+columns)-xs.begin());
+            rows=std::size_t(std::unique(ys.begin(),ys.begin()+rows)-ys.begin());
+            const auto vertex=[&](float x,float y)
+            {
+                CrtVertex result{x-.5f,y-.5f,0,1,{}};
+                for(std::size_t stage=0;stage<samples.size();++stage)
+                {
+                    const auto& sample=samples[stage];
+                    if(!sample.Texture)continue;
+                    if(sample.ScreenMask)
+                    {
+                        result.Coordinates[stage*2]=x/4.f;
+                        result.Coordinates[stage*2+1]=y/2.f-.25f;
+                        continue;
+                    }
+                    const float bias=sample.Linear?0.f:1.f/1024.f;
+                    result.Coordinates[stage*2]=(std::clamp(x*sample.Width/width+sample.OffsetX,
+                        .5f,float(sample.Width)-.5f)+bias)/sample.AllocationWidth;
+                    result.Coordinates[stage*2+1]=(std::clamp(y*sample.Height/height,
+                        .5f,float(sample.Height)-.5f)+bias)/sample.AllocationHeight;
+                }
+                return result;
+            };
+            std::array<CrtVertex,486> vertices{};
+            std::size_t count=0;
+            for(std::size_t y=0;y+1<rows;++y)for(std::size_t x=0;x+1<columns;++x)
+            {
+                const auto tl=vertex(xs[x],ys[y]),tr=vertex(xs[x+1],ys[y]);
+                const auto bl=vertex(xs[x],ys[y+1]),br=vertex(xs[x+1],ys[y+1]);
+                for(const auto& point:{tl,tr,bl,tr,br,bl})vertices[count++]=point;
+            }
+            return D(72,DWORD(4),UINT(count/3),vertices.data(),UINT(sizeof(CrtVertex)));
         }
 
-        HRESULT Draw(void* target,void* texture,UINT validW,UINT validH,UINT allocationW,UINT allocationH,UINT outputW,UINT outputH,bool linear,bool crt=false)
+        HRESULT Draw(void* target,void* texture,UINT validW,UINT validH,UINT allocationW,UINT allocationH,UINT outputW,UINT outputH,bool linear)
         {
             HRESULT hr=D(31,target,static_cast<void*>(nullptr));if(FAILED(hr))return hr;
             const a::Viewport viewport{0,0,outputW,outputH,0.f,1.f};
@@ -252,21 +402,7 @@ namespace dfl::d3d8_presenter
                 const Vertex tl{xs[x]-.5f,ys[y]-.5f,0,1,us[x],vs[y]},tr{xs[x+1]-.5f,ys[y]-.5f,0,1,us[x+1],vs[y]};
                 const Vertex bl{xs[x]-.5f,ys[y+1]-.5f,0,1,us[x],vs[y+1]},br{xs[x+1]-.5f,ys[y+1]-.5f,0,1,us[x+1],vs[y+1]};
                 const Vertex vertices[]{tl,tr,bl,tr,br,bl};
-                if(crt)
-                {
-                    std::array<CrtVertex,6> beam{};
-                    for(unsigned index=0;index<beam.size();++index)
-                    {
-                        const auto& v=vertices[index];
-                        const float delta=.6f/aw;
-                        beam[index]={v.X,v.Y,v.Z,v.Rhw,v.U,v.V,
-                            std::clamp(v.U-delta,.5f/aw,(sw-.5f)/aw),v.V,
-                            std::clamp(v.U+delta,.5f/aw,(sw-.5f)/aw),v.V,
-                            (v.X+.5f)/4.f,(v.Y+.5f)/2.f-.25f};
-                    }
-                    hr=D(72,DWORD(4),UINT(2),beam.data(),UINT(sizeof(CrtVertex)));
-                }
-                else hr=D(72,DWORD(4),UINT(2),vertices,UINT(sizeof(Vertex)));
+                hr=D(72,DWORD(4),UINT(2),vertices,UINT(sizeof(Vertex)));
                 if(FAILED(hr))return hr;
             }
             return S_OK;
@@ -283,6 +419,8 @@ namespace dfl::d3d8_presenter
             if(ActiveEffect!=effect){Clear();ActiveEffect=effect;}
             const bool crt=effect==presentation::PostProcess::PhosphorLine;
             const bool xbrz=effect==presentation::PostProcess::Xbrz;
+            const int ntscPreset = presentation::NtscPreset(effect);
+            void* scalingSource = nullptr;
             ProcessingTimes times{};
             if(xbrz)
             {
@@ -296,31 +434,101 @@ namespace dfl::d3d8_presenter
             else
             {
                 hr=Ensure(plan,input.Format);if(FAILED(hr))return {hr,S_OK,"allocate"};
-                if(crt){hr=EnsureCrt();if(FAILED(hr)){Clear();return {hr,S_OK,"crt-allocate"};}}
-                const RECT rect{0,0,640,480};const POINT point{0,0};
-                hr=D(28,source,&rect,UINT(1),SourceSurface.Value,&point);if(FAILED(hr))return {hr,S_OK,"copy"};
+                if(crt){hr=EnsureCrt(plan,input.Format);if(FAILED(hr)){Clear();return {hr,S_OK,"crt-allocate"};}}
+                if (ntscPreset >= 0)
+                {
+#ifdef DFL_CHAPTER_TWO_NTSC
+                    hr = PrepareNtsc(source, plan, input.Format, ntscPreset);
+                    if (FAILED(hr)) { Clear(); return {hr, S_OK, "ntsc-prepare"}; }
+                    scalingSource = NtscTexture.Value;
+#else
+                    return {E_NOTIMPL, S_OK, "ntsc-unavailable"};
+#endif
+                }
+                else
+                {
+                    const RECT rect{0,0,640,480};const POINT point{0,0};
+                    hr=D(28,source,&rect,UINT(1),SourceSurface.Value,&point);if(FAILED(hr))return {hr,S_OK,"copy"};
+                    scalingSource = SourceTexture.Value;
+                }
             }
             Saved saved(*this);hr=saved.Capture();if(FAILED(hr))return {hr,S_OK,"capture"};
             hr=D(34);if(FAILED(hr))return {hr,S_OK,"begin-scene"};
             hr=Configure();const char* stage="configure";
-            if(SUCCEEDED(hr)&&plan.UseIntermediate&&!xbrz)
+            if(SUCCEEDED(hr)&&plan.UseIntermediate&&!xbrz&&!crt)
             {
-                stage="integer-pass";hr=Draw(IntermediateSurface.Value,SourceTexture.Value,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,
+                stage="integer-pass";hr=Draw(IntermediateSurface.Value,scalingSource,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,
                     plan.IntermediateWidth,plan.IntermediateHeight,false);
+            }
+            if(SUCCEEDED(hr)&&crt)
+            {
+                const auto sample=[&](void* texture,float offset)
+                {
+                    return CrtSample{texture,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,offset};
+                };
+                constexpr std::array<float,8> threshold{.55f,.55f,.55f,0.f,
+                    1.f/1.8f,1.f/1.8f,1.f/1.8f,.25f};
+                constexpr std::array<float,8> weights{.125f,.125f,.125f,.125f,.375f,.375f,.375f,.375f};
+                stage="crt-bright-pass";
+                hr=DrawCrtPass(CrtBrightSurface.Value,640,480,CrtBrightShader,
+                    {sample(SourceTexture.Value,0),{},{},{}},threshold);
+                if(SUCCEEDED(hr))
+                {
+                    stage="crt-near-blur";
+                    hr=DrawCrtPass(CrtBlurSurface.Value,640,480,CrtBlurShader,
+                        {sample(CrtBrightTexture.Value,-1.5f),sample(CrtBrightTexture.Value,-.5f),
+                         sample(CrtBrightTexture.Value,.5f),sample(CrtBrightTexture.Value,1.5f)},weights);
+                }
+                if(SUCCEEDED(hr))
+                {
+                    stage="crt-wide-blur";
+                    hr=DrawCrtPass(CrtBrightSurface.Value,640,480,CrtBlurShader,
+                        {sample(CrtBlurTexture.Value,-3.f),sample(CrtBlurTexture.Value,-1.f),
+                         sample(CrtBlurTexture.Value,1.f),sample(CrtBlurTexture.Value,3.f)},weights);
+                }
+                if(SUCCEEDED(hr))
+                {
+                    // Reuse the near-blur target after its contribution reached
+                    // the wide bloom. This narrow kernel softens horizontal
+                    // pixel shoulders while keeping the original row structure.
+                    stage="crt-base-reconstruction";
+                    hr=DrawCrtPass(CrtBlurSurface.Value,640,480,CrtBlurShader,
+                        {sample(SourceTexture.Value,-.65f),sample(SourceTexture.Value,-.15f),
+                         sample(SourceTexture.Value,.15f),sample(SourceTexture.Value,.65f)},weights);
+                }
+                if(SUCCEEDED(hr)&&plan.UseIntermediate)
+                {
+                    stage="crt-integer-pass";
+                    hr=Configure();
+                    if(SUCCEEDED(hr))hr=Draw(IntermediateSurface.Value,CrtBlurTexture.Value,640,480,
+                        plan.SourceAllocationWidth,plan.SourceAllocationHeight,plan.IntermediateWidth,plan.IntermediateHeight,false);
+                }
             }
             if(SUCCEEDED(hr))
             {
                 stage="output-pass";
-                if(crt){stage="crt-configure";hr=ConfigureCrt(plan.UseIntermediate?IntermediateTexture.Value:SourceTexture.Value);}
-                if(SUCCEEDED(hr))
+                if(crt)
+                {
+                    stage="crt-composite";
+                    const CrtSample base=plan.UseIntermediate
+                        ?CrtSample{IntermediateTexture.Value,plan.IntermediateWidth,plan.IntermediateHeight,
+                            plan.IntermediateAllocationWidth,plan.IntermediateAllocationHeight}
+                        :CrtSample{CrtBlurTexture.Value,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,
+                            0,plan.Filter==presentation::Mode::Linear};
+                    const CrtSample bloom{CrtBrightTexture.Value,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight};
+                    const CrtSample mask{CrtMask.Value,4,32,4,32,0,false,true};
+                    constexpr std::array<float,8> strength{.6f,.6f,.6f,0,1,1,1,1};
+                    hr=DrawCrtPass(target,plan.Width,plan.Height,CrtCompositeShader,{base,bloom,mask,{}},strength);
+                }
+                else
                 {
 #ifdef DFL_CHAPTER_TWO_XBRZ
                     if(xbrz)hr=Draw(target,XbrzTexture.Value,640*XbrzFactor,480*XbrzFactor,XbrzAllocationWidth,XbrzAllocationHeight,plan.Width,plan.Height,true);
                     else
 #endif
                     hr=plan.UseIntermediate?Draw(target,IntermediateTexture.Value,plan.IntermediateWidth,plan.IntermediateHeight,
-                        plan.IntermediateAllocationWidth,plan.IntermediateAllocationHeight,plan.Width,plan.Height,true,crt)
-                        :Draw(target,SourceTexture.Value,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,plan.Width,plan.Height,plan.Filter==presentation::Mode::Linear,crt);
+                        plan.IntermediateAllocationWidth,plan.IntermediateAllocationHeight,plan.Width,plan.Height,true)
+                        :Draw(target,scalingSource,640,480,plan.SourceAllocationWidth,plan.SourceAllocationHeight,plan.Width,plan.Height,plan.Filter==presentation::Mode::Linear);
                 }
             }
             const HRESULT ended=D(35);

@@ -4,9 +4,10 @@
 namespace dfl::presentation
 {
     enum class Mode { Legacy, Sharp, Point, Linear };
-    enum class PostProcess { None, PhosphorLine, Xbrz };
+    enum class PostProcess { None, PhosphorLine, Xbrz, NtscSVideo, NtscComposite, NtscRf, CrtRgb };
     PostProcess ParsePostProcess(const char* value) noexcept;
     const char* PostProcessName(PostProcess effect) noexcept;
+    int NtscPreset(PostProcess effect) noexcept;
     struct Capabilities
     {
         std::uint32_t MaxWidth;

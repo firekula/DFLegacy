@@ -267,19 +267,19 @@ namespace
         Initialize(deviceTable,device,0);
         Check(Attach(factoryTable,factory,device,window,p::Mode::Legacy,c::ScaleFilterMode::Point,p::PostProcess::PhosphorLine),
             "CRT attaches independently of legacy scaling");
-        Check(Frame(device)==S_OK&&device.Draws==9&&device.ShaderCreates==1,"legacy CRT uses one output pass");
+        Check(Frame(device)==S_OK&&device.Draws==5&&device.ShaderCreates==3,"legacy CRT extracts, blurs, reconstructs and composites bright pixels");
         POINT center{400,300};
         Check(dfl::window_input_scaling::ClientToLogical(window,center)&&center.x==320&&center.y==240,
             "legacy CRT keeps input coordinates aligned with the fixed source frame");
         const auto allocations=device.Allocations;
-        Check(Frame(device)==S_OK&&device.ShaderCreates==1&&device.Allocations==allocations,"CRT caches shader and presentation resources");
+        Check(Frame(device)==S_OK&&device.ShaderCreates==3&&device.Allocations==allocations,"CRT caches shaders and presentation resources");
         device.Source.Width=320;Frame(device);Sleep(1100);Frame(device);
         Check(Diagnostic().find("\"postProcessEffective\":\"none\"")!=std::string::npos,
             "original fallback reports that CRT was not applied");
         device.Source.Width=640;
         a::PresentationParameters parameters{};parameters.Windowed=TRUE;parameters.DeviceWindow=window;
         parameters.BackBufferWidth=640;parameters.BackBufferHeight=480;
-        Check(a::Call<HRESULT>(&device,14,&parameters)==S_OK&&device.ShaderDeletes==1&&Frame(device)==S_OK&&device.ShaderCreates==2,
+        Check(a::Call<HRESULT>(&device,14,&parameters)==S_OK&&device.ShaderDeletes==3&&Frame(device)==S_OK&&device.ShaderCreates==6,
             "Reset releases the CRT shader and lazily recreates it");
         a::Call<HRESULT>(&device,14,&parameters);device.ShaderResult=E_FAIL;
         const auto oldDraws=device.Draws,oldCreates=device.ShaderCreates;

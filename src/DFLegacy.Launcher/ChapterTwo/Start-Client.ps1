@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory)][string]$Game,
     [Parameter(Mandatory)][string]$HostFile,
     [ValidateSet('legacy','sharp','point','linear')][string]$Filter = 'legacy',
-    [ValidateSet('none','crt','xbrz')][string]$PostProcess = 'none',
+    [ValidateSet('none','ntsc-svideo','ntsc-composite','ntsc-rf','crt-rgb','xbrz','crt')][string]$PostProcess = 'none',
     [int]$Width = 640,
     [int]$Height = 480,
     [ValidateSet('12','14','16','18')][int]$DialogueFontSize = 12,

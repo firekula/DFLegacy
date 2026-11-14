@@ -39,6 +39,8 @@ set_source_files_properties("${performance_panel_skin}" PROPERTIES OBJECT_DEPEND
     "${DFL_CLASSIC_SKIN}/classic-settings-panel.png;${DFL_CLASSIC_SKIN}/classic-crest.png;${DFL_CLASSIC_SKIN}/buton_close00.png;${DFL_CLASSIC_SKIN}/buton_close02.png")
 add_library(chapter_two_presentation STATIC
     ChapterTwoPresentation.cpp
+    ChapterTwoNtscRenderer.cpp
+    ChapterTwoNtscShaders.h
     ChapterTwoPerformance.cpp
     ChapterTwoPerformancePanel.cpp
     ChapterTwoSlowFrameTiming.cpp
@@ -88,7 +90,7 @@ add_library(chapter_two_presentation STATIC
 target_include_directories(chapter_two_presentation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}" "${IJL}")
 target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
-target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_XBRZ)
+target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_XBRZ DFL_CHAPTER_TWO_NTSC)
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32 advapi32 gdiplus ws2_32 xbrz_frame)
 

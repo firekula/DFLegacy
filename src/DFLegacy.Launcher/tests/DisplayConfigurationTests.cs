@@ -7,6 +7,21 @@ using DFLegacy.Launcher.Views;
 
 internal static class DisplayConfigurationTests
 {
+    internal static void CheckChapterTwoPostProcessOptions(Action<bool, string> check)
+    {
+        foreach (var (stored, expected) in new (string? Stored, string Expected)[]
+        {
+            (null, "none"), ("none", "none"), ("invalid", "none"), ("crt", "crt-rgb"),
+            (" \tCRT\t", "crt-rgb"), ("crt-rgb", "crt-rgb"), ("ntsc-svideo", "ntsc-svideo"),
+            (" NTSC-COMPOSITE ", "ntsc-composite"), ("ntsc-rf", "ntsc-rf"), ("xbrz", "xbrz")
+        })
+        {
+            var options = new LauncherOptions { ChapterTwoPostProcess = stored };
+            check(ChapterTwoClient.PostProcessOptions(options) == expected,
+                $"Chapter Two launches with {expected} for the stored value {stored ?? "<missing>"}");
+        }
+    }
+
     internal static void RunChapterTwoDialogue(string root, Action<bool, string> check)
     {
         if (!ChapterTwoClient.IsBundled || !ChapterTwoClient.HasPresentationPreview)
@@ -14,6 +29,7 @@ internal static class DisplayConfigurationTests
             check(false, "dialogue settings test requires a Chapter Two presentation build");
             return;
         }
+        CheckChapterTwoPostProcessOptions(check);
 
         var config = Path.Combine(root, "launcher.chapter2.json");
         File.WriteAllText(config, """{"ChapterTwoDisplay":{"Width":640,"Height":480,"Filter":"legacy"}}""");
@@ -35,21 +51,27 @@ internal static class DisplayConfigurationTests
                 check(((FrameworkElement)window.FindName("PostProcessPanel")).Visibility == Visibility.Visible,
                     "Chapter Two exposes the post-process controls");
                 check(Equals(effect.SelectedValue, "none"), "older configurations default to no post-process");
-                effect.SelectedValue = "crt";
-                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                check(Equals(effect.SelectedValue, "crt"), "saving original scaling keeps the CRT choice");
-                check(store.Load().ChapterTwoPostProcess == "crt", "the selected CRT mode is persisted independently");
+                var tags = new[] { "none", "ntsc-svideo", "ntsc-composite", "ntsc-rf", "crt-rgb", "xbrz" };
+                check(effect.Items.OfType<ComboBoxItem>().Select(item => item.Tag as string).ToHashSet().SetEquals(tags),
+                    "Chapter Two exposes all four CRT signal modes, xBRZ, and off");
+                store.Update(options => options.ChapterTwoPostProcess = "crt");
                 reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                check(Equals(effect.SelectedValue, "crt"), "CRT survives reloading original scaling");
-                effect.SelectedValue = "xbrz";
+                check(Equals(effect.SelectedValue, "crt-rgb"), "the old CRT choice appears as RGB direct in settings");
                 save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                check(store.Load().ChapterTwoPostProcess == "xbrz", "xBRZ is a distinct persisted post-process choice");
-                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                check(Equals(effect.SelectedValue, "xbrz"), "xBRZ survives reloading original scaling");
+                check(store.Load().ChapterTwoPostProcess == "crt-rgb", "saving an old CRT choice writes the canonical RGB tag");
+                foreach (var tag in tags.Skip(1))
+                {
+                    effect.SelectedValue = tag;
+                    save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    check(store.Load().ChapterTwoPostProcess == tag, $"{tag} persists independently of the legacy scaling mode");
+                    reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    check(Equals(effect.SelectedValue, tag), $"{tag} survives reloading display settings");
+                }
                 store.Update(options => options.ChapterTwoPostProcess = "invalid");
                 reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 check(Equals(effect.SelectedValue, "none"), "invalid saved post-process defaults off");
-                effect.SelectedValue = "none";
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(store.Load().ChapterTwoPostProcess is null, "saving off omits the optional post-process setting");
                 check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 3),
                     "an older Chapter Two config opens with the current default body layout");
                 font.SelectedItem = 18;

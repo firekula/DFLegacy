@@ -275,8 +275,8 @@ public partial class ConfigWindow : System.Windows.Window
                 _store.Update(options =>
                 {
                     options.ChapterTwoDisplay = filter == "legacy" ? null : new(preview.Width, preview.Height, filter);
-                    var effect = PostProcessBox.SelectedValue as string;
-                    options.ChapterTwoPostProcess = effect is "crt" or "xbrz" ? effect : null;
+                    var effect = ChapterTwoClient.NormalizePostProcess(PostProcessBox.SelectedValue as string);
+                    options.ChapterTwoPostProcess = effect == "none" ? null : effect;
                     options.ChapterTwoDebugEnabled = ChapterTwoDebugBox.IsChecked == true;
                     if (DialogueSizeBox.SelectedItem is int size && DialogueGapBox.SelectedItem is int gap)
                     {

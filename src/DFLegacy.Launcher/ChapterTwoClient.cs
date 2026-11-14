@@ -42,10 +42,18 @@ internal static class ChapterTwoClient
         && ClientDisplayConfiguration.Presets.Any(p => p.Width == display.Width && p.Height == display.Height)
             ? display : new(640, 480, "legacy");
 
-    internal static string PostProcessOptions(LauncherOptions options)
+    internal static string PostProcessOptions(LauncherOptions options) =>
+        HasPresentationPreview ? NormalizePostProcess(options.ChapterTwoPostProcess) : "none";
+
+    internal static string NormalizePostProcess(string? value)
     {
-        var effect = options.ChapterTwoPostProcess?.Trim(' ', '\t').ToLowerInvariant();
-        return HasPresentationPreview && effect is "crt" or "xbrz" ? effect : "none";
+        var effect = value?.Trim(' ', '\t').ToLowerInvariant();
+        return effect switch
+        {
+            "crt" => "crt-rgb",
+            "ntsc-svideo" or "ntsc-composite" or "ntsc-rf" or "crt-rgb" or "xbrz" => effect,
+            _ => "none"
+        };
     }
 
     internal static void ApplyLocalProfile(LauncherOptions options)
