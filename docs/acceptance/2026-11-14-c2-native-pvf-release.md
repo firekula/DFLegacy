@@ -24,6 +24,8 @@
 - 地址：<https://github.com/firekula/DFLegacy/releases/tag/v1.0.3>。
 - 退出游戏并重新打开原登录器即可在线更新，无需重新下载完整整合包。
 - 最终匿名下载复核状态以归档中的 `c2-publication.json` 和 `anonymous-*.log` 为准。
+- 最终结果：`anonymous-retry.log` 中 92 项新增附件完整匿名下载及哈希校验通过；701 项历史资源的发布身份、公开状态和摘要复核通过，沿用上述既有完整匿名下载证据。`c2-publication.json` 已记录 `published=true`、`anonymousVerified=true`。
+- 从独立的匿名访问路径确认公开发布页可访问，并显示为最新正式版。
 - 服务端旧任务占位修复由独立镜像 `v1.0.2` 提供，见同目录 `2026-11-14-c2-retired-quest-slots.md`。
 
 原始用户 ZIP、F 盘用户客户端、主分支和线上服务未改动。私有验收目录中的本机登录资料不属于发布产物。
