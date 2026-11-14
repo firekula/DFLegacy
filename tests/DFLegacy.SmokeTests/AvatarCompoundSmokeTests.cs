@@ -1,6 +1,8 @@
 using System.Text;
+using System.Security.Cryptography;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class AvatarCompoundSmokeTests
@@ -139,6 +141,94 @@ internal static class AvatarCompoundSmokeTests
             "real fighter and mage avatar grades, rates, rare pieces and selectable option rows match DF2008");
     }
 
+    public static async Task CheckChapterTwoWireAsync(Action<bool, string> check, string pvfPath)
+    {
+        var directory = Directory.CreateTempSubdirectory("dflegacy-c2-avatar-compound-");
+        const string user = "avatarwire";
+        try
+        {
+            var options = new ServerOptions
+            {
+                ScriptPvfPath = pvfPath,
+                DataPath = Path.Combine(directory.FullName, "state.json"),
+                SkipUnsupportedChapterTwoCashContainers = true,
+                SeedTestAccount = false,
+                Channel = new() { Port = 47001 }
+            };
+            var scripts = new ScriptFileSystem(options, NullLogger<ScriptFileSystem>.Instance);
+            var items = new ItemCatalog(scripts, NullLogger<ItemCatalog>.Instance, options);
+            var catalog = new AvatarCompoundCatalog(scripts, items, NullLogger<AvatarCompoundCatalog>.Instance);
+            check(catalog.TryGetDefinition(0, out var definition) && definition.MaterialItemId == 21
+                && catalog.TryGetAvatarMetadata(39_032, out var first) && first is { Job: 0, Part: 0, Grade: 2 }
+                && catalog.TryGetAvatarMetadata(39_033, out var second) && second is { Job: 0, Part: 0, Grade: 2 },
+                "the Chapter Two PVF supplies the materials and matching ghost knight hats used by the native command");
+
+            var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance, itemCatalog: items);
+            await store.InitializeAsync();
+            await store.CreateAccountAsync(new(user, "password", OicqCode: "123456"));
+            var character = (await store.CreateCharacterAsync(user, new("AvatarWire", Level: 60))).Character!;
+            var seeded = await store.SaveCharacterItemSpacesAsync(user, character.Id, 0,
+                [new(41, 21, 1)], [], [], avatarInventory: [new(44, 39_032, 1), new(45, 39_033, 1)]);
+            check(seeded?.AvatarInventory?.Count == 2, "the fixture has two persisted costume pieces in the bag");
+
+            var previous = Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER");
+            Environment.SetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER", "1");
+            try
+            {
+                await using var services = NewCharacterDefaultsSmokeTests.CreateSessionServices(options, store, items);
+                var entrance = ActivatorUtilities.CreateInstance<EntranceService>(services);
+                await using var connection = await NewCharacterDefaultsSmokeTests.Connection.CreateAsync(entrance, options, 47001);
+                await connection.LoginAsync(user, character.Slot);
+                await connection.EnableChapterTwoAsync();
+                // The item IDs exist elsewhere, so resolving a stale bag slot by
+                // item ID would consume real items the command did not select.
+                await connection.SendAsync(EncryptChapterTwoCompound("140029002b0078982d007998010000000100"));
+                var stale = await connection.ReadAsync(1, GameProtocolEngine.CompoundAvatarCommand);
+                check(stale.Payload.SequenceEqual(new byte[] { 0, 4 })
+                    && (await store.GetCharacterAsync(user, character.Id)) is { AvatarInventory.Count: 2 },
+                    "Chapter Two rejects stale bag slots instead of substituting items from the bag");
+                await connection.SendAsync(EncryptChapterTwoCompound("150029002c0078982d007998010000000100"));
+                var reply = await connection.ReadAsync(1, GameProtocolEngine.CompoundAvatarCommand);
+                var success = reply.Payload is [1, 3, ..] && reply.Payload.Length == 33;
+                check(success, $"encrypted Chapter Two CMD102 returns native success (reply {Convert.ToHexString(reply.Payload)})");
+                var saved = await store.GetCharacterAsync(user, character.Id);
+                var result = saved?.AvatarInventory?.SingleOrDefault(item => item.Slot == 44);
+                check(saved is not null && saved.Inventory?.Any(item => item.ItemId == 21) == false
+                    && saved.AvatarInventory is { Count: 1 } && result is { AvatarAbilityIndex: 0 }
+                    && catalog.TryGetAvatarMetadata(result.ItemId, out var resultMetadata) && resultMetadata is { Job: 0, Part: 0 },
+                    "one successful combine atomically consumes both hats and the converter and persists the selected ability");
+                if (success)
+                {
+                    check(reply.Payload.AsSpan(2, 21).SequenceEqual(Convert.FromHexString("00290000000000012c0000000000012d0000000000"))
+                        && reply.Payload.AsSpan(23, 2).SequenceEqual(new byte[] { 44, 0 }),
+                        "the native reply decrements the converter and removes both real bag slots before writing the result");
+                }
+                await connection.SendAsync(EncryptChapterTwoCompound("160029002c0078982d007998010000000100"));
+                var repeat = await connection.ReadAsync(1, GameProtocolEngine.CompoundAvatarCommand);
+                check(repeat.Payload.SequenceEqual(new byte[] { 0, 0x16 }),
+                    "an exhausted converter returns the native insufficient-material error");
+            }
+            finally { Environment.SetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER", previous); }
+
+            var reloaded = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance, itemCatalog: items);
+            await reloaded.InitializeAsync();
+            var durable = await reloaded.GetCharacterAsync(user, character.Id);
+            check(durable is { AvatarInventory.Count: 1 } && durable.Inventory?.Any(item => item.ItemId == 21) == false,
+                "the failed repeat does not alter the prior successful result after reopening the store");
+        }
+        finally { directory.Delete(recursive: true); }
+    }
+
+    private static byte[] EncryptChapterTwoCompound(string hex)
+    {
+        var plain = Convert.FromHexString(hex);
+        var wire = plain.ToArray();
+        using var aes = Aes.Create();
+        aes.Key = Convert.FromHexString("46494A4946474546444A44404A424758");
+        aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), PaddingMode.None);
+        return new PacketFrame(1, GameProtocolEngine.CompoundAvatarCommand, Crc32.Compute(plain), wire).Encode();
+    }
+
     private static void CheckProtocolVectors(Action<bool, string> check)
     {
         check(GameProtocolEngine.TryParseCompoundAvatarCommand(
@@ -165,6 +255,23 @@ internal static class AvatarCompoundSmokeTests
                     Convert.FromHexString("9300030001004CAE00004CAE010018000100"),
                     out _),
             "CMD102 parses the target-client fixed 17-byte request and rejects trailing bytes");
+
+        var chapterTwo = Convert.FromHexString("150029002c0078982d007998010000000100");
+        check(!GameProtocolEngine.TryParseCompoundAvatarCommand(chapterTwo, out _),
+            "ACT1 parsing still rejects the Chapter Two request layout");
+        check(GameProtocolEngine.TryParseCompoundAvatarCommand(chapterTwo, out var native, chapterTwo: true)
+                && native == new GameCompoundAvatarCommand(41, 39_032, 39_033, 0, 44, 45),
+            "Chapter Two CMD102 parses its original bag slots, ability row and AES padding");
+        var invalidPadding = chapterTwo.ToArray();
+        invalidPadding[^1] = 1;
+        var invalidOption = chapterTwo.ToArray();
+        invalidOption[15] = 1;
+        var invalidPairing = chapterTwo.ToArray();
+        invalidPairing[16] = 0;
+        check(!GameProtocolEngine.TryParseCompoundAvatarCommand(invalidPadding, out _, chapterTwo: true)
+                && !GameProtocolEngine.TryParseCompoundAvatarCommand(invalidOption, out _, chapterTwo: true)
+                && !GameProtocolEngine.TryParseCompoundAvatarCommand(invalidPairing, out _, chapterTwo: true),
+            "Chapter Two CMD102 rejects malformed padding, ability row and pairing flag");
 
         var reply = GameProtocolEngine.CreateCompoundAvatarReply(
         [

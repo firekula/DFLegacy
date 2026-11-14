@@ -13786,17 +13786,25 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.CompoundAvatarCommand)
                         {
+                            async Task RejectCompoundAsync(byte errorCode = 4, string? message = null)
+                            {
+                                var error = GameProtocolEngine.CreateCompoundAvatarFailure(errorCode);
+                                await error.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, error);
+                                if (chapter2Decoded && message is not null)
+                                    await SendTypedMessageNotificationAsync(GameMessageType.Type16Brown, 0,
+                                        ClientEncoding.GetBytes(message));
+                            }
+
                             if (activeCharacter is null
                                 || currentDungeonId != 0
                                 || !GameProtocolEngine.TryParseCompoundAvatarCommand(
                                     request.Body,
-                                    out var compoundCommand))
+                                    out var compoundCommand,
+                                    chapterTwo: chapter2Decoded))
                             {
-                                var error =
-                                    GameProtocolEngine.CreateCompoundAvatarFailure();
-                                await error.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, error);
+                                await RejectCompoundAsync(message: "装扮合成未完成。请在城镇重新打开合成器后再试。");
                                 continue;
                             }
 
@@ -13813,18 +13821,26 @@ public sealed class EntranceService(
                                     avatarCompoundCatalog,
                                     GameRandomSource.Shared,
                                     out var compoundPlan,
-                                    out var compoundFailure))
+                                    out var compoundFailure,
+                                    requireExactSlots: chapter2Decoded))
                             {
-                                var error =
-                                    GameProtocolEngine.CreateCompoundAvatarFailure(compoundFailure switch
-                                    {
-                                        AvatarCompoundFailure.LifetimeMismatch => 0x13,
-                                        AvatarCompoundFailure.LifetimeTooShort => 0x18,
-                                        _ => 4
-                                    });
-                                await error.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, error);
+                                byte errorCode = compoundFailure switch
+                                {
+                                    AvatarCompoundFailure.LifetimeMismatch => 0x13,
+                                    AvatarCompoundFailure.LifetimeTooShort => 0x18,
+                                    AvatarCompoundFailure.InvalidMaterial when chapter2Decoded => 0x16,
+                                    AvatarCompoundFailure.PartMismatch when chapter2Decoded => 0x17,
+                                    _ => 4
+                                };
+                                var message = errorCode != 4 ? null : compoundFailure switch
+                                {
+                                    AvatarCompoundFailure.AvatarMismatch => "装扮已变动，请重新放入合成器。",
+                                    AvatarCompoundFailure.JobMismatch => "请选择当前角色职业的装扮。",
+                                    AvatarCompoundFailure.GradeMismatch => "所选装扮的品级无法合成。",
+                                    AvatarCompoundFailure.OptionOutOfRange => "请选择合成结果支持的装扮属性。",
+                                    _ => "装扮合成未完成，请重新检查合成材料。"
+                                };
+                                await RejectCompoundAsync(errorCode, message);
                                 logger.LogWarning(
                                     "Rejected avatar compound for job {Job}, material slot {MaterialSlot}, items {FirstItemId}/{SecondItemId}, slots {FirstSlot}/{SecondSlot}, option {Option}: {Failure}.",
                                     activeCharacter.Job,
@@ -13835,6 +13851,12 @@ public sealed class EntranceService(
                                     compoundCommand.SecondAvatarSlot,
                                     compoundCommand.SelectedOption,
                                     compoundFailure);
+                                continue;
+                            }
+
+                            if (chapter2Decoded && itemTradeService.IsEscrowed(activeCharacter.Id, 0, compoundPlan.MaterialSlot))
+                            {
+                                await RejectCompoundAsync(message: "合成材料正在交易中，请结束交易后再试。");
                                 continue;
                             }
 
@@ -13851,11 +13873,7 @@ public sealed class EntranceService(
                                     creatureInventory: creatureInventory.Values);
                             if (savedCompound is null)
                             {
-                                var error =
-                                    GameProtocolEngine.CreateCompoundAvatarFailure();
-                                await error.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, error);
+                                await RejectCompoundAsync(message: "装扮合成暂未保存，请稍后重试。");
                                 continue;
                             }
 

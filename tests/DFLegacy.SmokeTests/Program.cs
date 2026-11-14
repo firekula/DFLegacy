@@ -9,6 +9,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args is ["--chapter-two-avatar-compound", var compoundPvf])
+{
+    AvatarCompoundSmokeTests.Run(Check);
+    await AvatarCompoundSmokeTests.CheckChapterTwoWireAsync(Check, compoundPvf);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two avatar compound smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Length == 0 || args.Contains("--chapter-two-guild"))
 {
     await ChapterTwoGuildSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));

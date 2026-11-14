@@ -48,7 +48,8 @@ public static class AvatarCompoundPlanner
         AvatarCompoundCatalog catalog,
         IDropRandomSource random,
         out AvatarCompoundPlan plan,
-        out AvatarCompoundFailure failure)
+        out AvatarCompoundFailure failure,
+        bool requireExactSlots = false)
     {
         ArgumentNullException.ThrowIfNull(mainInventory);
         ArgumentNullException.ThrowIfNull(avatarInventory);
@@ -80,7 +81,8 @@ public static class AvatarCompoundPlanner
                 out var resolvedFirstSlot,
                 out var resolvedSecondSlot,
                 out var firstAvatar,
-                out var secondAvatar))
+                out var secondAvatar,
+                requireExactSlots))
         {
             return false;
         }
@@ -230,7 +232,8 @@ public static class AvatarCompoundPlanner
         out ushort firstResolvedSlot,
         out ushort secondResolvedSlot,
         out CharacterItemRecord firstAvatar,
-        out CharacterItemRecord secondAvatar)
+        out CharacterItemRecord secondAvatar,
+        bool requireExactSlots = false)
     {
         firstResolvedSlot = 0;
         secondResolvedSlot = 0;
@@ -251,12 +254,15 @@ public static class AvatarCompoundPlanner
                 firstAvatar,
                 secondAvatar,
                 firstExpectedItemId,
-                secondExpectedItemId))
+                secondExpectedItemId)
+            && (!requireExactSlots || firstAvatar.ItemId == firstExpectedItemId))
         {
             firstResolvedSlot = firstRequestedSlot;
             secondResolvedSlot = secondRequestedSlot;
             return true;
         }
+
+        if (requireExactSlots) return false;
 
         var fallbackFirst = avatars.Values
             .Where(item => CharacterAvatarInventoryLayout.IsBagSlot(item.Slot)

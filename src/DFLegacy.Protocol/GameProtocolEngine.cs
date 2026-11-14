@@ -220,8 +220,8 @@ public readonly record struct GameCompoundAvatarCommand(
     ushort FirstAvatarItemId,
     ushort SecondAvatarItemId,
     byte SelectedOption,
-    byte FirstAvatarSlot,
-    byte SecondAvatarSlot);
+    ushort FirstAvatarSlot,
+    ushort SecondAvatarSlot);
 public readonly record struct GameAvatarCompoundConsumption(
     byte ListType,
     ushort Slot,
@@ -965,9 +965,28 @@ public static partial class GameProtocolEngine
 
     public static bool TryParseCompoundAvatarCommand(
         ReadOnlySpan<byte> body,
-        out GameCompoundAvatarCommand command)
+        out GameCompoundAvatarCommand command,
+        bool chapterTwo = false)
     {
         command = default;
+        if (chapterTwo)
+        {
+            // C2 sender 0x8DA0D0 writes seven u16 fields and a pairing flag.
+            // The encrypted command pads its 15-byte payload to one AES block.
+            if (!HasCommandBodyLength(body, 17, allowChapterTwoPadding: true)) return false;
+            var pairing = BinaryPrimitives.ReadUInt16LittleEndian(body[12..]);
+            var option = BinaryPrimitives.ReadUInt16LittleEndian(body[14..]);
+            if (pairing > 1 || body[16] != pairing || option >= 80) return false;
+            command = new GameCompoundAvatarCommand(
+                BinaryPrimitives.ReadUInt16LittleEndian(body[2..]),
+                BinaryPrimitives.ReadUInt16LittleEndian(body[6..]),
+                BinaryPrimitives.ReadUInt16LittleEndian(body[10..]),
+                (byte)option,
+                BinaryPrimitives.ReadUInt16LittleEndian(body[4..]),
+                BinaryPrimitives.ReadUInt16LittleEndian(body[8..]));
+            return true;
+        }
+
         const int bodyLength = sizeof(ushort) // command sequence
             + sizeof(ushort)                 // material slot
             + sizeof(ushort)                 // first item-list marker
