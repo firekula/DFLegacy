@@ -192,7 +192,8 @@ public sealed record ItemDefinition(
     CeraPackageDefinition? CeraPackage = null,
     int? InventoryLimit = null,
     bool IsEpicRoutingItem = false,
-    int UsableJobMask = 0)
+    int UsableJobMask = 0,
+    RandomBoxDefinition? RandomBox = null)
 {
     public bool IsEquipment => ScriptKind == ItemScriptKind.Equipment;
 
@@ -722,7 +723,8 @@ public sealed class ItemCatalog
                      ReadCeraPackage(typeTag, text, scriptPath),
                      ReadInteger(InventoryLimitPattern, text),
                      IsEpicRoutingItem: ReadInteger(EpicRoutingPattern, text) == 1,
-                     UsableJobMask: ReadUsableJobs(text)));
+                     UsableJobMask: ReadUsableJobs(text),
+                     RandomBox: RandomBoxDefinition.Parse(typeTag, text)));
         }
     }
 

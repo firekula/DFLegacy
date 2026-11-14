@@ -11,7 +11,10 @@ public sealed record GameCharacterSummary(
     IReadOnlyList<GameInventoryEntry>? AppearanceItems = null,
     uint CharacterNo = 0,
     byte AwakeningType = 0,
-    byte PvpGrade = 0);
+    byte PvpGrade = 0,
+    uint GuildId = 0,
+    byte[]? GuildName = null,
+    byte GuildRank = 0);
 
 public sealed record GameInventoryEntry(
     ushort Slot,
@@ -4348,8 +4351,8 @@ public static partial class GameProtocolEngine
             }
 
             writer.Write((byte)0); // character-list extension state
-            writer.Write(0u);      // guild id
-            writer.Write((byte)0); // guild/member flag
+            writer.Write(character.GuildId);
+            writer.Write(character.GuildRank);
             writer.Write((byte)0); // character-list state
             writer.Write((byte)0); // character-list option
             writer.Write((byte)1); // visible/selectable character card
@@ -4438,7 +4441,7 @@ public static partial class GameProtocolEngine
         }
 
         writer.Write((byte)0); // town-entity extension state
-        writer.Write(0u);      // guild id
+        writer.Write(character.GuildId);
         // 419F17 -> record+A0 -> 47B9B0 allocates the actor's shop component.
         // This is the private-store entitlement, independent of guild state.
         writer.Write(hasPrivateStorePermission ? (byte)1 : (byte)0);
@@ -4465,8 +4468,8 @@ public static partial class GameProtocolEngine
         writer.Write(0u);
         // These following fields are independent guild-info state/name data.
         // Enabling them for a title makes the client construct a guild object.
-        writer.Write((byte)0);
-        WriteLengthPrefixedBytes(writer, []); // guild name
+        writer.Write(character.GuildRank);
+        WriteLengthPrefixedBytes(writer, character.GuildName ?? []);
         if (includeChapter2ActorFields)
         {
             // Native mode 0 reads this layout after the guild name.

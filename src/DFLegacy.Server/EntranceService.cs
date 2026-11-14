@@ -407,6 +407,8 @@ public sealed class EntranceService(
             var knownMailboxIds = new HashSet<uint>();
             var compoundReplay = new Dictionary<ushort, CompoundItemReplayEntry>();
             var compoundReplayOrder = new Queue<ushort>();
+            var randomBoxSession = new RandomBoxOpeningSession(itemCatalog);
+            var guildSession = new GuildSession(store, scripts, characterSessions);
             logger.LogInformation(
                 "Entrance client {SessionId} connected from {Remote} on local port {Port}",
                 runtimeSession.Id, remote, localPort);
@@ -5739,6 +5741,7 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.SelectCharacterCommand)
                         {
+                            guildSession.Reset();
                             var characters = await store.GetCharactersAsync(accountUid, serverToken);
                             var slot = request.Body.Length >= 3 ? request.Body[2] : 0;
                             var character = characters.FirstOrDefault(candidate =>
@@ -6479,6 +6482,16 @@ public sealed class EntranceService(
                             await currentCharacter.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, currentCharacter);
+
+                            if (chapter2CheckConnectionAccepted)
+                            {
+                                foreach (var guildPacket in await guildSession.InitialStateAsync(activeCharacter, serverToken))
+                                {
+                                    await guildPacket.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, guildPacket);
+                                }
+                            }
 
                             var learnedSkills = GetCurrentGameSkills();
                             await SendCurrentEquipmentStateAsync();
@@ -8767,6 +8780,81 @@ public sealed class EntranceService(
                                     ", ",
                                     disjointPlan.ResponseRewards.Select(reward =>
                                         $"{reward.ItemId}x{reward.Count}@{reward.DestinationSlot}")));
+                            continue;
+                        }
+
+                        if (chapter2CheckConnectionAccepted && request.Type == GameProtocolEngine.CommandPacketType
+                            && GuildSession.Handles(request.ProtocolId))
+                        {
+                            var result = await guildSession.HandleAsync(request, accountName, activeCharacter,
+                                localUserId, currentDungeonId == 0, serverToken);
+                            if (result.Character is { } guildCharacter)
+                            {
+                                activeCharacter = guildCharacter;
+                                currentGold = guildCharacter.Gold;
+                            }
+                            foreach (var packet in result.Packets)
+                            {
+                                await packet.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, packet);
+                            }
+                            if (result.Character is not null)
+                            {
+                                var guildInventory = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                                await guildInventory.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, guildInventory);
+                                await SendTownAppearanceAsync();
+                            }
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.UseRandomBoxCommand)
+                        {
+                            if (!chapter2CheckConnectionAccepted || activeCharacter is null || currentDungeonId != 0
+                                || !GameProtocolEngine.TryReadRandomBoxCommand(request.Body, out var randomBoxCommand))
+                            {
+                                var invalidBox = GameProtocolEngine.CreateRandomBoxError(17);
+                                await invalidBox.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, invalidBox);
+                                continue;
+                            }
+
+                            var opening = await randomBoxSession.OpenAsync(store, accountName,
+                                SnapshotCeraItemState(activeCharacter), randomBoxCommand,
+                                GetInventoryWeightLimit(activeCharacter), GameRandomSource.Shared, serverToken);
+                            if (opening.Character is { } savedBox)
+                            {
+                                AdoptSavedWarehouseUpgradeState(savedBox);
+                                currentGold = savedBox.Gold;
+                            }
+                            await opening.Reply.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, opening.Reply);
+
+                            // The native reply consumes both source stacks and applies reward
+                            // deltas. Refresh also reconciles duplicate or stale requests.
+                            var boxInventory = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                            await boxInventory.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, boxInventory);
+                            if (opening.Character is null)
+                            {
+                                var boxMessage = opening.Reply.Payload[1] switch
+                                {
+                                    4 => "魔盒奖励所需的物品栏空间不足。请整理背包后再试。",
+                                    21 => "魔盒奖励会超出负重上限。请减轻负重后再试。",
+                                    _ => "魔盒未开启。请确认魔盒和魔锤数量后再试。"
+                                };
+                                await SendTypedMessageNotificationAsync(GameMessageType.Type16Brown, 0,
+                                    ClientEncoding.GetBytes(boxMessage));
+                            }
+                            logger.LogInformation("Random box sequence {Sequence} at slots {BoxSlot}/{HammerSlot}: committed={Committed}.",
+                                randomBoxCommand.Sequence, randomBoxCommand.BoxSlot, randomBoxCommand.HammerSlot,
+                                opening.Character is not null);
                             continue;
                         }
 
@@ -16862,7 +16950,8 @@ public sealed class EntranceService(
                     .ToArray(),
                 character.CharacterNo,
                 (byte)Math.Clamp(character.AwakeningType, byte.MinValue, byte.MaxValue),
-                pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints)))
+                pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints),
+                character.GuildId, character.GuildName is null ? null : GuildRules.Encode(character.GuildName), character.GuildRank))
             .ToArray();
         return GameProtocolEngine.CreateUserInfo(summaries, includeUseLockDays);
     }
@@ -17401,7 +17490,10 @@ public sealed class EntranceService(
                     byte.MinValue,
                     byte.MaxValue),
                 PvpGrade: pvpExperienceCatalog.GetGradeForPoints(
-                    character.PvpPoints)),
+                    character.PvpPoints),
+                GuildId: character.GuildId,
+                GuildName: character.GuildName is null ? null : GuildRules.Encode(character.GuildName),
+                GuildRank: character.GuildRank),
             userId,
             equipmentSnapshot
                 .Where(item => item.Slot <= EquippedTitleSlot)

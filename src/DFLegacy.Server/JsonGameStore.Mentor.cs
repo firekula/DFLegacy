@@ -77,9 +77,10 @@ public sealed partial class JsonGameStore
         foreach (var notice in notices) _mentorRemovalNotices.Enqueue(notice);
     }
 
-    private async Task<bool> SaveMentorAccountsLockedAsync(List<AccountRecord> accounts, CancellationToken ct)
+    private async Task<bool> SaveMentorAccountsLockedAsync(List<AccountRecord> accounts, CancellationToken ct,
+        List<GuildRecord>? guilds = null)
     {
-        try { await WriteRewardStatePrivilegedAsync(accounts, _dungeonRewardLedger, ct); }
+        try { await WriteRewardStatePrivilegedAsync(accounts, _dungeonRewardLedger, ct, guilds: guilds); }
         catch (Exception exception)
         {
             _rewardQuarantined = true;
@@ -87,6 +88,7 @@ public sealed partial class JsonGameStore
             return false;
         }
         _accounts = accounts;
+        _guilds = guilds ?? _guilds;
         ReconcileMentorGoldEdgesLocked();
         return true;
     }

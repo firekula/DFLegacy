@@ -365,6 +365,13 @@ public sealed record CharacterRecord(
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<CharacterQuestRecord>? ChapterTwoArchivedQuests { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public uint GuildId { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? GuildName { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public byte GuildRank { get; init; }
+
     [JsonIgnore]
     public bool IsWeakened => WeaknessRecovery < DungeonWeaknessPolicy.FullStamina;
 }
@@ -686,6 +693,8 @@ public sealed partial class JsonGameStore(
         public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
         public List<AdminVictoryPointReceipt> AdminVictoryPointGrants { get; set; } = [];
         public List<AdminMailBatchReceipt> AdminMailBatches { get; set; } = [];
+        public List<GuildRecord> Guilds { get; set; } = [];
+        public uint NextGuildId { get; set; } = 1;
     }
 
     private string StorePath => Path.GetFullPath(options.DataPath, AppContext.BaseDirectory);
@@ -755,6 +764,9 @@ public sealed partial class JsonGameStore(
                     _pvpLedger = state.PvpLedger ?? [];
                     _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
                     _adminMailBatches = state.AdminMailBatches ?? [];
+                    _guilds = state.Guilds ?? [];
+                    var maximumGuildId = _guilds.Select(guild => guild.Id).DefaultIfEmpty(0u).Max();
+                    _nextGuildId = Math.Max(state.NextGuildId, maximumGuildId == uint.MaxValue ? uint.MaxValue : maximumGuildId + 1);
                     _rewardQuarantined = _dungeonRewardLedger.Any(x => x.Status == DungeonRewardLedgerStatus.Unknown);
                 }
 
@@ -2141,7 +2153,7 @@ public sealed partial class JsonGameStore(
         account.Characters.RemoveAt(slot);
         ReindexCharacterSlotsLocked(account);
         var notices = PrepareRemovedMentorEdgesLocked(accounts);
-        if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+        if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken, GuildsWithMembers(accounts)))
             return (false, null, "Character deletion outcome is uncertain; store quarantined.");
         PublishMentorRemovalNotices(notices);
         logger.LogInformation(
@@ -2225,7 +2237,7 @@ public sealed partial class JsonGameStore(
             }
 
             var notices = PrepareRemovedMentorEdgesLocked(accounts);
-            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken))
+            if (!await SaveMentorAccountsLockedAsync(accounts, cancellationToken, GuildsWithMembers(accounts)))
                 return (false, 0, "Roster replacement outcome is uncertain; store quarantined.");
             Commerce.RevokeStores();
             PublishMentorRemovalNotices(notices);
@@ -6627,9 +6639,24 @@ public sealed partial class JsonGameStore(
     // Privileged operator recovery: persists a rejection ledger while quarantine is still held.
     private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
         CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null,
-        List<AdminVictoryPointReceipt>? adminVictoryPointGrants = null, List<AdminMailBatchReceipt>? adminMailBatches = null)
+        List<AdminVictoryPointReceipt>? adminVictoryPointGrants = null, List<AdminMailBatchReceipt>? adminMailBatches = null,
+        List<GuildRecord>? guilds = null, uint? nextGuildId = null)
     {
-        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState { Accounts = accounts, NextCharacterNo = _nextCharacterNo, NextNormalAccountUid = _nextNormalAccountUid, NextTestAccountUid = _nextTestAccountUid, FatigueDayKey = _fatigueDayKey, DungeonRewardLedger = ledger, DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger, PvpLedger = pvpLedger ?? _pvpLedger, AdminVictoryPointGrants = adminVictoryPointGrants ?? _adminVictoryPointGrants, AdminMailBatches = adminMailBatches ?? _adminMailBatches }, new JsonSerializerOptions { WriteIndented = true });
+        var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState
+        {
+            Accounts = accounts,
+            NextCharacterNo = _nextCharacterNo,
+            NextNormalAccountUid = _nextNormalAccountUid,
+            NextTestAccountUid = _nextTestAccountUid,
+            FatigueDayKey = _fatigueDayKey,
+            DungeonRewardLedger = ledger,
+            DungeonGoldLedger = goldLedger ?? _dungeonGoldLedger,
+            PvpLedger = pvpLedger ?? _pvpLedger,
+            AdminVictoryPointGrants = adminVictoryPointGrants ?? _adminVictoryPointGrants,
+            AdminMailBatches = adminMailBatches ?? _adminMailBatches,
+            Guilds = guilds ?? _guilds,
+            NextGuildId = nextGuildId ?? _nextGuildId
+        }, new JsonSerializerOptions { WriteIndented = true });
         await _rewardWriter.WriteAsync(StorePath, snapshot, cancellationToken);
     }
 
@@ -6655,7 +6682,9 @@ public sealed partial class JsonGameStore(
                     DungeonGoldLedger = _dungeonGoldLedger,
                     PvpLedger = _pvpLedger,
                     AdminVictoryPointGrants = _adminVictoryPointGrants,
-                    AdminMailBatches = _adminMailBatches
+                    AdminMailBatches = _adminMailBatches,
+                    Guilds = _guilds,
+                    NextGuildId = _nextGuildId
                 },
                 new JsonSerializerOptions { WriteIndented = true },
                 cancellationToken);

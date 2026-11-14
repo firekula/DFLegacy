@@ -32,6 +32,7 @@ const viewCopy = {
   broadcast: ["广播通知", "向全部在线角色发送弹框或消息"],
   dungeon: ["副本权限", "设置角色可进入的 DGN 难度"],
   users: ["账号管理", "管理角色、密码、封禁和账号权限"],
+  diagnostics: ["客户端故障", "查看脱敏基本报告及处理状态"],
   characters: ["我的角色", "账号名下的角色列表"]
 };
 
@@ -283,7 +284,9 @@ function applyIdentity() {
     return;
   }
   const active = $(".nav-item.active");
-  if (admin && active && active.classList.contains("player-only")) {
+  if (admin && location.hash === "#diagnostics" && $("#diagnosticFilters")) {
+    switchView("diagnostics");
+  } else if (admin && active && active.classList.contains("player-only")) {
     switchView("mail");
   } else if (!admin && (!active || !active.classList.contains("player-only"))) {
     switchView("characters");
@@ -970,6 +973,37 @@ function initialize() {
   $("#refreshData").addEventListener("click", refreshData);
   $("#logoutButton").addEventListener("click", logout);
   $("#loginForm").addEventListener("submit", submitLoginForm);
+  $("#diagnosticFilters")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (typeof loadDiagnostics === "function") return;
+    const summary = $("#diagnosticSummary");
+    summary.textContent = "故障查询模块未加载，正在读取 GM 管理入口。";
+    try {
+      const status = await api("/api/status");
+      if (status.gmPanelPort === null) {
+        summary.textContent = "GM 管理端口未启用，请先在服务配置中启用。";
+        return;
+      }
+      if (!Number.isInteger(status.gmPanelPort) || status.gmPanelPort < 1 || status.gmPanelPort > 65535) {
+        summary.textContent = "服务端未返回 GM 管理入口，请检查服务端版本与配置。";
+        return;
+      }
+      const url = new URL(location.href);
+      url.protocol = "http:";
+      url.port = String(status.gmPanelPort);
+      url.pathname = "/admin/index.html";
+      url.search = "";
+      url.hash = "diagnostics";
+      const link = document.createElement("a");
+      link.href = url.href;
+      link.textContent = "打开 GM 后台查询故障";
+      summary.textContent = "请使用独立 GM 管理入口，登录后即可查询。 ";
+      summary.append(link);
+    } catch (error) {
+      summary.textContent = "无法读取 GM 管理入口。";
+      showToast(errorMessage(error), true);
+    }
+  });
   bindMailAttachments();
   bindForms();
   bindAccountManagement();

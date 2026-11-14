@@ -45,6 +45,7 @@ class Element {
   }
   querySelector(selector) { return this.querySelectorAll(selector)[0] ?? null; }
   get options() { return this.children; }
+  get lastElementChild() { return this.children.at(-1) ?? null; }
   get blocked() { return this.disabled || (this.parentElement?.blocked ?? false); }
   async fire(type, extra = {}) {
     if (this.blocked && ["click", "input", "change"].includes(type)) return;
@@ -58,7 +59,7 @@ class Element {
   focus() {}
 }
 
-function mailPage(saved, fetcher, fullInitialization = false) {
+function mailPage(saved, fetcher, fullInitialization = false, diagnosticsAvailable = true, hash = "") {
   const document = new Element("document"), requests = [], storage = new Map(saved ?? []), ready = [];
   document.createElement = tag => new Element(tag);
   document.getElementById = id => document.querySelector("#" + id);
@@ -88,15 +89,22 @@ function mailPage(saved, fetcher, fullInitialization = false) {
   if (fullInitialization) {
     // Include unrelated controls from the real page so DOMContentLoaded runs,
     // while a removed legacy ID still correctly resolves to null.
-    for (const [, tag, id] of html.matchAll(/<([a-z]+)\b[^>]*\bid="([^"]+)"/gi))
+    for (const [, tag, id] of html.matchAll(/<([a-z][a-z0-9]*)\b[^>]*\bid="([^"]+)"/gi))
       if (!document.querySelector("#" + id)) node(tag, id);
+    for (const [, classes, view] of html.matchAll(/<button class="([^"]*nav-item[^"]*)"[^>]*data-view="([^"]+)"/g))
+      node("button", "", document, { className: classes, dataset: { view } });
+    for (const [, classes, viewPanel] of html.matchAll(/<section class="([^"]*\bview\b[^"]*)"[^>]*data-view-panel="([^"]+)"/g))
+      node("section", "", document, { className: classes, dataset: { viewPanel } });
+    node("span", "", document.querySelector("#serverState"));
     document.body = node("body", "");
   }
   const context = vm.createContext({ document, window: { confirm: () => true }, crypto: { randomUUID },
+    URL, URLSearchParams, location: { href: "https://[2001:db8::1]:8443/admin/index.html" + hash, hash },
     sessionStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
     FormData: class {
       constructor(target) { this.entries = target.querySelectorAll("input, select, textarea").filter(item => item.name && !item.blocked).map(item => [item.name, item.value]); }
       get(name) { return this.entries.find(entry => entry[0] === name)?.[1] ?? null; }
+      [Symbol.iterator]() { return this.entries[Symbol.iterator](); }
     }, setTimeout() {}, clearTimeout() {},
     async fetch(url, options) {
       requests.push({ url, method: options?.method ?? "GET", body: options?.body && JSON.parse(options.body) });
@@ -110,6 +118,7 @@ function mailPage(saved, fetcher, fullInitialization = false) {
   const run = code => vm.runInContext(code, context);
   for (const [, url] of html.matchAll(/<script[^>]+src="([^"]+)"/g)) {
     const name = path.basename(url.split("?")[0]);
+    if (!diagnosticsAvailable && name === "admin-diagnostics.js") continue;
     if (!fullInitialization && !["admin.js", "admin-rewards.js"].includes(name)) continue;
     // Simulate a previously cached legacy script at its original URL. This
     // binding is the old initialize() failure reported by existing users.
@@ -139,6 +148,57 @@ test("upgraded page initializes and adds/removes attachments with legacy unversi
   await page.rows()[0].querySelector(".remove-attachment").click();
   assert.equal(page.rows().length, 1);
   assert.equal(page.rows()[0].querySelector(".item-search").value, "202");
+});
+
+test("diagnostics query remains on its view when the optional feature script is unavailable", async () => {
+  const page = mailPage(undefined, () => ({ gmPanelPort: 28481 }), true, false);
+  const button = page.get(".nav-item").parentElement.children.find(element => element.dataset.view === "diagnostics");
+  await button.click();
+  assert.equal(page.get("#pageTitle").textContent, "客户端故障");
+  assert.equal(button.classList.contains("active"), true);
+  let prevented = false;
+  await page.get("#diagnosticFilters").fire("submit", { preventDefault() { prevented = true; } });
+  assert.equal(prevented, true, "query must not submit the document and reopen the default mail view");
+  assert.equal(button.classList.contains("active"), true);
+  const link = page.get("#diagnosticSummary").querySelector("a");
+  assert.ok(link, "unavailable query must offer the configured GM endpoint");
+  assert.equal(link.href, "http://[2001:db8::1]:28481/admin/index.html#diagnostics");
+  assert.deepEqual(page.requests.map(request => request.url), ["/api/status"]);
+});
+
+test("diagnostics query keeps working when its feature script loads", async () => {
+  const page = mailPage(undefined, () => ({ total: 0, page: 1, pageSize: 25, items: [] }), true);
+  let prevented = false;
+  await page.get("#diagnosticFilters").fire("submit", { preventDefault() { prevented = true; } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(prevented, true);
+  assert.deepEqual(page.requests.map(request => request.url), ["/api/admin/diagnostics/groups?page=1&pageSize=25"]);
+  assert.equal(page.get("#diagnosticSummary").textContent, "0 个故障组，第 1 页");
+});
+
+test("diagnostics query reports a disabled GM listener without inventing an endpoint", async () => {
+  const page = mailPage(undefined, () => ({ gmPanelPort: null }), true, false);
+  await page.get("#diagnosticFilters").fire("submit");
+  assert.equal(page.get("#diagnosticSummary").querySelector("a"), null);
+  assert.match(page.get("#diagnosticSummary").textContent, /GM.*未启用/);
+});
+
+test("the GM diagnostics link survives a fresh administrator login", () => {
+  const page = mailPage(undefined, undefined, true, true, "#diagnostics");
+  page.run('auth.waiters.push(() => {}); completeLogin({ token: "fixture-token", userName: "GM", role: ROLE_ADMIN });');
+  assert.equal(page.get("#pageTitle").textContent, "客户端故障");
+  const active = page.get(".nav-item.active");
+  assert.equal(active.dataset.view, "diagnostics");
+});
+
+test("a diagnostics deep link keeps a signed-in ordinary user on the player view", () => {
+  const page = mailPage(new Map([
+    ["dflegacy.admin.token", "fixture-token"],
+    ["dflegacy.admin.userName", "Player"],
+    ["dflegacy.admin.role", "0"]
+  ]), () => new Promise(() => {}), true, true, "#diagnostics");
+  assert.equal(page.get("#pageTitle").textContent, "我的角色");
+  assert.equal(page.get(".nav-item.active").dataset.view, "characters");
 });
 
 async function addItem(page, id, quantity = "1", kind = "1", ability = "0") {

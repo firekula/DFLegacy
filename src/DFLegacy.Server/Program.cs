@@ -414,6 +414,7 @@ app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemC
     runtime.TotalConnections,
     runtime.TotalPackets,
     ActiveSessions = runtime.Sessions().Length,
+    GmPanelPort = options.WebPanels.Gm.Enabled ? (int?)options.WebPanels.Gm.Port : null,
     Entrance = new[] { options.Entrance.Port }
         .Concat(options.Entrance.AdditionalPorts)
         .Distinct()

@@ -190,6 +190,10 @@ internal static class WebPanelsSmokeTests
                 using var playerKind = await client.PutAsync($"http://127.0.0.1:{player}/api/admin/users/ordinarynew/kind", new StringContent("{\"kind\":\"Normal\"}", Encoding.UTF8, "application/json"));
                 check(playerKind.StatusCode == HttpStatusCode.NotFound, "player listener cannot change account kind even with admin token");
                 using var authorized = await Get(gm, "/api/status"); check(authorized.StatusCode == HttpStatusCode.OK, "GM bearer authenticates actual admin API");
+                using var legacyStatus = await Get(api, "/api/status");
+                using var statusBody = JsonDocument.Parse(await legacyStatus.Content.ReadAsStringAsync());
+                check(statusBody.RootElement.TryGetProperty("gmPanelPort", out var gmPanelPort) && gmPanelPort.GetInt32() == gm,
+                    "legacy admin page discovers the configured GM listener port through authenticated status");
                 using var deniedToken = await Get(player, "/api/status"); check(deniedToken.StatusCode == HttpStatusCode.NotFound, "even admin token cannot expose admin API on player listener");
                 var adminToken = client.DefaultRequestHeaders.Authorization?.Parameter;
                 client.DefaultRequestHeaders.Authorization = null;

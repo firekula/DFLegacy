@@ -1,6 +1,5 @@
 "use strict";
 
-viewCopy.diagnostics = ["客户端故障", "查看脱敏基本报告及处理状态"];
 let diagnosticPage = 1;
 const diagnosticForm = document.getElementById("diagnosticFilters");
 const diagnosticSummary = document.getElementById("diagnosticSummary");

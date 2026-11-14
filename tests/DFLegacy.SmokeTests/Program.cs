@@ -9,6 +9,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args.Length == 0 || args.Contains("--chapter-two-guild"))
+{
+    await ChapterTwoGuildSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two guild smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args[0] == "--chapter-two-random-box")
+{
+    await ChapterTwoRandomBoxSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1), args.ElementAtOrDefault(2));
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two random box smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Contains("--chapter-two-retired-quests"))
 {
     await ChapterTwoRetiredQuestSmokeTests.RunAsync(Check);
