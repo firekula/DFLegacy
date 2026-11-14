@@ -51,6 +51,8 @@ internal sealed class LauncherOptions
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChapterTwoDisplayOptions? ChapterTwoDisplay { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChapterTwoPostProcess { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChapterTwoDialogueOptions? ChapterTwoDialogue { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool ChapterTwoDebugEnabled { get; set; }

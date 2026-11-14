@@ -87,6 +87,7 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
 def public_configuration(flavor):
     return dict(ClientPath='DNF.exe',StartServer=False,ChapterTwoServerHost='games.firekula.site',
         ChapterTwoDebugEnabled=False,ChapterTwoTestMuteEnabled=False,DisableGitHubUpdates=False,
+        ChapterTwoPostProcess='none',
         UpdateProvider='github',UpdateRepository=REPOSITORY,UpdateChannel=CHANNEL,
         UpdateFlavor=flavor,UpdateServiceUrl='',Relay=dict(Enabled=True,Preference='ipv6'))
 

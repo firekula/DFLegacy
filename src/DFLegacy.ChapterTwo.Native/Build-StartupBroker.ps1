@@ -204,7 +204,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRemoteEndpoint.h') -D
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRelaySockets.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $source 'container/CMakeLists.txt') -Destination $container
 $build = Join-Path $out 'build'
-& $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64
+& $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 if ($LASTEXITCODE) { throw 'Chapter Two startup broker configuration failed.' }
 & $CMake --build $build --config Release
 if ($LASTEXITCODE) { throw 'Chapter Two startup broker build failed.' }

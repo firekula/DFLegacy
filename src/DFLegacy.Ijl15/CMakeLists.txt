@@ -311,9 +311,13 @@ if(BUILD_TESTING)
     target_compile_options(d3d8_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc /Zi)
     target_link_options(d3d8_presenter_tests PRIVATE /DEBUG)
     target_link_libraries(d3d8_presenter_tests PRIVATE user32 dbghelp)
+    add_executable(crt_presenter_tests tests/crt_presenter_tests.cpp src/d3d8_presenter.cpp src/presentation_scaling.cpp)
+    target_compile_options(crt_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+    target_link_libraries(crt_presenter_tests PRIVATE user32)
     option(DFLEGACY_ENABLE_GPU_TESTS "Run D3D8 tests in an interactive graphics session" OFF)
     if(DFLEGACY_ENABLE_GPU_TESTS)
         add_test(NAME d3d8_presentation_gpu COMMAND d3d8_presenter_tests)
+        add_test(NAME crt_presentation_gpu COMMAND crt_presenter_tests)
     endif()
     # The same test source also builds from tests/DFLegacy.Ijl15.Tests.vcxproj,
     # which is what DFLegacy.Emulator.slnx uses. CMake is not installed on every

@@ -29,6 +29,27 @@ internal static class DisplayConfigurationTests
                 var gap = (ComboBox)window.FindName("DialogueGapBox");
                 var save = (Button)window.FindName("DisplaySaveButton");
                 var reload = (Button)window.FindName("DisplayReloadButton");
+                var effect = window.FindName("PostProcessBox") as ComboBox;
+                check(effect is not null, "game settings expose an independent post-process choice");
+                if (effect is null) { window.Close(); return; }
+                check(((FrameworkElement)window.FindName("PostProcessPanel")).Visibility == Visibility.Visible,
+                    "Chapter Two exposes the post-process controls");
+                check(Equals(effect.SelectedValue, "none"), "older configurations default to no post-process");
+                effect.SelectedValue = "crt";
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(effect.SelectedValue, "crt"), "saving original scaling keeps the CRT choice");
+                check(store.Load().ChapterTwoPostProcess == "crt", "the selected CRT mode is persisted independently");
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(effect.SelectedValue, "crt"), "CRT survives reloading original scaling");
+                effect.SelectedValue = "xbrz";
+                save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(store.Load().ChapterTwoPostProcess == "xbrz", "xBRZ is a distinct persisted post-process choice");
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(effect.SelectedValue, "xbrz"), "xBRZ survives reloading original scaling");
+                store.Update(options => options.ChapterTwoPostProcess = "invalid");
+                reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                check(Equals(effect.SelectedValue, "none"), "invalid saved post-process defaults off");
+                effect.SelectedValue = "none";
                 check(Equals(font.SelectedItem, 12) && Equals(gap.SelectedItem, 3),
                     "an older Chapter Two config opens with the current default body layout");
                 font.SelectedItem = 18;

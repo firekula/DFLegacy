@@ -174,6 +174,7 @@ public partial class ConfigWindow : System.Windows.Window
             {
                 var dialogue = ChapterTwoDialogueOptions.Normalize(_options.ChapterTwoDialogue);
                 DialogueSettingsPanel.Visibility = Visibility.Visible;
+                PostProcessPanel.Visibility = Visibility.Visible;
                 DialogueSizeBox.ItemsSource = ChapterTwoDialogueOptions.FontSizes;
                 DialogueGapBox.ItemsSource = ChapterTwoDialogueOptions.LineGaps;
                 DialogueSizeBox.SelectedItem = dialogue.FontSize;
@@ -191,6 +192,7 @@ public partial class ConfigWindow : System.Windows.Window
             ResolutionBox.ItemsSource = choices;
             ResolutionBox.SelectedItem = choices.First(p => p.Width == width && p.Height == height);
             PresentationBox.SelectedValue = _display?.PresentationFilter ?? displayOptions.Filter;
+            PostProcessBox.SelectedValue = ChapterTwoClient.PostProcessOptions(_options);
             DisplayRuntimeText.Text = chapterTwo ? "第二章启动日志位于 Logs/DFLegacy。"
                 : ClientRenderDiagnostic.DescribeLatest(_display!.ClientPath);
         }
@@ -273,6 +275,8 @@ public partial class ConfigWindow : System.Windows.Window
                 _store.Update(options =>
                 {
                     options.ChapterTwoDisplay = filter == "legacy" ? null : new(preview.Width, preview.Height, filter);
+                    var effect = PostProcessBox.SelectedValue as string;
+                    options.ChapterTwoPostProcess = effect is "crt" or "xbrz" ? effect : null;
                     options.ChapterTwoDebugEnabled = ChapterTwoDebugBox.IsChecked == true;
                     if (DialogueSizeBox.SelectedItem is int size && DialogueGapBox.SelectedItem is int gap)
                     {

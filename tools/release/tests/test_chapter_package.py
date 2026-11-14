@@ -58,6 +58,25 @@ class ChapterPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
             self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
 
+    def test_second_chapter_carries_filter_license_and_source_location(self):
+        first = self.stage('chapter1', 'c1')
+        baseline = self.build(first, 'chapter1', 'baseline')
+        second = self.stage('chapter2', 'c2')
+        licenses = second / 'Licenses'
+        licenses.mkdir()
+        (licenses / 'xbrz-1.9.txt').write_bytes(b'upstream license')
+        (licenses / 'NativeSource.txt').write_bytes(b'corresponding source location')
+        result = self.build(second, 'chapter2', 'release',
+                            baseline=self.base / 'baseline' / baseline['manifestAsset'])
+        names = {item['path'] for item in result['manifest']['files']}
+        self.assertTrue({'Licenses/xbrz-1.9.txt', 'Licenses/NativeSource.txt'} <= names)
+        archive = self.base / 'client.zip'
+        package.create_starter(archive, second, self.base / 'release')
+        with zipfile.ZipFile(archive) as client:
+            self.assertEqual(client.read('Licenses/xbrz-1.9.txt'), b'upstream license')
+            configuration = json.loads(client.read('launcher.chapter2.json'))
+            self.assertEqual(configuration['ChapterTwoPostProcess'], 'none')
+
     def test_second_chapter_refuses_server_format_pvf_before_packaging(self):
         first = self.stage('chapter1', 'c1')
         a = self.build(first, 'chapter1', 'a')

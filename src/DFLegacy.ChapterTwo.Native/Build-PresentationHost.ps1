@@ -213,6 +213,10 @@ $pvpInstall = @'
 $original = $original.Replace($pvpInstallAnchor, $pvpInstall.Replace("`r`n", "`n") + "`n" + $pvpInstallAnchor)
 $timedInput = @(
     @{
+        Site = 'struct WindowKey { bool down; ULONGLONG until; };'
+        Replacement = 'struct WindowKey { bool down; bool pending; };'
+    },
+    @{
         Site = '    if(message==WM_KEYDOWN || message==WM_KEYUP){'
         Code = '    const dfl::chapter_two::performance::FrameStageScope timing(dfl::chapter_two::performance::ClassifyKeyMessage(message,key,details));'
     },
@@ -225,12 +229,62 @@ $timedInput = @(
         Code = '        const auto imeKey=message==WM_KEYDOWN && key==VK_PROCESSKEY ? dfl::chapter_two::performance::TakeImeGameplayKey(window,details) : 0u;'
     },
     @{
+        Site = '        if(scan && scan<256){'
+        Replacement = @'
+        if(GetForegroundWindow()!=window){
+            std::memset(windowKeys,0,sizeof(windowKeys));
+        }else if(scan && scan<256 && (key!=VK_PROCESSKEY || imeKey)){
+'@
+    },
+    @{
         Site = "            state.down=message==WM_KEYDOWN;`n            if(state.down)state.until=GetTickCount64()+60;"
-        Replacement = "            state.down=message==WM_KEYDOWN && !imeKey;`n            if(message==WM_KEYDOWN)state.until=GetTickCount64()+60;"
+        Replacement = @'
+            state.down=message==WM_KEYDOWN && !imeKey;
+            if(message==WM_KEYDOWN && !(flags&0x40000000))state.pending=true;
+            if(dfl::chapter_two::performance::IsKeyboardTextEntryActive())std::memset(windowKeys,0,sizeof(windowKeys));
+'@
+    },
+    @{
+        Site = '        const auto now=GetTickCount64();'
+        Replacement = @'
+        if(dfl::chapter_two::performance::IsKeyboardTextEntryActive()){
+            std::memset(windowKeys,0,sizeof(windowKeys));
+            return status;
+        }
+        // A message tap missed between polls is sampled once. Observed releases remain immediate.
+'@
+    },
+    @{
+        Site = '            if(GetAsyncKeyState(arrow.vk)&0x8000)windowKeys[arrow.scan].until=now+60;'
+        Replacement = '            if(GetAsyncKeyState(arrow.vk)&0x8000)keys[arrow.scan]|=0x80;'
+    },
+    @{
+        Site = '            if(GetAsyncKeyState(vk)&0x8000)windowKeys[MapVirtualKeyW(vk,MAPVK_VK_TO_VSC)].until=now+60;'
+        Replacement = @'
+            if(GetAsyncKeyState(vk)&0x8000){
+                const auto scan=MapVirtualKeyW(vk,MAPVK_VK_TO_VSC);
+                if(scan && scan<256)keys[scan]|=0x80;
+            }
+'@
+    },
+    @{
+        Site = '            if(key.down || key.until>now)keys[scan]|=0x80;'
+        Replacement = @'
+            if(key.down || key.pending)keys[scan]|=0x80;
+            key.pending=false;
+'@
+    },
+    @{
+        Site = '            const auto& key=windowKeys[scan];'
+        Replacement = '            auto& key=windowKeys[scan];'
     },
     @{
         Site = '    const HRESULT status=poll(device,size,state);'
         Replacement = '    const HRESULT status=dfl::chapter_two::performance::MeasureKeyboardPoll(poll,device,size,state);'
+    },
+    @{
+        Site = '    const HRESULT status=dfl::chapter_two::performance::MeasureKeyboardPoll(poll,device,size,state);'
+        Append = '    if(keyboardWindow && GetForegroundWindow()!=keyboardWindow)std::memset(windowKeys,0,sizeof(windowKeys));'
     },
     @{
         Site = '       GetWindowThreadProcessId(keyboardWindow,nullptr)==GetCurrentThreadId()){'
@@ -443,6 +497,10 @@ if ($LASTEXITCODE) { throw 'Chapter Two HUD portrait cache tests failed.' }
 if ($LASTEXITCODE) { throw 'Chapter Two private-room HUD portrait fallback tests failed.' }
 & (Join-Path $build 'Release/chapter_two_performance_text_lifetime_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two performance text lifetime tests failed.' }
+& (Join-Path $build 'Release/chapter_two_keyboard_tests.exe')
+if ($LASTEXITCODE) { throw 'Chapter Two keyboard state tests failed.' }
+& (Join-Path $build 'Release/chapter_two_xbrz_frame_tests.exe')
+if ($LASTEXITCODE) { throw 'Chapter Two xBRZ frame tests failed.' }
 & (Join-Path $build 'Release/chapter_two_free_card_display_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two free card display tests failed.' }
 & (Join-Path $build 'Release/chapter_two_presentation_policy_tests.exe')

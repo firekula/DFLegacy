@@ -57,7 +57,8 @@ namespace
         Options Policy;
         std::recursive_mutex Gate;
         HWND Window;
-        bool Windowed,Disabled=false,FixedFrame=false;
+        bool Windowed,Disabled=false,FixedFrame=false,EffectDisabled=false;
+        dfl::d3d8_presenter::ProcessingTimes LastProcessingTimes{};
         const char* DisabledReason="unsupported";
         HRESULT DisabledStatus=E_FAIL;
         a::Caps Caps{};
@@ -140,6 +141,17 @@ namespace
             std::snprintf(fields,sizeof(fields),"\"requested\":\"%s\",\"effective\":\"%s\",\"reason\":\"%s\",\"hresult\":\"0x%08lX\",\"logicalWidth\":640,\"logicalHeight\":480,\"width\":%u,\"height\":%u,\"intermediateWidth\":%u,\"intermediateHeight\":%u,\"format\":%lu,\"maxTextureWidth\":%lu,\"maxTextureHeight\":%lu",
                 p::ModeName(context.Policy.Filter),effective,reason,static_cast<unsigned long>(hr),plan?plan->Width:context.Width,plan?plan->Height:context.Height,
                 plan?plan->IntermediateWidth:0,plan?plan->IntermediateHeight:0,context.Format,context.Caps.MaxTextureWidth,context.Caps.MaxTextureHeight);
+            const auto effectLength=std::strlen(fields);
+            const auto effectiveEffect=!context.EffectDisabled&&reason&&std::strcmp(reason,"ok")==0
+                ?context.Policy.PostProcess:p::PostProcess::None;
+            std::snprintf(fields+effectLength,sizeof(fields)-effectLength,",\"postProcessRequested\":\"%s\",\"postProcessEffective\":\"%s\"",
+                p::PostProcessName(context.Policy.PostProcess),p::PostProcessName(effectiveEffect));
+            if(context.Policy.PostProcess==p::PostProcess::Xbrz)
+            {
+                const auto length=std::strlen(fields);const auto& times=context.LastProcessingTimes;
+                std::snprintf(fields+length,sizeof(fields)-length,",\"xbrzReadbackUs\":%.3f,\"xbrzScaleUs\":%.3f,\"xbrzUploadUs\":%.3f,\"xbrzScaledRows\":%u,\"xbrzWorkers\":%u",
+                    times.ReadbackUs,times.ScaleUs,times.UploadUs,times.ScaledRows,times.Workers);
+            }
             if(context.SampleCount==context.Preparation.size())
             {
                 const auto length=std::strlen(fields);
@@ -185,7 +197,7 @@ namespace
         OriginalObject original(device,c);if(!original.Valid)return E_FAIL;
         LARGE_INTEGER started{};QueryPerformanceCounter(&started);
         Record(c,nullptr,nullptr,S_OK); // Flush a throttled transition even after permanent fallback.
-        if(c.Policy.Filter==p::Mode::Legacy)
+        if(c.Policy.Filter==p::Mode::Legacy && c.Policy.PostProcess==p::PostProcess::None)
         {
             RECT client{};if(GetClientRect(c.Window,&client)){c.Width=static_cast<UINT>(client.right);c.Height=static_cast<UINT>(client.bottom);}
             Observe(c,started);Record(c,"legacy",c.Policy.InvalidMode?"unknown-mode":"legacy",S_OK);return OriginalPresent(c,source,target,overrideWindow,dirty);
@@ -215,7 +227,8 @@ namespace
         POINT first{0,0},last{client.right,client.bottom};
         if(!physical||!ClientToScreen(c.Window,&first)||!ClientToScreen(c.Window,&last)||!physical(c.Window,&first)||!physical(c.Window,&last))
             return Fallback(c,"window-coordinates",E_FAIL,source,target,overrideWindow,dirty);
-        const auto plan=p::MakeWindowPlan(static_cast<UINT>(client.right),static_cast<UINT>(client.bottom),static_cast<UINT>(last.x-first.x),static_cast<UINT>(last.y-first.y),c.Policy.Filter,caps);
+        const auto scaling=c.Policy.Filter==p::Mode::Legacy?p::Mode::Point:c.Policy.Filter;
+        const auto plan=p::MakeWindowPlan(static_cast<UINT>(client.right),static_cast<UINT>(client.bottom),static_cast<UINT>(last.x-first.x),static_cast<UINT>(last.y-first.y),scaling,caps);
         if(!plan.Supported)return Fallback(c,plan.Reason,a::InvalidCall,source,target,overrideWindow,dirty,&plan);
         Reference input;HRESULT hr=c.Call(16,UINT(0),DWORD(0),&input.Value);
         if(FAILED(hr))
@@ -235,7 +248,15 @@ namespace
             {if(Lost(hr)){c.Clear();Record(c,"device-lost","output-chain",hr,&plan);return hr;}return Fallback(c,"output-chain",hr,source,target,overrideWindow,dirty,&plan,true);}
             c.Width=plan.Width;c.Height=plan.Height;c.Format=description.Format;
         }
-        const auto result=c.Presenter.Render(input.Value,c.Output.Value,plan);
+        const auto effect=c.EffectDisabled?p::PostProcess::None:c.Policy.PostProcess;
+        auto result=c.Presenter.Render(input.Value,c.Output.Value,plan,effect);
+        c.LastProcessingTimes=result.Times;
+        if(FAILED(result.Status)&&SUCCEEDED(result.RestoreStatus)&&!Lost(result.Status)&&effect!=p::PostProcess::None)
+        {
+            c.EffectDisabled=true;
+            Record(c,"effect-fallback",result.Stage,result.Status,&plan);
+            result=c.Presenter.Render(input.Value,c.Output.Value,plan);
+        }
         if(FAILED(result.Status))
         {
             if(FAILED(result.RestoreStatus)||Lost(result.Status))
@@ -255,7 +276,7 @@ namespace
         Internal guard;std::lock_guard<std::recursive_mutex> lock(c.Gate);
         OriginalObject original(device,c);if(!original.Valid)return E_FAIL;
         c.Clear();const HRESULT hr=c.Call(14,pp);
-        if(SUCCEEDED(hr)&&pp){c.Windowed=pp->Windowed!=FALSE;if(pp->DeviceWindow)c.Window=pp->DeviceWindow;c.FixedFrame=pp->BackBufferWidth==640&&pp->BackBufferHeight==480;c.Disabled=false;}
+        if(SUCCEEDED(hr)&&pp){c.Windowed=pp->Windowed!=FALSE;if(pp->DeviceWindow)c.Window=pp->DeviceWindow;c.FixedFrame=pp->BackBufferWidth==640&&pp->BackBufferHeight==480;c.Disabled=false;c.EffectDisabled=false;}
         else if(FAILED(hr))Record(c,"device-lost","reset",hr);
         return hr;
     }
@@ -342,7 +363,8 @@ namespace dfl::d3d8_hooks
         for(const auto& entry:Devices)
         {
             const auto& context=*entry.second;
-            if(context.Window==window&&context.Windowed&&context.FixedFrame&&context.Policy.Filter!=p::Mode::Legacy)return true;
+            if(context.Window==window&&context.Windowed&&context.FixedFrame&&
+                (context.Policy.Filter!=p::Mode::Legacy||context.Policy.PostProcess!=p::PostProcess::None))return true;
         }
         return false;
     }

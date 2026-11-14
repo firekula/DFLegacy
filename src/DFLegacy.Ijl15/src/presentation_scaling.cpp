@@ -4,6 +4,25 @@
 
 namespace dfl::presentation
 {
+    PostProcess ParsePostProcess(const char* value) noexcept
+    {
+        if (!value) return PostProcess::None;
+        std::string_view text(value);
+        while (!text.empty() && (text.front() == ' ' || text.front() == '\t')) text.remove_prefix(1);
+        while (!text.empty() && (text.back() == ' ' || text.back() == '\t')) text.remove_suffix(1);
+        if (text.size() == 4 && (text[0] == 'x' || text[0] == 'X') && (text[1] == 'b' || text[1] == 'B') &&
+            (text[2] == 'r' || text[2] == 'R') && (text[3] == 'z' || text[3] == 'Z')) return PostProcess::Xbrz;
+        if (text.size() != 3) return PostProcess::None;
+        return (text[0] == 'c' || text[0] == 'C') && (text[1] == 'r' || text[1] == 'R') &&
+            (text[2] == 't' || text[2] == 'T') ? PostProcess::PhosphorLine : PostProcess::None;
+    }
+
+    const char* PostProcessName(PostProcess effect) noexcept
+    {
+        if(effect==PostProcess::Xbrz)return "xbrz";
+        return effect == PostProcess::PhosphorLine ? "crt" : "none";
+    }
+
     Mode ParseMode(const char* value) noexcept
     {
         if (value == nullptr) return Mode::Legacy;

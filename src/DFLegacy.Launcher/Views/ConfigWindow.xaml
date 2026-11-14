@@ -66,6 +66,14 @@
                   <StackPanel><c:PixelText Text="窗口分辨率" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="ResolutionBox" AutomationProperties.Name="窗口分辨率" SelectionChanged="DisplaySelectionChanged"/></StackPanel>
                   <StackPanel Grid.Column="2"><c:PixelText Text="画质模式" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="PresentationBox" SelectedValuePath="Tag" AutomationProperties.Name="画质模式" SelectionChanged="DisplaySelectionChanged"><ComboBoxItem Content="清晰平滑 · 推荐" Tag="sharp"/><ComboBoxItem Content="像素清晰" Tag="point"/><ComboBoxItem Content="柔和平滑" Tag="linear"/><ComboBoxItem Content="旧版兼容" Tag="legacy"/></ComboBox></StackPanel>
                 </Grid>
+                  <StackPanel x:Name="PostProcessPanel" Visibility="Collapsed" Margin="0,14,0,0">
+                    <c:PixelText Text="画面滤镜" Style="{StaticResource ClassicLabel}"/>
+                    <ComboBox x:Name="PostProcessBox" SelectedValuePath="Tag" AutomationProperties.Name="画面滤镜">
+                      <ComboBoxItem Content="关闭" Tag="none"/>
+                      <ComboBoxItem Content="彩监 CRT（Phosphor Line 风格）" Tag="crt"/>
+                      <ComboBoxItem Content="xBRZ" Tag="xbrz"/>
+                    </ComboBox>
+                  </StackPanel>
                 <c:PixelText x:Name="DisplayDescriptionText" Margin="0,24,0,0"/>
                 <c:PixelText Text="保持原始 4:3 画面。窗口变大，游戏视野不变。" Foreground="{StaticResource ClassicSecondary}" Margin="0,16,0,0"/>
                 <Grid x:Name="DialogueSettingsPanel" Visibility="Collapsed" Margin="0,14,0,0">

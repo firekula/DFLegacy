@@ -19,6 +19,7 @@ namespace
     Dispatch OriginalDispatch;
     Screen OriginalClientToScreen;
     presentation::Mode Filter;
+    presentation::PostProcess Effect;
 
     template <std::size_t Size>
     bool Matches(const unsigned char* image, unsigned offset,
@@ -59,7 +60,9 @@ namespace
     void* WINAPI CreateProxy(UINT sdk)
     {
         void* const factory = OriginalCreate(sdk);
-        if (factory && !dfl::d3d8_hooks::AttachFactory(factory, {Filter}))
+        dfl::d3d8_hooks::Options options{Filter};
+        options.PostProcess=Effect;
+        if (factory && !dfl::d3d8_hooks::AttachFactory(factory, options))
             OutputDebugStringA("DFLegacy Chapter Two: original D3D8 factory retained.\n");
         return factory;
     }
@@ -98,10 +101,10 @@ namespace
 }
 
 bool dfl::chapter_two::InstallPresentation(unsigned char* image, std::size_t bytes,
-    presentation::Mode mode, unsigned width, unsigned height) noexcept
+    presentation::Mode mode, unsigned width, unsigned height, presentation::PostProcess effect) noexcept
 {
     static_assert(sizeof(void*) == 4, "Chapter Two host must be x86.");
-    if (!image || bytes != ImageSize || mode == presentation::Mode::Legacy ||
+    if (!image || bytes != ImageSize || (mode == presentation::Mode::Legacy && effect == presentation::PostProcess::None) ||
         !SupportedSize(width, height)) return false;
 
     // The host already verifies the image header and extent. Check every
@@ -138,6 +141,7 @@ bool dfl::chapter_two::InstallPresentation(unsigned char* image, std::size_t byt
     OriginalDispatch = dispatchMessage;
     OriginalClientToScreen = clientToScreen;
     Filter = mode;
+    Effect = effect;
     Write(image, createSlot, &CreateProxy);
     Write(image, dispatchSlot, &DispatchProxy);
     Write(image, screenSlot, &CursorTargetToScreen);
@@ -152,11 +156,14 @@ void dfl::chapter_two::ConfigurePresentation(unsigned char* image, std::size_t b
 {
     char filter[16]{};
     const auto length = GetEnvironmentVariableA("DFL_S1C2_PRESENTATION_FILTER", filter, _countof(filter));
-    if (!length) return;
+    char effectName[16]{};
+    const auto effectLength=GetEnvironmentVariableA("DFL_S1C2_POST_PROCESS",effectName,_countof(effectName));
+    const auto effect=effectLength<_countof(effectName)?presentation::ParsePostProcess(effectName):presentation::PostProcess::None;
+    if (!length && effect==presentation::PostProcess::None) return;
     const auto mode = length < _countof(filter) ? presentation::ParseMode(filter) : presentation::Mode::Legacy;
     const auto width = ReadDimension(L"DFL_S1C2_WINDOW_WIDTH");
     const auto height = ReadDimension(L"DFL_S1C2_WINDOW_HEIGHT");
-    if (InstallPresentation(image, bytes, mode, width, height))
+    if (InstallPresentation(image, bytes, mode, width, height, effect))
         OutputDebugStringA("DFLegacy Chapter Two: enhanced D3D8 display adapter installed.\n");
     else
         OutputDebugStringA("DFLegacy Chapter Two: using original display settings.\n");

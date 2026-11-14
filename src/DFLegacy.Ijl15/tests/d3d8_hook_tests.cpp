@@ -66,16 +66,19 @@ namespace
     {
         void** Table=nullptr;ULONG References=1;Device* Owner=nullptr;
         UINT Width=640,Height=480;bool Heap=false;
+        std::array<DWORD,128> Pixels{};
     };
     struct Device
     {
         void** Table=nullptr;void** Identity=nullptr;ULONG References=1;int Tag=0,Destroyed=0,Presents=0,Resets=0,Allocations=0,Draws=0;
         DWORD LastFilter=0;HRESULT PresentResult=S_OK,ResetResult=S_OK,AllocationResult=S_OK,RestoreResult=S_OK,DrawResult=S_OK,EndResult=S_OK,RestoreTargetResult=S_OK;
         bool Restoring=false;
+        HRESULT ShaderResult=S_OK;
+        int ShaderCreates=0,ShaderDeletes=0;
         Resource Source{},Target{},Chain{};
         a::Viewport View{0,0,640,480,0,1};
     };
-    std::array<void*,16> ResourceTable{};
+    std::array<void*,18> ResourceTable{};
     ULONG WINAPI Add(void* value){return ++static_cast<Device*>(value)->References;}
     ULONG WINAPI Release(void* value){auto& d=*static_cast<Device*>(value);const auto n=--d.References;if(!n)++d.Destroyed;return n;}
     ULONG WINAPI RAdd(void* value){return ++static_cast<Resource*>(value)->References;}
@@ -102,6 +105,13 @@ namespace
     }
     HRESULT WINAPI Texture(void* value,UINT w,UINT height,UINT,DWORD,DWORD,DWORD,void** output)
     {auto* d=static_cast<Device*>(value);*output=NewResource(d,w,height);return S_OK;}
+    HRESULT WINAPI LockTexture(void* value,UINT,a::LockedRect* result,const RECT*,DWORD)
+    {auto& resource=*static_cast<Resource*>(value);result->Pitch=16;result->Bits=resource.Pixels.data();return S_OK;}
+    HRESULT WINAPI UnlockTexture(void*,UINT){return S_OK;}
+    HRESULT WINAPI CreateShader(void* value,const DWORD*,DWORD* result)
+    {auto& device=*static_cast<Device*>(value);++device.ShaderCreates;if(SUCCEEDED(device.ShaderResult))*result=1;return device.ShaderResult;}
+    HRESULT WINAPI DeleteShader(void* value,DWORD){++static_cast<Device*>(value)->ShaderDeletes;return S_OK;}
+    HRESULT WINAPI SetConstants(void*,DWORD,const void*,DWORD){return S_OK;}
     HRESULT WINAPI BackBuffer(void* value,UINT,DWORD,void** output)
     {auto& d=*static_cast<Device*>(value);*output=&d.Source;RAdd(*output);return S_OK;}
     HRESULT WINAPI Target(void* value,void** output){auto& d=*static_cast<Device*>(value);*output=&d.Target;RAdd(*output);return S_OK;}
@@ -147,11 +157,13 @@ namespace
         t[61]=reinterpret_cast<void*>(&SetTexture);t[63]=reinterpret_cast<void*>(&Stage);t[72]=reinterpret_cast<void*>(&Draw);
         t[76]=reinterpret_cast<void*>(&One);t[83]=reinterpret_cast<void*>(&SetStream);t[84]=reinterpret_cast<void*>(&Stream);
         t[85]=reinterpret_cast<void*>(&SetIndices);t[86]=reinterpret_cast<void*>(&Indices);t[88]=reinterpret_cast<void*>(&One);
+        t[87]=reinterpret_cast<void*>(&CreateShader);t[90]=reinterpret_cast<void*>(&DeleteShader);t[91]=reinterpret_cast<void*>(&SetConstants);
     }
-    bool Attach(GuardedTable& storage,Factory& f,Device& d,HWND window,p::Mode mode,c::ScaleFilterMode filter=c::ScaleFilterMode::Point)
+    bool Attach(GuardedTable& storage,Factory& f,Device& d,HWND window,p::Mode mode,c::ScaleFilterMode filter=c::ScaleFilterMode::Point,
+        p::PostProcess effect=p::PostProcess::None)
     {
         f.Table=storage.Table;f.Identity=storage.Table;f.Created=&d;f.Table[0]=reinterpret_cast<void*>(&FQuery);f.Table[2]=reinterpret_cast<void*>(&FRelease);f.Table[15]=reinterpret_cast<void*>(&Create);
-        if(!h::AttachFactory(&f,{mode,filter,nullptr,false}))return false;
+        if(!h::AttachFactory(&f,{mode,filter,nullptr,false,effect}))return false;
         a::PresentationParameters pp{};pp.DeviceWindow=window;pp.Windowed=TRUE;pp.BackBufferWidth=640;pp.BackBufferHeight=480;void* result=nullptr;
         const auto hr=a::Call<HRESULT>(&f,15,UINT(0),DWORD(1),window,DWORD(0),&pp,&result);
         return SUCCEEDED(hr)&&result==&d;
@@ -166,6 +178,7 @@ namespace
     void Hooks(HWND window)
     {
         ResourceTable[1]=reinterpret_cast<void*>(&RAdd);ResourceTable[2]=reinterpret_cast<void*>(&RRelease);ResourceTable[8]=reinterpret_cast<void*>(&Description);ResourceTable[15]=reinterpret_cast<void*>(&Surface);
+        ResourceTable[16]=reinterpret_cast<void*>(&LockTexture);ResourceTable[17]=reinterpret_cast<void*>(&UnlockTexture);
         SwapTable[1]=ResourceTable[1];SwapTable[2]=ResourceTable[2];SwapTable[3]=reinterpret_cast<void*>(&SwapPresent);SwapTable[4]=reinterpret_cast<void*>(&SwapBuffer);
         GuardedTable dt1(97),dt2(97),ft1(16),ft2(16);Device d1,d2;Factory f1{},f2{};
         Initialize(dt1,d1,11);Initialize(dt2,d2,22);
@@ -243,8 +256,40 @@ namespace
         Check(Diagnostic().find("\"effective\":\"device-lost\"")!=std::string::npos,"minimized device loss cannot be recorded as a successful fallback");
         d1.PresentResult=S_OK;ShowWindow(window,SW_HIDE);
         Check(Frame(d2)==S_OK&&d2.Presents==1&&d2.Draws==0,"legacy uses its own original Present");
+        Check(d1.ShaderCreates==0&&d2.ShaderCreates==0,"disabled CRT never creates a pixel shader");
         Check(a::Call<ULONG>(&d1,2)==0&&a::Call<ULONG>(&d2,2)==0,"all recreated devices reach final release");
         Check(a::Call<ULONG>(&f1,2)==0&&a::Call<ULONG>(&f2,2)==0,"both factories final Release succeeds");
+    }
+    void CrtHooks(HWND window)
+    {
+        ShowWindow(window,SW_RESTORE);ShowWindow(window,SW_HIDE);
+        GuardedTable deviceTable(97),factoryTable(16);Device device;Factory factory{};
+        Initialize(deviceTable,device,0);
+        Check(Attach(factoryTable,factory,device,window,p::Mode::Legacy,c::ScaleFilterMode::Point,p::PostProcess::PhosphorLine),
+            "CRT attaches independently of legacy scaling");
+        Check(Frame(device)==S_OK&&device.Draws==9&&device.ShaderCreates==1,"legacy CRT uses one output pass");
+        POINT center{400,300};
+        Check(dfl::window_input_scaling::ClientToLogical(window,center)&&center.x==320&&center.y==240,
+            "legacy CRT keeps input coordinates aligned with the fixed source frame");
+        const auto allocations=device.Allocations;
+        Check(Frame(device)==S_OK&&device.ShaderCreates==1&&device.Allocations==allocations,"CRT caches shader and presentation resources");
+        device.Source.Width=320;Frame(device);Sleep(1100);Frame(device);
+        Check(Diagnostic().find("\"postProcessEffective\":\"none\"")!=std::string::npos,
+            "original fallback reports that CRT was not applied");
+        device.Source.Width=640;
+        a::PresentationParameters parameters{};parameters.Windowed=TRUE;parameters.DeviceWindow=window;
+        parameters.BackBufferWidth=640;parameters.BackBufferHeight=480;
+        Check(a::Call<HRESULT>(&device,14,&parameters)==S_OK&&device.ShaderDeletes==1&&Frame(device)==S_OK&&device.ShaderCreates==2,
+            "Reset releases the CRT shader and lazily recreates it");
+        a::Call<HRESULT>(&device,14,&parameters);device.ShaderResult=E_FAIL;
+        const auto oldDraws=device.Draws,oldCreates=device.ShaderCreates;
+        Check(Frame(device)==S_OK&&device.Draws==oldDraws+9&&device.ShaderCreates==oldCreates+1,
+            "unsupported CRT keeps the existing scaled presentation");
+        Check(Frame(device)==S_OK&&device.ShaderCreates==oldCreates+1,"unsupported CRT is latched until Reset");
+        a::Call<HRESULT>(&device,14,&parameters);device.ShaderResult=a::DeviceLost;
+        const auto beforeLoss=device.Draws;
+        Check(Frame(device)==a::DeviceLost&&device.Draws==beforeLoss,"CRT device loss propagates without fallback drawing");
+        Check(a::Call<ULONG>(&device,2)==0&&a::Call<ULONG>(&factory,2)==0,"CRT factory and device release every owned reference");
     }
     bool Child(const std::wstring& executable,const wchar_t* mode,int w=800,int height=600)
     {
@@ -283,6 +328,6 @@ int wmain(int argc,wchar_t** argv)
     }
     WNDCLASSW cls{};cls.lpfnWndProc=DefWindowProcW;cls.hInstance=GetModuleHandleW(nullptr);cls.lpszClassName=L"DFLegacy.Hook.Fixture";RegisterClassW(&cls);
     const auto window=CreateWindowExW(WS_EX_NOACTIVATE,cls.lpszClassName,L"DFLegacy hook test",WS_POPUP,0,0,800,600,nullptr,nullptr,cls.hInstance,nullptr);
-    if(!window)return 2;DiagnosticDelivery();Config();Hooks(window);DestroyWindow(window);
+    if(!window)return 2;DiagnosticDelivery();Config();Hooks(window);CrtHooks(window);DestroyWindow(window);
     std::printf("D3D8 native configuration and lifecycle fixtures: %d failures\n",Failures);return Failures?1:0;
 }

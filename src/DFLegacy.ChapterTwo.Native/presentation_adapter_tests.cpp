@@ -153,6 +153,27 @@ int wmain(int argc, wchar_t** argv)
     }
     using dfl::presentation::Mode;
     const auto original = image;
+    for (const auto* effect : {"crt", "xbrz"})
+    {
+        auto configured = original;
+        SetEnvironmentVariableA("DFL_S1C2_PRESENTATION_FILTER", "legacy");
+        SetEnvironmentVariableA("DFL_S1C2_WINDOW_WIDTH", "640");
+        SetEnvironmentVariableA("DFL_S1C2_WINDOW_HEIGHT", "480");
+        SetEnvironmentVariableA("DFL_S1C2_POST_PROCESS", effect);
+        dfl::chapter_two::ConfigurePresentation(configured.data(), configured.size());
+        const bool enabled = Read(configured, 0x6ea5c8) != Read(original, 0x6ea5c8);
+        SetEnvironmentVariableA("DFL_S1C2_POST_PROCESS", nullptr);
+        configured = original;
+        dfl::chapter_two::ConfigurePresentation(configured.data(), configured.size());
+        const bool defaultOff = configured == original;
+        SetEnvironmentVariableA("DFL_S1C2_PRESENTATION_FILTER", nullptr);
+        SetEnvironmentVariableA("DFL_S1C2_WINDOW_WIDTH", nullptr);
+        SetEnvironmentVariableA("DFL_S1C2_WINDOW_HEIGHT", nullptr);
+        if (!enabled || !defaultOff) {
+            std::puts("FAIL: post-processing must opt in independently of legacy scaling and default to off");
+            return 1;
+        }
+    }
     {
         constexpr unsigned EnableOperand = 0x50334b;
         auto warehouse = original;

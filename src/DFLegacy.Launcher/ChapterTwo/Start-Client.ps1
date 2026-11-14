@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory)][string]$Game,
     [Parameter(Mandatory)][string]$HostFile,
     [ValidateSet('legacy','sharp','point','linear')][string]$Filter = 'legacy',
+    [ValidateSet('none','crt','xbrz')][string]$PostProcess = 'none',
     [int]$Width = 640,
     [int]$Height = 480,
     [ValidateSet('12','14','16','18')][int]$DialogueFontSize = 12,
@@ -173,7 +174,8 @@ try {
     if ($DetailedDiagnostics) { $env:DFL_S1C2_DETAILED_DIAGNOSTICS = '1' }
     $env:DFL_S1C2_DIALOGUE_SIZE = [string]$DialogueFontSize
     $env:DFL_S1C2_DIALOGUE_GAP = [string]$DialogueLineGap
-    if ($Filter -ne 'legacy') {
+    $env:DFL_S1C2_POST_PROCESS = $PostProcess
+    if ($Filter -ne 'legacy' -or $PostProcess -ne 'none') {
         $env:DFL_S1C2_PRESENTATION_FILTER = $Filter
         $env:DFL_S1C2_WINDOW_WIDTH = [string]$Width
         $env:DFL_S1C2_WINDOW_HEIGHT = [string]$Height

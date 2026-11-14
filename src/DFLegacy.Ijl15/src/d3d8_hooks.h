@@ -11,6 +11,7 @@ namespace dfl::d3d8_hooks
         ijl15_config::ScaleFilterMode LegacyFilter=ijl15_config::ScaleFilterMode::Native;
         void (*Pump)()=nullptr;
         bool InvalidMode=false;
+        presentation::PostProcess PostProcess=presentation::PostProcess::None;
     };
     // Used by the fixed-image IAT adapter and by test-owned D3D8 factories.
     // Borrowed COM pointer: contexts/resources are retired at original final Release.

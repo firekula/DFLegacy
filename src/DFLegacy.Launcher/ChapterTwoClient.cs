@@ -42,6 +42,12 @@ internal static class ChapterTwoClient
         && ClientDisplayConfiguration.Presets.Any(p => p.Width == display.Width && p.Height == display.Height)
             ? display : new(640, 480, "legacy");
 
+    internal static string PostProcessOptions(LauncherOptions options)
+    {
+        var effect = options.ChapterTwoPostProcess?.Trim(' ', '\t').ToLowerInvariant();
+        return HasPresentationPreview && effect is "crt" or "xbrz" ? effect : "none";
+    }
+
     internal static void ApplyLocalProfile(LauncherOptions options)
     {
         if (!IsBundled) return;
@@ -166,6 +172,7 @@ internal static class ChapterTwoClient
         };
         foreach (var argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
             Path.Combine(runtime, ScriptName), "-Game", root, "-HostFile", host, "-Filter", display.Filter,
+            "-PostProcess", PostProcessOptions(options),
             "-Width", display.Width.ToString(CultureInfo.InvariantCulture),
             "-Height", display.Height.ToString(CultureInfo.InvariantCulture),
             "-DialogueFontSize", dialogue.FontSize.ToString(CultureInfo.InvariantCulture),

@@ -302,6 +302,27 @@ namespace
             std::memcmp(image.data() + queue, &peek, sizeof(peek)) != 0 &&
             std::memcmp(image.data() + translate, &translateMessage, sizeof(translateMessage)) != 0,
             "the two verified original input imports redirect to timing wrappers");
+        std::array<unsigned char, 0x64> manager{};
+        std::array<unsigned char, 0x1c5> chat{};
+        std::array<unsigned char, 0x10> fallback{}, editor{};
+        const auto write = [](unsigned char* target, std::uintptr_t value)
+        { std::memcpy(target, &value, sizeof(value)); };
+        write(image.data() + 0x956d24, reinterpret_cast<std::uintptr_t>(manager.data()));
+        write(manager.data(), 0xaedb24);
+        write(manager.data() + 0x60, reinterpret_cast<std::uintptr_t>(chat.data()));
+        write(chat.data(), 0xc11c04);
+        write(chat.data() + 0x9c, reinterpret_cast<std::uintptr_t>(fallback.data()));
+        write(chat.data() + 0xa8, reinterpret_cast<std::uintptr_t>(editor.data()));
+        write(fallback.data(), 0xc123ac); write(fallback.data() + 0xc, 130);
+        write(editor.data(), 0xc123ac); write(editor.data() + 0xc, 133);
+        write(image.data() + 0x94dfdc, 130);
+        Check(!IsKeyboardTextEntryActive(), "inactive native chat permits gameplay sampling");
+        chat[0x1c4] = 1;
+        Check(IsKeyboardTextEntryActive(), "open native chat suppresses cached gameplay input");
+        chat[0x1c4] = 0; write(image.data() + 0x94dfdc, 133);
+        Check(IsKeyboardTextEntryActive(), "native editor focus suppresses cached gameplay input");
+        write(manager.data(), 0);
+        Check(!IsKeyboardTextEntryActive(), "unrecognized native UI memory keeps the existing input path");
     }
 
     void* ExpectedDevice = nullptr;

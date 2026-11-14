@@ -22,7 +22,7 @@ COMMON = ['DNF.exe', 'Script.pvf', 'audio.xml', 'DFighter.ini', 'Tenparty.dat',
 FIRST = ['DFLegacy.Client.dll', 'DFLegacy.Debug.dll', 'debug.dll', 'ijl15.original.dll']
 SECOND = ['TenFactTS.dll', 'TenioTS.ini', 'TenSLU.dll', 'TenSLX.dat', 'TenSLX.dll',
           'TenSM.dll', 'TenTC.dll', 'TesNet.dll', 'TC0001.DAT', 'localpackage.lst',
-          'ImagePacks3/*', 'ImagePacks4/*']
+          'ImagePacks3/*', 'ImagePacks4/*', 'Licenses/*.txt']
 
 DESCRIPTOR = 'DFLegacy.Chapter.json'
 ENTRY = 'DFLegacy.Launcher.exe'

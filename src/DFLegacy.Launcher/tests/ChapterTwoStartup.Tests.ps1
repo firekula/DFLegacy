@@ -50,13 +50,14 @@ function New-Case([string]$Name) {
     return [pscustomobject]@{ Root=$root; Game=$game; Helper=$helper; Host=$hostFile; Ini=$ini }
 }
 
-function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$DetailedDiagnostics) {
+function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$DetailedDiagnostics, [string]$PostProcess = '') {
     $state = [pscustomobject]@{
         Launches=0; LoginAtLaunch=[Collections.Generic.List[bool]]::new()
         CandidateAtLaunch=[Collections.Generic.List[bool]]::new()
         Acls=[Collections.Generic.List[string]]::new(); Cleanups=0; Attempts=$Attempts; BrokerExit=$BrokerExit
         DetailedAtLaunch=[Collections.Generic.List[bool]]::new(); EventsAtLaunch=[Collections.Generic.List[string]]::new()
         Sessions=[Collections.Generic.List[string]]::new(); ProfileCalls=0
+        PostProcesses=[Collections.Generic.List[string]]::new()
     }
     $broker = Join-Path $Case.Root 'dnf_startup_trace.exe'
     $acl = Join-Path $env:SystemRoot 'System32/icacls.exe'
@@ -76,6 +77,7 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
         $state.DetailedAtLaunch.Add($env:DFL_S1C2_DETAILED_DIAGNOSTICS -eq '1')
         $state.EventsAtLaunch.Add($env:DFLEGACY_CH2_DIAGNOSTIC_EVENTS)
         $state.Sessions.Add($env:DFL_S1C2_SESSION_DATA)
+        $state.PostProcesses.Add($env:DFL_S1C2_POST_PROCESS)
         $index = [Math]::Min($state.Launches, $state.Attempts.Count - 1)
         $state.Launches++
         foreach ($line in $state.Attempts[$index]) { $line }
@@ -90,7 +92,9 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
     $output = @()
     try {
         [Console]::SetIn([IO.StringReader]::new('{"Account":"startup-fixture","Password":"synthetic-test-only"}'))
-        try { $output = @(& $Case.Helper -Game $Case.Game -HostFile $Case.Host -DetailedDiagnostics:$DetailedDiagnostics) }
+        $extra = @{}
+        if ($PostProcess) { $extra.PostProcess = $PostProcess }
+        try { $output = @(& $Case.Helper -Game $Case.Game -HostFile $Case.Host -DetailedDiagnostics:$DetailedDiagnostics @extra) }
         catch { $errorText = $_.Exception.Message }
     } finally {
         [Console]::SetIn($originalInput)
@@ -110,6 +114,22 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
     Check (@($state.Sessions | Select-Object -Unique).Count -eq $state.Sessions.Count) 'retry attempts cannot share scratch or native log directories'
     Check (!$env:DFL_S1C2_SESSION_DATA) 'session path is cleared after attempt'
     return [pscustomobject]@{ Error=$errorText; Output=$output; State=$state }
+}
+
+Run-Case 'post-process-default' {
+    $case = New-Case 'post-process-default'
+    $r = Invoke-Case $case @(,$normal)
+    Check (!$r.Error -and $r.State.PostProcesses[0] -eq 'none') 'missing effect explicitly selects no post-process'
+}
+Run-Case 'post-process-legacy' {
+    $case = New-Case 'post-process-legacy'
+    $r = Invoke-Case $case @(,$normal) -PostProcess 'crt'
+    Check (!$r.Error -and $r.State.PostProcesses[0] -eq 'crt') 'CRT reaches the native host with legacy scaling'
+}
+Run-Case 'post-process-xbrz' {
+    $case = New-Case 'post-process-xbrz'
+    $r = Invoke-Case $case @(,$normal) -PostProcess 'xbrz'
+    Check (!$r.Error -and $r.State.PostProcesses[0] -eq 'xbrz') 'xBRZ reaches the native host as a distinct effect'
 }
 
 Run-Case 'missing-login-info' {

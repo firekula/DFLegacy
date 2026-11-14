@@ -99,6 +99,12 @@ try
         Console.WriteLine($"Chapter Two dialogue settings: {checks} assertions, {failures} failures");
         return failures == 0 ? 0 : 1;
     }
+    if (args.Contains("--display-tests"))
+    {
+        DisplayConfigurationTests.Run(root, Check);
+        Console.WriteLine($"Display settings: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
     if(args.Length==2&&args[0]=="--diagnostic-release-acceptance"){await DiagnosticReleaseAcceptanceTests.Run(args[1],Check);Console.WriteLine($"Diagnostic release acceptance: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-helper-integrity-tests")){DiagnosticHelperIntegrityTests.Run(root,Check);Console.WriteLine($"Diagnostic helper integrity: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-lifetime-tests")){await DiagnosticUpdateLifetimeTests.Run(root,Check);Console.WriteLine($"Diagnostic lifetime tests: {checks} assertions, {failures} failures");return failures==0?0:1;}

@@ -35,6 +35,7 @@ namespace dfl::chapter_two::performance
     };
 
     UINT TakeImeGameplayKey(HWND window, LPARAM details) noexcept;
+    bool IsKeyboardTextEntryActive() noexcept;
 
     constexpr FrameStage ClassifyKeyMessage(UINT message, WPARAM key, LPARAM details) noexcept
     {

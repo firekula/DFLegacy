@@ -5,8 +5,8 @@
 int main()
 {
     using namespace dfl::presentation;
-    int failed = 0;
-    const auto check = [&](bool ok, const char* what) { if (!ok) { std::fprintf(stderr, "FAIL: %s\n", what); ++failed; } };
+    int failed = 0, checks = 0;
+    const auto check = [&](bool ok, const char* what) { ++checks; if (!ok) { std::fprintf(stderr, "FAIL: %s\n", what); ++failed; } };
     const Capabilities modern{4096, 4096, false, false};
     const auto small = MakePlan(640, 480, Mode::Sharp, modern);
     check(small.Supported && !small.UseIntermediate && small.Factor == 1, "native size is a direct point copy");
@@ -39,6 +39,9 @@ int main()
     check(ParseMode(nullptr) == Mode::Legacy && ParseMode("unknown") == Mode::Legacy, "missing and unknown keys preserve legacy mode");
     check(ParseMode(" SHARP ") == Mode::Sharp && ParseMode("point") == Mode::Point && ParseMode("linear") == Mode::Linear,
         "managed/native mode spellings agree");
-    if (failed == 0) std::puts("Presentation scaling policy: 17 checks passed");
+    check(ParsePostProcess("xbrz") != PostProcess::None, "xBRZ is an explicit independent post-process choice");
+    check(ParsePostProcess(nullptr)==PostProcess::None&&ParsePostProcess("invalid")==PostProcess::None,
+        "missing and invalid post-process values default off");
+    if (failed == 0) std::printf("Presentation scaling policy: %d checks passed\n",checks);
     return failed == 0 ? 0 : 1;
 }

@@ -9,6 +9,11 @@ deploy/start/*.sh text eol=lf
 deploy/start/*.command text eol=lf
 deploy/*.yaml text eol=lf
 .gitea/workflows/*.yaml text eol=lf
+
+# Preserve the upstream xBRZ source and license bytes.
+/third_party/xbrz/1.9/*.cpp -text whitespace=cr-at-eol
+/third_party/xbrz/1.9/*.h -text whitespace=cr-at-eol
+/third_party/xbrz/1.9/License.txt -text whitespace=cr-at-eol
 tools/release/*.py text eol=lf
 # Gitea update acceptance receipts/logs retain the bytes named by their SHA256 inventory.
 /artifacts/client-update-gitea-20261108/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

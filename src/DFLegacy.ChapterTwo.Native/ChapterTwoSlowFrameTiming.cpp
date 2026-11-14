@@ -305,28 +305,32 @@ namespace
         return PeekMessageA(message, window, first, last, remove);
     }
 
-    bool InactiveChatHasFocus() noexcept
+    enum class ChatFocus { Unknown, Inactive, Editor };
+
+    ChatFocus ReadChatFocus() noexcept
     {
         // These offsets follow the native chat open/close routine. The inactive
         // edit control can still be enabled, so its distinct focus ID matters.
         __try
         {
             const auto* manager = *reinterpret_cast<const unsigned char* const*>(KeyboardImage + 0x956d24);
-            if (!manager || *reinterpret_cast<const std::uintptr_t*>(manager) != 0xaedb24) return false;
+            if (!manager || *reinterpret_cast<const std::uintptr_t*>(manager) != 0xaedb24) return ChatFocus::Unknown;
             const auto* chat = *reinterpret_cast<const unsigned char* const*>(manager + 0x60);
-            if (!chat || *reinterpret_cast<const std::uintptr_t*>(chat) != 0xc11c04 || chat[0x1c4] != 0) return false;
+            if (!chat || *reinterpret_cast<const std::uintptr_t*>(chat) != 0xc11c04) return ChatFocus::Unknown;
             const auto* fallback = *reinterpret_cast<const unsigned char* const*>(chat + 0x9c);
             const auto* editor = *reinterpret_cast<const unsigned char* const*>(chat + 0xa8);
             if (!fallback || !editor || *reinterpret_cast<const std::uintptr_t*>(fallback) != 0xc123ac ||
-                *reinterpret_cast<const std::uintptr_t*>(editor) != 0xc123ac) return false;
-            return dfl::chapter_two::performance::ChatFallbackHasFocus(chat[0x1c4],
-                *reinterpret_cast<const std::uint32_t*>(KeyboardImage + 0x94dfdc),
+                *reinterpret_cast<const std::uintptr_t*>(editor) != 0xc123ac) return ChatFocus::Unknown;
+            const auto focus = *reinterpret_cast<const std::uint32_t*>(KeyboardImage + 0x94dfdc);
+            const auto editorId = *reinterpret_cast<const std::uint32_t*>(editor + 0xc);
+            if (chat[0x1c4] != 0 || (editorId != 0 && focus == editorId)) return ChatFocus::Editor;
+            return dfl::chapter_two::performance::ChatFallbackHasFocus(chat[0x1c4], focus,
                 *reinterpret_cast<const std::uint32_t*>(fallback + 0xc),
-                *reinterpret_cast<const std::uint32_t*>(editor + 0xc));
+                editorId) ? ChatFocus::Inactive : ChatFocus::Unknown;
         }
         __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
         {
-            return false;
+            return ChatFocus::Unknown;
         }
     }
 
@@ -339,7 +343,7 @@ namespace
         const auto language = LOWORD(reinterpret_cast<std::uintptr_t>(GetKeyboardLayout(0)));
         if (PRIMARYLANGID(language) != LANG_CHINESE ||
             ((GetKeyState(VK_SHIFT) | GetKeyState(VK_CONTROL) | GetKeyState(VK_MENU) | GetKeyState(VK_RETURN)) & 0x8000) != 0 ||
-            !InactiveChatHasFocus()) return 0;
+            ReadChatFocus() != ChatFocus::Inactive) return 0;
 
         // The IME can replace the key without preserving a useful scan code.
         // Windows exposes the original key until TranslateMessage is called.
@@ -521,6 +525,11 @@ UINT dfl::chapter_two::performance::TakeImeGameplayKey(HWND window, LPARAM detai
 {
     if (GetCurrentThreadId() != KeyboardThread) return 0;
     return PendingImeGameplayKey.Take(window, details);
+}
+
+bool dfl::chapter_two::performance::IsKeyboardTextEntryActive() noexcept
+{
+    return KeyboardImage && GetCurrentThreadId() == KeyboardThread && ReadChatFocus() == ChatFocus::Editor;
 }
 
 bool dfl::chapter_two::InstallKeyboardMessageTiming(unsigned char* image, std::size_t bytes) noexcept
