@@ -72,8 +72,10 @@ public static class InstallTransaction
         var receipt = store.ReadInstalled();
         if (receipt?.Release.ManifestSha256 != targetManifestSha256 || receipt.Release.Source != journal.Target.Source)
             throw new InvalidDataException("跨章安装尚未提交。");
+        // Full verification below hashes every managed file once. Check the
+        // config, receipt and retired paths here because they are outside that manifest.
         foreach (var change in journal.Changes)
-            if ((verifyResources || change.Path == ReceiptName || change.Path == SecondConfiguration)
+            if ((change.Path == ReceiptName || change.Path == SecondConfiguration || verifyResources && change.NewHash == null)
                 && !MatchesState(Destination(store, change.Path), change.NewSize, change.NewHash))
                 throw new InvalidDataException("待确认的跨章安装文件已改变：" + change.Path);
         var identity = ClientChapterIdentity.Read(store.Root, journal.Target);
@@ -96,7 +98,7 @@ public static class InstallTransaction
         try { installed = store.ReadInstalled(); }
         catch (InvalidDataException) when (authorizedSource == null && ClientChapterIdentity.Descriptor(staged.Release) == null
             && !File.Exists(PathPolicy.Resolve(store.Root, ClientChapterIdentity.FileName))) { installed = null; }
-        var chapter = authorizedSource == null ? null : ChapterTransition.PrepareUpgradeLocked(store, staged, authorizedSource, explicitSelection, firstDisplay);
+        var chapter = authorizedSource == null ? null : ChapterTransition.PrepareUpgradeLocked(store, staged, authorizedSource, explicitSelection, firstDisplay, progress);
         var target = staged.Release.Manifest;
         if (installed != null && chapter == null)
         {
@@ -174,9 +176,11 @@ public static class InstallTransaction
             var oldSize = 0L; string? oldHash = null;
             if (existed)
             {
+                progress?.Report(new("backup", write.Path, index, writes.Count));
                 var old = Path.Combine(workspace, index + ".old"); CopyFlushed(destination, old);
                 (oldSize, oldHash) = Identity(old);
             }
+            progress?.Report(new("stage", write.Path, index, writes.Count));
             if (chapter != null && write.Path != ReceiptName)
             {
                 if (write.Path == SecondConfiguration)
@@ -223,6 +227,7 @@ public static class InstallTransaction
             {
                 if (chapter != null && changes[index].Path == SecondConfiguration)
                     RequireUnchangedFirstConfiguration(store, chapter);
+                progress?.Report(new("replace", changes[index].Path, index, changes.Count));
                 CommitChange(store, workspace, changes[index], index);
                 progress?.Report(new("install", changes[index].Path, index + 1, changes.Count));
             }
@@ -283,6 +288,7 @@ public static class InstallTransaction
         {
             var change = journal.Changes[index]; var destination = Destination(store, change.Path);
             if (journal.Chapter != null && MatchesState(destination, change.OldSize, change.OldHash)) continue;
+            progress?.Report(new("restore", change.Path, journal.Changes.Length - index - 1, journal.Changes.Length));
             if (change.Existed) Replace(Path.Combine(workspace, index + ".old"), destination);
             else if (File.Exists(destination)) File.Delete(destination);
             else if (Directory.Exists(destination)) throw new InvalidDataException("恢复目标不是文件。");

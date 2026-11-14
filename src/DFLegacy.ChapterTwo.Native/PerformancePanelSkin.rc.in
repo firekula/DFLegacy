@@ -1,0 +1,6 @@
+#include "@CMAKE_CURRENT_SOURCE_DIR@/PerformancePanelSkinResources.h"
+
+DFL_PERF_PANEL_FRAME RCDATA "@DFL_CLASSIC_SKIN@/classic-settings-panel.png"
+DFL_PERF_PANEL_CREST RCDATA "@DFL_CLASSIC_SKIN@/classic-crest.png"
+DFL_PERF_PANEL_CLOSE RCDATA "@DFL_CLASSIC_SKIN@/buton_close00.png"
+DFL_PERF_PANEL_CLOSE_DOWN RCDATA "@DFL_CLASSIC_SKIN@/buton_close02.png"

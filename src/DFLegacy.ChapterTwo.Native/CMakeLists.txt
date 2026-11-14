@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
-project(DFLegacyChapterTwoNative LANGUAGES CXX)
+project(DFLegacyChapterTwoNative LANGUAGES CXX RC)
+
+add_executable(chapter_two_relay_endpoint_tests relay_endpoint_tests.cpp)
+target_compile_features(chapter_two_relay_endpoint_tests PRIVATE cxx_std_17)
+target_compile_options(chapter_two_relay_endpoint_tests PRIVATE /W4 /utf-8 /EHsc)
+target_link_libraries(chapter_two_relay_endpoint_tests PRIVATE ws2_32)
 
 add_executable(chapter_two_store_title_baseline_tests store_title_tests.cpp)
 target_compile_definitions(chapter_two_store_title_baseline_tests PRIVATE CHAPTER_TWO_STORE_TITLE_BASELINE)
@@ -14,6 +19,11 @@ endif()
 set(IJL "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Ijl15/src")
 set(CLIENT "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Client")
 set(DEBUG_NATIVE "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Debug/src")
+set(DFL_CLASSIC_SKIN "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Launcher/Assets/Skin")
+set(performance_panel_skin "${CMAKE_CURRENT_BINARY_DIR}/PerformancePanelSkin.rc")
+configure_file(PerformancePanelSkin.rc.in "${performance_panel_skin}" @ONLY)
+set_source_files_properties("${performance_panel_skin}" PROPERTIES OBJECT_DEPENDS
+    "${DFL_CLASSIC_SKIN}/classic-settings-panel.png;${DFL_CLASSIC_SKIN}/classic-crest.png;${DFL_CLASSIC_SKIN}/buton_close00.png;${DFL_CLASSIC_SKIN}/buton_close02.png")
 add_library(chapter_two_presentation STATIC
     ChapterTwoPresentation.cpp
     ChapterTwoPerformance.cpp
@@ -38,6 +48,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoHudPortraitCache.cpp
     ChapterTwoFreeCardDisplay.cpp
     ChapterTwoParty.cpp
+    ChapterTwoRelaySockets.cpp
     ChapterTwoTownMap.cpp
     ChapterTwoLootGather.cpp
     ChapterTwoLootGatherHooks.cpp
@@ -65,13 +76,13 @@ target_include_directories(chapter_two_presentation PUBLIC "${CMAKE_CURRENT_SOUR
 target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}" "${IJL}")
 target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
-target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32 advapi32)
+target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32 advapi32 gdiplus ws2_32)
 
 add_executable(chapter_two_presentation_tests presentation_adapter_tests.cpp)
 target_compile_options(chapter_two_presentation_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_presentation_tests PRIVATE chapter_two_presentation)
 
-add_executable(chapter_two_performance_window_tests performance_panel_window_tests.cpp)
+add_executable(chapter_two_performance_window_tests performance_panel_window_tests.cpp "${performance_panel_skin}")
 target_compile_options(chapter_two_performance_window_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_performance_window_tests PRIVATE chapter_two_presentation)
 
@@ -83,7 +94,7 @@ target_compile_options(chapter_two_presentation_policy_tests PRIVATE /W4 /WX /ut
 
 add_executable(chapter_two_party_relay_tests party_relay_host_tests.cpp)
 target_compile_options(chapter_two_party_relay_tests PRIVATE /W4 /WX /utf-8 /EHsc)
-target_link_libraries(chapter_two_party_relay_tests PRIVATE chapter_two_presentation)
+target_link_libraries(chapter_two_party_relay_tests PRIVATE chapter_two_presentation ws2_32)
 
 add_executable(chapter_two_town_map_tests town_map_tests.cpp)
 target_compile_options(chapter_two_town_map_tests PRIVATE /W4 /WX /utf-8 /EHsc)
@@ -210,7 +221,7 @@ target_link_libraries(chapter_two_performance_text_lifetime_tests PRIVATE psapi 
 target_link_libraries(chapter_two_performance_text_lifetime_tests PRIVATE chapter_two_presentation)
 
 if(DEFINED CHAPTER_TWO_HOST_SOURCE)
-    add_executable(chapter_two_presentation_host "${CHAPTER_TWO_HOST_SOURCE}")
+    add_executable(chapter_two_presentation_host "${CHAPTER_TWO_HOST_SOURCE}" "${performance_panel_skin}")
     target_compile_features(chapter_two_presentation_host PRIVATE cxx_std_17)
     target_link_options(chapter_two_presentation_host PRIVATE /BASE:0x10000 /SAFESEH:NO /MAP)
     target_link_libraries(chapter_two_presentation_host PRIVATE chapter_two_presentation ws2_32)

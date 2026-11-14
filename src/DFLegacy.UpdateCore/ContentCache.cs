@@ -150,7 +150,13 @@ public sealed class ContentCache
         var target = ObjectPath(file.Sha256, file.Size);
         if (await FileVerifier.MatchesAsync(target, file.Size, file.Sha256, token).ConfigureAwait(false)) return target;
         var parts = new List<string>();
-        foreach (var part in file.Parts) parts.Add(await downloader.FetchAsync(part, this, progress, token).ConfigureAwait(false));
+        long completedBytes = 0;
+        foreach (var part in file.Parts)
+        {
+            var fileProgress = progress is null ? null : new FileTransferProgress(progress, completedBytes, file.Size);
+            parts.Add(await downloader.FetchAsync(part, this, fileProgress, token).ConfigureAwait(false));
+            completedBytes = checked(completedBytes + part.Size);
+        }
         if (parts.Count == 1 && parts[0] == target) return target;
         using var lease = await LockAsync(target + ".lock", token).ConfigureAwait(false);
         if (await FileVerifier.MatchesAsync(target, file.Size, file.Sha256, token).ConfigureAwait(false)) return target;
@@ -174,5 +180,13 @@ public sealed class ContentCache
             return target;
         }
         finally { PathPolicy.NoLinks(temporary); if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
+    private sealed class FileTransferProgress(IProgress<UpdateProgress> target, long completedBytes, long fileSize)
+        : IProgress<UpdateProgress>
+    {
+        public void Report(UpdateProgress progress) => target.Report(progress.Phase == "download"
+            ? progress with { BytesReceived = checked(completedBytes + progress.BytesReceived), TotalBytes = fileSize }
+            : progress);
     }
 }

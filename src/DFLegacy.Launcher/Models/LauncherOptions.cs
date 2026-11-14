@@ -45,6 +45,10 @@ internal sealed class LauncherOptions
     public double D3D9RetryIntervalSeconds { get; set; } = 1;
     public LauncherRelayOptions Relay { get; set; } = new();
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChapterTwoServerIpv4 { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ChapterTwoServerHost { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChapterTwoDisplayOptions? ChapterTwoDisplay { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChapterTwoDialogueOptions? ChapterTwoDialogue { get; set; }

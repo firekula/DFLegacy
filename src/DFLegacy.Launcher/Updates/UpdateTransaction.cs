@@ -47,7 +47,7 @@ internal static class UpdateTransaction
         }
         finally { if(File.Exists(temporary)) File.Delete(temporary); }
     }
-    private static void Restore(string target,string backup,UpdateReceipt receipt)
+    private static void Restore(string target,string backup,UpdateReceipt receipt,IProgress<UpdateInstallProgress>? progress=null)
     {
         var pvf=Path.Combine(target,ClientPackageManifest.ScriptPvfName);
         var removePvf=receipt.OriginalScriptPvfMissing && UpdateSafety.ScriptPvfExists(pvf);
@@ -61,7 +61,12 @@ internal static class UpdateTransaction
         foreach(var original in receipt.Originals)
         {
             var destination=Path.Combine(target,original.Path);
-            if(!Matches(destination,original)) ReplaceFrom(Path.Combine(backup,original.Path),destination);
+            if(!Matches(destination,original))
+            {
+                UpdateInstallProgress.Report(progress,.87,"正在恢复 "+original.Path+"…",original.Path);
+                ReplaceFrom(Path.Combine(backup,original.Path),destination);
+                UpdateInstallProgress.Report(progress,.87,"已恢复 "+original.Path+"。");
+            }
         }
         if(removePvf) File.Delete(pvf);
         if(receipt.Originals.Any(original=>!Matches(Path.Combine(target,original.Path),original))) throw new IOException("恢复后校验失败；已保留恢复资料。");
@@ -138,7 +143,7 @@ internal static class UpdateTransaction
             backup=Path.Combine(target,".dflegacy-backups",receipt.TransactionId);
             using var backupPin=UpdateSafety.PinDirectory(backup);
             UpdateInstallProgress.Report(progress,.87,"正在恢复并校验原版本…");
-            Restore(target,backup,receipt);
+            Restore(target,backup,receipt,progress);
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or ArgumentException)
         { return new(false,false,"恢复未完成；请关闭占用文件的游戏后重试。原文件和恢复资料已保留。",backup); }
@@ -196,6 +201,7 @@ internal static class UpdateTransaction
                     if(length>UpdateSafety.MaxExpanded) throw new IOException("原文件超出备份大小限制。");
                     var original=new UpdateFile(name,UpdateSafety.Hash(path),length);
                     // Backup data must reach disk before either durable recovery record.
+                    UpdateInstallProgress.Report(progress,.88+.06*originals.Count/originalNames.Length,"正在备份 "+name+"…",name);
                     using(var input=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite))
                     using(var output=new FileStream(Path.Combine(backup,name),FileMode.CreateNew,FileAccess.Write,FileShare.None))
                     { input.CopyTo(output); output.Flush(true); }
@@ -212,6 +218,7 @@ internal static class UpdateTransaction
                     var replaced=0;
                     foreach(var file in update.Manifest.Files)
                     {
+                        UpdateInstallProgress.Report(progress,.94+.04*replaced/update.Manifest.Files.Length,"正在安装 "+file.Path+"…",file.Path);
                         ReplaceFrom(Path.Combine(update.Directory,file.Path),Path.Combine(target,file.Path),
                             overwrite:!originalPvfMissing || file.Path!=ClientPackageManifest.ScriptPvfName);
                         UpdateInstallProgress.Report(progress,.94+.04*++replaced/update.Manifest.Files.Length,"正在安装更新文件…");
@@ -225,7 +232,7 @@ internal static class UpdateTransaction
                 }
                 catch
                 {
-                    Restore(target,backup,receipt);
+                    Restore(target,backup,receipt,progress);
                     throw;
                 }
             }

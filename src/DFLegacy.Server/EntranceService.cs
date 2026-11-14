@@ -162,6 +162,7 @@ public sealed class EntranceService(
             foreach (var port in ports)
             {
                 var listener = new TcpListener(address, port);
+                if (address.Equals(IPAddress.IPv6Any)) listener.Server.DualMode = true;
                 try { listener.Start(); }
                 catch { listener.Stop(); throw; }
                 _listeners.Add(listener);
@@ -229,11 +230,11 @@ public sealed class EntranceService(
             }
             var protocolSession = new EntranceSessionState();
             var gameClientCipher = isChannelPort ? new GameClientCipherState() : null;
-            var chapter2Probe = isChannelPort
-                && (localPort == 47001 || (options.Channel.RegionalChannelsEnabled && localPort is >= 7100 and <= 7105))
-                && client.Client.LocalEndPoint is IPEndPoint local && IPAddress.IsLoopback(local.Address)
-                && client.Client.RemoteEndPoint is IPEndPoint peer && IPAddress.IsLoopback(peer.Address)
-                && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER") == "1";
+            var chapter2Probe = isChannelPort && (options.ChapterTwoRemote
+                || ((localPort == 47001 || (options.Channel.RegionalChannelsEnabled && localPort is >= 7100 and <= 7105))
+                    && client.Client.LocalEndPoint is IPEndPoint local && IPAddress.IsLoopback(local.Address)
+                    && remoteEndpoint is not null && IPAddress.IsLoopback(remoteEndpoint.Address)
+                    && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER") == "1"));
             var chapter2CheckConnectionAccepted = false;
             var freeRevivalCoinAmount = options.ChapterTwoFreeRevivalCoinAmount <= GameProtocolEngine.MaximumFreeRevivalCoinGrant
                 ? options.ChapterTwoFreeRevivalCoinAmount : (byte)0;
@@ -5179,6 +5180,12 @@ public sealed class EntranceService(
                             chapter2CheckConnectionAccepted = true;
                         }
 
+                        if (!chapter2CheckConnectionAccepted && options.ChapterTwoRemote)
+                        {
+                            disconnectReason = "chapter-two-required";
+                            break;
+                        }
+
                         if (!chapter2Decoded && !gameClientCipher!.TryDecode(request, out decodedRequest))
                         {
                             LogPacket("RX-ENC", runtimeSession, request);
@@ -5450,7 +5457,8 @@ public sealed class EntranceService(
                             if (!TryReadLoginCredentials(
                                     request.Body,
                                     out var loginName,
-                                    out var loginPassword))
+                                    out var loginPassword)
+                                || (options.ChapterTwoRemote && loginPassword is null))
                             {
                                 var malformedLoginError = GameProtocolEngine.CreateCommandError(
                                     request,
@@ -5512,7 +5520,8 @@ public sealed class EntranceService(
                         {
                             if (isPvpChannel && activeCharacter is not null && pvpAttachment is { } pvpToken)
                             {
-                                await pvpService.HandleAsync(activeCharacter.Id, pvpToken, request.ProtocolId, request.Body, serverToken);
+                                await pvpService.HandleAsync(activeCharacter.Id, pvpToken, request.ProtocolId,
+                                    request.Body, serverToken, chapter2Decoded);
                                 if (request.ProtocolId == 55 && townTicket is null) pvpReturnPending = true;
                                 partyMembershipWake.Pulse();
                             }

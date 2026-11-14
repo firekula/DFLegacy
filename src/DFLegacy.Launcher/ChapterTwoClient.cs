@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Text.Json;
+using DFLegacy.Relay;
 
 namespace DFLegacy.Launcher;
 
@@ -42,16 +45,21 @@ internal static class ChapterTwoClient
     internal static void ApplyLocalProfile(LauncherOptions options)
     {
         if (!IsBundled) return;
+        var connection = ChapterTwoConnection.Parse(options.ChapterTwoServerHost, options.ChapterTwoServerIpv4);
+        var host = connection.Host;
+        var remote = connection.UseRelay || connection.LegacyIpv4 is not null;
+        var id = remote ? "chapter-two-remote" : "chapter-two-local";
         options.ClientPath = "DNF.exe";
-        options.EntranceHost = Host;
+        options.EntranceHost = host;
         options.EntrancePort = EntrancePort;
         options.AccountServicePort = AccountPort;
-        options.AccountServiceUrl = $"http://{Host}:{AccountPort}";
-        options.Servers = [new() { Id = "chapter-two-local", Name = "第二章本机", Host = Host,
+        options.AccountServiceUrl = connection.AccountServiceUrl;
+        options.Servers = [new() { Id = id, Name = remote ? "第二章" : "第二章本机", Host = host,
             Port = EntrancePort, AccountServicePort = AccountPort }];
-        options.SelectedServerId = "chapter-two-local";
+        options.SelectedServerId = id;
         options.StartServer = false;
-        options.Relay = new();
+        options.Relay = connection.UseRelay ? new() { Enabled = true, Preference = options.Relay.Preference,
+            TcpPorts = string.Join(',', ChapterTwoConnection.TcpPorts), UdpPorts = string.Join(',', ChapterTwoConnection.UdpPorts) } : new();
         if (!Updates.ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory))
         {
             options.DisableGitHubUpdates = true;
@@ -79,7 +87,8 @@ internal static class ChapterTwoClient
             "4FA23E0270CCA7BD3D97F333C9F8F406193DB77B37FF3CACFCD3DCB34C2BCA00",
             "C20741D48A641A525F7C214FBEDE555783FB737B344D14EEADA47AECA8337669",
             "639489430820E62F50D5D239B1C16AB8B65AFCE97C528BEBB03E3B723CE55D85",
-            "06734F9C5B23CF3BCE364890403AE1661311447CA8ADEBD1B79FCFD8E00FAB9B");
+            "06734F9C5B23CF3BCE364890403AE1661311447CA8ADEBD1B79FCFD8E00FAB9B",
+            "D0B4AC799896398BFD97A5CFCF12E8BE0A603A44A965FD5478AB8C43A99B8C9B");
         var images = Path.Combine(root, "ImagePacks2");
         if (!Directory.Exists(images) || ClientLogPaths.HasLink(images))
             throw new InvalidDataException("请将第二章启动器放在原版 DNFS1C2 客户端目录，与 DNF.exe 和 ImagePacks2 同层。");
@@ -110,7 +119,11 @@ internal static class ChapterTwoClient
         RequireOrdinaryProcessComponents();
         ValidateSource(clientPath);
         Program.LogClientPath = clientPath;
-        await Program.EnsureServerReadyAsync(options);
+        var connection = ChapterTwoConnection.Parse(options.ChapterTwoServerHost, options.ChapterTwoServerIpv4);
+        await using var relay = connection.UseRelay ? await DomainRelaySession.StartAsync(connection.Host,
+            options.Relay.Preference != "ipv4", ChapterTwoConnection.TcpPorts, ChapterTwoConnection.UdpPorts,
+            EntrancePort, (level, message) => Program.WriteLauncherLog($"[chapter-two-relay] {level}: {message}"), cancellationToken) : null;
+        if (relay is null) await Program.EnsureServerReadyAsync(options);
         await Program.EnsureD3D9AvailableAsync(options);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -156,6 +169,16 @@ internal static class ChapterTwoClient
             info.Environment["DFLEGACY_CH2_PAYMENT_REPLIES"] = payment.ReplyDirectory;
         }
         if (Program.DetailedCaptureEnabled) info.ArgumentList.Add("-DetailedDiagnostics");
+        if (options.ChapterTwoServerIpv4 is { } ipv4)
+        {
+            info.ArgumentList.Add("-RemoteIpv4");
+            info.ArgumentList.Add(ipv4);
+        }
+        if (relay is not null)
+        {
+            info.ArgumentList.Add("-RelayIpv4");
+            info.ArgumentList.Add(relay.BindAddress.ToString());
+        }
         info.Environment["DFLEGACY_CH2_SETTINGS_PATH"] = ChapterTwoGameSettings.Prepare(root);
         info.Environment.Remove("DFLEGACY_CH2_DEBUG_ITEMS");
         info.Environment.Remove("DFLEGACY_CH2_DEBUG_PVF");
@@ -167,10 +190,12 @@ internal static class ChapterTwoClient
             info.Environment["DFLEGACY_CH2_DEBUG_ITEMS"] = "1";
             info.Environment["DFLEGACY_CH2_DEBUG_PVF"] = view.Path;
             Program.WriteLauncherLog($"Chapter Two debug labels enabled: {view.Count} item scripts; private view={Path.GetFileName(view.Path)}.");
-            debug = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => new ChapterTwoDebugSession(root, account.Account));
+            debug = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => new ChapterTwoDebugSession(root, account.Account, options.ResolveAccountServiceUrl()));
         }
 
-        Program.WriteLauncherLog("Starting Chapter Two ordinary desktop process with the isolated local profile.");
+        Program.WriteLauncherLog(!connection.UseRelay && connection.LegacyIpv4 is null
+            ? "Starting Chapter Two ordinary desktop process with the local profile."
+            : "Starting Chapter Two ordinary desktop process with the remote profile.");
         try
         {
         await ClientProcessLifetime.RunAsync(

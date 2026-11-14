@@ -132,4 +132,29 @@
     <Setter Property="ItemContainerStyle" Value="{StaticResource ClassicTab}"/>
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabControl"><Grid><Grid.RowDefinitions><RowDefinition Height="29"/><RowDefinition Height="30"/><RowDefinition/></Grid.RowDefinitions><StackPanel Orientation="Horizontal" IsItemsHost="True"/><Border Grid.Row="1" BorderBrush="#655333" BorderThickness="0,1,0,0" Margin="0,7,0,0"/><ContentPresenter Grid.Row="2" x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"/></Grid></ControlTemplate></Setter.Value></Setter>
   </Style>
+  <Style x:Key="ClassicList" TargetType="ListBox">
+    <Setter Property="Background" Value="#171711"/>
+    <Setter Property="Foreground" Value="{StaticResource ClassicInk}"/>
+    <Setter Property="BorderBrush" Value="#97815A"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBox">
+      <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="3">
+        <ScrollViewer Style="{x:Null}" CanContentScroll="True"><ItemsPresenter/></ScrollViewer>
+      </Border>
+    </ControlTemplate></Setter.Value></Setter>
+    <Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="{StaticResource ClassicInk}"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+        <Border x:Name="Row" Background="Transparent" Padding="9,5">
+          <ContentPresenter/>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="#3A3222"/></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="#51432A"/><Setter Property="Foreground" Value="{StaticResource ClassicGold}"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style></Setter.Value></Setter>
+  </Style>
 </ResourceDictionary>

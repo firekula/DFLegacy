@@ -6,48 +6,60 @@ using System.Windows.Threading;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
 using System.Net.Http;
+using DFLegacy.Launcher.Controls;
 
 namespace DFLegacy.Launcher;
 
 internal sealed class ChapterTwoDebugWindow : Window
 {
-    private readonly ChapterTwoDebugApi api=new();
+    private readonly ChapterTwoDebugApi api;
     private readonly Task<(ChapterTwoDebugResources Resources,ChapterTwoDebugIcons Icons)> resources;
     private readonly TextBox user=new(){Width=140},search=new(){MinWidth=280},quantity=new(){Text="1",Width=85},ability=new(){Text="0",Width=65};
     private readonly PasswordBox password=new(){Width=140};
     private readonly ComboBox characters=new(){MinWidth=360};
-    private readonly ListBox items=new(){MinHeight=180};
+    private readonly ListBox items=new(){MinHeight=130};
     private readonly Image icon=new(){Width=56,Height=56,Stretch=Stretch.Uniform};
     private readonly TextBlock name=new(){FontSize=18,FontWeight=FontWeights.SemiBold,TextWrapping=TextWrapping.Wrap};
     private readonly TextBlock description=new(){TextWrapping=TextWrapping.Wrap,LineHeight=22};
-    private readonly TextBlock status=new(){TextWrapping=TextWrapping.Wrap,Foreground=Brushes.LightSkyBlue};
-    private readonly Button send=new(){Content="发送到所选角色的邮件",IsEnabled=false};
+    private readonly TextBlock status=new(){TextWrapping=TextWrapping.Wrap};
+    private readonly SkinButton send=new(){Content="发送到所选角色的邮件",IsEnabled=false};
     private readonly string logDirectory;
     private int searchVersion,previewVersion;
     private bool pending,disposed;
     private OwnedPanelCursor? pointer;
-    private readonly CheckBox testMute=new(){Content="测试静音（仅当前游戏）",Foreground=Brushes.WhiteSmoke};
-    private readonly TextBlock audioStatus=new(){Foreground=Brushes.LightSkyBlue};
+    private readonly CheckBox testMute=new(){Content="测试静音（仅当前游戏）",MinWidth=185};
+    private readonly TextBlock audioStatus=new(){MaxWidth=390,TextWrapping=TextWrapping.Wrap};
     internal bool TestMuted=>testMute.IsChecked==true;
     internal event Action? TestMuteChanged;
-    internal ChapterTwoDebugWindow(string clientDirectory,string account)
+    internal ChapterTwoDebugWindow(string clientDirectory,string account,string serviceUrl="http://127.0.0.2:48091")
     {
-        Title="第二章 Debug · 物品工具";Width=740;Height=800;MinWidth=620;MinHeight=650;
-        Background=new SolidColorBrush(Color.FromRgb(22,29,39));Foreground=Brushes.WhiteSmoke;
-        FontFamily=new FontFamily("Microsoft YaHei UI");FontSize=14;ShowInTaskbar=false;
-        foreach(var type in new[]{typeof(TextBox),typeof(PasswordBox),typeof(ComboBox),typeof(Button)})
-        {
-            var style=new Style(type);style.Setters.Add(new Setter(Control.ForegroundProperty,Brushes.Black));
-            style.Setters.Add(new Setter(Control.PaddingProperty,new Thickness(6,4,6,4)));Resources.Add(type,style);
-        }
+        api=new(serviceUrl:serviceUrl);
+        Title="第二章 · 物品工具";Width=740;Height=690;MinWidth=690;MinHeight=610;
+        WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;
+        ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;
         logDirectory=Path.Combine(clientDirectory,"Logs","DFLegacy");
         resources=Task.Run(()=>(new ChapterTwoDebugResources(Path.Combine(clientDirectory,"Script.pvf")),new ChapterTwoDebugIcons(clientDirectory)));
-        var root=new Grid{Margin=new Thickness(16)};
-        foreach(var height in new[]{GridLength.Auto,GridLength.Auto,GridLength.Auto,new GridLength(1,GridUnitType.Star),new GridLength(190),GridLength.Auto,GridLength.Auto})root.RowDefinitions.Add(new RowDefinition{Height=height});
-        Content=root;
-        Add(root,new TextBlock{Text="物品搜索与邮件发放",FontSize=22,FontWeight=FontWeights.Bold,Margin=new Thickness(0,0,0,12)},0);
+        var root=new Grid();
+        foreach(var height in new[]{GridLength.Auto,GridLength.Auto,GridLength.Auto,new GridLength(1,GridUnitType.Star),new GridLength(146),GridLength.Auto,GridLength.Auto})root.RowDefinitions.Add(new RowDefinition{Height=height});
+        var surface=new Border
+        {
+            Background=new SolidColorBrush(Color.FromRgb(36,39,30)),
+            BorderBrush=new SolidColorBrush(Color.FromRgb(98,86,56)),
+            BorderThickness=new Thickness(1),
+            CornerRadius=new CornerRadius(8),
+            Padding=new Thickness(12,9,12,9),
+            Child=root
+        };
+        var frame=new ClassicDialogFrame{Title=Title,Content=surface};
+        Content=frame;
+        var gold=(Brush)frame.FindResource("ClassicGold");
+        var ink=(Brush)frame.FindResource("ClassicInk");
+        var buttonStyle=(Style)frame.FindResource("ClassicButton");
+        name.Foreground=gold;status.Foreground=gold;audioStatus.Foreground=ink;
+        send.Style=buttonStyle;
+        Add(root,new TextBlock{Text="物品搜索与邮件发放",Foreground=gold,FontSize=16,Margin=new Thickness(0,0,0,7)},0);
         var login=Row(new TextBlock{Text="GM 账号"},user,new TextBlock{Text="密码"},password);
-        var loginButton=new Button{Content="登录"};login.Children.Add(loginButton);Add(root,login,1);
+        var loginButton=new SkinButton{Content="登录",Style=buttonStyle};login.Children.Add(loginButton);Add(root,login,1);
         loginButton.Click+=async(_,_)=>{loginButton.IsEnabled=false;try{await api.Login(user.Text.Trim(),password.Password);password.Clear();characters.ItemsSource=await api.Characters();characters.SelectedItem=((DebugCharacter[])characters.ItemsSource).FirstOrDefault(c=>c.UserName.Equals(account,StringComparison.OrdinalIgnoreCase)&&c.Online);status.Text="已登录。选择收件角色后搜索物品。";}catch(Exception e){status.Text=e.Message;}finally{loginButton.IsEnabled=true;}};
         var controls=new StackPanel();controls.Children.Add(Row(new TextBlock{Text="收件角色"},characters));
         var audioOptions=new LauncherAccountStore(Program.LauncherConfigPath).Load();
@@ -63,11 +75,12 @@ internal sealed class ChapterTwoDebugWindow : Window
             catch(Exception e) when(e is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
             {audioStatus.Text="静音偏好保存失败："+e.Message;}
         };
-        var refresh=new Button{Content="刷新角色"};((StackPanel)controls.Children[0]).Children.Add(refresh);
+        var refresh=new SkinButton{Content="刷新角色",Style=buttonStyle};((StackPanel)controls.Children[0]).Children.Add(refresh);
         refresh.Click+=async(_,_)=>{try{var id=(characters.SelectedItem as DebugCharacter)?.Id;characters.ItemsSource=await api.Characters();characters.SelectedItem=((DebugCharacter[])characters.ItemsSource).FirstOrDefault(c=>c.Id==id);}catch(Exception e){status.Text=e.Message;}};
-        var find=new Button{Content="搜索名称 / ID"};controls.Children.Add(Row(search,find));Add(root,controls,2);
+        var find=new SkinButton{Content="搜索名称 / ID",Style=buttonStyle};controls.Children.Add(Row(search,find));Add(root,controls,2);
         find.Click+=async(_,_)=>await Search();search.KeyDown+=async(_,e)=>{if(e.Key==System.Windows.Input.Key.Enter){e.Handled=true;await Search();}};
-        items.Foreground=Brushes.Black;Add(root,items,3);items.SelectionChanged+=async(_,_)=>await Preview();
+        items.SetResourceReference(StyleProperty,"ClassicList");
+        Add(root,items,3);items.SelectionChanged+=async(_,_)=>await Preview();
         var preview=new Grid{Margin=new Thickness(0,12,0,10)};preview.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(72)});preview.ColumnDefinitions.Add(new ColumnDefinition());
         preview.Children.Add(icon);icon.VerticalAlignment=VerticalAlignment.Top;
         var detail=new StackPanel();detail.Children.Add(name);detail.Children.Add(description);
@@ -77,6 +90,17 @@ internal sealed class ChapterTwoDebugWindow : Window
         status.Text="Ctrl+F11 显示或隐藏。本机 GM 管理员登录后可发送邮件。";
         Closing+=(_,e)=>{if(!disposed){e.Cancel=true;Hide();}};
         SourceInitialized+=(_,_)=>pointer=new OwnedPanelCursor(this);
+        IsVisibleChanged+=(_,_)=>{if(IsVisible) Dispatcher.BeginInvoke(FitToMonitor,DispatcherPriority.Loaded);};
+    }
+    private void FitToMonitor()
+    {
+        if(disposed || !IsVisible || WindowWorkArea.Read(this) is not { } work) return;
+        var dpi=VisualTreeHelper.GetDpi(this);
+        MinWidth=Math.Min(690,work.Width/dpi.DpiScaleX);
+        MinHeight=Math.Min(610,work.Height/dpi.DpiScaleY);
+        Width=Math.Min(740,work.Width/dpi.DpiScaleX);
+        Height=Math.Min(690,work.Height/dpi.DpiScaleY);
+        WindowWorkArea.Clamp(this,work);
     }
     private static StackPanel Row(params UIElement[] children)
     {
@@ -136,9 +160,9 @@ internal sealed class ChapterTwoDebugSession : IDisposable
     private ChapterTwoTestAudio? audio;
     private long nextAudio;
     private string lastAudioState="";
-    internal ChapterTwoDebugSession(string root,string account)
+    internal ChapterTwoDebugSession(string root,string account,string serviceUrl="http://127.0.0.2:48091")
     {
-        window=new(root,account);window.TestMuteChanged+=()=>{nextAudio=0;UpdateAudio();};
+        window=new(root,account,serviceUrl);window.TestMuteChanged+=()=>{nextAudio=0;UpdateAudio();};
         timer=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(20)};
         timer.Tick+=(_,_)=>
         {

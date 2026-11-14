@@ -125,7 +125,8 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
         _ingress.TryGetValue(character, out var channel) && channel.A.Id == attachment
         && !channel.Retired && !IsPvpCommand(command) && channel.Sequence.TryConsume(command, body);
 
-    internal async Task HandleAsync(Guid character, Guid attachment, byte command, byte[] body, CancellationToken ct = default)
+    internal async Task HandleAsync(Guid character, Guid attachment, byte command, byte[] body,
+        CancellationToken ct = default, bool chapterTwo = false)
     {
         // Admission precedes awaiting the global mutation gate. Queued commands retain the
         // room/phase generation they observed, rather than rebinding to a later match.
@@ -135,8 +136,8 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
         if (command is 53 or 54)
         {
             PvpCreateRequest? create = null; ushort target = 0;
-            var valid = command == 53 ? GameProtocolEngine.TryReadPvpCreate(body, out create)
-                : GameProtocolEngine.TryReadPvpEnter(body, out target);
+            var valid = command == 53 ? GameProtocolEngine.TryReadPvpCreate(body, out create, chapterTwo)
+                : GameProtocolEngine.TryReadPvpEnter(body, out target, chapterTwo);
             if (valid) { await EnterAsync(character, attachment, create, target, generation, ct); return; }
         }
         await RunAsync(async () =>
@@ -147,7 +148,7 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
             var seat = r is null ? -1 : Array.IndexOf(r.Seats, c);
             switch (command)
             {
-                case 55 when r is not null && GameProtocolEngine.TryReadPvpSeat(body, out var requestedSeat, out var state):
+                case 55 when r is not null && GameProtocolEngine.TryReadPvpSeat(body, out var requestedSeat, out var state, chapterTwo):
                     if (requestedSeat == seat && state == 254) { await LeaveCoreAsync(c, false); return; }
                     if (r.Match is not null) break;
                     if (requestedSeat == seat && r.Mode != 0 && state is 1 or 2)
@@ -158,7 +159,7 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                     }
                     if (seat != r.Host || r.Seats[requestedSeat] is not null || state is not (254 or 255)) break;
                     r.Closed[requestedSeat] = state == 254; PublishSeats(r); return;
-                case 56 when r is not null && r.Match is null && GameProtocolEngine.TryReadPvpReady(body, out var ready):
+                case 56 when r is not null && r.Match is null && GameProtocolEngine.TryReadPvpReady(body, out var ready, chapterTwo):
                     if (seat != r.Host || !ready)
                     { r.Ready[seat] = ready; BroadcastMembers(r, GameProtocolEngine.CreatePvpReadyState((byte)seat, ready)); return; }
                     var occupied = Enumerable.Range(0,8).Where(i=>r.Seats[i] is not null).ToArray();
@@ -192,7 +193,7 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                     logger.LogInformation("PvP match {Match} started: channel={Channel} room={Room} mode={Mode} players={Players}.",
                         match.Id,r.ChannelNumber,r.Id,r.Mode,players.Count);
                     return;
-                case 57 when r is not null && r.Match is null && seat == r.Host && GameProtocolEngine.TryReadPvpMode(body, out var mode):
+                case 57 when r is not null && r.Match is null && seat == r.Host && GameProtocolEngine.TryReadPvpMode(body, out var mode, chapterTwo):
                     if (r.Mode == mode) { BroadcastState(r); return; }
                     if (mode == 0) Array.Clear(r.Teams);
                     else if (r.Mode == 0)
@@ -201,9 +202,9 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                         for(int i=0;i<8;i++) if(r.Seats[i] is not null) { r.Teams[i]=team;team=(byte)(3-team); }
                     }
                     r.Mode=mode; Array.Clear(r.Requested); InvalidateReady(r); PublishSeats(r); BroadcastState(r); return;
-                case 62 when r is not null && r.Match is null && seat == r.Host && GameProtocolEngine.TryReadPvpMap(body, out var map) && maps.IsValidRequested(map,Math.Max(2,r.Seats.Count(s=>s is not null))):
+                case 62 when r is not null && r.Match is null && seat == r.Host && GameProtocolEngine.TryReadPvpMap(body, out var map, chapterTwo) && maps.IsValidRequested(map,Math.Max(2,r.Seats.Count(s=>s is not null))):
                     r.RequestedMap = map; BroadcastState(r); return;
-                case 58 when r?.Match is { Phase: Phase.Playing } m && GameProtocolEngine.TryReadPvpDeath(body, out var killerUid):
+                case 58 when r?.Match is { Phase: Phase.Playing } m && GameProtocolEngine.TryReadPvpDeath(body, out var killerUid, chapterTwo):
                     var victim = m.Players.Single(p=>p.Seat==seat);
                     if (!victim.Alive || victim.Forfeit || (m.Mode==2 && !m.Fighters.Contains(victim))) break;
                     var killer = m.Players.FirstOrDefault(p => p.Channel.A.Uid == killerUid && !p.Forfeit && p.Alive
@@ -212,24 +213,24 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                     victim.Alive = false; if(killer is not null) killer.Kills++;
                     BroadcastMembers(r, GameProtocolEngine.CreatePvpDeath((byte)seat, killer?.Seat ?? byte.MaxValue));
                     FinishDecision(m); return;
-                case 59 when r?.Match is { Phase: Phase.Playing, Mode: not 2 } m && seat == r.Host && GameProtocolEngine.TryReadPvpTimeout(body, out var hp)
+                case 59 when r?.Match is { Phase: Phase.Playing, Mode: not 2 } m && seat == r.Host && GameProtocolEngine.TryReadPvpTimeout(body, out var hp, chapterTwo)
                     && Elapsed(m.Started) >= TimeSpan.FromSeconds(180):
                     DecideTimeout(m,hp); BeginRanking(m); return;
-                case 122 when r is { Mode: 2 } && GameProtocolEngine.TryReadPvpAck(body)
+                case 122 when r is { Mode: 2 } && GameProtocolEngine.TryReadPvpAck(body, chapterTwo)
                     && (r.Match is null || r.Match is {Phase: Phase.Playing} live
                         && live.Players.Any(p=>p.Seat==seat && p.Alive && !p.Forfeit && !live.Fighters.Contains(p))):
                     r.Requested[seat]=!r.Requested[seat]; BroadcastMembers(r,GameProtocolEngine.CreatePvpFightRequest((byte)seat)); return;
-                case 61 when r?.Match is { Phase: Phase.Ranking } m && GameProtocolEngine.TryReadPvpRank(body, out var report):
+                case 61 when r?.Match is { Phase: Phase.Ranking } m && GameProtocolEngine.TryReadPvpRank(body, out var report, chapterTwo):
                     var participant = m.Players.Single(p=>p.Seat==seat);
                     if (participant.Forfeit || participant.Report is not null) return;
                     participant.Report = report; m.FirstResponse ??= clock.GetTimestamp();
                     if (m.Players.All(p => p.Forfeit || p.Report is not null)) await SettleAsync(m);
                     return;
-                case 60 when r?.Match is { Phase: Phase.Results } m && GameProtocolEngine.TryReadPvpAck(body):
+                case 60 when r?.Match is { Phase: Phase.Results } m && GameProtocolEngine.TryReadPvpAck(body, chapterTwo):
                     m.Players.Single(p=>p.Seat==seat).Ack = true; m.FirstResponse ??= clock.GetTimestamp();
                     if (Present(m).All(p => p.Ack)) Reset(m);
                     return;
-                case 120 when GameProtocolEngine.TryReadPvpHeartbeat(body): return;
+                case 120 when GameProtocolEngine.TryReadPvpHeartbeat(body, chapterTwo): return;
                 case 100: return; // Native peer result is not fabricated into a readiness signal.
             }
             Error(c, command);

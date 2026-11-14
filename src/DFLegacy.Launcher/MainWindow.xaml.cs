@@ -27,6 +27,11 @@ public partial class MainWindow : System.Windows.Window
 
     public MainWindow() : this(new LauncherAccountStore(Program.LauncherConfigPath)) { }
 
+    private static AccountServiceClient CreateAccountService(LauncherOptions options) =>
+        ChapterTwoClient.IsBundled && options.ChapterTwoServerHost is not null
+            ? new AccountServiceClient(ChapterTwoConnection.CreateAccountHttpClient(options.ResolveAccountServiceUrl()))
+            : new AccountServiceClient(options.ResolveAccountServiceUrl());
+
     internal MainWindow(LauncherAccountStore store, bool refreshStatus = true)
     {
         InitializeComponent();
@@ -34,12 +39,16 @@ public partial class MainWindow : System.Windows.Window
         _refreshStatus = refreshStatus;
         _options = _store.Load();
         // 账号服务地址 = 入口域名 + 账号服务端口（可用 AccountServiceUrl 覆盖），发布前只改端口。
-        _account = new AccountServiceClient(_options.ResolveAccountServiceUrl());
+        _account = CreateAccountService(_options);
 
         if (ChapterTwoClient.IsBundled)
         {
-            Title = "地下城与勇士 · 第二章本机测试";
+            Title = _options.ChapterTwoServerIpv4 is null && _options.ChapterTwoServerHost is null ? "地下城与勇士 · 第二章本机测试" : "地下城与勇士 · 第二章";
             AccountText.MaxLength = PasswordText.MaxLength = 16;
+        }
+
+        if (ChapterTwoClient.IsBundled && _options.ChapterTwoServerIpv4 is null && _options.ChapterTwoServerHost is null)
+        {
             var manager = new MenuItem { Header = "打开第二章服务管理器" };
             manager.Click += (_, _) => OpenUrl($"http://{ChapterTwoClient.Host}:48092/");
             MoreServicesButton.ContextMenu.Items.Clear();

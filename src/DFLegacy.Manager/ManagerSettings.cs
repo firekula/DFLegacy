@@ -64,4 +64,5 @@ public sealed record DeploymentConfig
 public sealed record ConfigurationSnapshot(DeploymentConfig Saved, DeploymentConfig Effective, string[] EnvironmentOverrides, bool Configured)
 {
     public bool ChapterTwoLocal { get; init; }
+    public bool ChapterTwoRemote { get; init; }
 }

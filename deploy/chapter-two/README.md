@@ -9,3 +9,17 @@
 包内附有 Windows x64 运行时和第二章适配 PVF。客户端和账号接口使用同一台电脑上的回环地址。默认游戏存档在 `data/game/state.json`，滚动日志在 `data/logs/manager.log`。管理器端口为 48092，游戏账号接口为 `http://127.0.0.2:48091/`。更换已有测试存档前请先停服并备份。
 
 测试商城前，在「服务配置」开启「本机测试充值」，保存后重启服务。可用管理页、启动器菜单或游戏商城的充值按钮打开本机页面。点券和黑钻发放到本机测试存档。
+
+## 第二章 Linux 容器
+
+使用第二章镜像的版本标签和单独的数据卷。准备配套的服务端 PVF，把它以只读方式挂载到 `/app/resources/Script.pvf`。镜像内提供管理器和游戏服务。
+
+```bash
+docker run -d --name dflegacy-chapter-two \
+  --network host --cap-drop ALL --security-opt no-new-privileges \
+  --mount type=volume,src=dflegacy-chapter-two-data,dst=/app/data \
+  --mount type=bind,src=/absolute/path/Script.pvf,dst=/app/resources/Script.pvf,readonly \
+  ghcr.io/firekula/dflegacy-chapter-two:<版本标签>
+```
+
+以上命令用于原生 Linux Docker。第二章服务和管理器监听 Linux 主机的 `127.0.0.2`。在主机上打开 `http://127.0.0.2:48092/`，从容器中的 `/app/data/management/setup-token.txt` 读取首次设置凭据，创建管理账号后启动游戏服务。使用本机配套的第二章测试客户端连接。可用 `python deploy/chapter-two/smoke-container.py 镜像标签 服务端PVF路径` 在单独的容器和临时数据卷中复测。

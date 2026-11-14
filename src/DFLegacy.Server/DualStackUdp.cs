@@ -10,7 +10,7 @@ internal static class DualStackUdp
     /// <para>
     /// <see cref="UdpClient"/> binds inside its constructor and never enables
     /// dual-stack, so an <c>IPAddress.IPv6Any</c> ("::") bind would accept IPv6
-    /// peers only — unlike <see cref="TcpListener"/> and Kestrel, which do accept
+    /// peers only. Kestrel and our explicitly dual-mode TCP listeners accept
     /// IPv4-mapped peers on the same address. That asymmetry makes a "::" host
     /// silently unreachable for IPv4 clients (and for Docker's UDP port
     /// forwarding). Create the socket unbound, turn dual-stack on, then bind.

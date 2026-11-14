@@ -74,7 +74,8 @@ internal static class BootstrapUpdateClient
     internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token)
         =>await LaunchAndConfirmAsync(start,token,null).ConfigureAwait(false);
 
-    internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token,Action? confirmReady)
+    internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token,Action? confirmReady,
+        TimeSpan? readinessTimeout=null)
     {
         var eventName="Local\\DFLegacy.Startup."+Guid.NewGuid().ToString("N");
         using var ready=new EventWaitHandle(false,EventResetMode.ManualReset,eventName);
@@ -90,7 +91,8 @@ internal static class BootstrapUpdateClient
                 return;
             }
             var deadline=Stopwatch.StartNew();
-            while(deadline.Elapsed<TimeSpan.FromSeconds(30))
+            var limit=readinessTimeout??TimeSpan.FromSeconds(30);
+            while(deadline.Elapsed<limit)
             {
                 token.ThrowIfCancellationRequested();
                 // Signal is sent only after validated UI creation. An error dialog
@@ -130,7 +132,7 @@ internal static class BootstrapUpdateClient
     }
     internal static async Task<int> RunEntryAsync(string[] args,Core.IReleaseProvider? provider=null,Func<ProcessStartInfo,CancellationToken,Task>? launch=null)
     {
-        Views.UpdateInstallWindow? window=null;using var cancel=new CancellationTokenSource();
+        Views.UpdateOperationWindow? window=null;using var cancel=new CancellationTokenSource();
         try
         {
             var request=ParseArguments(args);
@@ -141,25 +143,20 @@ internal static class BootstrapUpdateClient
                 if(quiet)return;
                 await Application.Current.Dispatcher.InvokeAsync(()=>
                 {
-                    window=new Views.UpdateInstallWindow{Title="验证与修复客户端"};
-                    window.CancelRequested+=()=>cancel.Cancel();window.Show();
+                    window=new Views.UpdateOperationWindow("验证与修复客户端","正在检查客户端资源…",cancel.Cancel);
                 });
             }
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
-                var message=UpdateProgressText.Format(p);
-                if(quiet){Console.WriteLine(message);return;}
-                if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
-                else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,
-                    Progress:new UpdateProgress(p.BytesReceived,p.TotalBytes,p.BytesPerSecond,p.Phase,p.Path,p.CompletedFiles,p.TotalFiles,message)));
+                if(quiet) Console.WriteLine(UpdateProgressText.Format(p));
+                else window?.Report(p);
             });
             async Task<bool> Confirm(IReadOnlyList<FileLockOwner> owners,CancellationToken token)
             {
                 token.ThrowIfCancellationRequested();
                 if(quiet)return false;
-                return await Application.Current.Dispatcher.InvokeAsync(()=>MessageBox.Show(window,
-                    "以下进程占用客户端文件：\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+"\n是否关闭这些进程并继续修复？请先保存其他工作。",
-                    "修复需要释放文件",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
+                return await Application.Current.Dispatcher.InvokeAsync(()=>ClassicMessage.Confirm(window?.VisibleWindow,
+                    "修复需要释放文件\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+"\n是否关闭这些进程并继续修复？请先保存其他工作。"));
             }
             var outcome=await RunAsync(request,provider,progress:progress,confirmClose:Confirm,launch:launch,token:cancel.Token,repairRequired:BeginRepair);
             if(outcome.Offline&&quiet)Console.WriteLine(outcome.Message);
@@ -177,6 +174,6 @@ internal static class BootstrapUpdateClient
             // known-good updater. Do not block fallback with another modal here.
             return 1;
         }
-        finally{window?.Finish();}
+        finally{window?.Dispose();}
     }
 }

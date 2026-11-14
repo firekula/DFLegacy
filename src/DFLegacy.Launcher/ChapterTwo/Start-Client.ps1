@@ -6,6 +6,8 @@ param(
     [int]$Height = 480,
     [ValidateSet('12','14','16','18')][int]$DialogueFontSize = 12,
     [ValidateRange(0,4)][int]$DialogueLineGap = 3,
+    [string]$RemoteIpv4,
+    [string]$RelayIpv4,
     [switch]$DetailedDiagnostics
 )
 $ErrorActionPreference = 'Stop'
@@ -13,7 +15,21 @@ $trace = Join-Path $PSScriptRoot 'dnf_startup_trace.exe'
 $logs = Join-Path $Game 'Logs\DFLegacy'
 $run = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $credentials = [Console]::In.ReadLine() | ConvertFrom-Json
-$arguments = '99?127.0.0.2?42311?{0}?{1}?0?0?0?0?0?0?0?0' -f $credentials.Account, $credentials.Password
+$connectHost = '127.0.0.2'
+if ($RelayIpv4) {
+    if ($RemoteIpv4 -or $RelayIpv4 -cnotmatch '\A127\.73\.(?:[1-9][0-9]{0,2})\.(?:[1-9][0-9]{0,2})\z') { throw 'Invalid Chapter Two relay mode.' }
+    $relayAddress = $null
+    if (![Net.IPAddress]::TryParse($RelayIpv4, [ref]$relayAddress) -or $relayAddress.ToString() -cne $RelayIpv4) { throw 'Invalid Chapter Two relay IPv4.' }
+    $connectHost = '127.0.0.1'
+}
+if ($RemoteIpv4) {
+    $address = $null
+    if (![Net.IPAddress]::TryParse($RemoteIpv4, [ref]$address) -or $address.AddressFamily -ne 'InterNetwork' -or
+        $address.ToString() -cne $RemoteIpv4 -or [Net.IPAddress]::IsLoopback($address) -or
+        $address.GetAddressBytes()[0] -eq 0 -or $address.GetAddressBytes()[0] -ge 224) { throw 'Invalid Chapter Two remote IPv4.' }
+    $connectHost = $RemoteIpv4
+}
+$arguments = '99?{0}?42311?{1}?{2}?0?0?0?0?0?0?0?0' -f $connectHost, $credentials.Account, $credentials.Password
 $credentials = $null
 
 function Initialize-ChapterTwoLoginInfo([string]$GameDirectory) {
@@ -152,6 +168,8 @@ try {
     foreach ($name in $settings.Keys) {
         [Environment]::SetEnvironmentVariable($name, $settings[$name], 'Process')
     }
+    if ($RemoteIpv4) { $env:DFL_S1C2_REMOTE_IPV4 = $RemoteIpv4 }
+    if ($RelayIpv4) { $env:DFL_S1C2_LOCAL_RELAY_IPV4 = $RelayIpv4 }
     if ($DetailedDiagnostics) { $env:DFL_S1C2_DETAILED_DIAGNOSTICS = '1' }
     $env:DFL_S1C2_DIALOGUE_SIZE = [string]$DialogueFontSize
     $env:DFL_S1C2_DIALOGUE_GAP = [string]$DialogueLineGap

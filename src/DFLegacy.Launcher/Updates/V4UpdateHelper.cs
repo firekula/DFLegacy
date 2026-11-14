@@ -58,8 +58,8 @@ public sealed partial class UpdateInstaller
             if(pending||chapterPending) throw new InvalidDataException("存在未完成安装，必须先恢复。");
             if(install.ChapterUpgradeSource!=null)
             {
-                RequireLocalChapterSource(install.ChapterUpgradeSource);
                 var installed=new Core.InstallationStore(plan.Target).ReadInstalled()??throw new InvalidDataException("缺少第一章桥接安装记录。");
+                Core.ChapterTransitionSource.RequireUpgrade(installed.Release.Source,install.ChapterUpgradeSource);
                 if(ChapterUpdatePolicy.Validate(plan.Target,installed.Release)?.Chapter!=Core.ClientChapterIdentity.ChapterOne)
                     throw new InvalidDataException("跨章更新需要已验证的第一章桥接安装。");
                 if(IsFixedLayout(installed.Release.Manifest)) BootstrapLayout.RequireStableEntry(plan.Target,staged.Release.Manifest);
@@ -69,10 +69,11 @@ public sealed partial class UpdateInstaller
         }
         else if(install.ChapterRollbackSource is {} source)
         {
-            RequireLocalChapterSource(source);
             if(pending||chapterPending) throw new InvalidDataException("存在未完成安装，必须先恢复。");
             var installed=new Core.InstallationStore(plan.Target).ReadInstalled()??throw new InvalidDataException("缺少第二章安装记录。");
             installed.Release.Validate(source);
+            if(source.Provider!="local"&&!Core.ChapterTransitionSource.IsOfficialChapterTwo(source))
+                throw new InvalidDataException("第二章安装来源不支持跨章回退。");
             if(V4UpdateSession.ConfigurationName(installed)!="launcher.chapter2.json")
                 throw new InvalidDataException("当前安装不是可回退的第二章。");
         }
@@ -88,12 +89,6 @@ public sealed partial class UpdateInstaller
 
     private static bool IsFixedLayout(Core.ClientManifest manifest)=>manifest.Files.Any(file=>file.Path==BootstrapLayout.AppName);
 
-    private static void RequireLocalChapterSource(Core.ReleaseSource source)
-    {
-        source.Validate();
-        if(source.Provider!="local") throw new InvalidDataException("本轮跨章更新只接受明确选择的本机验收来源。");
-    }
-
     private static UpdateApplyResult ApplyV4(UpdatePlan plan,IProgress<UpdateInstallProgress>? progress)
     {
         Program.LogClientPath=Path.Combine(plan.Target,"DNF.exe");
@@ -104,19 +99,13 @@ public sealed partial class UpdateInstaller
         {
             using var maintenance=Core.ClientGameLease.EnterMaintenance(plan.Target);
             ValidateV4Inputs(plan);
-            if(install.ChapterUpgradeSource!=null||install.ChapterRollbackSource!=null||install.ChapterRecovery)
-            {
-                var game=Core.PathPolicy.Resolve(plan.Target,"DNF.exe");
-                if(FileLockOwners.Find([game]).Count!=0)
-                    throw new IOException("当前安装目录的游戏仍在运行，请退出后重试。");
-            }
             if(install.ChapterUpgradeSource is {} upgrade)
                 Core.InstallTransaction.ApplyChapterUpgrade(plan.Target,install.Staged!,upgrade,true,bridge,
                     ChapterDisplayMigration.Read(plan.Target),deferReadiness:true);
             else if(install.ChapterRollbackSource is {} rollback)
                 Core.ChapterTransition.Rollback(plan.Target,rollback,bridge);
             else if(install.ChapterRecovery)
-                Core.ChapterTransition.Recover(plan.Target);
+                Core.ChapterTransition.Recover(plan.Target,bridge);
             else if(install.Staged is {} staged)
                 Core.InstallTransaction.Apply(plan.Target,staged,bridge);
             else Core.InstallTransaction.Recover(plan.Target,bridge);
@@ -128,6 +117,7 @@ public sealed partial class UpdateInstaller
                 try
                 {
                     var release=install.Staged!.Release;
+                    UpdateInstallProgress.Report(progress,1,"正在验证第二章启动器，请保持窗口打开…");
                     ConfirmChapterReady(plan.Target,release);
                     version=release.Manifest.Version;
                     restarted=true;
@@ -169,14 +159,20 @@ public sealed partial class UpdateInstaller
         { UseShellExecute=false,WorkingDirectory=root };
         start.Environment[ChapterReadyProbeVariable]=release.ManifestSha256;
         if(fixedLayout) { start.ArgumentList.Add("--bootstrap-verified"); start.ArgumentList.Add("--"); }
+        var elapsed=Stopwatch.StartNew();
+        Program.WriteLauncherLog("Chapter Two startup check began.");
         BootstrapUpdateClient.LaunchAndConfirmAsync(start,CancellationToken.None,
-            ()=>Core.InstallTransaction.ConfirmChapterReady(root,release.ManifestSha256)).GetAwaiter().GetResult();
+            ()=>Core.InstallTransaction.ConfirmChapterReady(root,release.ManifestSha256),
+            readinessTimeout:TimeSpan.FromSeconds(90)).GetAwaiter().GetResult();
+        Program.WriteLauncherLog($"Chapter Two startup check passed in {elapsed.Elapsed.TotalSeconds:F1}s.");
     }
 
     private sealed class V4InstallProgress(IProgress<UpdateInstallProgress>? progress):IProgress<Core.UpdateProgress>
     {
-        public void Report(Core.UpdateProgress p)=>UpdateInstallProgress.Report(progress,
-            p.TotalFiles>0?.85+.14*Math.Clamp((double)p.CompletedFiles/p.TotalFiles,0,1):.85,
-            UpdateProgressText.Format(p));
+        public void Report(Core.UpdateProgress p)
+        {
+            try { progress?.Report(UpdateInstallProgress.FromCore(p)); }
+            catch { /* Presentation cannot change a transaction's outcome. */ }
+        }
     }
 }

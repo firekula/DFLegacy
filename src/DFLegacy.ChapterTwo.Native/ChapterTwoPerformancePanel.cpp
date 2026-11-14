@@ -2,6 +2,9 @@
 #define NOMINMAX
 #include <windows.h>
 #include <psapi.h>
+#include <objidl.h>
+#include <gdiplus.h>
+#include <windowsx.h>
 
 #include <atomic>
 #include <cmath>
@@ -11,15 +14,17 @@
 #include "ChapterTwoPerformanceLog.h"
 #include "ChapterTwoType16Audio.h"
 #include "ChapterTwoPanelCursor.h"
+#include "PerformancePanelSkinResources.h"
 
 namespace
 {
     using namespace dfl::chapter_two::performance;
     constexpr wchar_t WindowClass[] = L"DFLegacy.ChapterTwo.Performance";
-    constexpr COLORREF Background = RGB(16, 21, 29), Surface = RGB(24, 32, 44);
-    constexpr COLORREF Text = RGB(230, 239, 250), Muted = RGB(161, 178, 199), Grid = RGB(52, 67, 85);
-    constexpr COLORREF Blue = RGB(73, 182, 250), Gold = RGB(255, 195, 100), Spike = RGB(255, 123, 116);
+    constexpr COLORREF Background = RGB(20, 22, 17), Surface = RGB(36, 39, 30);
+    constexpr COLORREF Text = RGB(244, 233, 202), Muted = RGB(215, 205, 174), Grid = RGB(98, 86, 56);
+    constexpr COLORREF Blue = RGB(112, 201, 239), Gold = RGB(255, 216, 131), Spike = RGB(255, 123, 116);
     constexpr int PanelWidth = 708, PanelHeight = 552;
+    constexpr int HeaderHeight = 57, ResizeEdge = 7, CloseButtonId = 101;
     constexpr std::size_t MemoryCapacity = 120;
     constexpr std::size_t SlowCapacity = 1024;
     constexpr ULONGLONG LogPeriodMs = 2000;
@@ -45,6 +50,60 @@ namespace
     bool Visible = false;
     ULONGLONG NextPaint = 0, NextMemory = 0;
     HFONT BodyFont = nullptr, HeadingFont = nullptr;
+    WNDPROC DefaultCloseButtonProc = nullptr;
+
+    // Keep the resource stream alive until its GDI+ bitmap is destroyed.
+    struct SkinImage
+    {
+        IStream* stream = nullptr;
+        Gdiplus::Bitmap* image = nullptr;
+        ~SkinImage() { Reset(); }
+        void Reset() noexcept
+        {
+            delete image;
+            image = nullptr;
+            if (stream) stream->Release();
+            stream = nullptr;
+        }
+        void Load(HINSTANCE instance, WORD id) noexcept
+        {
+            const auto resource = FindResourceW(instance, MAKEINTRESOURCEW(id), MAKEINTRESOURCEW(10)); // RT_RCDATA
+            if (!resource) return;
+            const auto size = SizeofResource(instance, resource);
+            const auto bytes = LockResource(LoadResource(instance, resource));
+            if (!size || !bytes || FAILED(CreateStreamOnHGlobal(nullptr, TRUE, &stream))) return;
+            LARGE_INTEGER zero{};
+            if (SUCCEEDED(stream->Write(bytes, size, nullptr)) && SUCCEEDED(stream->Seek(zero, STREAM_SEEK_SET, nullptr)))
+                image = Gdiplus::Bitmap::FromStream(stream);
+            if (!image || image->GetLastStatus() != Gdiplus::Ok) Reset();
+        }
+    };
+
+    struct PanelArtwork
+    {
+        ULONG_PTR token = 0;
+        SkinImage frame, crest, close, closeDown;
+        void Load(HINSTANCE instance) noexcept
+        {
+            if (token) return;
+            Gdiplus::GdiplusStartupInput input;
+            if (Gdiplus::GdiplusStartup(&token, &input, nullptr) != Gdiplus::Ok) return;
+            frame.Load(instance, DFL_PERF_PANEL_FRAME);
+            crest.Load(instance, DFL_PERF_PANEL_CREST);
+            close.Load(instance, DFL_PERF_PANEL_CLOSE);
+            closeDown.Load(instance, DFL_PERF_PANEL_CLOSE_DOWN);
+        }
+        void Reset() noexcept
+        {
+            frame.Reset();
+            crest.Reset();
+            close.Reset();
+            closeDown.Reset();
+            if (token) Gdiplus::GdiplusShutdown(token);
+            token = 0;
+        }
+    };
+    PanelArtwork Artwork;
 
     std::int64_t TickFrequency() noexcept
     {
@@ -64,10 +123,78 @@ namespace
         TextOutW(dc, x, y, value, static_cast<int>(std::wcslen(value)));
     }
 
+    void TextIn(HDC dc, int left, int top, int right, const wchar_t* value, COLORREF color, UINT alignment = DT_LEFT) noexcept
+    {
+        if (right <= left) return;
+        RECT line{left, top, right, top + 19};
+        SetTextColor(dc, color);
+        DrawTextW(dc, value, -1, &line, alignment | DT_SINGLELINE | DT_NOPREFIX | DT_END_ELLIPSIS);
+    }
+
+    int TextWidth(HDC dc, const wchar_t* value) noexcept
+    {
+        SIZE size{};
+        GetTextExtentPoint32W(dc, value, static_cast<int>(std::wcslen(value)), &size);
+        return size.cx;
+    }
+
     void Fill(HDC dc, const RECT& area, COLORREF color) noexcept
     {
         SetDCBrushColor(dc, color);
         FillRect(dc, &area, static_cast<HBRUSH>(GetStockObject(DC_BRUSH)));
+    }
+
+    void InsetSurface(HDC dc, const RECT& area) noexcept
+    {
+        const auto oldBrush = SelectObject(dc, GetStockObject(DC_BRUSH));
+        const auto oldPen = SelectObject(dc, GetStockObject(DC_PEN));
+        SetDCBrushColor(dc, Surface);
+        SetDCPenColor(dc, Grid);
+        RoundRect(dc, area.left, area.top, area.right, area.bottom, 16, 16);
+        SelectObject(dc, oldPen);
+        SelectObject(dc, oldBrush);
+    }
+
+    void PaintArtwork(HDC dc, int width, int height) noexcept
+    {
+        if (!Artwork.token) return;
+        Gdiplus::Graphics graphics(dc);
+        graphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf);
+        if (auto* frame = Artwork.frame.image)
+        {
+            // Stretch the strips between corners, keeping the native border and corner sizes.
+            constexpr int edge = 12;
+            const auto w = static_cast<int>(frame->GetWidth()), h = static_cast<int>(frame->GetHeight());
+            const int sx[]{0, edge, w - edge, w}, sy[]{0, edge, h - edge, h};
+            const int dx[]{0, edge, width - edge, width}, dy[]{0, edge, height - edge, height};
+            for (int row = 0; row < 3; ++row)
+                for (int column = 0; column < 3; ++column)
+                    graphics.DrawImage(frame, Gdiplus::Rect(dx[column], dy[row], dx[column + 1] - dx[column], dy[row + 1] - dy[row]),
+                        sx[column], sy[row], sx[column + 1] - sx[column], sy[row + 1] - sy[row], Gdiplus::UnitPixel);
+        }
+        if (auto* crest = Artwork.crest.image)
+        {
+            const auto w = static_cast<int>(crest->GetWidth()), h = static_cast<int>(crest->GetHeight());
+            graphics.DrawImage(crest, (width - w) / 2, 5, w, h);
+        }
+    }
+
+    void PaintCloseButton(const DRAWITEMSTRUCT& item) noexcept
+    {
+        auto* image = ((item.itemState & ODS_SELECTED) ? Artwork.closeDown : Artwork.close).image;
+        Fill(item.hDC, item.rcItem, Background);
+        if (image)
+        {
+            Gdiplus::Graphics graphics(item.hDC);
+            graphics.DrawImage(image, item.rcItem.left, item.rcItem.top,
+                item.rcItem.right - item.rcItem.left, item.rcItem.bottom - item.rcItem.top);
+        }
+        else
+        {
+            SetBkMode(item.hDC, TRANSPARENT);
+            Label(item.hDC, item.rcItem.left + 6, item.rcItem.top + 3, L"×", Gold);
+        }
     }
 
     void Guide(HDC dc, const RECT& plot, LONG y, const wchar_t* label, COLORREF color) noexcept
@@ -114,39 +241,54 @@ namespace
         ReleaseSRWLockShared(&FrameLock);
         const auto stats = Summarize(frames);
 
-        const int width = area.right, height = area.bottom;
-        if (width < 300 || height < 340) return;
-        const int split = height * 58 / 100;
+        const int width = area.right, height = area.bottom - HeaderHeight;
         Fill(dc, area, Background);
-        Fill(dc, { 12, 11, width - 12, split - 7 }, Surface);
-        Fill(dc, { 12, split + 3, width - 12, height - 54 }, Surface);
+        if (width < 300 || height < 340) return;
+        PaintArtwork(dc, width, area.bottom);
         SetBkMode(dc, TRANSPARENT);
         const auto oldFont = SelectObject(dc, HeadingFont);
+        Label(dc, 25, 22, L"性能面板", Gold);
+        POINT origin{};
+        SetViewportOrgEx(dc, 0, HeaderHeight, &origin);
+        const int footerTop = height - 68;
+        const int memoryBottom = footerTop - 8;
+        const int frameBottom = (memoryBottom - 8) * 57 / 100;
+        const int memoryTop = frameBottom + 8;
+        const int contentLeft = 25, contentRight = width - 25;
+        InsetSurface(dc, { 12, 0, width - 12, frameBottom });
+        InsetSurface(dc, { 12, memoryTop, width - 12, memoryBottom });
+        InsetSurface(dc, { 12, footerTop, width - 12, height - 12 });
         const auto oldPen = SelectObject(dc, GetStockObject(DC_PEN));
-        Label(dc, 25, 21, L"帧时间");
-        Label(dc, 25, split + 13, L"进程内存");
+        Label(dc, contentLeft, 14, L"帧时间", Gold);
+        Label(dc, contentLeft, memoryTop + 11, L"进程内存", Gold);
         SelectObject(dc, BodyFont);
         const bool capturing = CaptureEpoch.load(std::memory_order_relaxed) % 2 != 0;
-        Label(dc, width - 203, 22, capturing ? L"正在记录前台游戏" : L"帧采样已暂停 · 游戏在后台", capturing ? Blue : Muted);
+        TextIn(dc, 150, 17, contentRight, capturing ? L"正在记录前台游戏" : L"帧采样已暂停 · 游戏在后台",
+            capturing ? Blue : Muted, DT_RIGHT);
 
         const wchar_t* captions[]{ L"FPS", L"平均", L"最快", L"P95", L"P99", L"最慢", L"慢帧 ≥33.3 ms" };
         const double values[]{ stats.fps, stats.average, stats.minimum, stats.p95, stats.p99,
             stats.maximum, static_cast<double>(stats.slow) };
         wchar_t label[96]{};
+        // Leave the last metric room for its full unit label on narrow windows.
+        constexpr int regularCount = static_cast<int>(std::size(captions)) - 1;
+        const int slowLeft = contentRight - TextWidth(dc, captions[regularCount]);
         for (int i = 0; i < static_cast<int>(std::size(captions)); ++i)
         {
-            const int x = 25 + i * (width - 47) / static_cast<int>(std::size(captions));
-            Label(dc, x, 54, captions[i], Muted);
-            if (!frames.Size()) Label(dc, x, 73, L"—");
+            const int x = contentLeft + i * (slowLeft - contentLeft) / regularCount;
+            const int right = i == regularCount ? contentRight :
+                contentLeft + (i + 1) * (slowLeft - contentLeft) / regularCount - 5;
+            TextIn(dc, x, 54, right, captions[i], Muted);
+            if (!frames.Size()) TextIn(dc, x, 73, right, L"—", Text);
             else
             {
                 const auto format = i == 0 || i == 6 ? L"%.0f" : L"%.2f ms";
                 swprintf_s(label, format, values[i]);
-                Label(dc, x, 73, label, i == 6 && stats.slow ? Spike : Text);
+                TextIn(dc, x, 73, right, label, i == regularCount && stats.slow ? Spike : Text);
             }
         }
 
-        const RECT framePlot{ 100, 109, width - 26, split - 36 };
+        const RECT framePlot{ 100, 103, contentRight, frameBottom - 27 };
         const float frameCeiling = std::max(40.0f, std::ceil(stats.maximum / 10.0f) * 10.0f);
         Fill(dc, framePlot, Background);
         swprintf_s(label, L"%.0f ms", static_cast<double>(frameCeiling));
@@ -159,9 +301,12 @@ namespace
             [&](std::size_t i) { return frames[i]; }, Blue, true);
         swprintf_s(label, L"最近 %zu / %zu 帧", frames.Size(), FrameCapacity);
         Label(dc, framePlot.left, framePlot.bottom + 5, label, Muted);
-        Label(dc, framePlot.right - 55, framePlot.bottom + 5, L"最新 →", Muted);
+        TextIn(dc, framePlot.right - 80, framePlot.bottom + 5, framePlot.right, L"最新 →", Muted, DT_RIGHT);
 
         const auto memoryCount = Memory.Size();
+        wchar_t memoryCaption[64]{};
+        swprintf_s(memoryCaption, L"%zu / %zu 个样本 · 每秒", memoryCount, MemoryCapacity);
+        const int memoryCaptionLeft = contentRight - TextWidth(dc, memoryCaption);
         float minMiB = 0, maxMiB = 64;
         if (memoryCount)
         {
@@ -174,16 +319,15 @@ namespace
                 maxMiB = std::max({ maxMiB, Memory[i].privateMiB, Memory[i].workingSetMiB });
             }
             swprintf_s(label, L"私有提交  %.1f MiB", static_cast<double>(latest.privateMiB));
-            Label(dc, 25, split + 41, label, Blue);
+            TextIn(dc, contentLeft, memoryTop + 39, 207, label, Blue);
             swprintf_s(label, L"工作集  %.1f MiB", static_cast<double>(latest.workingSetMiB));
-            Label(dc, 218, split + 41, label, Gold);
+            TextIn(dc, 218, memoryTop + 39, memoryCaptionLeft - 8, label, Gold);
         }
-        else Label(dc, 25, split + 41, L"等待内存样本", Muted);
-        swprintf_s(label, L"%zu / %zu 个样本 · 每秒", memoryCount, MemoryCapacity);
-        Label(dc, width - 203, split + 41, label, Muted);
+        else Label(dc, contentLeft, memoryTop + 39, L"等待内存样本", Muted);
+        TextIn(dc, memoryCaptionLeft, memoryTop + 39, contentRight, memoryCaption, Muted, DT_RIGHT);
         minMiB = std::floor(minMiB / 64.0f) * 64.0f;
         maxMiB = std::max(minMiB + 64.0f, std::ceil(maxMiB / 64.0f) * 64.0f);
-        const RECT memoryPlot{ 100, split + 68, width - 26, height - 69 };
+        const RECT memoryPlot{ 100, memoryTop + 63, contentRight, memoryBottom - 12 };
         Fill(dc, memoryPlot, Background);
         swprintf_s(label, L"%.0f MiB", static_cast<double>(maxMiB));
         Guide(dc, memoryPlot, memoryPlot.top, label, Grid);
@@ -193,12 +337,20 @@ namespace
             [](std::size_t i) { return Memory[i].privateMiB; }, Blue);
         Trace(dc, memoryPlot, memoryCount, MemoryCapacity, minMiB, maxMiB,
             [](std::size_t i) { return Memory[i].workingSetMiB; }, Gold);
-        swprintf_s(label, L"全程 %llu 帧   ·   ≥50 ms %llu 帧   ·   ≥90 ms %llu 帧   ·   私有提交峰值 %.1f MiB",
-            Total.frames.duration.count, Total.frames.slow50, Total.frames.slow90, Total.privateMiB.maximum);
-        Label(dc, 25, height - 47, label);
-        Label(dc, 25, height - 24, L"Ctrl+F10 显示或隐藏   ·   每 2 秒保存分段和累计统计", Muted);
+        const int footerColumn = (contentRight - contentLeft) / 3;
+        swprintf_s(label, L"全程 %llu 帧", Total.frames.duration.count);
+        TextIn(dc, contentLeft, footerTop + 9, contentLeft + footerColumn - 7, label, Text);
+        swprintf_s(label, L"≥50 ms %llu 帧", Total.frames.slow50);
+        TextIn(dc, contentLeft + footerColumn, footerTop + 9, contentLeft + 2 * footerColumn - 7, label, Text);
+        swprintf_s(label, L"≥90 ms %llu 帧", Total.frames.slow90);
+        TextIn(dc, contentLeft + 2 * footerColumn, footerTop + 9, contentRight, label, Text);
+        swprintf_s(label, L"私有提交峰值 %.1f MiB", Total.privateMiB.maximum);
+        TextIn(dc, contentLeft, footerTop + 31, contentLeft + 2 * footerColumn - 98, label, Text);
+        TextIn(dc, contentLeft + 2 * footerColumn - 92, footerTop + 31, contentRight,
+            L"Ctrl+F10 显示或隐藏 · 每 2 秒保存统计", Muted, DT_RIGHT);
         SelectObject(dc, oldPen);
         SelectObject(dc, oldFont);
+        SetViewportOrgEx(dc, origin.x, origin.y, nullptr);
     }
 
     void HidePanel() noexcept
@@ -208,10 +360,89 @@ namespace
         ShowWindow(Panel, SW_HIDE);
     }
 
+    bool InsideCloseButton(HWND window, LPARAM position) noexcept
+    {
+        RECT bounds{};
+        GetClientRect(window, &bounds);
+        return PtInRect(&bounds, {GET_X_LPARAM(position), GET_Y_LPARAM(position)}) != FALSE;
+    }
+
+    LRESULT CALLBACK CloseButtonProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+    {
+        // The stock button takes keyboard focus on mouse-down, even under a
+        // no-activate owner. Handle the pointer gesture without changing focus.
+        switch (message)
+        {
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
+            SetCapture(window);
+            SendMessageW(window, BM_SETSTATE, TRUE, 0);
+            return 0;
+        case WM_MOUSEMOVE:
+            if (GetCapture() == window)
+                SendMessageW(window, BM_SETSTATE, InsideCloseButton(window, lParam), 0);
+            break;
+        case WM_LBUTTONUP:
+            if (GetCapture() == window)
+            {
+                const auto clicked = InsideCloseButton(window, lParam);
+                ReleaseCapture();
+                if (clicked)
+                    SendMessageW(GetParent(window), WM_COMMAND, MAKEWPARAM(CloseButtonId, BN_CLICKED), reinterpret_cast<LPARAM>(window));
+            }
+            return 0;
+        case WM_CAPTURECHANGED:
+            SendMessageW(window, BM_SETSTATE, FALSE, 0);
+            break;
+        }
+        return CallWindowProcW(DefaultCloseButtonProc, window, message, wParam, lParam);
+    }
+
     LRESULT CALLBACK PanelProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept
     {
         switch (message)
         {
+        case WM_NCCALCSIZE:
+            return 0; // Paint the complete frame while keeping native resize hit tests.
+        case WM_NCHITTEST:
+        {
+            RECT bounds{};
+            GetWindowRect(window, &bounds);
+            const auto x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
+            const bool left = x < bounds.left + ResizeEdge, right = x >= bounds.right - ResizeEdge;
+            if (y < bounds.top + ResizeEdge) return left ? HTTOPLEFT : right ? HTTOPRIGHT : HTTOP;
+            if (y >= bounds.bottom - ResizeEdge) return left ? HTBOTTOMLEFT : right ? HTBOTTOMRIGHT : HTBOTTOM;
+            if (left) return HTLEFT;
+            if (right) return HTRIGHT;
+            return HTCLIENT;
+        }
+        case WM_CREATE:
+        {
+            const auto creation = reinterpret_cast<const CREATESTRUCTW*>(lParam);
+            const auto close = CreateWindowExW(0, L"BUTTON", L"关闭性能面板", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                0, 20, 25, 23, window, reinterpret_cast<HMENU>(CloseButtonId), creation->hInstance, nullptr);
+            if (!close) return -1;
+            DefaultCloseButtonProc = reinterpret_cast<WNDPROC>(
+                SetWindowLongPtrW(close, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(CloseButtonProc)));
+            return DefaultCloseButtonProc ? 0 : -1;
+        }
+        case WM_SIZE:
+            if (const auto close = GetDlgItem(window, CloseButtonId))
+                SetWindowPos(close, nullptr, LOWORD(lParam) - 43, 20, 25, 23, SWP_NOZORDER | SWP_NOACTIVATE);
+            InvalidateRect(window, nullptr, FALSE);
+            return 0;
+        case WM_DRAWITEM:
+            if (wParam == CloseButtonId)
+            {
+                PaintCloseButton(*reinterpret_cast<const DRAWITEMSTRUCT*>(lParam));
+                return TRUE;
+            }
+            break;
+        case WM_COMMAND:
+            if (LOWORD(wParam) == CloseButtonId && HIWORD(wParam) == BN_CLICKED) HidePanel();
+            return 0;
+        case WM_MOUSEACTIVATE:
+            return MA_NOACTIVATE;
         case WM_SETCURSOR:
             PanelPointer.Update(window,Visible);
             ::SetCursor(dfl::chapter_two::PanelCursor::Shape(LOWORD(lParam)));
@@ -279,8 +510,9 @@ namespace
         GameWindow = game;
         if (!Panel)
         {
+            Artwork.Load(instance);
             Panel = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, WindowClass, L"第二章 Debug · 性能面板",
-                WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME,
+                WS_POPUP | WS_THICKFRAME | WS_CLIPCHILDREN,
                 CW_USEDEFAULT, CW_USEDEFAULT, PanelWidth, PanelHeight, game, nullptr, instance, nullptr);
             if (!Panel)
             {
@@ -352,9 +584,9 @@ namespace
         const auto timer = SetTimer(nullptr, 0, 40, nullptr);
         if (!timer) return 1;
         BodyFont = CreateFontW(-14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 0, 0,
-            CLEARTYPE_QUALITY, 0, L"Microsoft YaHei UI");
+            NONANTIALIASED_QUALITY, 0, L"SimSun");
         HeadingFont = CreateFontW(-18, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, 0, 0,
-            CLEARTYPE_QUALITY, 0, L"Microsoft YaHei UI");
+            NONANTIALIASED_QUALITY, 0, L"SimSun");
         _configthreadlocale(_ENABLE_PER_THREAD_LOCALE);
         std::setlocale(LC_NUMERIC, "C");
         CsvLog intervalLog(L"DFL_S1C2_PERF_INTERVAL_HANDLE"), totalLog(L"DFL_S1C2_PERF_TOTAL_HANDLE");
@@ -405,6 +637,7 @@ namespace
         SetCapture(false);
         PanelPointer.Release();
         if (Panel) DestroyWindow(Panel);
+        Artwork.Reset();
         DeleteObject(HeadingFont);
         DeleteObject(BodyFont);
         return 0;

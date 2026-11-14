@@ -8,6 +8,20 @@ namespace DFLegacy.Launcher.Updates;
 internal sealed record FileLockOwner(int ProcessId,long StartFileTime,string Name,bool CanTerminate);
 internal static class FileLockOwners
 {
+    internal static IReadOnlyList<string> FindUnreadableFiles(IEnumerable<string> paths, CancellationToken token)
+    {
+        var blocked = new List<string>();
+        foreach (var path in paths)
+        {
+            token.ThrowIfCancellationRequested();
+            UpdateSafety.NoLinks(path);
+            try { using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read); }
+            catch (IOException ex) when ((ex.HResult & 0xffff) is 2 or 3) { }
+            catch (IOException ex) when ((ex.HResult & 0xffff) is 32 or 33) { blocked.Add(path); }
+        }
+        return blocked;
+    }
+
     internal static IReadOnlyList<FileLockOwner> Find(IEnumerable<string> paths)
     {
         var files=paths.Where(File.Exists).Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

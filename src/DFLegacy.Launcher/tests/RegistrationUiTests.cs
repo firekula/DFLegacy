@@ -40,7 +40,9 @@ internal static class RegistrationUiTests
         };
         try
         {
-            var grid = (Grid)window.Content;
+            check(window.WindowStyle == WindowStyle.None && window.AllowsTransparency,
+                "registration opens the original borderless game frame without a system title bar");
+            var grid = window.Content as Grid ?? (Grid)((ContentControl)window.Content).Content;
             var accountOptions = grid.Children.OfType<CheckBox>().ToArray();
             check(accountOptions.Length == 0, "public registration does not offer account type selection");
             var occupiedRows = grid.Children.OfType<FrameworkElement>().Select(Grid.GetRow).Distinct().Order().ToArray();

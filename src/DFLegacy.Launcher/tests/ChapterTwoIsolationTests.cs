@@ -12,8 +12,42 @@ internal static class ChapterTwoIsolationTests
         if (!ChapterTwoClient.IsBundled) return;
 
         ConfigurationStaysLocal(root, check);
+        ConfigurationCanOptIntoRemote(root, check);
+        ConfigurationUsesDomainRelay(root, check);
         AutomaticDiagnosticsStayInactive(root, check);
         await UpdateEntriesLeaveTargetUntouched(root, check);
+    }
+
+    private static void ConfigurationUsesDomainRelay(string root, Action<bool, string> check)
+    {
+        var path = Path.Combine(root, "chapter-two-domain.json");
+        File.WriteAllText(path, """{"ChapterTwoServerHost":"game.example.test","Relay":{"Preference":"ipv4"}}""");
+        var store = new LauncherAccountStore(path);
+        var settings = store.Load();
+        check(settings.EntranceHost == "game.example.test" && settings.Relay.Enabled && settings.Relay.Preference == "ipv4"
+            && settings.ResolveAccountServiceUrl() == "http://game.example.test:48091", "domain profile survives account-store normalization");
+        store.Save(settings);
+        check(store.Load().ChapterTwoServerHost == "game.example.test", "saving account/settings retains domain relay choice");
+        using var lease = store.AcquireReadLease();
+        check(lease.Options.Relay.Enabled && lease.Options.EntranceHost == "game.example.test", "launch read lease uses the same domain profile");
+    }
+
+    private static void ConfigurationCanOptIntoRemote(string root, Action<bool, string> check)
+    {
+        var path = Path.Combine(root, "chapter-two-remote.json");
+        File.WriteAllText(path, """
+            {"ChapterTwoServerIpv4":"192.0.2.20", "EntranceHost":"198.51.100.99", "StartServer":true}
+            """);
+        var store = new LauncherAccountStore(path);
+        var selected = store.Load();
+        check(selected.EntranceHost == "192.0.2.20" && selected.EntrancePort == 42312
+            && selected.ResolveAccountServiceUrl() == "http://192.0.2.20:48091" && !selected.StartServer
+            && selected.SelectedServerId == "chapter-two-remote", "Chapter Two routes only to the explicitly opted-in remote server");
+        using (var lease = store.AcquireReadLease())
+            check(lease.Options.EntranceHost == "192.0.2.20", "Chapter Two read lease preserves the remote target");
+        File.WriteAllText(path, """{"ChapterTwoServerIpv4":"127.0.0.2"}""");
+        try { store.Load(); check(false, "Chapter Two rejects a loopback remote override"); }
+        catch (InvalidDataException) { check(true, "Chapter Two rejects a loopback remote override"); }
     }
 
     private static void ConfigurationStaysLocal(string root, Action<bool, string> check)

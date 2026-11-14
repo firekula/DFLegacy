@@ -11,6 +11,7 @@ internal static class PvpIndividualSmokeTests
     public static async Task RunAsync(Action<bool, string> check)
     {
         Configuration(check);
+        ChapterTwoRoomCreate(check);
         await RoomsAndMatches(check);
         await TimeoutsAndForfeits(check);
         await Persistence(check);
@@ -22,6 +23,23 @@ internal static class PvpIndividualSmokeTests
         await SequenceWrapAndQueuedPhase(check);
         await FreshEntryModels(check);
         await PvpPartyAdmissionSmokeTests.RunAsync(check);
+    }
+
+    private static void ChapterTwoRoomCreate(Action<bool, string> check)
+    {
+        byte[] native = [6, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        check(GameProtocolEngine.TryReadPvpCreate(native, out var room, true)
+            && room is { NameSelection: 9, RequestedMap: 0 }, "Chapter Two accepts the native padded room request");
+        check(!GameProtocolEngine.TryReadPvpCreate(native, out _), "Chapter One keeps the exact room request length");
+        native[^1] = 1;
+        check(!GameProtocolEngine.TryReadPvpCreate(native, out _, true), "Chapter Two rejects nonzero room request padding");
+
+        byte[] join = [6, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        check(GameProtocolEngine.TryReadPvpEnter(join, out var number, true) && number == 1
+            && !GameProtocolEngine.TryReadPvpEnter(join, out _), "Only Chapter Two accepts the native padded join request");
+        byte[] ready = [7, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        check(GameProtocolEngine.TryReadPvpReady(ready, out var isReady, true) && isReady
+            && !GameProtocolEngine.TryReadPvpReady(ready, out _), "Only Chapter Two accepts the native padded ready request");
     }
 
     private static void Configuration(Action<bool,string> check)

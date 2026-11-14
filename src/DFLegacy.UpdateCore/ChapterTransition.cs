@@ -34,13 +34,15 @@ public static partial class ChapterTransition
     }
 
     internal static ChapterUpgradeAuthorization PrepareUpgradeLocked(InstallationStore store, StagedUpdate staged,
-        ReleaseSource authorizedSource, bool explicitSelection, ChapterDisplayPreference? firstDisplay = null)
+        ReleaseSource authorizedSource, bool explicitSelection, ChapterDisplayPreference? firstDisplay = null,
+        IProgress<UpdateProgress>? progress = null)
     {
         if (!explicitSelection) throw new InvalidDataException("必须主动选择跨章节升级。");
         if (HasPending(store.Root) || InstallTransaction.HasPending(store.Root))
             throw new InvalidDataException("请先恢复未完成的更新。");
         staged.Release.Validate(authorizedSource);
         var current = store.ReadInstalled() ?? throw new InvalidDataException("缺少已校验的第一章桥接安装。");
+        ChapterTransitionSource.RequireUpgrade(current.Release.Source, authorizedSource);
         var first = ClientChapterIdentity.Read(store.Root, current.Release);
         var target = staged.Release.Manifest;
         var targetFiles = FileMap(target);
@@ -51,8 +53,7 @@ public static partial class ChapterTransition
             ? PathPolicy.Resolve(store.Root, descriptor.Path) : cache.ObjectPath(descriptor.Sha256, descriptor.Size);
         var second = ClientChapterIdentity.ReadFile(staged.Release, descriptorPath);
         if (first.Chapter != ClientChapterIdentity.ChapterOne || second.Chapter != ClientChapterIdentity.ChapterTwo
-            || first.Entry != second.Entry || current.Release.Source.Architecture != authorizedSource.Architecture
-            || current.Release.Source == authorizedSource || current.Release.Manifest.Sequence < target.MinimumSequence
+            || first.Entry != second.Entry || current.Release.Manifest.Sequence < target.MinimumSequence
             || target.Migrations.Length != 0)
             throw new InvalidDataException("跨章来源、启动入口、桥接版本或配置迁移不兼容。");
 
@@ -105,7 +106,8 @@ public static partial class ChapterTransition
         var oldConfig = ReadConfig(store, FirstConfig);
         var priorSecondConfig = ReadConfig(store, SecondConfig);
         if (priorSecondConfig != null) RequireWritable(ConfigurationPath(store, SecondConfig));
-        var config = MergeConfiguration(oldConfig, priorSecondConfig, includeDisplay: priorSecondConfig == null, firstDisplay);
+        var config = MergeConfiguration(oldConfig, priorSecondConfig, includeDisplay: priorSecondConfig == null, firstDisplay,
+            ChapterTransitionSource.IsOfficialChapterTwo(authorizedSource) ? authorizedSource : null);
         var checkpointPath = Record(store, "checkpoint.json");
         if (Exists(checkpointPath))
         {
@@ -121,11 +123,16 @@ public static partial class ChapterTransition
                 .Aggregate(0L, (sum, files) => checked(sum + files.Key.Size));
             CheckSpace(store, checked(backupBytes + (oldConfig?.LongLength ?? 0)));
             pins.Ensure(Record(store, "baseline"));
+            var completed = 0;
             foreach (var file in originals.Values)
             {
                 var backup = Baseline(store, file);
                 if (!Matches(backup, Info(file)))
+                {
+                    progress?.Report(new("backup", file.Path, completed, originals.Count));
                     ReplaceFrom(PathPolicy.Resolve(store.Root, file.Path), backup, Info(file));
+                }
+                progress?.Report(new("prepared", file.Path, ++completed, originals.Count));
             }
             if (oldConfig != null) WriteAtomic(Record(store, "first-configuration.json"), oldConfig);
             var checkpoint = new Checkpoint(1, store.Root, current, authorizedSource, Info(oldConfig));
@@ -151,6 +158,34 @@ public static partial class ChapterTransition
     public static bool HasPending(string root) => Exists(Record(new InstallationStore(root), "rollback.json"));
 
     public static bool RequiresExplicitUpgrade(string root) => Exists(Record(new InstallationStore(root), "hold"));
+
+    public static bool HasRollbackCheckpoint(string root, ReleaseSource source, string entry)
+    {
+        if (source.Provider != "local" && !ChapterTransitionSource.IsOfficialChapterTwo(source)) return false;
+        var store = new InstallationStore(root);
+        try
+        {
+            // The new launcher builds its menu during the readiness probe.
+            // The helper still rejects rollback until the forward install commits.
+            if (HasPending(store.Root)) return false;
+            var checkpoint = ReadCheckpoint(store);
+            if (checkpoint.SecondSource != source || ReadBaselineIdentity(store, checkpoint).Entry != entry) return false;
+            _ = ReadSavedConfiguration(store, checkpoint);
+            // Check backup inventory without hashing the full client on startup.
+            // Rollback verifies every digest under the installation lease before any writes.
+            return checkpoint.Baseline.Release.Manifest.Files.All(file =>
+            {
+                var path = Baseline(store, file);
+                PathPolicy.NoLinks(path);
+                var info = new FileInfo(path);
+                return info.Exists && info.Length == file.Size;
+            });
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     public static void Rollback(string root, ReleaseSource authorizedSource, IProgress<UpdateProgress>? progress = null)
     {
@@ -200,13 +235,13 @@ public static partial class ChapterTransition
         RecoverLocked(store, checkpoint, progress);
     }
 
-    public static bool Recover(string root)
+    public static bool Recover(string root, IProgress<UpdateProgress>? progress = null)
     {
         var store = new InstallationStore(root);
         using var lease = InstallationLease.Acquire(store.Root);
         if (!HasPending(store.Root)) return false;
         if (InstallTransaction.HasPending(store.Root)) throw new InvalidDataException("不能同时恢复两个未完成的更新。");
-        return RecoverLocked(store, ReadCheckpoint(store), null);
+        return RecoverLocked(store, ReadCheckpoint(store), progress);
     }
 
     private static bool RecoverLocked(InstallationStore store, Checkpoint checkpoint, IProgress<UpdateProgress>? progress)
@@ -245,6 +280,7 @@ public static partial class ChapterTransition
                 if (Exists(path)) DemandMatch(path, Info(prior));
             }
             else DemandMatch(path, null);
+            progress?.Report(new("restore", file.Path, done, baseline.Count + current.Count));
             ReplaceFrom(Baseline(store, file), path, Info(file));
             progress?.Report(new("chapter-rollback", file.Path, ++done, baseline.Count + current.Count));
         }
@@ -254,6 +290,7 @@ public static partial class ChapterTransition
             var path = PathPolicy.Resolve(store.Root, file.Path);
             if (!Exists(path)) continue;
             DemandMatch(path, Info(file));
+            progress?.Report(new("restore", file.Path, done, baseline.Count + current.Count));
             File.Delete(path);
             progress?.Report(new("chapter-rollback", file.Path, ++done, baseline.Count + current.Count));
         }
@@ -297,16 +334,13 @@ public static partial class ChapterTransition
     private static Checkpoint ReadCheckpoint(InstallationStore store)
     {
         var path = Record(store, "checkpoint.json");
-        if (!File.Exists(path)) throw new InvalidDataException("没有可用的第一章检查点。");
+        if (!Exists(path)) throw new InvalidDataException("没有可用的第一章检查点。");
         var checkpoint = InstallationStore.ReadJson<Checkpoint>(path, RecordLimit);
         if (checkpoint.Schema != 1 || !SameRoot(store, checkpoint.Root) || checkpoint.Baseline == null
             || checkpoint.SecondSource == null || checkpoint.FirstConfiguration != null && !ValidIdentity(checkpoint.FirstConfiguration))
             throw new InvalidDataException("第一章检查点记录无效。");
         InstallationStore.Validate(checkpoint.Baseline);
-        checkpoint.SecondSource.Validate();
-        if (checkpoint.SecondSource == checkpoint.Baseline.Release.Source
-            || checkpoint.SecondSource.Architecture != checkpoint.Baseline.Release.Source.Architecture)
-            throw new InvalidDataException("第一章检查点的更新来源无效。");
+        ChapterTransitionSource.RequireUpgrade(checkpoint.Baseline.Release.Source, checkpoint.SecondSource);
         return checkpoint;
     }
 
@@ -374,7 +408,11 @@ public static partial class ChapterTransition
     private static void RequireWritable(string path)
     {
         PathPolicy.NoLinks(path);
-        using var probe = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        try { using var probe = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None); }
+        catch (IOException ex) when ((ex.HResult & 0xffff) is 32 or 33)
+        {
+            throw new IOException("文件正被占用，无法替换：" + path, ex);
+        }
     }
 
     private static void CheckSpace(InstallationStore store, long required)

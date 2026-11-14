@@ -169,7 +169,7 @@ public static partial class GameProtocolEngine
     }
 
     // All command readers include the existing u16 transport/session sequence prefix.
-    public static bool TryReadPvpCreate(byte[] body, out PvpCreateRequest? request)
+    public static bool TryReadPvpCreate(byte[] body, out PvpCreateRequest? request, bool chapterTwo = false)
     {
         request = null;
         if (body.Length < 6) return false;
@@ -185,61 +185,62 @@ public static partial class GameProtocolEngine
             name = body.AsSpan(cursor, (int)length).ToArray(); cursor += (int)length;
             if (!IsValidPvpName(name)) return false;
         }
-        if (body.Length != cursor + 3 || body[cursor + 2] != 0) return false;
+        if (!HasCommandBodyLength(body, cursor + 3, chapterTwo) || body[cursor + 2] != 0) return false;
         request = new(nameSelection, name, BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(cursor)));
         return true;
     }
 
-    public static bool TryReadPvpEnter(byte[] body, out ushort roomId)
+    public static bool TryReadPvpEnter(byte[] body, out ushort roomId, bool chapterTwo = false)
     {
         roomId = 0;
-        if (body.Length != 5 || body[4] != 0) return false;
+        if (!HasCommandBodyLength(body, 5, chapterTwo) || body[4] != 0) return false;
         roomId = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2)); return true;
     }
 
-    public static bool TryReadPvpSeat(byte[] body, out byte seat, out byte state)
+    public static bool TryReadPvpSeat(byte[] body, out byte seat, out byte state, bool chapterTwo = false)
     {
         seat = state = 0;
-        if (body.Length != 4 || body[2] > 7 || body[3] is not (0 or 1 or 2 or 254 or 255)) return false;
+        if (!HasCommandBodyLength(body, 4, chapterTwo) || body[2] > 7 || body[3] is not (0 or 1 or 2 or 254 or 255)) return false;
         seat = body[2]; state = body[3]; return true;
     }
 
-    public static bool TryReadPvpReady(byte[] body, out bool ready)
+    public static bool TryReadPvpReady(byte[] body, out bool ready, bool chapterTwo = false)
     {
         ready = false;
-        if (body.Length != 3 || body[2] > 1) return false;
+        if (!HasCommandBodyLength(body, 3, chapterTwo) || body[2] > 1) return false;
         ready = body[2] == 1; return true;
     }
 
-    public static bool TryReadPvpMode(byte[] body, out byte mode)
+    public static bool TryReadPvpMode(byte[] body, out byte mode, bool chapterTwo = false)
     {
         mode = 0;
-        if (body.Length != 3 || body[2] > 2) return false;
+        if (!HasCommandBodyLength(body, 3, chapterTwo) || body[2] > 2) return false;
         mode = body[2]; return true;
     }
 
-    public static bool TryReadPvpMap(byte[] body, out ushort requestedMap)
+    public static bool TryReadPvpMap(byte[] body, out ushort requestedMap, bool chapterTwo = false)
     {
         requestedMap = 0;
-        if (body.Length != 4) return false;
+        if (!HasCommandBodyLength(body, 4, chapterTwo)) return false;
         requestedMap = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2)); return true;
     }
 
-    public static bool TryReadPvpDeath(byte[] body, out ushort killerUid) => TryReadPvpMap(body, out killerUid);
+    public static bool TryReadPvpDeath(byte[] body, out ushort killerUid, bool chapterTwo = false) =>
+        TryReadPvpMap(body, out killerUid, chapterTwo);
 
-    public static bool TryReadPvpTimeout(byte[] body, out uint[] hpDecreases)
+    public static bool TryReadPvpTimeout(byte[] body, out uint[] hpDecreases, bool chapterTwo = false)
     {
         hpDecreases = [];
-        if (body.Length != 34) return false;
+        if (!HasCommandBodyLength(body, 34, chapterTwo)) return false;
         hpDecreases = new uint[8];
         for (var i = 0; i < 8; i++) hpDecreases[i] = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(2 + i * 4));
         return true;
     }
 
-    public static bool TryReadPvpRank(byte[] body, out PvpRankReport? report)
+    public static bool TryReadPvpRank(byte[] body, out PvpRankReport? report, bool chapterTwo = false)
     {
         report = null;
-        if (body.Length != 56) return false;
+        if (!HasCommandBodyLength(body, 56, chapterTwo)) return false;
         var stats = new ushort[11]; var scores = new uint[8]; ulong total = 0;
         for (var i = 0; i < stats.Length; i++) stats[i] = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2 + i * 2));
         for (var i = 0; i < scores.Length; i++) { scores[i] = BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(24 + i * 4)); total += scores[i]; }
@@ -247,8 +248,8 @@ public static partial class GameProtocolEngine
         report = new(stats, scores, (uint)total); return true;
     }
 
-    public static bool TryReadPvpAck(byte[] body) => body.Length == 2;
-    public static bool TryReadPvpHeartbeat(byte[] body) => body.Length == 2;
+    public static bool TryReadPvpAck(byte[] body, bool chapterTwo = false) => HasCommandBodyLength(body, 2, chapterTwo);
+    public static bool TryReadPvpHeartbeat(byte[] body, bool chapterTwo = false) => HasCommandBodyLength(body, 2, chapterTwo);
 
     private static bool IsValidPvpName(byte[] name)
     {

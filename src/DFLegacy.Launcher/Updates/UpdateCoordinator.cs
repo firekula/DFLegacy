@@ -14,7 +14,7 @@ internal sealed class UpdateCoordinator : IDisposable
     private readonly Action recheckBootstrap;
     private readonly Func<Window,IReadOnlyList<FileLockOwner>,bool> confirmLocks;
     private readonly bool backgroundCheck;
-    private UpdateInstallWindow? window;
+    private UpdateWindow? window;
     private Task operation=Task.CompletedTask;
     private bool disposed,bootstrapHandedOff;
     internal UpdateCoordinator(Window owner,LauncherOptions options,string installation)
@@ -101,8 +101,7 @@ internal sealed class UpdateCoordinator : IDisposable
     private static bool ConfirmLocks(Window parent,IReadOnlyList<FileLockOwner> owners)
     {
         var details=string.Join("\n",owners.Select(p=>$"{p.Name}（PID {p.ProcessId}）"+(p.CanTerminate?"":"，需手动关闭")));
-        return MessageBox.Show(parent,"以下程序正在使用更新文件：\n"+details+"\n\n是否关闭可处理的程序后继续安装？未保存的内容可能丢失。选择“否”会保留下载结果。",
-            "文件被占用",MessageBoxButton.YesNo,MessageBoxImage.Question,MessageBoxResult.No)==MessageBoxResult.Yes;
+        return ClassicMessage.Confirm(parent,"文件被占用\n\n"+details+"\n\n关闭可处理的程序后继续安装？请先保存其他工作。取消会保留下载结果。");
     }
     private void Changed(UpdateViewState state)
     {
@@ -122,7 +121,7 @@ internal sealed class UpdateCoordinator : IDisposable
         owner.Hide();
         if(window==null)
         {
-            window=new UpdateInstallWindow();
+            window=new UpdateWindow("客户端更新",controller.InstalledVersion,"返回登录");
             window.CancelRequested+=()=>controller.Cancel();
             window.Show();
         }
@@ -131,7 +130,7 @@ internal sealed class UpdateCoordinator : IDisposable
     private void ShowLogin()
     {
         if(disposed) return;
-        // Keep an interactive window alive while the compact one closes.
+        // Keep an interactive window alive while the update page closes.
         owner.Show(); window?.Finish(); window=null;
     }
     private async Task ShowPreviousWarning()

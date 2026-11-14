@@ -267,6 +267,24 @@ public sealed class ServerSupervisor : IAsyncDisposable
             info.Environment["DFL_S1C2_TRIAL_CHANNEL_CIPHER"] = "1";
             info.Environment["DFLegacy__DataPath"] = _paths.GameData;
             info.Environment["DFLegacy__ChapterTwoLocalTestPaymentsOnly"] = "true";
+            if (_config.ChapterTwoRemote)
+            {
+                var remote = _config.Read().Effective;
+                foreach (var listener in new[] { "Entrance", "Admin", "Channel", "CharacterDatagram", "GameplayDatagram", "FallbackRelay" })
+                    info.Environment[$"DFLegacy__{listener}__Host"] = remote.BindHost;
+                info.Environment["DFLegacy__GameplayDatagram__AdvertisedHost"] = remote.GameplayAdvertisedHost;
+                info.Environment["DFLegacy__FallbackRelay__AdvertisedHost"] = remote.FallbackRelayAdvertisedHost;
+                info.Environment["DFLegacy__Pvp__Enabled"] = "true";
+                info.Environment["DFLegacy__EnableTestCeraTopUp"] = "false";
+                info.Environment["DFLegacy__ChapterTwoRemote"] = "true";
+                if (_config.ChapterTwoServerHost is not null)
+                {
+                    info.Environment["DFLEGACY_UDP_RELAY"] = "1";
+                    info.Environment.Remove("DFLEGACY_UDP_PEER_SINK");
+                    info.Environment["DFLegacy__ChapterTwoLocalTestPaymentsOnly"] = "false";
+                    foreach (var (key, value) in _config.ChapterTwoDomainEnvironment) info.Environment[key] = value;
+                }
+            }
         }
         return info;
     }

@@ -125,7 +125,8 @@ internal static class UpdateV4HelperTests
 
     private static async Task RunChapter(string scratch,Core.ReleaseSource local,Action<bool,string> check)
     {
-        foreach(var (name,fixedLayout,failReady) in new[]{("standalone",false,false),("fixed",true,false),("ready-failure",false,true)})
+        foreach(var (name,fixedLayout,failReady,official) in new[]{
+            ("standalone",false,false,false),("fixed",true,false,false),("ready-failure",false,true,false),("official-fixed",true,false,true)})
         {
             var root=Path.Combine(scratch,"v4-chapter-helper-"+name);Directory.CreateDirectory(root);
             UpdateHelperTests.CopySidecars(root);
@@ -146,7 +147,9 @@ internal static class UpdateV4HelperTests
             if(fixedLayout)shared.AddRange([Entry(BootstrapLayout.AppName,hostBytes),Entry(BootstrapLayout.UpdaterName,hostBytes),Entry(BootstrapLayout.DescriptorName,bootstrap)]);
             Core.ManagedFile Descriptor(string chapter,string[] required)=>Entry(Core.ClientChapterIdentity.FileName,
                 JsonSerializer.SerializeToUtf8Bytes(new Core.ClientChapterIdentity(1,chapter,BootstrapLayout.EntryName,required),Core.ManifestCodec.Json));
-            var firstSource=new Core.ReleaseSource("gitee","firekula/DFLegacy","c1-test","x64","normal");
+            var firstSource=official?new Core.ReleaseSource("github","firekula/DFLegacy","stable","x64","normal")
+                :new Core.ReleaseSource("gitee","firekula/DFLegacy","c1-test","x64","normal");
+            var secondSource=official?firstSource with {Channel="chapter-two"}:local;
             Core.VerifiedRelease Release(Core.ReleaseSource source,long sequence,Core.ManagedFile[] files,Core.RetiredFile[] retired)
             {
                 var manifest=new Core.ClientManifest(4,"chapter-helper",new string('a',40),"x64","normal",source.Channel,sequence,0,files,retired,[]);
@@ -155,7 +158,7 @@ internal static class UpdateV4HelperTests
             }
             var first=Release(firstSource,1,[..shared,Entry("DFLegacy.Client.dll","first DLL"u8.ToArray()),Entry("Script.pvf","first PVF"u8.ToArray()),
                 Descriptor(Core.ClientChapterIdentity.ChapterOne,[BootstrapLayout.EntryName,"Script.pvf","DFLegacy.Client.dll"])],[]);
-            var second=Release(local,2,[..shared,Entry("Script.pvf","second PVF"u8.ToArray()),
+            var second=Release(secondSource,2,[..shared,Entry("Script.pvf","second PVF"u8.ToArray()),
                 Descriptor(Core.ClientChapterIdentity.ChapterTwo,[BootstrapLayout.EntryName,"Script.pvf","DNF.exe"])],[new("DFLegacy.Client.dll","delete",2)]);
             Core.InstallTransaction.Apply(root,new(first,cache.DirectoryPath));
             File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"Account\":\"fixture-user\",\"Password\":\"fixture-password\"}");
@@ -166,7 +169,7 @@ internal static class UpdateV4HelperTests
             var parentPath=fixedLayout?Path.Combine(root,BootstrapLayout.AppName):exe;
             var result=await RunChapterHandoff(root,parentPath,"chapter-upgrade",check);
             check(result==(failReady?1:0),"chapter helper readiness result ("+name+")");
-            check(new Core.InstallationStore(root).ReadInstalled()?.Release.Source==(failReady?firstSource:local),
+            check(new Core.InstallationStore(root).ReadInstalled()?.Release.Source==(failReady?firstSource:secondSource),
                 "verified receipt selects restored or upgraded source ("+name+")");
             if(!failReady)
             {
@@ -176,8 +179,11 @@ internal static class UpdateV4HelperTests
                     && File.ReadAllBytes(Path.Combine(root,"Config.ini")).SequenceEqual(ini),
                     "known C1 preset migrates only if C2 has no display setting ("+name+")");
                 if(fixedLayout)check(configuration.ExtensionData?["UnknownSetting"].GetInt32()==17,"unknown C2 settings survive migration");
-                check(RepairClient.ReadSettings(new(root)).Source==local &&
-                    V4UpdateSession.SourceFor(root,new())==local,"repair and update select the bound C2 source ("+name+")");
+                check(RepairClient.ReadSettings(new(root)).Source==secondSource &&
+                    V4UpdateSession.SourceFor(root,new())==secondSource,"repair and update select the bound C2 source ("+name+")");
+                if(official)check(configuration.ChapterTwoServerHost=="games.firekula.site" && configuration.UpdateChannel=="chapter-two"
+                    && !configuration.ChapterTwoDebugEnabled && !configuration.ChapterTwoTestMuteEnabled
+                    && configuration.Account=="fixture-user","official helper writes public defaults and keeps the saved account");
                 var rollback=await RunChapterHandoff(root,parentPath,"chapter-rollback",check);
                 check(rollback==0&&new Core.InstallationStore(root).ReadInstalled()?.Release.Source==firstSource&&
                     Core.ChapterTransition.RequiresExplicitUpgrade(root),"chapter helper rolls back and leaves re-upgrade on hold ("+name+")");

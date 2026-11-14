@@ -1,0 +1,5 @@
+#include "@CMAKE_CURRENT_SOURCE_DIR@/startup_prompt_resources.h"
+
+DFL_STARTUP_PROMPT_FRAME RCDATA "@DFL_CLASSIC_SKIN@/classic-message-panel.png"
+DFL_STARTUP_PROMPT_CONFIRM RCDATA "@DFL_CLASSIC_SKIN@/classic-message-confirm0.png"
+DFL_STARTUP_PROMPT_CONFIRM_DOWN RCDATA "@DFL_CLASSIC_SKIN@/classic-message-confirm2.png"

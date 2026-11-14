@@ -32,9 +32,19 @@ internal sealed class LauncherAccountStore
         return options;
     }
 
-    internal LauncherOptions LoadCurrent() => !File.Exists(_path) ? new LauncherOptions() :
+    internal LauncherOptions LoadCurrent() => !File.Exists(_path) ? Defaults() :
         JsonSerializer.Deserialize<LauncherOptions>(File.ReadAllText(_path), JsonOptions)
             ?? throw new InvalidDataException("launcher.json 不能为空。");
+
+    private LauncherOptions Defaults()
+    {
+        if (!Path.GetFileName(_path).Equals("launcher.chapter2.json", StringComparison.OrdinalIgnoreCase)) return new();
+        var root = Path.GetDirectoryName(Path.GetFullPath(_path))!;
+        var receipt = new InstallationStore(root).ReadInstalled();
+        if (receipt is null || !ChapterTransitionSource.IsOfficialChapterTwo(receipt.Release.Source)
+            || Updates.V4UpdateSession.ConfigurationName(receipt) != "launcher.chapter2.json") return new();
+        return JsonSerializer.Deserialize<LauncherOptions>(ChapterTransition.CreatePublicChapterTwoConfiguration(receipt.Release.Source), JsonOptions)!;
+    }
 
     private static JsonObject Node(LauncherOptions options) =>
         JsonSerializer.SerializeToNode(options, JsonOptions)!.AsObject();
@@ -99,7 +109,7 @@ internal sealed class LauncherAccountStore
             ? JsonNode.Parse(File.ReadAllText(_path), new JsonNodeOptions { PropertyNameCaseInsensitive = true },
                 new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip }) as JsonObject
                 ?? throw new InvalidDataException("launcher.json 必须是配置对象。")
-            : Node(new LauncherOptions());
+            : Node(Defaults());
         _ = current.Deserialize<LauncherOptions>(JsonOptions)
             ?? throw new InvalidDataException("launcher.json 不能为空。");
         var desired = Node(options);

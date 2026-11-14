@@ -49,7 +49,7 @@ internal sealed class ChapterTwoPaymentRelay : IAsyncDisposable
     {
         var directory = Path.Combine(runtime, "pay-" + Guid.NewGuid().ToString("N"));
         var site = await LocalPaymentSite.StartAsync(serviceUrl, token, useProxy: false, inlineStyle: true,
-            listenAddress: IPAddress.Parse(ChapterTwoClient.Host));
+            listenAddress: IPAddress.Parse(ChapterTwoClient.Host), connectionLifetime: TimeSpan.FromSeconds(30));
         var relay = new ChapterTwoPaymentRelay(site, directory);
         try
         {

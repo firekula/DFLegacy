@@ -1,4 +1,5 @@
 #include <winsock2.h>
+#include <windows.h>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
@@ -28,6 +29,14 @@ int main()
     for (const auto* denied : {"127.0.0.30", "127.0.0.03", "127.0.0.4", "192.0.2.1", "relay.invalid", ""})
         check(!ResolveLocalPartyRelayHost(denied), "other names stay outside the relay allowlist");
     check(!ResolveLocalPartyRelayHost(nullptr), "a null name is rejected");
+    SetEnvironmentVariableA("DFL_S1C2_REMOTE_IPV4", "192.0.2.20");
+    const auto* remote = ResolveLocalPartyRelayHost("192.0.2.20");
+    const unsigned char address[]{192, 0, 2, 20};
+    check(remote && remote->h_length == sizeof(address) && remote->h_addr_list[0] &&
+        std::memcmp(remote->h_addr_list[0], address, sizeof(address)) == 0,
+        "an explicit remote address resolves to the exact requested server");
+    check(!ResolveLocalPartyRelayHost("192.0.2.21"), "adjacent addresses remain denied");
+    SetEnvironmentVariableA("DFL_S1C2_REMOTE_IPV4", nullptr);
     if (passed) std::puts("Chapter Two party relay lookup checks passed");
     return passed ? 0 : 1;
 }

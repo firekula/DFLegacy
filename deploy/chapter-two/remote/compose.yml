@@ -1,0 +1,33 @@
+name: dflegacy-chapter-two
+
+services:
+  chapter-two:
+    image: "${C2_IMAGE:?Set C2_IMAGE in .env}"
+    network_mode: host
+    environment:
+      DFLEGACY_CHAPTER_TWO_SERVER_HOST: "${C2_SERVER_HOST:?Set C2_SERVER_HOST to your DDNS name in .env}"
+      DFLEGACY_CHAPTER_TWO_BIND_HOST: "${C2_BIND_HOST:-::}"
+      DFLegacy__EnableTestCeraTopUp: "${C2_TEST_CERA_TOP_UP:-false}"
+      DFLegacy__Channel__RegionalChannelsEnabled: "${C2_REGIONAL_CHANNELS:-true}"
+      DFLegacy__Fatigue__WeekendDoubleEnabled: "${C2_WEEKEND_DOUBLE:-true}"
+    entrypoint: ["/app/DFLegacy.Manager", "--root", "/app", "--data-dir", "/app/data", "--listen", "127.0.0.2", "--port", "${C2_MANAGER_HOST_PORT:-48092}", "--no-browser"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.2:${C2_MANAGER_HOST_PORT:-48092}/health"]
+    restart: unless-stopped
+    stop_grace_period: 45s
+    volumes:
+      - type: bind
+        source: "${C2_DATA_DIR:?Set C2_DATA_DIR in .env}"
+        target: /app/data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "${C2_PVF_PATH:?Set C2_PVF_PATH in .env}"
+        target: /app/resources/Script.pvf
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

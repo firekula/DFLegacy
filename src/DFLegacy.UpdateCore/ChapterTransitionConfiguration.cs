@@ -9,6 +9,14 @@ public static partial class ChapterTransition
 {
     private static readonly string[] AccountFields = ["Accounts", "AccountIndex", "Account", "Password"];
 
+    public static byte[] CreatePublicChapterTwoConfiguration(ReleaseSource source)
+    {
+        source.Validate();
+        if (!ChapterTransitionSource.IsOfficialChapterTwo(source))
+            throw new InvalidDataException("公开第二章配置需要正式更新来源。");
+        return MergeConfiguration(null, null, includeDisplay: false, publicSource: source);
+    }
+
     private static string ConfigurationPath(InstallationStore store, string name)
     {
         if (name is not (FirstConfig or SecondConfig)) throw new ArgumentException("Unexpected configuration name.", nameof(name));
@@ -55,7 +63,7 @@ public static partial class ChapterTransition
     }
 
     private static byte[] MergeConfiguration(byte[]? accountSource, byte[]? settings, bool includeDisplay,
-        ChapterDisplayPreference? firstDisplay = null)
+        ChapterDisplayPreference? firstDisplay = null, ReleaseSource? publicSource = null)
     {
         var source = ParseConfiguration(accountSource);
         var result = ParseConfiguration(settings);
@@ -73,7 +81,8 @@ public static partial class ChapterTransition
                 if (source.TryGetPropertyValue(field, out var value)) result.Add(field, value?.DeepClone());
             }
         }
-        if (includeDisplay && source.TryGetPropertyValue("Theme", out var theme) && IsString(source, "Theme"))
+        if ((includeDisplay || publicSource != null && !result.ContainsKey("Theme"))
+            && source.TryGetPropertyValue("Theme", out var theme) && IsString(source, "Theme"))
             result["Theme"] = theme?.DeepClone();
         if (firstDisplay != null && !result.ContainsKey("ChapterTwoDisplay"))
         {
@@ -81,6 +90,21 @@ public static partial class ChapterTransition
                 || firstDisplay.Filter is not ("sharp" or "point" or "linear"))
                 throw new InvalidDataException("跨章显示设置无效。");
             result.Add("ChapterTwoDisplay", JsonSerializer.SerializeToNode(firstDisplay));
+        }
+        if (publicSource != null)
+        {
+            result["UpdateProvider"] = publicSource.Provider;
+            result["UpdateRepository"] = publicSource.Repository;
+            result["UpdateChannel"] = publicSource.Channel;
+            result["UpdateFlavor"] = publicSource.Flavor;
+            result["ChapterTwoServerHost"] = "games.firekula.site";
+            result.Remove("ChapterTwoServerIpv4");
+            result["StartServer"] = false;
+            result["ClientPath"] = "DNF.exe";
+            result["DisableGitHubUpdates"] = false;
+            result["UpdateServiceUrl"] = "";
+            result["ChapterTwoDebugEnabled"] = false;
+            result["ChapterTwoTestMuteEnabled"] = false;
         }
         var output = JsonSerializer.SerializeToUtf8Bytes(result, new JsonSerializerOptions { WriteIndented = true });
         if (output.Length > ConfigurationMigration.MaxBytes) throw new InvalidDataException("迁移后的启动器配置超过大小限制。");

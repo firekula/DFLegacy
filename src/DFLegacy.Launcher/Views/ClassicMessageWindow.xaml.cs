@@ -8,6 +8,7 @@ namespace DFLegacy.Launcher.Views;
 public partial class ClassicMessageWindow : Window
 {
     private SkinButton? laterButton;
+    internal void FocusCancel() => laterButton?.Focus();
     internal bool Accepted { get; private set; }
     internal ClassicMessageWindow(string message, bool confirmRestart, string cancelText = "稍后") : this(message)
     {

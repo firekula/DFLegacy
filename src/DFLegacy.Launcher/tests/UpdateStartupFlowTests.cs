@@ -71,7 +71,7 @@ internal static class UpdateStartupFlowTests
                 using var flow=new UpdateCoordinator(owner,validatedRoot,session,()=>check(false,"background current check cannot shut down login"),notices.Add);
                 var pending=flow.StartAsync();
                 check(owner.IsVisible,"completed receipt opens login while release discovery is still pending");
-                check(!Application.Current.Windows.OfType<UpdateInstallWindow>().Any(w=>w.IsVisible),"background discovery does not open a verification window");
+                check(!Application.Current.Windows.OfType<UpdateWindow>().Any(w=>w.IsVisible),"background discovery does not open a verification window");
                 feed.SetException(new IOException("freshness unavailable"));Wait(pending);
                 check(owner.IsVisible&&notices.Count==0,"background freshness failure is nonmodal and leaves login open");
                 owner.Close();
@@ -84,10 +84,9 @@ internal static class UpdateStartupFlowTests
                 using var flow=new UpdateCoordinator(owner,root,session,()=>check(false,"no update/error cannot shut down login"),warnings.Add);
                 var pending=flow.StartAsync();
                 check(!owner.IsVisible,"login stays hidden until startup check completes");
-                check(!Application.Current.Windows.OfType<UpdateWindow>().Any(w=>w.IsVisible),"startup never opens the full update page");
                 if(error) feed.SetException(new IOException("offline fixture")); else feed.SetResult(null);
                 Wait(pending);
-                check(owner.IsVisible && !Application.Current.Windows.OfType<UpdateInstallWindow>().Any(w=>w.IsVisible),"no update or failed check goes directly to login without a second window");
+                check(owner.IsVisible && !Application.Current.Windows.OfType<UpdateWindow>().Any(w=>w.IsVisible) && !Application.Current.Windows.OfType<UpdateInstallWindow>().Any(w=>w.IsVisible),"no update or failed check goes directly to login without a second window");
                 check(warnings.Count==(error?1:0),"network failure is explained once; current version is silent");
                 owner.Close();
             }
@@ -106,13 +105,13 @@ internal static class UpdateStartupFlowTests
                     await owner.Dispatcher.InvokeAsync(()=>
                     {
                         check(!owner.IsVisible,"login is hidden while automatic download is active");
-                        var compact=Application.Current.Windows.OfType<UpdateInstallWindow>().Where(w=>w.IsVisible).ToArray();
-                        check(compact.Length==1 && !Application.Current.Windows.OfType<UpdateWindow>().Any(w=>w.IsVisible),"available update uses exactly the native compact window");
-                        if(compact.Length==1)
+                        var download=Application.Current.Windows.OfType<UpdateWindow>().Where(w=>w.IsVisible).ToArray();
+                        check(download.Length==1 && !Application.Current.Windows.OfType<UpdateInstallWindow>().Any(w=>w.IsVisible),"available update downloads in the original large window only");
+                        if(download.Length==1)
                         {
-                            compact[0].UpdateLayout();
-                            check(Math.Abs(((OriginalProgressStrip)compact[0].FindName("InstallProgress")).FilledWidth-258*.4)<1,"compact download fill follows actual received bytes");
-                            if(mode=="cancel") compact[0].Close();
+                            download[0].UpdateLayout();
+                            check(Math.Abs(((OriginalProgressStrip)download[0].FindName("DownloadProgress")).FilledWidth-500*.5)<1,"large download fill follows actual received bytes");
+                            if(mode=="cancel") download[0].Close();
                         }
                     },DispatcherPriority.Background);
                     await Task.Delay(10,token);
@@ -137,11 +136,24 @@ internal static class UpdateStartupFlowTests
             }
         }
         finally { Directory.Delete(root,true); }
-        Console.WriteLine("Automatic compact startup flow checks executed");
+        Console.WriteLine("Automatic update window flow checks executed");
     }
 
     private static void CheckProgressPresentation(Action<bool,string> check)
     {
+        using (var operation = new UpdateOperationWindow("客户端更新", "检查资源…", () => { }))
+        {
+            operation.Report(new DFLegacy.UpdateCore.UpdateProgress("download", BootstrapLayout.AppName, 0, 1, 50, 100));
+            check(operation.VisibleWindow is UpdateWindow, "downloading the launcher itself still uses the large page");
+            operation.Report(new DFLegacy.UpdateCore.UpdateProgress("backup", BootstrapLayout.AppName, 0, 2));
+            check(operation.VisibleWindow is UpdateInstallWindow, "backing up the launcher switches to the compact window");
+            operation.Report(new DFLegacy.UpdateCore.UpdateProgress("replace", "ImagePacks2/test.npk", 1, 2));
+            check(operation.VisibleWindow is UpdateWindow, "installing game resources returns to the large page");
+            operation.Report(new DFLegacy.UpdateCore.UpdateProgress("replace", BootstrapLayout.UpdaterName, 1, 2));
+            check(operation.VisibleWindow is UpdateInstallWindow, "replacing the updater uses the compact window");
+            operation.Report(new DFLegacy.UpdateCore.UpdateProgress("verify", BootstrapLayout.UpdaterName, 1, 2));
+            check(operation.VisibleWindow is UpdateWindow, "verification returns to the large page even for launcher files");
+        }
         var window=new UpdateInstallWindow();
         try
         {
@@ -169,13 +181,9 @@ internal static class UpdateStartupFlowTests
                 var panel=(FrameworkElement)window.Content;
                 panel.Measure(new Size(286,104)); panel.Arrange(new Rect(0,0,286,104)); panel.UpdateLayout();
                 check(status.ActualWidth==249&&status.ActualHeight<=24,"long file names stay within the compact status area");
-                window.Render(new UpdateViewState(UpdatePhase.Downloading,original,
-                    Progress:new UpdateProgress(50,100,10,"download",Detail:original)));
-                check(!status.Text.Contains('\n')&&(string?)status.ToolTip==original,"download progress uses the same single-line treatment");
                 var images=Path.Combine(AppContext.BaseDirectory,"update-text-preview"); Directory.CreateDirectory(images);
                 foreach(var (name,progress) in new[]{
                     ("install",new DFLegacy.UpdateCore.UpdateProgress("install","",0,8,Detail:"请勿退出。")),
-                    ("download-long",new DFLegacy.UpdateCore.UpdateProgress("download","ImagePacks2/"+new string('长',80)+".npk",2,8)),
                     ("recover",new DFLegacy.UpdateCore.UpdateProgress("recover","DFLegacy.Client.dll",3,8))})
                 {
                     window.Render(new UpdateInstallProgress(.85,UpdateProgressText.Format(progress)));
@@ -210,13 +218,13 @@ internal static class UpdateStartupFlowTests
                     await owner.Dispatcher.InvokeAsync(()=>
                     {
                         if(mode=="close-inspection")owner.Close();
-                        else Application.Current.Windows.OfType<UpdateInstallWindow>().Single(w=>w.IsVisible).Close();
+                        else Application.Current.Windows.OfType<UpdateWindow>().SingleOrDefault(w=>w.IsVisible)?.Close();
                     });
                 return mode=="locks-declined"?[new FileLockOwner(1,1,"unrelated fixture",false)]:[];
             };
             if(mode=="cancel-download")session.Download=async(_,_,token)=>
             {
-                await owner.Dispatcher.InvokeAsync(()=>Application.Current.Windows.OfType<UpdateInstallWindow>().Single(w=>w.IsVisible).Close(),DispatcherPriority.Background);
+                await owner.Dispatcher.InvokeAsync(()=>Application.Current.Windows.OfType<UpdateWindow>().SingleOrDefault(w=>w.IsVisible)?.Close(),DispatcherPriority.Background);
                 token.ThrowIfCancellationRequested();throw new InvalidOperationException("cancel must stop download");
             };
             if(mode.StartsWith("recovery"))session.Recovery=new("fixture","hash","old",new("DFLegacy.Launcher.exe","hash",1),new("DFLegacy.Launcher.exe","hash",1),true);

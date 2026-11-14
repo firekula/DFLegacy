@@ -1,14 +1,14 @@
 #include <winsock2.h>
 #include <cstring>
 #include "ChapterTwoParty.h"
+#include "ChapterTwoRemoteEndpoint.h"
 
 hostent* dfl::chapter_two::ResolveLocalPartyRelayHost(const char* name) noexcept
 {
-    // The peer constructor resolves the advertised relay even when it can
-    // connect directly to a teammate. Keep both package and test lab local.
+    // The peer constructor resolves the advertised relay even if it later connects directly.
     struct RelayHost
     {
-        char name[10];
+        char name[16];
         char address[4];
         char* aliases[1]{nullptr};
         char* addresses[2]{address, nullptr};
@@ -20,5 +20,12 @@ hostent* dfl::chapter_two::ResolveLocalPartyRelayHost(const char* name) noexcept
     if (!name) return nullptr;
     if (std::strcmp(name, packaged.name) == 0) return &packaged.entry;
     if (std::strcmp(name, isolated.name) == 0) return &isolated.entry;
+    thread_local RelayHost remote{};
+    in_addr address{};
+    if (ReadRemoteIpv4(remote.name, address) && std::strcmp(name, remote.name) == 0)
+    {
+        std::memcpy(remote.address, &address.s_addr, sizeof(remote.address));
+        return &remote.entry;
+    }
     return nullptr;
 }

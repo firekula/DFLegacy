@@ -14,10 +14,10 @@ internal sealed class ChapterTwoDebugApi : IDisposable
 {
     private readonly HttpClient http;
     internal bool Authenticated { get; private set; }
-    internal ChapterTwoDebugApi(HttpMessageHandler? handler=null)
+    internal ChapterTwoDebugApi(HttpMessageHandler? handler=null, string serviceUrl="http://127.0.0.2:48091")
     {
-        http=handler is null?new HttpClient(new HttpClientHandler{UseProxy=false,AllowAutoRedirect=false}):new HttpClient(handler);
-        http.BaseAddress=new Uri("http://127.0.0.2:48091");http.Timeout=TimeSpan.FromSeconds(12);
+        http=handler is null?ChapterTwoConnection.CreateAccountHttpClient(serviceUrl):new HttpClient(handler);
+        http.BaseAddress=new Uri(serviceUrl);http.Timeout=TimeSpan.FromSeconds(12);
     }
     private async Task<JsonElement> Read(HttpResponseMessage response)
     {

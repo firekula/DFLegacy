@@ -14,7 +14,7 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
     internal string BaseUrl { get; } = baseUrl;
 
     internal static async Task<LocalPaymentSite> StartAsync(string serviceUrl, CancellationToken token,
-        bool useProxy = true, bool inlineStyle = false, IPAddress? listenAddress = null)
+        bool useProxy = true, bool inlineStyle = false, IPAddress? listenAddress = null, TimeSpan? connectionLifetime = null)
     {
         var address = listenAddress ?? IPAddress.Loopback;
         if (!IPAddress.IsLoopback(address))
@@ -33,7 +33,10 @@ internal sealed class LocalPaymentSite(WebApplication app, HttpClient upstream, 
             style = "<style type=\"text/css\">" + (await reader.ReadToEndAsync(token)).Replace("../images/", "images/", StringComparison.Ordinal) + "</style>";
         }
         var types = new FileExtensionContentTypeProvider();
-        var upstream = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = useProxy })
+        var upstream = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = useProxy,
+            PooledConnectionLifetime = connectionLifetime ?? Timeout.InfiniteTimeSpan,
+            ConnectCallback = connectionLifetime is null ? null : (context, ct) =>
+                DFLegacy.Relay.DomainHttpConnection.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port, ct) })
         {
             Timeout = TimeSpan.FromSeconds(10),
             MaxResponseContentBufferSize = 16384

@@ -40,7 +40,20 @@ Copy-Item -LiteralPath (Join-Path $source 'LoopbackWire.h') -Destination $copy
 Copy-Item -LiteralPath (Join-Path $source 'fixed-loader/LoopbackClient.h') -Destination $loader
 $original = [IO.File]::ReadAllText((Join-Path $source 'fixed-loader/main.cpp')).Replace("`r`n", "`n")
 $original = $original.Replace('#include <windows.h>', "#include <windows.h>`n#include `"ChapterTwoKeyboardTiming.h`"")
+$original = $original.Replace('#include "ChapterTwoKeyboardTiming.h"', "#include `"ChapterTwoKeyboardTiming.h`"`n#include `"ChapterTwoRelaySockets.h`"")
+foreach ($routing in @(
+    @('const int result=sendto(socket,buffer,length,flags,address,addressLength);', 'const int result=dfl::chapter_two::RelayGameSendTo(socket,buffer,length,flags,address,addressLength);'),
+    @('const int result=recvfrom(socket,buffer,length,flags,address,addressLength);', 'const int result=dfl::chapter_two::RelayGameRecvFrom(socket,buffer,length,flags,address,addressLength);')
+)) {
+    if (!$original.Contains($routing[0])) { throw 'Missing verified game datagram routing anchor.' }
+    $original = $original.Replace($routing[0], $routing[1])
+}
 $original = $original.Replace('static char ipv4[4]{127,0,0,1};', 'static char ipv4[4]{127,0,0,2};')
+$original = $original.Replace('static char ipv4[4]{127,0,0,2};', @'
+static char ipv4[4]{127,0,0,2};
+    char relayHost[16]{}; in_addr relayAddress{};
+    ipv4[3]=dfl::chapter_two::ReadLocalRelayIpv4(relayHost,relayAddress)?1:2;
+'@)
 # The desktop process receives a per-attempt directory from the launcher, with
 # the same scratch layout as before. No container profile or folder API remains.
 if (!$original.Contains('L"DFL_S1C2_CONTAINER_DATA"') -or !$original.Contains('CONTAINER_DATA_UNAVAILABLE')) {
@@ -129,6 +142,75 @@ $localPartyRelay = @'
     }
 '@
 $original = $original.Replace($originalPartyRelay, $localPartyRelay)
+$channelReset = 'if(port==47001 || (port>=7100 && port<=7105))InterlockedExchange(&resetChannelCipher,1);'
+if (!$original.Contains($channelReset)) { throw 'Missing verified channel reset anchor.' }
+$original = $original.Replace($channelReset, 'if(port==47001 || (port>=7100 && port<=7105) || dfl::chapter_two::IsPvpPort(port))InterlockedExchange(&resetChannelCipher,1);')
+$pvpExitAnchor = 'static int WSAAPI GameBind(SOCKET socket,const sockaddr* address,int length)'
+if (!$original.Contains($pvpExitAnchor)) { throw 'Missing verified game socket hook section.' }
+$pvpExitHook = @'
+static void __fastcall CloseAndResumeRemoteDuel(unsigned char* network, void*)
+{
+    using NativeRoutine = void(__thiscall*)(void*);
+    using ReadSecure = int(__thiscall*)(void*);
+    // This is the successful EXIT path in the channel transition scene.
+    // A close performed here can consume the native FD_CLOSE before it arms
+    // the reconnect timer, leaving the selected duel channel on a black screen.
+    reinterpret_cast<NativeRoutine>(0x009cc190)(network);
+    const auto* game = *reinterpret_cast<unsigned char**>(0x00d564ac);
+    if (!game || network != *reinterpret_cast<unsigned char**>(0x00dfcc98)
+        || *reinterpret_cast<const SOCKET*>(network+0x1b4) != INVALID_SOCKET) return;
+
+    auto* channel = *reinterpret_cast<unsigned char* const*>(game+0x2c);
+    const auto read = reinterpret_cast<ReadSecure>(0x00a46ab0);
+    if (!channel || read(channel+0x2b4) != 0 || read(channel+0x2f4) != 0) return;
+    const int group = *reinterpret_cast<const int*>(channel+0x290);
+    const int category = *reinterpret_cast<const int*>(channel+0x298);
+    const int row = *reinterpret_cast<const int*>(channel+0x2a0);
+    if (group < 0 || group >= 109 || category != 4 || row < 0) return;
+
+    const auto* table = channel+0x2044+group*0xcc+category*0x10;
+    const auto begin = *reinterpret_cast<const uintptr_t*>(table);
+    const auto end = *reinterpret_cast<const uintptr_t*>(table+4);
+    const auto capacity = *reinterpret_cast<const uintptr_t*>(table+8);
+    constexpr size_t recordSize = 104;
+    if (!begin || end <= begin || capacity < end || (end-begin)%recordSize
+        || static_cast<size_t>(row) >= (end-begin)/recordSize) return;
+
+    const auto* record = reinterpret_cast<const unsigned char*>(begin+row*recordSize);
+    const int port = *reinterpret_cast<const int*>(record+0x54);
+    char host[16]{};
+    in_addr remote{}, dial{};
+    if (port < 1 || port > 65535 || !dfl::chapter_two::IsPvpPort(static_cast<unsigned short>(port))
+        || record[0x58] == 1 || !std::memchr(record+0x40,0,16)
+        || InetPtonA(AF_INET,reinterpret_cast<const char*>(record+0x40),&dial) != 1) return;
+    const bool localRelay = dfl::chapter_two::ReadLocalRelayIpv4(host,remote);
+    if (localRelay ? !dfl::chapter_two::IsLocalGameAddress(dial)
+        : (!dfl::chapter_two::ReadRemoteIpv4(host,remote) || remote.s_addr != dial.s_addr)) return;
+    reinterpret_cast<NativeRoutine>(0x009a5df0)(channel);
+}
+
+'@
+$original = $original.Replace($pvpExitAnchor, $pvpExitHook.Replace("`r`n", "`n") + "`n" + $pvpExitAnchor)
+$pvpInstallAnchor = '        *reinterpret_cast<DWORD*>(base+0x6ea53c)=reinterpret_cast<DWORD>(GameSend);'
+if (!$original.Contains($pvpInstallAnchor)) { throw 'Missing verified remote duel patch section.' }
+$pvpInstall = @'
+        char duelHost[16]{};
+        in_addr duelAddress{};
+        if (dfl::chapter_two::ReadRemoteIpv4(duelHost,duelAddress) || dfl::chapter_two::ReadLocalRelayIpv4(duelHost,duelAddress)) {
+            constexpr unsigned char exitScene[]{0x83,0xf8,0x05,0x75,0x10,0x8b,0x0d,0x98,0xcc,0xdf,0x00,0xe8,0xfc,0xb9,0x5b,0x00};
+            constexpr unsigned char armRoutine[]{0x83,0xb9,0xa0,0x02,0x00,0x00,0xff,0x74,0x72};
+            if (std::memcmp(base+0x10784,exitScene,sizeof(exitScene)) ||
+                std::memcmp(base+0x5a5df0,armRoutine,sizeof(armRoutine))) {
+                report("REMOTE_DUEL_TRANSITION_SIGNATURE_MISMATCH\n");
+                return 46;
+            }
+            auto* call = base+0x1078f;
+            const DWORD displacement = reinterpret_cast<DWORD>(CloseAndResumeRemoteDuel)
+                - reinterpret_cast<DWORD>(call+5);
+            std::memcpy(call+1,&displacement,sizeof(displacement));
+        }
+'@
+$original = $original.Replace($pvpInstallAnchor, $pvpInstall.Replace("`r`n", "`n") + "`n" + $pvpInstallAnchor)
 $timedInput = @(
     @{
         Site = '    if(message==WM_KEYDOWN || message==WM_KEYUP){'
@@ -296,6 +378,7 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoHudPortraitCache.h"' + $nl +
     '#include "ChapterTwoFreeCardDisplay.h"' + $nl +
     '#include "ChapterTwoParty.h"' + $nl +
+    '#include "ChapterTwoRemoteEndpoint.h"' + $nl +
     '#include "ChapterTwoTownMap.h"' + $nl +
     '#include "ChapterTwoLootGather.h"' + $nl +
     '#include "ChapterTwoBackgroundPolicy.h"' + $nl +
@@ -366,6 +449,8 @@ if ($LASTEXITCODE) { throw 'Chapter Two free card display tests failed.' }
 if ($LASTEXITCODE) { throw 'Presentation policy tests failed.' }
 & (Join-Path $build 'Release/chapter_two_party_relay_tests.exe')
 if ($LASTEXITCODE) { throw 'Chapter Two party relay lookup tests failed.' }
+& (Join-Path $build 'Release/chapter_two_relay_endpoint_tests.exe')
+if ($LASTEXITCODE) { throw 'Chapter Two local relay endpoint tests failed.' }
 & (Join-Path $build 'Release/chapter_two_town_map_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two town map tests failed.' }
 & (Join-Path $build 'Release/chapter_two_loot_gather_tests.exe')

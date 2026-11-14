@@ -104,7 +104,7 @@ internal static class RepairClient
                 await ReleaseLocksAsync(WithoutSupervisor(RecoveryFiles(root)),confirmClose,token).ConfigureAwait(false);
                 using var maintenance=Core.ClientGameLease.EnterMaintenance(root);
                 progress?.Report(new("recover","",0,0,Detail:"请勿退出。"));
-                await Task.Run(()=>Core.ChapterTransition.Recover(root),CancellationToken.None).ConfigureAwait(false);
+                await Task.Run(()=>Core.ChapterTransition.Recover(root,progress),CancellationToken.None).ConfigureAwait(false);
                 var restored=new Core.InstallationStore(root).ReadInstalled()??throw new InvalidDataException("缺少已恢复的第一章安装记录。");
                 validateManifest?.Invoke(restored.Release.Manifest);
                 report.Complete("chapter-rollback-recovered");
@@ -183,7 +183,7 @@ internal static class RepairClient
 
     internal static async Task<int> RunEntryAsync(string[] args)
     {
-        Views.UpdateInstallWindow? window=null;using var cancel=new CancellationTokenSource();
+        Views.UpdateOperationWindow? window=null;using var cancel=new CancellationTokenSource();
         var quiet=args.Any(a=>a.Equals("--no-dialog",StringComparison.OrdinalIgnoreCase)||a.Equals("--headless",StringComparison.OrdinalIgnoreCase));
         try
         {
@@ -194,24 +194,22 @@ internal static class RepairClient
                 var picker=new Microsoft.Win32.OpenFolderDialog{Title="选择需要修复的客户端目录"};
                 if(picker.ShowDialog()!=true)return 2;request=request with {Directory=picker.FolderName};
             }
-            if(!quiet){window=new Views.UpdateInstallWindow{Title="修复客户端"};window.CancelRequested+=()=>cancel.Cancel();window.Show();}
+            if(!quiet) window=new Views.UpdateOperationWindow("修复客户端","正在检查客户端资源…",cancel.Cancel);
             var progress=new Progress<Core.UpdateProgress>(p=>
             {
-                var message=UpdateProgressText.Format(p);
-                if(quiet)Console.WriteLine(message);
-                else if(p.Phase is "recover" or "install" or "prepared" or "commit")window!.Render(new UpdateInstallProgress(.85,message));
-                else window!.Render(new UpdateViewState(p.Phase=="download"?UpdatePhase.Downloading:UpdatePhase.Checking,message,
-                    Progress:new UpdateProgress(p.BytesReceived,p.TotalBytes,p.BytesPerSecond,p.Phase,p.Path,p.CompletedFiles,p.TotalFiles,message)));
+                if(quiet) Console.WriteLine(UpdateProgressText.Format(p));
+                else window?.Report(p);
             });
             async Task<bool> Confirm(IReadOnlyList<FileLockOwner> owners,CancellationToken token)
             {
                 token.ThrowIfCancellationRequested();if(quiet)return false;
-                return await Application.Current.Dispatcher.InvokeAsync(()=>MessageBox.Show(window,
-                    "以下进程占用客户端文件：\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+
-                    "\n确认关闭可结束的进程并继续修复？请先保存其他工作。", "修复需要释放文件",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes);
+                return await Application.Current.Dispatcher.InvokeAsync(()=>ClassicMessage.Confirm(window?.VisibleWindow,
+                    "修复需要释放文件\n"+string.Join('\n',owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"))+
+                    "\n确认关闭可结束的进程并继续修复？请先保存其他工作。"));
             }
             var result=await RunAsync(request,progress:progress,confirmClose:Confirm,token:cancel.Token);
-            if(quiet)Console.WriteLine(result.Message);else MessageBox.Show(window,result.Message,"客户端修复",MessageBoxButton.OK,MessageBoxImage.Information);
+            if(quiet) Console.WriteLine(result.Message);
+            else ClassicMessage.Show(window?.VisibleWindow,result.Message);
             return result.Success?0:1;
         }
         catch(OperationCanceledException ex){if(quiet)Console.WriteLine("修复已取消；下次将重新完整校验。"+ex.Message);return 2;}
@@ -219,10 +217,9 @@ internal static class RepairClient
         {
             Program.ReportError("repair-entry",ex);
             if(quiet)Console.Error.WriteLine(ex.Message);
-            else if(window is null)MessageBox.Show(ex.Message,"客户端修复失败",MessageBoxButton.OK,MessageBoxImage.Error);
-            else MessageBox.Show(window,ex.Message,"客户端修复失败",MessageBoxButton.OK,MessageBoxImage.Error);
+            else ClassicMessage.Show(window?.VisibleWindow,"客户端修复失败\n"+ex.Message);
             return 1;
         }
-        finally {window?.Finish();}
+        finally {window?.Dispose();}
     }
 }

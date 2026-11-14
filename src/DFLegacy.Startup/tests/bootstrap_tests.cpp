@@ -280,6 +280,61 @@ int wmain(int argc, wchar_t** argv) {
             Require(observed.size() == 1 && observed[0].result == 3, "quiet CLI failure was retried");
         }
     });
+    test("actual fixed entry uses the classic error dialog", [&] {
+        Root root(++index);
+        const auto target = root.path / L"DFLegacy.Launcher.exe";
+        fs::copy_file(launcher, target);
+        const auto desktopName = L"DFLegacy startup dialog test " + std::to_wstring(GetCurrentProcessId());
+        const auto desktop = CreateDesktopW(desktopName.c_str(), nullptr, nullptr, 0, GENERIC_ALL, nullptr);
+        Require(desktop != nullptr, "could not create isolated test desktop");
+        struct CloseDesktopAtExit { HDESK value; ~CloseDesktopAtExit() { CloseDesktop(value); } } closeDesktop{desktop};
+        std::wstring command = L"\"" + target.wstring() + L"\"";
+        std::wstring desktopPath = L"WinSta0\\" + desktopName;
+        STARTUPINFOW startup{}; startup.cb = sizeof(startup); startup.lpDesktop = desktopPath.data();
+        PROCESS_INFORMATION process{};
+        Require(CreateProcessW(target.c_str(), command.data(), nullptr, nullptr, FALSE, 0, nullptr,
+            root.path.c_str(), &startup, &process), "isolated launcher start failed");
+        struct CloseProcessAtExit {
+            PROCESS_INFORMATION value;
+            ~CloseProcessAtExit() {
+                if (WaitForSingleObject(value.hProcess, 0) != WAIT_OBJECT_0) {
+                    TerminateProcess(value.hProcess, 98);
+                    WaitForSingleObject(value.hProcess, 3000);
+                }
+                CloseHandle(value.hThread);
+                CloseHandle(value.hProcess);
+            }
+        } closeProcess{process};
+        struct Lookup {
+            DWORD pid;
+            HWND dialog = nullptr;
+        } lookup{process.dwProcessId};
+        const auto find = [](HWND window, LPARAM data) -> BOOL {
+            auto& state = *reinterpret_cast<Lookup*>(data);
+            DWORD pid = 0;
+            GetWindowThreadProcessId(window, &pid);
+            if (pid != state.pid || !IsWindowVisible(window)) return TRUE;
+            wchar_t title[64]{};
+            GetWindowTextW(window, title, 64);
+            if (std::wstring_view(title) != L"提示信息") return TRUE;
+            state.dialog = window;
+            return FALSE;
+        };
+        const auto deadline = GetTickCount64() + 3000;
+        while (!lookup.dialog && GetTickCount64() < deadline
+            && WaitForSingleObject(process.hProcess, 0) == WAIT_TIMEOUT) {
+            EnumDesktopWindows(desktop, find, reinterpret_cast<LPARAM>(&lookup));
+            if (!lookup.dialog) Sleep(20);
+        }
+        Require(lookup.dialog != nullptr, "native error did not use the classic prompt");
+        Require((GetWindowLongPtrW(lookup.dialog, GWL_STYLE) & WS_CAPTION) != WS_CAPTION,
+            "classic prompt has a Windows title bar");
+        Require(PostMessageW(lookup.dialog, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0) != FALSE,
+            "could not confirm classic prompt");
+        Require(WaitForSingleObject(process.hProcess, 3000) == WAIT_OBJECT_0, "confirming classic prompt did not close launcher");
+        DWORD exitCode = 99;
+        Require(GetExitCodeProcess(process.hProcess, &exitCode) && exitCode == 1, "classic prompt changed startup exit code");
+    });
     test("invalid hash or machine never executes", [&] {
         Root root(++index); root.Primary(good);
         Write(root.path / L"DFLegacy.Updater.exe", "not a PE");

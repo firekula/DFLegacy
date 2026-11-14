@@ -48,7 +48,7 @@ public partial class MainWindow
             ShowServerSelectionError("服务器配置已变化或无法读取，请重新选择", ex);
             return;
         }
-        var account = new AccountServiceClient(options.ResolveAccountServiceUrl());
+        var account = CreateAccountService(options);
         CancelServerRequests(); _serverSelection = null;
         ApplyRuntimeOptions(options, account);
     }
@@ -233,7 +233,7 @@ public partial class MainWindow
         try
         {
             var options = _serverSelection.Confirm(_store);
-            var accountClient = new AccountServiceClient(options.ResolveAccountServiceUrl());
+            var accountClient = CreateAccountService(options);
             ApplyRuntimeOptions(options, accountClient);
             _confirmedServerSelection = _serverSelection;
             _requiresServerSelection = false;

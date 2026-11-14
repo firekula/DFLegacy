@@ -93,16 +93,12 @@ internal static class UpdateUiTests
         {
             compact.Show(); compact.UpdateLayout(); check(compact.ActualWidth==286 && compact.ActualHeight==104,"install helper uses native 286x104 geometry");
             check(compact.FindName("InstallStatus") is TextBlock initialStatus
-                && initialStatus.Text.Contains("等待登录器退出") && !initialStatus.Text.Contains('%')
+                && initialStatus.Text.Contains("备份或替换登录器") && !initialStatus.Text.Contains('%')
                 && initialStatus.TextAlignment==TextAlignment.Left
                 && initialStatus.TextWrapping==TextWrapping.NoWrap
                 && initialStatus.TextTrimming==TextTrimming.CharacterEllipsis,
                 "helper displays truthful phase without invented percentage");
-            compact.Render(new UpdateViewState(UpdatePhase.Installing,"正在准备安全安装助手…",ReplacesScriptPvf:true));
-            check(compact.FindName("InstallStatus") is TextBlock status && status.Text.Contains("替换 Script.pvf") && status.Text.Contains("备份已有文件")
-                && status.ToolTip is string details && details.Contains("替换 Script.pvf") && details.Contains("备份已有文件"),
-                "compact V3 auto-install status discloses PVF replacement and backup");
-            compact.Render(new UpdateViewState(UpdatePhase.Downloading,"正在下载更新…",Progress:new(50,100,10))); compact.UpdateLayout();
+            compact.Render(new UpdateInstallProgress(.5,"正在备份 DFLegacy.Launcher.exe…",ReplacingLauncher:true)); compact.UpdateLayout();
             var evidence=Environment.GetEnvironmentVariable("DFLEGACY_UPDATE_UI_EVIDENCE");
             if(!string.IsNullOrEmpty(evidence)) { var bitmap=new RenderTargetBitmap(286,104,96,96,PixelFormats.Pbgra32); bitmap.Render(compact); var encoder=new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap)); using var file=File.Create(Path.ChangeExtension(evidence,"install.png")); encoder.Save(file); }
         }
@@ -117,8 +113,9 @@ internal static class UpdateUiTests
                 if(mode=="stage-failure") File.AppendAllText(Path.Combine(prepared.Directory,"DFLegacy.Client.dll"),"tampered");
                 using var second=mode=="rollback"?new FileStream(Path.Combine(target,"DFLegacy.Client.dll"),FileMode.Open,FileAccess.Read,FileShare.ReadWrite):null;
                 var result=UpdateTransaction.Apply(target,prepared,UpdateInstaller.Restart);
-                var helper=new UpdateInstallWindow { ShowInTaskbar=false,ShowActivated=false,Left=-32000,Top=-32000,WindowStartupLocation=WindowStartupLocation.Manual };
-                helper.Show(); bool displayed=false;
+                using var operation=new UpdateOperationWindow("安装客户端更新", "安装中…");
+                var helper=operation.VisibleWindow;
+                bool displayed=false;
                 var closer=new DispatcherTimer(TimeSpan.FromMilliseconds(10),DispatcherPriority.Background,(_,_)=>
                 {
                     foreach(var dialog in helper.OwnedWindows.OfType<ClassicMessageWindow>().ToArray())
@@ -134,11 +131,11 @@ internal static class UpdateUiTests
                 },Dispatcher.CurrentDispatcher);
                 try
                 {
-                    helper.Finish(result,target);
+                    operation.Finish(result,target);
                     check(displayed,$"owned helper shows {mode} before closing");
                     check(!helper.IsVisible,"acknowledging helper outcome allows owned helper to close");
                 }
-                finally { closer.Stop(); helper.Finish(); }
+                finally { closer.Stop(); }
             }
         }
         finally { Directory.Delete(outcomeRoot,true); }

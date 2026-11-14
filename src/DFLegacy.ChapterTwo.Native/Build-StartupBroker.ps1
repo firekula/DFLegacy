@@ -31,13 +31,27 @@ function Replace-Verified([string]$Old, [string]$New) {
 }
 
 $code = [IO.File]::ReadAllText((Join-Path $source 'container/LoopbackBroker.h')).Replace("`r`n", "`n")
-Replace-Verified 'endpoint.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'endpoint.sin_addr.s_addr=htonl(0x7f000002);'
+Replace-Verified '#include <map>' ('#include "ChapterTwoRelaySockets.h"' + "`n" + '#include <map>')
+Replace-Verified '        const bool secondary=true;' ('        const bool secondary=true;' + "`n" + @'
+        char remoteText[16]{};
+        in_addr remoteAddress{};
+        const bool remote = dfl::chapter_two::ReadRemoteIpv4(remoteText, remoteAddress);
+        char relayText[16]{};
+        in_addr relayAddress{};
+        const bool localRelay = dfl::chapter_two::ReadLocalRelayIpv4(relayText, relayAddress);
+        const auto bindAddress = localRelay ? relayAddress.s_addr : htonl(remote ? INADDR_ANY : 0x7f000002);
+'@)
+Replace-Verified 'endpoint.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'endpoint.sin_addr.s_addr=bindAddress;'
 Replace-Verified 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(INADDR_ANY)' 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(0x7f000002) || address.sin_addr.s_addr==htonl(INADDR_ANY)'
-Replace-Verified 'address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'address.sin_addr.s_addr=htonl(0x7f000002);'
+Replace-Verified 'address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'address.sin_addr.s_addr=bindAddress;'
+Replace-Verified '(address==0x7f000001 || address==0x7f000002)' '(remote ? request.address.sin_addr.s_addr==remoteAddress.s_addr : (address==0x7f000001 || address==0x7f000002))'
+Replace-Verified '(port==42311 || port==42312 || port==47001 || port==47005 ||' '(port==42311 || port==42312 || port==47001 || port==47005 || (localRelay && port==48090) || ((remote || localRelay) && dfl::chapter_two::IsPvpPort(port)) ||'
+Replace-Verified 'isolated.sin_addr.s_addr=htonl(0x7f000002);' 'isolated.sin_addr.s_addr=localRelay ? relayAddress.s_addr : remote ? remoteAddress.s_addr : htonl(0x7f000002);'
+Replace-Verified 'std::printf("LOOPBACK_BROKER_CONNECT port=%hu to=127.0.0.2:%hu\n",port,ntohs(isolated.sin_port));' 'std::printf("GAME_BROKER_CONNECT port=%hu to=%s:%hu\n",port,localRelay ? relayText : remote ? remoteText : "127.0.0.2",ntohs(isolated.sin_port));'
 $connectBind = @'
                         sockaddr_in local{};
                         int localLength=sizeof(local);
-                        if(getsockname(it->second,reinterpret_cast<sockaddr*>(&local),&localLength)==SOCKET_ERROR){
+                        if(!remote && getsockname(it->second,reinterpret_cast<sockaddr*>(&local),&localLength)==SOCKET_ERROR){
                             reply.error=WSAGetLastError();
                             if(reply.error!=WSAEINVAL)break;
                             local.sin_family=AF_INET;
@@ -186,6 +200,8 @@ Replace-Verified '    if(++exceptions<100 || !x.dwFirstChance){' '    if(!x.dwFi
 [IO.File]::WriteAllText((Join-Path $container 'trace.cpp'), $code)
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoPerformanceLogHandles.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoDiagnosticEvents.h') -Destination $container
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRemoteEndpoint.h') -Destination $container
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRelaySockets.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $source 'container/CMakeLists.txt') -Destination $container
 $build = Join-Path $out 'build'
 & $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64

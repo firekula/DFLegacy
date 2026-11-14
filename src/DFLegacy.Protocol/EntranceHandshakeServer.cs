@@ -32,6 +32,7 @@ public sealed class EntranceHandshakeServer(
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var listener = new TcpListener(address, port);
+                if (address.Equals(IPAddress.IPv6Any)) listener.Server.DualMode = true;
                 try { listener.Start(); }
                 catch { listener.Stop(); throw; }
                 lock (_listenersGate)

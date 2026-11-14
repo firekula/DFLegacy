@@ -75,14 +75,16 @@ async function loadConfig() {
   $("#environmentNotice").hidden = !snapshot.environmentOverrides.length;
   $("#environmentNotice").textContent = "部分设置由环境变量控制，已锁定对应输入；有效值以环境变量为准：" + snapshot.environmentOverrides.join("、");
   $("#networkPreset").value = "custom";
-  $("#chapterTwoTestTopUp").hidden = !snapshot.chapterTwoLocal;
+  $("#chapterTwoTestTopUp").hidden = !snapshot.chapterTwoLocal || snapshot.chapterTwoRemote;
   if (snapshot.chapterTwoLocal) {
     const adjustable = new Set(["channelName", "maximumUsers", "monsterExperienceMultiplier", "clearExperienceMultiplier", "dropRatePercent", "dropEconomicRate", "autostart", "chapterTwoTestTopUpEnabled"]);
     for (const input of fields) if (input.name && !adjustable.has(input.name)) input.disabled = true;
     $("#networkPreset").disabled = true;
     $("#deriveApi").disabled = true;
     $("#environmentNotice").hidden = false;
-    $("#environmentNotice").textContent = "第二章测试使用固定的本机地址和端口，配套启动器请使用交付的客户端包。";
+    $("#environmentNotice").textContent = snapshot.chapterTwoRemote
+      ? "第二章远程地址由部署环境配置，PK 频道已启用。配套启动器请使用交付的客户端包。"
+      : "第二章测试使用固定的本机地址和端口，配套启动器请使用交付的客户端包。";
   }
   await refreshPvf();
 }

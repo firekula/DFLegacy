@@ -12,6 +12,11 @@ public sealed class ConfigurationStore
     private readonly IDictionary<string, string?> _environment;
     private readonly DeploymentConfig? _chapterTwoProfile;
     private readonly object _gate = new();
+    internal string? ChapterTwoPublicIpv4 { get; }
+    internal string? ChapterTwoServerHost { get; }
+    internal string ChapterTwoBindHost { get; } = "::";
+    internal bool ChapterTwoRemote => ChapterTwoPublicIpv4 is not null || ChapterTwoServerHost is not null;
+    internal IReadOnlyDictionary<string, string?> ChapterTwoDomainEnvironment { get; } = new Dictionary<string, string?>();
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private static readonly Dictionary<string, string> Fields = new()
     {
@@ -49,6 +54,8 @@ public sealed class ConfigurationStore
     public ConfigurationStore(ManagerPaths paths, IDictionary<string, string?>? environment = null)
     {
         _paths = paths;
+        var supplied = environment ?? Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
+            .ToDictionary(x => (string)x.Key, x => x.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
         var serverTemplate = Path.Combine(paths.Root, "templates", "server.json");
         var settingsTemplate = Path.Combine(paths.Root, "templates", "manager.json");
         var initialSettings = File.Exists(settingsTemplate)
@@ -63,9 +70,46 @@ public sealed class ConfigurationStore
                 || !IPAddress.TryParse(_chapterTwoProfile.BindHost, out var address) || !IPAddress.IsLoopback(address)
                 || _chapterTwoProfile.PanelListeners().Any(listener => !IPAddress.TryParse(listener.Host, out var host) || !IPAddress.IsLoopback(host)))
                 throw new InvalidDataException("第二章部署模板只允许本机回环监听。");
+            if (supplied.TryGetValue("DFLEGACY_CHAPTER_TWO_SERVER_HOST", out var serverHost) && serverHost is not null)
+            {
+                ValidateDestination(serverHost);
+                if (serverHost.Equals("localhost", StringComparison.OrdinalIgnoreCase) || serverHost.Contains('%')
+                    || IPAddress.TryParse(serverHost, out var serverAddress)
+                    && (IPAddress.IsLoopback(serverAddress) || serverAddress.IsIPv6Multicast
+                        || serverAddress.IsIPv4MappedToIPv6 || serverAddress.IsIPv6LinkLocal
+                        || serverAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork
+                            && serverAddress.GetAddressBytes()[0] is 0 or >= 224))
+                    throw new ArgumentException("第二章服务器域名或地址必须可供玩家访问。");
+                if (supplied.TryGetValue("DFLEGACY_CHAPTER_TWO_PUBLIC_IPV4", out var oldAddress) && oldAddress is not null)
+                    throw new ArgumentException("第二章域名中继模式与旧 IPv4 直连模式不能同时配置。");
+                ChapterTwoServerHost = serverHost;
+                if (supplied.TryGetValue("DFLEGACY_CHAPTER_TWO_BIND_HOST", out var bind) && bind is not null)
+                {
+                    if (bind is not ("::" or "0.0.0.0")) throw new ArgumentException("第二章远程监听须为 :: 或 0.0.0.0。");
+                    ChapterTwoBindHost = bind;
+                }
+                var switches = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+                foreach (var name in new[] { "DFLegacy__EnableTestCeraTopUp", "DFLegacy__Channel__RegionalChannelsEnabled", "DFLegacy__Fatigue__WeekendDoubleEnabled" })
+                    if (supplied.TryGetValue(name, out var setting) && setting is not null)
+                    {
+                        if (!bool.TryParse(setting, out _)) throw new ArgumentException(name + " 必须为 true 或 false。");
+                        switches[name] = setting;
+                    }
+                ChapterTwoDomainEnvironment = switches;
+                _chapterTwoProfile = ApplyChapterTwoRemote(_chapterTwoProfile);
+                Validate(_chapterTwoProfile);
+            }
+            else if (supplied.TryGetValue("DFLEGACY_CHAPTER_TWO_PUBLIC_IPV4", out var value) && value is not null)
+            {
+                if (!IPAddress.TryParse(value, out var host) || host.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork
+                    || host.ToString() != value || IPAddress.IsLoopback(host) || host.GetAddressBytes()[0] is 0 or >= 224)
+                    throw new ArgumentException("DFLEGACY_CHAPTER_TWO_PUBLIC_IPV4 必须是玩家可访问的 IPv4 地址。");
+                ChapterTwoPublicIpv4 = value;
+                _chapterTwoProfile = ApplyChapterTwoRemote(_chapterTwoProfile);
+                Validate(_chapterTwoProfile);
+            }
         }
-        _environment = ChapterTwoLocal ? new Dictionary<string, string?>() : environment ?? Environment.GetEnvironmentVariables().Cast<DictionaryEntry>()
-            .ToDictionary(x => (string)x.Key, x => x.Value?.ToString(), StringComparer.OrdinalIgnoreCase);
+        _environment = ChapterTwoLocal ? new Dictionary<string, string?>() : supplied;
         if (!File.Exists(paths.ServerConfig))
         {
             var root = File.Exists(serverTemplate) ? ParseFile(serverTemplate) : new JsonObject();
@@ -90,7 +134,10 @@ public sealed class ConfigurationStore
             var settings = JsonSerializer.Deserialize<ManagerSettings>(File.ReadAllText(_paths.SettingsFile), Json) ?? new();
             var saved = ReadConfig(section, settings);
             var effectiveNode = ApplyEnvironment(section, out var overrides);
-            return new(saved, ReadConfig(effectiveNode, settings), overrides.ToArray(), settings.Configured) { ChapterTwoLocal = ChapterTwoLocal };
+            return new(saved, ReadConfig(effectiveNode, settings), overrides.ToArray(), settings.Configured)
+            {
+                ChapterTwoLocal = ChapterTwoLocal, ChapterTwoRemote = ChapterTwoRemote
+            };
         }
     }
 
@@ -114,7 +161,8 @@ public sealed class ConfigurationStore
             var root = ParseFile(_paths.ServerConfig);
             var section = root["DFLegacy"]!.AsObject();
             foreach (var (field, path) in Fields) Set(section, path, JsonSerializer.SerializeToNode(typeof(DeploymentConfig).GetProperty(field)!.GetValue(config)));
-            if (ChapterTwoLocal) Set(section, "EnableTestCeraTopUp", JsonValue.Create(config.ChapterTwoTestTopUpEnabled));
+            if (ChapterTwoLocal && !ChapterTwoRemote)
+                Set(section, "EnableTestCeraTopUp", JsonValue.Create(config.ChapterTwoTestTopUpEnabled));
             Set(section, "GameplayDatagram:AdvertisedHost", JsonValue.Create(gameHost));
             if (config.BindHost != before.Saved.BindHost)
                 foreach (var path in new[] { "CharacterDatagram:Host", "GameplayDatagram:Host", "Channel:Host" }) Set(section, path, JsonValue.Create(config.BindHost));
@@ -178,7 +226,7 @@ public sealed class ConfigurationStore
             ChapterTwoTestTopUpEnabled = config.ChapterTwoTestTopUpEnabled,
             Autostart = config.Autostart
         };
-        if (config != allowed) throw new ArgumentException("第二章测试包使用固定的本机连接配置。请恢复随包提供的第二章模板地址和端口。");
+        if (config != allowed) throw new ArgumentException("第二章部署使用固定的端口和连接配置。请核对随包模板和部署环境。");
     }
 
     public JsonObject ReadServerDocument() { lock (_gate) return ParseFile(_paths.ServerConfig); }
@@ -279,11 +327,31 @@ public sealed class ConfigurationStore
         return ReadConfig(section, settings, "Script.pvf");
     }
 
-    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings) =>
-        ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf")) with
+    private DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings)
+    {
+        var config = ReadConfig(node, settings, Path.Combine(_paths.Root, "resources", "Script.pvf")) with
         {
             ChapterTwoTestTopUpEnabled = ChapterTwoLocal && Get(node, "EnableTestCeraTopUp")?.GetValue<bool>() == true
         };
+        return ChapterTwoRemote ? ApplyChapterTwoRemote(config) : config;
+    }
+
+    private DeploymentConfig ApplyChapterTwoRemote(DeploymentConfig config) => ChapterTwoServerHost is { } host ? config with
+    {
+        BindHost = ChapterTwoBindHost, AdminHost = ChapterTwoBindHost, AdvertisedHost = host,
+        GameplayAdvertisedHost = "127.0.0.1", FallbackRelayAdvertisedHost = "127.0.0.1",
+        AccountServiceUrl = new UriBuilder("http", host, config.AdminPort).Uri.GetLeftPart(UriPartial.Authority),
+        RelayEnabled = true, PvpEnabled = true,
+        RegionalChannelsEnabled = ChapterTwoDomainEnvironment.TryGetValue("DFLegacy__Channel__RegionalChannelsEnabled", out var regional)
+            ? bool.Parse(regional!) : config.RegionalChannelsEnabled,
+        ChapterTwoTestTopUpEnabled = ChapterTwoDomainEnvironment.TryGetValue("DFLegacy__EnableTestCeraTopUp", out var topup) && bool.Parse(topup!)
+    } : config with
+    {
+        BindHost = "0.0.0.0", AdminHost = "0.0.0.0", AdvertisedHost = ChapterTwoPublicIpv4!,
+        GameplayAdvertisedHost = ChapterTwoPublicIpv4!, FallbackRelayAdvertisedHost = ChapterTwoPublicIpv4!,
+        AccountServiceUrl = $"http://{ChapterTwoPublicIpv4}:{config.AdminPort}", PvpEnabled = true,
+        ChapterTwoTestTopUpEnabled = false
+    };
 
     private static DeploymentConfig ReadConfig(JsonObject node, ManagerSettings settings, string defaultPvf)
     {

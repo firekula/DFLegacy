@@ -14,6 +14,7 @@ public sealed class ServerOptions
     public bool SeedTestAccount { get; set; } = true;
     public bool EnableTestCeraTopUp { get; set; } = false;
     public bool ChapterTwoLocalTestPaymentsOnly { get; set; }
+    public bool ChapterTwoRemote { get; set; }
     public string ScriptPvfPath { get; set; } = "data/Script.pvf";
     public bool SkipUnsupportedChapterTwoCashContainers { get; set; }
     // Loopback Chapter Two lab only. Zero leaves the event disabled.

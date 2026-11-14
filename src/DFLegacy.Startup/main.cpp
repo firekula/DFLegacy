@@ -1,9 +1,10 @@
 #include "bootstrap.h"
+#include "startup_prompt.h"
 #include <windows.h>
 #include <shellapi.h>
 #include <array>
 
-int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     bool noDialog = false;
     try {
         std::array<wchar_t, 32768> module{};
@@ -16,10 +17,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         for (int i = 1; i < argc; ++i) arguments.emplace_back(argv[i]);
         noDialog = dflegacy::startup::SuppressDialogs(arguments);
         auto result = dflegacy::startup::Run(std::filesystem::path(std::wstring(module.data(), count)).parent_path(), arguments);
-        if (result.exitCode == 1 && !noDialog) MessageBoxW(nullptr, result.message.c_str(), L"DFLegacy 启动修复", MB_OK | MB_ICONERROR);
+        if (result.exitCode == 1 && !noDialog) dflegacy::startup::ShowStartupPrompt(instance, result.message.c_str());
         return result.exitCode;
     } catch (...) {
-        if (!noDialog) MessageBoxW(nullptr, L"启动修复失败。请检查客户端文件和可用磁盘空间。", L"DFLegacy 启动修复", MB_OK | MB_ICONERROR);
+        if (!noDialog) dflegacy::startup::ShowStartupPrompt(instance, L"启动修复失败。请检查客户端文件和可用磁盘空间。");
         return 1;
     }
 }

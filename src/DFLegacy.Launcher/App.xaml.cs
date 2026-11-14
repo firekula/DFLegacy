@@ -42,9 +42,8 @@ public partial class App : Application
             // Keep the engine result authoritative when the only helper window closes.
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             // Helper UI has only embedded native artwork; it never reads launcher.json/theme.
-            var progress = new Views.UpdateInstallWindow();
-            progress.Show();
-            var outcome = await Updates.UpdateInstaller.RunHelperWithOutcomeAsync(e.Args,new Progress<Updates.UpdateInstallProgress>(progress.Render));
+            using var progress = new Views.UpdateOperationWindow("安装客户端更新", "正在等待登录器退出…");
+            var outcome = await Updates.UpdateInstaller.RunHelperWithOutcomeAsync(e.Args,new Progress<Updates.UpdateInstallProgress>(progress.Report));
             progress.Finish(outcome.Result,outcome.Target);
             Shutdown(outcome.ExitCode);
             return;
@@ -121,7 +120,7 @@ public partial class App : Application
             // The native supervisor retries recovery when receipt validation fails.
             // An early modal would block that recovery until the user dismissed it.
             if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT") is null)
-                MessageBox.Show(ex.Message,"DFLegacy 启动校验失败",MessageBoxButton.OK,MessageBoxImage.Error);
+                ClassicMessage.Show(null,"启动校验失败\n"+ex.Message);
             Shutdown(1);return;
         }
         if (IsHeadless(args))
@@ -166,7 +165,7 @@ public partial class App : Application
             // OnStartup 的未处理异常会以 WPF 崩溃对话框收场，这里与 headless 的
             // catch 保持同一交互方式：友好弹窗 + 以退出码 1 结束。
             if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT") is null)
-                MessageBox.Show(exception.Message, "DFLegacy 启动失败",MessageBoxButton.OK, MessageBoxImage.Error);
+                ClassicMessage.Show(null,"启动失败\n"+exception.Message);
             Shutdown(1);
         }
     }
@@ -202,7 +201,7 @@ public partial class App : Application
         if(restartBootstrap)
         {
             try{StartFixedEntry([],true);}
-            catch(Exception ex){Program.ReportError("bootstrap-recheck",ex);MessageBox.Show(ex.Message,"重新检查更新失败");}
+            catch(Exception ex){Program.ReportError("bootstrap-recheck",ex);ClassicMessage.Show(Current.MainWindow,"重新检查更新失败\n"+ex.Message);}
         }
         base.OnExit(e);
     }

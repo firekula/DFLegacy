@@ -205,7 +205,7 @@ internal static class BootstrapUpdateTests
         var provider=new FixtureProvider(BootstrapLayout.Architecture,files,[migration]);
         await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
         var app=System.Windows.Application.Current;
-        int Windows()=>app.Dispatcher.Invoke(()=>app.Windows.OfType<DFLegacy.Launcher.Views.UpdateInstallWindow>().Count(w=>w.IsVisible));
+        int Windows()=>app.Dispatcher.Invoke(()=>app.Windows.OfType<DFLegacy.Launcher.Views.UpdateWindow>().Count(w=>w.IsVisible));
         var shownBeforeLaunch=false;var launches=0;
         provider.OnFind=()=>shownBeforeLaunch|=Windows()>0;
         provider.ThrowOnNetwork=true;

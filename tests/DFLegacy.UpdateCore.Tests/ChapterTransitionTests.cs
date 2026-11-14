@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 
 namespace DFLegacy.UpdateCore.Tests;
@@ -8,6 +9,8 @@ internal static class ChapterTransitionTests
     internal static int Run()
     {
         IdentityIsBoundToManagedManifest();
+        PublicUpgradeRejectsUnboundSources();
+        PublicUpgradeDownloadsMigratesAndRollsBack();
         CheckpointSurvivesSecondChapterUpdates();
         Console.WriteLine("Chapter transition tests passed");
         return 0;
@@ -38,9 +41,10 @@ internal static class ChapterTransitionTests
             """;
         var one = Release("chapter-one", 2, c1, ("DFLegacy.Launcher.exe", "first"),
             ("DFLegacy.Client.dll", "c1-game"), ("Script.pvf", "c1-script"));
-        var two = Release("chapter-two", 3, c2, ("DFLegacy.Launcher.exe", "second"),
+        var localSource = new ReleaseSource("local", "http://127.0.0.2:48127/c2", "chapter-two", "x64", "test");
+        var two = Release(localSource, 3, c2, ("DFLegacy.Launcher.exe", "second"),
             ("DNF.exe", "c2-game"), ("Script.pvf", "c2-script"));
-        var later = WithRetirement(Release("chapter-two", 4, c2, ("DFLegacy.Launcher.exe", "third"),
+        var later = WithRetirement(Release(localSource, 4, c2, ("DFLegacy.Launcher.exe", "third"),
             ("DNF.exe", "c2-game"), ("Script.pvf", "new-script"), ("sounds/a.ogg", "sound")));
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-chapter-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -130,6 +134,14 @@ internal static class ChapterTransitionTests
                 && File.ReadAllBytes(Path.Combine(root, "launcher.chapter2.json")).SequenceEqual(currentConfig),
                 "recovery after a lost readiness worker restores the pre-upgrade C1 install and C2 settings");
             InstallTransaction.ApplyChapterUpgrade(root, staged, two.Source, true, deferReadiness: true);
+            Put(root, "DFLegacy.Client.dll", "c1-game");
+            TestRun.Reject(() => InstallTransaction.ValidateChapterReadyProbe(root, two.ManifestSha256),
+                "readiness rejects a retired file that reappears before startup");
+            File.Delete(Path.Combine(root, "DFLegacy.Client.dll"));
+            Put(root, "Script.pvf", "damaged");
+            TestRun.Reject(() => InstallTransaction.ValidateChapterReadyProbe(root, two.ManifestSha256),
+                "readiness still hashes updated content and detects same-length corruption");
+            Put(root, "Script.pvf", "c2-script");
             InstallTransaction.ValidateChapterReadyProbe(root, two.ManifestSha256);
             InstallTransaction.ConfirmChapterReady(root, two.ManifestSha256);
             TestRun.Check(engine.ValidateInstalledAsync().GetAwaiter().GetResult().CanLaunch
@@ -222,6 +234,160 @@ internal static class ChapterTransitionTests
         finally { Directory.Delete(root, true); }
     }
 
+    private const string PublicFirstDescriptor = """
+        {"schema":1,"chapter":"chapter1","entry":"DFLegacy.Launcher.exe",
+         "requiredFiles":["DFLegacy.Launcher.exe","DFLegacy.Client.dll","Script.pvf"]}
+        """;
+    private const string PublicSecondDescriptor = """
+        {"schema":1,"chapter":"chapter2","entry":"DFLegacy.Launcher.exe",
+         "requiredFiles":["DFLegacy.Launcher.exe","DNF.exe","Script.pvf"]}
+        """;
+
+    private static void PublicUpgradeRejectsUnboundSources()
+    {
+        var firstSource = new ReleaseSource("github", "firekula/DFLegacy", "stable", "x86", "normal");
+        var official = new ReleaseSource("github", "firekula/DFLegacy", "chapter-two", "x86", "normal");
+        var root = Path.Combine(Path.GetTempPath(), "dflegacy-public-source-" + Guid.NewGuid().ToString("N"));
+        var firstFiles = new[] { ("DFLegacy.Launcher.exe", "entry"), ("DFLegacy.Client.dll", "legacy"), ("Script.pvf", "first") };
+        try
+        {
+            void RejectPair(ReleaseSource baseline, ReleaseSource target)
+            {
+                var first = Release(baseline, 2, PublicFirstDescriptor, firstFiles);
+                Seed(root, first, PublicFirstDescriptor, firstFiles);
+                var second = WithRetirement(Release(target, 3, PublicSecondDescriptor,
+                    ("DFLegacy.Launcher.exe", "entry"), ("DNF.exe", "game"), ("Script.pvf", "second")));
+                var engine = new UpdateEngine(root, new EngineTests.MemoryProvider(target, second));
+                TestRun.Reject(() => engine.CheckChapterUpgradeAsync(true).GetAwaiter().GetResult(),
+                    $"unsupported transition {baseline.Identity} to {target.Identity}");
+                var cache = new ContentCache(Path.Combine(root, ".dflegacy", "v4", "cache"));
+                foreach (var (path, body) in new[] { (ClientChapterIdentity.FileName, PublicSecondDescriptor),
+                    ("DNF.exe", "game"), ("Script.pvf", "second") })
+                {
+                    var file = second.Manifest.Files.Single(file => file.Path == path);
+                    File.WriteAllText(cache.ObjectPath(file.Sha256, file.Size), body);
+                }
+                TestRun.Reject(() => InstallTransaction.ApplyChapterUpgrade(root, new(second, cache.DirectoryPath), target, true),
+                    $"transaction with unsupported source {target.Identity}");
+                TestRun.Check(new InstallationStore(root).ReadInstalled()?.Release.Source == baseline,
+                    "source rejection leaves the Chapter One receipt intact");
+            }
+
+            RejectPair(firstSource, official with { Provider = "gitee" });
+            RejectPair(firstSource, official with { Channel = "other" });
+            RejectPair(firstSource, official with { Architecture = "x64" });
+            RejectPair(firstSource, official with { Flavor = "test" });
+            RejectPair(firstSource with { Channel = "preview" }, official);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private static void PublicUpgradeDownloadsMigratesAndRollsBack()
+    {
+        var firstSource = new ReleaseSource("github", "firekula/DFLegacy", "stable", "x86", "normal");
+        var official = new ReleaseSource("github", "firekula/DFLegacy", "chapter-two", "x86", "normal");
+        var root = Path.Combine(Path.GetTempPath(), "dflegacy-public-transition-" + Guid.NewGuid().ToString("N"));
+        var firstFiles = new[] { ("DFLegacy.Launcher.exe", "entry"), ("DFLegacy.Client.dll", "legacy"), ("Script.pvf", "first") };
+        var secondFiles = new[] { ("DFLegacy.Launcher.exe", "entry"), ("DNF.exe", "game"), ("Script.pvf", "second") };
+        var first = Release(firstSource, 2, PublicFirstDescriptor, firstFiles);
+        var second = WithRetirement(Release(official, 3, PublicSecondDescriptor, secondFiles));
+        var stableAsset = firstSource.ManifestAssetName;
+        var chapterAsset = "DFLegacy-client-update-v4-chapter-two-normal-win-x86.json";
+        var parts = second.Manifest.Files.ToDictionary(file => file.Parts.Single().Asset, file => TestRun.Bytes(
+            file.Path == ClientChapterIdentity.FileName ? PublicSecondDescriptor : secondFiles.Single(entry => entry.Item1 == file.Path).Item2));
+        var downloads = new Dictionary<string, byte[]>(parts) { [chapterAsset] = second.ManifestBytes };
+        using var http = new HttpClient(new GitHubFixture(request =>
+        {
+            var url = request.RequestUri!;
+            TestRun.Check(request.Headers.Authorization == null && !request.Headers.Contains("Cookie"), "public transition sends no credentials");
+            object Attachment(string name, byte[] bytes, string tag, int id) => new
+            {
+                id, name, size = bytes.Length, digest = "sha256:" + TestRun.Hash(bytes),
+                browser_download_url = $"https://github.com/firekula/DFLegacy/releases/download/{tag}/{name}"
+            };
+            if (url.Host == "api.github.com" && url.AbsolutePath == "/repos/firekula/DFLegacy/releases")
+                return Json(new[] {
+                    new { tag_name = "stable-fixture", assets = new[] { Attachment(stableAsset, first.ManifestBytes, "stable-fixture", 1) } },
+                    new { tag_name = second.Tag, assets = new[] { Attachment(chapterAsset, second.ManifestBytes, second.Tag, 2) } }
+                });
+            if (url.Host == "api.github.com" && url.AbsolutePath == "/repos/firekula/DFLegacy/releases/tags/v4-test")
+                return Json(new { tag_name = "v4-test", assets = parts.Select((part, i) => Attachment(part.Key, part.Value, "v4-test", i + 3)) });
+            if (url.Host == "github.com" && downloads.TryGetValue(Path.GetFileName(url.AbsolutePath), out var bytes))
+                return new(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+            throw new InvalidOperationException("Unexpected GitHub fixture URL: " + url);
+        }));
+        try
+        {
+            Seed(root, first, PublicFirstDescriptor, firstFiles);
+            const string firstConfig = """
+                {"EntranceHost":"chapter-one.local","Theme":"dark","Account":"first","Password":"old",
+                 "Accounts":[{"Account":"first","Password":"old","DisplayName":"saved"}],"AccountIndex":0}
+                """;
+            const string priorConfig = """
+                {"UpdateProvider":"gitee","UpdateRepository":"other","UpdateChannel":"c2-test","UpdateFlavor":"test",
+                 "ChapterTwoServerIpv4":"192.0.2.5","chapterTwoServerHost":"test.invalid","StartServer":true,
+                 "ClientPath":"other.exe","DisableGitHubUpdates":true,"UpdateServiceUrl":"http://test.invalid",
+                 "ChapterTwoDebugEnabled":true,"ChapterTwoTestMuteEnabled":true,
+                 "ChapterTwoDisplay":{"Width":1024,"Height":768,"Filter":"point"}}
+                """;
+            Put(root, "launcher.json", firstConfig);
+            Put(root, "launcher.chapter2.json", priorConfig);
+            var engine = new UpdateEngine(root, new ReleaseProvider(http, official));
+            TestRun.Reject(() => engine.CheckChapterUpgradeAsync(false).GetAwaiter().GetResult(), "implicit public chapter selection");
+            TestRun.Reject(() => engine.CheckAsync().GetAwaiter().GetResult(), "ordinary public update across chapters");
+            var check = engine.CheckChapterUpgradeAsync(true).GetAwaiter().GetResult();
+            TestRun.Check(check.CanLaunch && check.NeedsInstall && check.Target?.Source == official, "public GitHub lookup selects the matching Chapter Two manifest");
+            var staged = engine.DownloadAsync(check).GetAwaiter().GetResult();
+            TestRun.Check(File.ReadAllText(Path.Combine(root, "launcher.json")) == firstConfig
+                && File.ReadAllText(Path.Combine(root, "launcher.chapter2.json")) == priorConfig,
+                "public discovery and download leave both configuration files untouched");
+            InstallTransaction.ApplyChapterUpgrade(root, staged, official, true, firstDisplay: new(800, 600, "sharp"), deferReadiness: true);
+            InstallTransaction.ValidateChapterReadyProbe(root, second.ManifestSha256);
+            InstallTransaction.ConfirmChapterReady(root, second.ManifestSha256);
+            using (var migrated = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root, "launcher.chapter2.json"))))
+            {
+                var config = migrated.RootElement;
+                TestRun.Check(config.GetProperty("UpdateProvider").GetString() == "github"
+                    && config.GetProperty("UpdateRepository").GetString() == "firekula/DFLegacy"
+                    && config.GetProperty("UpdateChannel").GetString() == "chapter-two"
+                    && config.GetProperty("UpdateFlavor").GetString() == "normal", "public settings bind to the verified target");
+                TestRun.Check(config.EnumerateObject().Single(prop => prop.Name.Equals("ChapterTwoServerHost", StringComparison.OrdinalIgnoreCase)).Value.GetString() == "games.firekula.site"
+                    && !config.TryGetProperty("ChapterTwoServerIpv4", out _) && !config.GetProperty("StartServer").GetBoolean()
+                    && config.GetProperty("ClientPath").GetString() == "DNF.exe" && !config.GetProperty("DisableGitHubUpdates").GetBoolean()
+                    && config.GetProperty("UpdateServiceUrl").GetString() == "", "public settings replace conflicting launch, endpoint and update overrides");
+                TestRun.Check(!config.GetProperty("ChapterTwoDebugEnabled").GetBoolean()
+                    && !config.GetProperty("ChapterTwoTestMuteEnabled").GetBoolean(), "public settings disable debug and test mute");
+                TestRun.Check(config.GetProperty("Theme").GetString() == "dark" && config.GetProperty("ChapterTwoDisplay").GetProperty("Width").GetInt32() == 1024
+                    && config.GetProperty("Accounts")[0].GetProperty("DisplayName").GetString() == "saved"
+                    && config.GetProperty("AccountIndex").GetInt32() == 0 && config.GetProperty("Account").GetString() == "first"
+                    && config.GetProperty("Password").GetString() == "old", "public configuration retains account fields and display preferences");
+            }
+            TestRun.Check(File.ReadAllText(Path.Combine(root, "launcher.json")) == firstConfig, "public activation preserves Chapter One configuration");
+            Put(root, "launcher.chapter2.json", """{"Account":"new","Password":"changed"}""");
+            ChapterTransition.Rollback(root, official);
+            using var restored = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(root, "launcher.json")));
+            TestRun.Check(new InstallationStore(root).ReadInstalled()?.Release.Source == firstSource && ChapterTransition.RequiresExplicitUpgrade(root)
+                && restored.RootElement.GetProperty("Password").GetString() == "changed"
+                && restored.RootElement.GetProperty("EntranceHost").GetString() == "chapter-one.local",
+                "public rollback restores the stable receipt and settings and propagates updated credentials");
+            TestRun.Reject(() => InstallTransaction.ApplyChapterUpgrade(root, staged, official, false), "public re-upgrade without selection");
+            InstallTransaction.ApplyChapterUpgrade(root, staged, official, true);
+            TestRun.Check(engine.ValidateInstalledAsync().GetAwaiter().GetResult().CanLaunch, "explicit public re-upgrade validates after rollback");
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    private static HttpResponseMessage Json(object value) => new(HttpStatusCode.OK)
+    {
+        Content = new ByteArrayContent(JsonSerializer.SerializeToUtf8Bytes(value))
+    };
+
+    private sealed class GitHubFixture(Func<HttpRequestMessage, HttpResponseMessage> send) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(send(request));
+    }
+
     private sealed class Interrupt : IProgress<UpdateProgress>
     {
         public void Report(UpdateProgress _) => throw new OperationCanceledException();
@@ -308,13 +474,17 @@ internal static class ChapterTransitionTests
     }
 
     private static VerifiedRelease Release(string channel, int sequence, string descriptor,
+        params (string Path, string Content)[] files) =>
+        Release(new ReleaseSource("gitee", "firekula/DFLegacy", channel, "x64", "test"), sequence, descriptor, files);
+
+    private static VerifiedRelease Release(ReleaseSource source, int sequence, string descriptor,
         params (string Path, string Content)[] files)
     {
-        var source = new ReleaseSource("gitee", "firekula/DFLegacy", channel, "x64", "test");
         var manifest = ManifestTests.Sample() with
         {
             Architecture = source.Architecture,
-            Channel = channel,
+            Channel = source.Channel,
+            Flavor = source.Flavor,
             Sequence = sequence,
             Files = [ManifestTests.Entry("DFLegacy.Chapter.json", descriptor),
                 .. files.Select(file => ManifestTests.Entry(file.Path, file.Content))],

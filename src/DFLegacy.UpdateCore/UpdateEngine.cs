@@ -70,14 +70,11 @@ public sealed class UpdateEngine
     {
         if (!explicitSelection) throw new InvalidDataException("必须主动选择跨章节升级。");
         RequireNoPending();
+        _ = ReadChapterUpgradeBaseline();
         var target = await provider.FindAsync(token).ConfigureAwait(false);
         using var lease = InstallationLease.Acquire(root);
         RequireNoPending();
-        var installed = store.ReadInstalled() ?? throw new InvalidDataException("缺少已校验的第一章桥接安装。");
-        var first = ClientChapterIdentity.Read(root, installed.Release);
-        if (first.Chapter != ClientChapterIdentity.ChapterOne || installed.Release.Source == provider.Source
-            || installed.Release.Source.Architecture != provider.Source.Architecture)
-            throw new InvalidDataException("当前章别或目标来源不支持跨章升级。");
+        var installed = ReadChapterUpgradeBaseline();
         var baseline = await VerifyInstalled(installed, progress, token, true).ConfigureAwait(false);
         if (!baseline.CanLaunch) throw new InvalidDataException("第一章桥接安装未通过完整校验。");
         if (target == null) return new(null, installed, baseline.Verification, false, true, false, "所选来源未提供跨章更新。");
@@ -92,6 +89,15 @@ public sealed class UpdateEngine
             throw new InvalidDataException("第二章清单没有声明旧文件去向。");
         var verification = await FileVerifier.VerifyAsync(root, manifest, progress, token).ConfigureAwait(false);
         return new(target, installed, verification, true, true, false, $"已确认跨章目标 {manifest.Version}。");
+    }
+
+    private InstalledReceipt ReadChapterUpgradeBaseline()
+    {
+        var installed = store.ReadInstalled() ?? throw new InvalidDataException("缺少已校验的第一章桥接安装。");
+        ChapterTransitionSource.RequireUpgrade(installed.Release.Source, provider.Source);
+        if (ClientChapterIdentity.Read(root, installed.Release).Chapter != ClientChapterIdentity.ChapterOne)
+            throw new InvalidDataException("当前章别不支持跨章升级。");
+        return installed;
     }
     public async Task<LaunchValidation> ValidateInstalledAsync(IProgress<UpdateProgress>? progress = null, CancellationToken token = default, bool forceVerification = false)
     {
@@ -154,7 +160,7 @@ public sealed class UpdateEngine
             token.ThrowIfCancellationRequested();
             await cache.MaterializeAsync(file, downloader, new ForwardProgress(value => progress?.Report(value with
             { Path = file.Path, CompletedFiles = completed, TotalFiles = changed.Length })), token).ConfigureAwait(false);
-            progress?.Report(new("download", file.Path, ++completed, changed.Length, file.Size, file.Size));
+            progress?.Report(new("download", file.Path, ++completed, changed.Length));
         }
         return new(target, cache.DirectoryPath);
     }
