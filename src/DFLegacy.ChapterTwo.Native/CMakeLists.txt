@@ -46,6 +46,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoSlowFrameTiming.cpp
     ChapterTwoPaymentProtocol.cpp
     ChapterTwoPaymentNavigation.cpp
+    ChapterTwoGuildNavigation.cpp
     ChapterTwoPaymentViewport.cpp
     ChapterTwoNpcDialogue.cpp
     ChapterTwoWarehouseUpgrade.cpp
@@ -93,6 +94,10 @@ target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
 target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_XBRZ DFL_CHAPTER_TWO_NTSC)
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32 advapi32 gdiplus ws2_32 xbrz_frame)
+
+add_executable(chapter_two_guild_navigation_tests guild_navigation_tests.cpp)
+target_compile_features(chapter_two_guild_navigation_tests PRIVATE cxx_std_17)
+target_compile_options(chapter_two_guild_navigation_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 
 add_executable(chapter_two_presentation_tests presentation_adapter_tests.cpp)
 target_compile_options(chapter_two_presentation_tests PRIVATE /W4 /WX /utf-8 /EHsc)

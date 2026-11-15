@@ -284,7 +284,8 @@ public static class CharacterInventoryPlanner
                             InstanceId: CharacterItemIdentity.GetUnitInstanceId(
                                 definition,
                                 item.InstanceId,
-                                firstUnit))))
+                                firstUnit),
+                            EnchantmentCardId: item.EnchantmentCardId)))
                 {
                     failure = InventoryPlacementFailure.Full;
                     return false;
@@ -318,15 +319,13 @@ public static class CharacterInventoryPlanner
         IEnumerable<CharacterItemRecord> inventory,
         ItemCatalog catalog)
     {
-        var source = inventory
-            .Where(item => item.ItemId != 0 && item.CountOrValue != 0)
-            .OrderBy(item => item.Slot)
-            .ToArray();
+        var source = inventory.OrderBy(item => item.Slot).ToArray();
+        var items = NormalizeInventoryEntries(source, catalog).ToArray();
         var normalized = new Dictionary<ushort, CharacterItemRecord>();
         var pending = new List<CharacterMailAttachmentRecord>();
         var overflow = new List<CharacterMailAttachmentRecord>();
 
-        var revivalCoinCount = source
+        var revivalCoinCount = items
             .Where(CharacterInventoryLayout.IsRevivalCoin)
             .Aggregate(0UL, (total, item) =>
                 Math.Min(uint.MaxValue, total + item.CountOrValue));
@@ -340,7 +339,7 @@ public static class CharacterInventoryPlanner
                     checked((uint)revivalCoinCount)));
         }
 
-        foreach (var item in source.Where(item =>
+        foreach (var item in items.Where(item =>
                      !CharacterInventoryLayout.IsRevivalCoin(item)))
         {
             if (!catalog.TryGetDefinition(item.ItemId, out var definition))
@@ -417,13 +416,10 @@ public static class CharacterInventoryPlanner
         ItemCatalog catalog,
         ushort capacity)
     {
-        var source = warehouse
-            .Where(item => item.ItemId != 0 && item.CountOrValue != 0)
-            .OrderBy(item => item.Slot)
-            .ToArray();
+        var source = warehouse.OrderBy(item => item.Slot).ToArray();
         var normalized = new Dictionary<ushort, CharacterItemRecord>();
         var overflow = new List<CharacterMailAttachmentRecord>();
-        foreach (var item in source)
+        foreach (var item in NormalizeInventoryEntries(source, catalog))
         {
             if (!catalog.TryGetDefinition(item.ItemId, out var definition))
             {
@@ -520,6 +516,28 @@ public static class CharacterInventoryPlanner
             || source.Length != result.Length
             || !source.SequenceEqual(result);
         return new CharacterWarehouseNormalizationPlan(normalized, overflow, changed);
+    }
+
+    private static IEnumerable<CharacterItemRecord> NormalizeInventoryEntries(
+        IEnumerable<CharacterItemRecord> source,
+        ItemCatalog catalog)
+    {
+        foreach (var item in source)
+        {
+            if (item.ItemId == 0) continue;
+            if (item.CountOrValue > 0)
+            {
+                yield return item;
+            }
+            else if (catalog.TryGetDefinition(item.ItemId, out var definition)
+                && definition.InventoryCategory == ItemInventoryCategory.Equipment
+                && CharacterItemIdentity.RequiresInstanceId(definition))
+            {
+                // Older records stored the wire quality seed in CountOrValue.
+                // An equipment seed of zero still represents one item.
+                yield return item with { CountOrValue = 1, EquipmentQualitySeed = item.EquipmentQualitySeed ?? 0 };
+            }
+        }
     }
 
     public static ulong CalculateWeight(
@@ -739,7 +757,8 @@ public static class CharacterInventoryPlanner
             item.AvatarAbilityIndex,
             item.EquipmentQualitySeed,
             item.InstanceId,
-            item.AvatarExpiresAtUnixSeconds);
+            item.AvatarExpiresAtUnixSeconds,
+            item.EnchantmentCardId);
 
     public static IReadOnlyList<CharacterMailAttachmentRecord> CreateMailAttachments(
         CharacterMailAttachmentRecord item,

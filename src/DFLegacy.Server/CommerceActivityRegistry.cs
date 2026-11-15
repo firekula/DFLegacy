@@ -1,6 +1,6 @@
 namespace DFLegacy.Server;
 
-internal enum CommerceActivity { Trade, Store, StoreRevoked, Purchase, Pvp }
+internal enum CommerceActivity { Trade, Store, StoreRevoked, Purchase, Pvp, Enchant }
 
 /// <summary>Atomic commerce/PvP ownership and party admission; tokens protect displaced sessions.</summary>
 internal sealed class CommerceActivityRegistry

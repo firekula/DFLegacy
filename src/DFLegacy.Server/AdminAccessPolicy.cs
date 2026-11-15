@@ -46,6 +46,11 @@ public static class AdminAccessPolicy
         if (IsMethod(method, "POST") && IsPath(normalized, "/api/client-diagnostics/reports"))
             return new AdminAccessDecision(AdminAccess.Public, null);
 
+        // This distinct namespace authenticates its own short-lived guild cookie.
+        if (normalized.StartsWith("/api/client-guild/", StringComparison.OrdinalIgnoreCase)
+            && (IsMethod(method, "GET") || IsMethod(method, "POST")))
+            return new AdminAccessDecision(AdminAccess.Public, null);
+
         if (enableTestCeraTopUp && IsMethod(method, "POST") &&
             (IsPath(normalized, "/api/client-pay/test-cera") || IsPath(normalized, "/api/client-pay/test-diamond")))
             return new AdminAccessDecision(AdminAccess.Public, null);

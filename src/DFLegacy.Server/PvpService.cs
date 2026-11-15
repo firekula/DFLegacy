@@ -138,7 +138,13 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
             PvpCreateRequest? create = null; ushort target = 0;
             var valid = command == 53 ? GameProtocolEngine.TryReadPvpCreate(body, out create, chapterTwo)
                 : GameProtocolEngine.TryReadPvpEnter(body, out target, chapterTwo);
-            if (valid) { await EnterAsync(character, attachment, create, target, generation, ct); return; }
+            if (valid) { await EnterAsync(character, attachment, command, create, target, generation, ct); return; }
+        }
+        if (command == GameProtocolEngine.PvpQuickJoinCommand && chapterTwo
+            && GameProtocolEngine.HasCommandBodyLength(body, 3, allowChapterTwoPadding: true) && body[2] == 0)
+        {
+            await EnterAsync(character, attachment, command, null, 0, generation, ct);
+            return;
         }
         await RunAsync(async () =>
         {
@@ -237,9 +243,11 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
         }, ct);
     }
 
-    private async Task EnterAsync(Guid character, Guid attachment, PvpCreateRequest? create, ushort target, long generation, CancellationToken ct)
+    private async Task EnterAsync(Guid character, Guid attachment, byte command, PvpCreateRequest? create, ushort target,
+        long generation, CancellationToken ct)
     {
         Channel? c = null; Room? r = null; Guid activity = Guid.NewGuid();
+        var quickJoin = command == GameProtocolEngine.PvpQuickJoinCommand;
         (Channel Channel, long Generation)[] modelOwners = [];
         var models = new Dictionary<Channel, PvpModelSnapshot>();
         await RunAsync(() =>
@@ -248,9 +256,9 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
             if (c is null || c.Generation != generation) { c = null; return Task.CompletedTask; }
             if (c.Room is not null || c.Entering || !c.A.CanEnter() || !TryPeer(c, out _) || store.IsTradeDeliveryPending(character)
                 || (create is not null && !maps.IsValidRequested(create.RequestedMap))
-                || (create is null && (!_rooms.TryGetValue(target, out r) || r.ChannelNumber != c.A.ChannelNumber || r.Match is not null || !r.Seats.OfType<Channel>().All(c => TryPeer(c, out _)) || Enumerable.Range(0,8).All(i => r.Seats[i] is not null || r.Closed[i])))
+                || (create is null && (r = FindJoinableRoom(c, target, quickJoin)) is null)
                 || !store.Commerce.TryAcquire(CommerceActivity.Pvp, activity, character))
-            { Error(c, create is null ? (byte)54 : (byte)53); c = null; return Task.CompletedTask; }
+            { Error(c, command); c = null; return Task.CompletedTask; }
             c.Entering = true; c.Activity = activity;
             modelOwners = (r?.Seats.OfType<Channel>() ?? []).Append(c).Select(owner => (owner, owner.Generation)).ToArray();
             return Task.CompletedTask;
@@ -277,7 +285,7 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                 || modelOwners.Any(owner => Current(owner.Channel.A.CharacterId, owner.Channel.A.Id) != owner.Channel
                     || owner.Channel.Generation != owner.Generation)
                 || (create is null && (r is null || !_rooms.TryGetValue(r.Id, out var current) || current != r || r.Match is not null)))
-            { store.Commerce.Release(activity, character); Error(c, create is null ? (byte)54 : (byte)53); return Task.CompletedTask; }
+            { store.Commerce.Release(activity, character); Error(c, command); return Task.CompletedTask; }
             if (create is not null)
             {
                 var id = AllocateRoom();
@@ -286,7 +294,7 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
             }
             var open = Enumerable.Range(0, 8).FirstOrDefault(i => r!.Seats[i] is null && !r.Closed[i], -1);
             if (open < 0 || !udp.SetPvpContext(c.A.SessionId, c.A.Id, r!.Identity, null))
-            { store.Commerce.Release(activity, character); Error(c, 54); if (create is not null) _rooms.Remove(r!.Id); return Task.CompletedTask; }
+            { store.Commerce.Release(activity, character); Error(c, quickJoin ? command : (byte)54); if (create is not null) _rooms.Remove(r!.Id); return Task.CompletedTask; }
             foreach (var (owner, model) in models) owner.Model = model;
             c.Room = r; r.Seats[open] = c; entered = true;
             r.Teams[open]=r.Mode==0 ? (byte)0 : (byte)(Enumerable.Range(0,8).Count(i=>i!=open && r.Seats[i] is not null && r.Teams[i]==1)
@@ -296,7 +304,13 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
             foreach (var recipient in _channels.Values.Where(x => x.A.ChannelNumber == r.ChannelNumber)) PublishModels(recipient, r);
             PublishPeers(r);
             if (create is not null) Broadcast(r, GameProtocolEngine.CreatePvpRoomList([RoomInfo(r)]));
-            else { PublishSeats(r); Enqueue(c, GameProtocolEngine.CreatePvpEnterReply(r.Ready)); }
+            else
+            {
+                PublishSeats(r);
+                Enqueue(c, quickJoin
+                    ? new(GameProtocolEngine.CommandPacketType, command, [1])
+                    : GameProtocolEngine.CreatePvpEnterReply(r.Ready));
+            }
             return Task.CompletedTask;
         }, CancellationToken.None);
         if (!entered)
@@ -305,6 +319,18 @@ public sealed partial class PvpService(JsonGameStore store, GameplayDatagramServ
                 try { await restore(); } catch (Exception e) { logger.LogWarning(e, "PvP town rollback failed."); c.A.Disconnect?.Invoke(); }
             c.A.Wake();
         }
+    }
+
+    private Room? FindJoinableRoom(Channel entrant, ushort target, bool quickJoin)
+    {
+        if (quickJoin) return _rooms.Values.FirstOrDefault(CanJoin);
+        return _rooms.TryGetValue(target, out var room) && CanJoin(room) ? room : null;
+
+        bool CanJoin(Room room) =>
+            room.ChannelNumber == entrant.A.ChannelNumber
+            && room.Match is null
+            && room.Seats.OfType<Channel>().All(member => TryPeer(member, out _))
+            && Enumerable.Range(0, 8).Any(seat => room.Seats[seat] is null && !room.Closed[seat]);
     }
 
     private bool CurrentAttachment(Channel c) => !c.Retired;

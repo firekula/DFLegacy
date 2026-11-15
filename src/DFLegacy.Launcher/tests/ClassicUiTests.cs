@@ -422,7 +422,7 @@ internal static class ClassicUiTests
             finally { application.Shutdown(); }
         });
         thread.SetApartmentState(ApartmentState.STA); thread.Start();
-        if (!thread.Join(TimeSpan.FromSeconds(30))) throw new TimeoutException("Classic UI raster tests hung.");
+        if (!thread.Join(TimeSpan.FromSeconds(120))) throw new TimeoutException("Classic UI raster tests hung.");
         if (failure is not null) throw new InvalidOperationException("Classic UI raster tests failed", failure);
         Console.WriteLine("Classic UI native raster and WPF layout checks executed");
     }

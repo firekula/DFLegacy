@@ -29,7 +29,10 @@ public sealed record AdminTokenInfo(
     string UserName,
     AccountRole Role,
     DateTimeOffset IssuedAt,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt)
+{
+    internal bool GuildOnly { get; init; }
+}
 
 /// <summary>
 /// 8081 管理接口的 Bearer token 鉴权：内存 token + 滑动过期 + 失败限流。
@@ -77,6 +80,7 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     private const int MaximumBudgetEntries = 20_000;
     private const int MaximumTokenEntries = 20_000;
     private const int MaximumSessionsPerUser = 5;
+    private static readonly TimeSpan GuildSessionLifetime = TimeSpan.FromMinutes(30);
 
     internal TimeSpan TokenLifetime =>
         TimeSpan.FromHours(Math.Clamp(options.Admin.TokenHours, 1, 24 * 30));
@@ -141,14 +145,18 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     public void ClearFailures(string userName) =>
         _accountBudgets.TryRemove(AccountKey(userName), out _);
 
-    public AdminLoginResult IssueToken(string userName, AccountRole role)
+    public AdminLoginResult IssueToken(string userName, AccountRole role) => IssueToken(userName, role, guildOnly: false);
+
+    internal AdminLoginResult IssueGuildSession(string userName) => IssueToken(userName, AccountRole.Player, guildOnly: true);
+
+    private AdminLoginResult IssueToken(string userName, AccountRole role, bool guildOnly)
     {
-        EvictExcessSessionsOf(userName);
+        EvictExcessSessionsOf(userName, guildOnly);
         PurgeTokensIfNeeded();
         var token = CreateToken();
         var now = clock.GetUtcNow();
-        var expiresAt = now + TokenLifetime;
-        _tokens[token] = new AdminTokenInfo(userName, role, now, expiresAt);
+        var expiresAt = now + (guildOnly ? GuildSessionLifetime : TokenLifetime);
+        _tokens[token] = new AdminTokenInfo(userName, role, now, expiresAt) { GuildOnly = guildOnly };
         return new AdminLoginResult(
             true,
             AdminLoginFailure.None,
@@ -162,20 +170,25 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     /// <summary>
     /// 校验 token；通过则滑动续期（但不超过绝对上限），过期或超过绝对上限即作废。
     /// </summary>
-    public AdminTokenInfo? Validate(string? token)
+    public AdminTokenInfo? Validate(string? token) => Validate(token, guildOnly: false);
+
+    internal AdminTokenInfo? ValidateGuildSession(string? token) => Validate(token, guildOnly: true);
+
+    private AdminTokenInfo? Validate(string? token, bool guildOnly)
     {
         if (string.IsNullOrEmpty(token)) return null;
         while (_tokens.TryGetValue(token, out var info))
         {
+            if (info.GuildOnly != guildOnly) return null;
             var now = clock.GetUtcNow();
-            var absoluteDeadline = info.IssuedAt + AbsoluteTokenLifetime;
+            var absoluteDeadline = info.IssuedAt + (guildOnly ? GuildSessionLifetime : AbsoluteTokenLifetime);
             if (info.ExpiresAt <= now || absoluteDeadline <= now)
             {
                 if (_tokens.TryRemove(new KeyValuePair<string, AdminTokenInfo>(token, info))) return null;
                 continue;
             }
 
-            var renewed = info with { ExpiresAt = Min(now + TokenLifetime, absoluteDeadline) };
+            var renewed = guildOnly ? info : info with { ExpiresAt = Min(now + TokenLifetime, absoluteDeadline) };
             // Renewal can race a moderation action. Never recreate a removed token.
             if (_tokens.TryUpdate(token, renewed, info)) return renewed;
         }
@@ -296,10 +309,11 @@ public sealed class AdminAuthService(ServerOptions options, TimeProvider clock)
     }
 
     /// <summary>同一账号最多保留 <see cref="MaximumSessionsPerUser"/> 个会话，超出时顶掉最久未用的。</summary>
-    private void EvictExcessSessionsOf(string userName)
+    private void EvictExcessSessionsOf(string userName, bool guildOnly)
     {
         var mine = _tokens
-            .Where(pair => string.Equals(pair.Value.UserName, userName, StringComparison.OrdinalIgnoreCase))
+            .Where(pair => pair.Value.GuildOnly == guildOnly
+                && string.Equals(pair.Value.UserName, userName, StringComparison.OrdinalIgnoreCase))
             .ToList();
         if (mine.Count < MaximumSessionsPerUser)
         {

@@ -167,6 +167,7 @@ internal static class ChapterTwoClient
         var host = Path.Combine(runtime, hostName);
         EnsureExtracted(hostName, host, hostHash);
         await using var payment = await ChapterTwoPaymentRelay.StartAsync(runtime, options.ResolveAccountServiceUrl(), cancellationToken);
+        await using var guild = await ChapterTwoGuildSite.StartAsync(options.ResolveAccountServiceUrl(), cancellationToken);
 
         var info = new ProcessStartInfo
         {
@@ -225,7 +226,7 @@ internal static class ChapterTwoClient
             () => Process.Start(info) ?? throw new InvalidOperationException("第二章启动进程未创建。"),
             async (process, token) =>
             {
-                var stdout = ObserveClientOutputAsync(process, root, payment, debug, token);
+                var stdout = ObserveClientOutputAsync(process, root, payment, guild, debug, token);
                 var stderr = process.StandardError.ReadToEndAsync(token);
                 await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { account.Account, account.Password }));
                 process.StandardInput.Close();
@@ -244,7 +245,7 @@ internal static class ChapterTwoClient
     }
 
     private static async Task ObserveClientOutputAsync(Process bootstrap, string gameDirectory,
-        ChapterTwoPaymentRelay? payment, ChapterTwoDebugSession? debug, CancellationToken token)
+        ChapterTwoPaymentRelay? payment, ChapterTwoGuildSite? guild, ChapterTwoDebugSession? debug, CancellationToken token)
     {
         using var owned = new Diagnostics.ChapterTwoLaunchDiagnostics(bootstrap.StartTime, gameDirectory);
         try
@@ -273,6 +274,11 @@ internal static class ChapterTwoClient
                     await payment.RespondAsync(gameId, fields[2], fields[3], fields[4], token);
                 else
                     Program.WriteLauncherLog("Chapter Two local payment request did not match the active game.");
+            }
+            else if (guild is not null && fields.Length == 2 && fields[0] == "LOCAL_GUILD_OPEN" &&
+                ReadProcessId(fields[1], out var guildGameId) && owned.IsRunning(guildGameId))
+            {
+                await guild.OpenInBrowserAsync();
             }
             else if (line.StartsWith("Chapter Two instance ", StringComparison.Ordinal))
             {

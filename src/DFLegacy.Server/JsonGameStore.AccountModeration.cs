@@ -22,7 +22,8 @@ public sealed partial class JsonGameStore
     private static bool IsBanned(AccountRecord account) => account.Ban?.IsActive(DateTimeOffset.UtcNow) == true;
 
     internal async Task<AdminLoginResult?> AuthenticateWebAsync(
-        string userName, string password, AdminAuthService auth, CancellationToken token)
+        string userName, string password, AdminAuthService auth, CancellationToken token,
+        bool guildOnly = false)
     {
         await _gate.WaitAsync(token);
         try
@@ -30,7 +31,7 @@ public sealed partial class JsonGameStore
             var account = FindAccountLocked(userName);
             if (account is null || IsBanned(account) || !PasswordMatches(account, password)) return null;
             auth.ClearFailures(account.UserName);
-            return auth.IssueToken(account.UserName, account.Role);
+            return guildOnly ? auth.IssueGuildSession(account.UserName) : auth.IssueToken(account.UserName, account.Role);
         }
         finally { _gate.Release(); }
     }

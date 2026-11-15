@@ -83,6 +83,7 @@ public static class WebPanelHosting
                     || path.Equals("/admin/admin-rewards.js", StringComparison.OrdinalIgnoreCase)
                     || path.Equals("/admin/admin-diagnostics.js", StringComparison.OrdinalIgnoreCase))
                 || path.Equals("/health", StringComparison.OrdinalIgnoreCase);
+            allowed |= HttpMethods.IsGet(context.Request.Method) && ClientGuildEndpoints.IsAssetPath(path);
             if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
                 allowed = gm || AdminAccessPolicy.Resolve(context.Request.Method, path, options.EnableTestCeraTopUp).Access != AdminAccess.Admin;
             if (!allowed) { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }

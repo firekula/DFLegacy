@@ -34,7 +34,7 @@ public static class MentorGrowthPolicy
             RankBonus = Take(value.RankBonus), AvatarBonus = Take(value.AvatarBonus),
             CreatureBonus = Take(value.CreatureBonus), EventBonus = Take(value.EventBonus),
             BlackDiamondBonus = Take(value.BlackDiamondBonus), ChannelBonus = Take(value.ChannelBonus),
-            MentorBonus = Take(value.MentorBonus)
+            MentorBonus = Take(value.MentorBonus), GuildBonus = Take(value.GuildBonus)
         };
     }
 }

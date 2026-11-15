@@ -104,6 +104,13 @@ foreach ($mode in @('normal', 'nonzero', 'crash', 'without-broker')) {
     if (($before | ConvertTo-Json -Compress) -ne ($after | ConvertTo-Json -Compress)) { throw "Desktop, foreground window or real mouse position changed during $mode; inspect desktop.json." }
     if ($text -notmatch '(?m)^OWNED_PID (\d+)\r?$') { throw 'Missing owned PID.' }
     $owned = $Matches[1]
+    if ($mode -eq 'normal') {
+        $guildEvents = [regex]::Matches($text, "(?m)^LOCAL_GUILD_OPEN $owned\r?$")
+        $afterUnterminatedLine = [regex]::Matches($text, "(?m)^NATIVE_CHANNEL_BODY\r?\nLOCAL_GUILD_OPEN $owned\r?$")
+        if ($guildEvents.Count -ne 2 -or $afterUnterminatedLine.Count -ne 1) {
+            throw 'Guild browser event was not framed after the child left stdout without a newline.'
+        }
+    }
     if ($text -notmatch 'FIXTURE_IDENTITY appcontainer=0 desktop=unchanged session=unchanged') { throw 'Child identity/session check failed.' }
     if ($text -notmatch 'FIXTURE_HANDLED_EXCEPTION recovered') { throw 'Handled exception compatibility failed.' }
     $native = [IO.File]::ReadAllText((Join-Path $session 'fixture-native.log'))
@@ -119,6 +126,7 @@ foreach ($mode in @('normal', 'nonzero', 'crash', 'without-broker')) {
     } elseif ($events -match '(?m)^EXCEPTION ') { throw 'Handled exception became an unhandled exception record.' }
     if ($mode -ne 'without-broker') {
         if ($text -notmatch 'FIXTURE_LOOPBACK bind=127.0.0.2 external=denied wrongport=denied') { throw 'Loopback boundary failed.' }
+        if ($text -notmatch 'FIXTURE_FALLBACK connected' -or $text -notmatch 'GAME_BROKER_CONNECT port=47005 to=127.0.0.3:47005') { throw 'Isolated fallback route failed.' }
         foreach ($suffix in @('interval', 'total', 'slowframes')) {
             if ([IO.File]::ReadAllText("$prefix-$suffix.csv") -ne "fixture pid=$owned`n") { throw "Inherited $suffix log handle failed." }
         }

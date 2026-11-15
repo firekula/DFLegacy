@@ -56,7 +56,7 @@ internal sealed class ChapterTransitionWindow : UpdateWindow
             {
                 using var http = offer.Source.Provider == "local" ? null : Core.ReleaseProvider.CreateHttpClient();
                 using var loopback = http is null ? new Core.LoopbackReleaseProvider(offer.Source) : null;
-                Core.IReleaseProvider provider = loopback is not null ? loopback : new Core.ReleaseProvider(http!, offer.Source);
+                Core.IReleaseProvider provider = loopback is not null ? loopback : V4UpdateSession.CreateProvider(http!, offer.Source);
                 var engine = new Core.UpdateEngine(root, provider);
                 var report = new Progress<Core.UpdateProgress>(p => { if (operation == cancellation && !handedOff) RenderTransfer(p); });
                 var check = offer.Enrollment ? await engine.CheckAsync(report, token)

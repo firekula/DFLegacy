@@ -9,17 +9,24 @@ public static class RandomBoxOpeningPlanner
 {
     public static bool TryCreate(IReadOnlyDictionary<ushort, CharacterItemRecord> inventory,
         ushort boxSlot, ushort hammerSlot, int characterLevel, ItemCatalog catalog, uint weightLimit,
-        IDropRandomSource random, out RandomBoxOpeningPlan plan, out byte error)
+        IDropRandomSource random, out RandomBoxOpeningPlan plan, out byte error,
+        byte protocolId = GameProtocolEngine.UseRandomBoxCommand)
     {
         plan = null!;
         error = 17;
-        if (boxSlot == hammerSlot || !CharacterInventoryLayout.IsMainItemSlot(boxSlot)
+        (ushort boxItem, ushort hammerItem) = protocolId switch
+        {
+            GameProtocolEngine.UseRandomBoxCommand => ((ushort)200, (ushort)201),
+            GameProtocolEngine.UseSamsungRandomBoxCommand => ((ushort)202, (ushort)203),
+            _ => ((ushort)0, (ushort)0)
+        };
+        if (boxItem == 0 || boxSlot == hammerSlot || !CharacterInventoryLayout.IsMainItemSlot(boxSlot)
             || !CharacterInventoryLayout.IsMainItemSlot(hammerSlot)
-            || !inventory.TryGetValue(boxSlot, out var box) || box.Slot != boxSlot || box.ItemId != 200
-            || !inventory.TryGetValue(hammerSlot, out var hammer) || hammer.Slot != hammerSlot || hammer.ItemId != 201
+            || !inventory.TryGetValue(boxSlot, out var box) || box.Slot != boxSlot || box.ItemId != boxItem
+            || !inventory.TryGetValue(hammerSlot, out var hammer) || hammer.Slot != hammerSlot || hammer.ItemId != hammerItem
             || !catalog.TryGetDefinition(box.ItemId, out var definition) || definition.RandomBox is not { } randomBox
-            || randomBox.RequiredItems.Count != 2 || !randomBox.RequiredItems.TryGetValue(200, out var boxes)
-            || !randomBox.RequiredItems.TryGetValue(201, out var hammers)
+            || randomBox.RequiredItems.Count != 2 || !randomBox.RequiredItems.TryGetValue(boxItem, out var boxes)
+            || !randomBox.RequiredItems.TryGetValue(hammerItem, out var hammers)
             || box.CountOrValue < boxes || hammer.CountOrValue < hammers)
             return false;
         if (characterLevel < definition.MinimumLevel.GetValueOrDefault(1))

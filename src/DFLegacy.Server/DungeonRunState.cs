@@ -12,6 +12,7 @@ public sealed record DungeonRoomTransition(
 public sealed class DungeonRunState(DungeonCatalog catalog)
 {
     private readonly Dictionary<DungeonRoomPosition, RoomState> _rooms = [];
+    private readonly Dictionary<ushort, int> _bossRoomHuntKills = [];
     private DungeonLayout? _layout;
     private RoomState? _current;
 
@@ -85,7 +86,7 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         IDropRandomSource? random = null)
     {
         transition = null!;
-        if (!IsActive || roomX == RoomX && roomY == RoomY)
+        if (!IsActive || roomX == RoomX && roomY == RoomY || IsBossRoomHuntPending(roomX, roomY))
         {
             return false;
         }
@@ -98,21 +99,25 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
             validateAdjacent: true);
     }
 
+    internal bool IsBossRoomHuntPending(byte roomX, byte roomY) =>
+        _layout is { } layout && roomX == layout.BossX && roomY == layout.BossY
+        && layout.BossRoomHunts.Any(hunt => _bossRoomHuntKills.GetValueOrDefault(hunt.MonsterId) < hunt.KillCount);
+
     public bool MarkMonsterDefeated(ushort uniqueId)
     {
-        if (_current is null
-            || !_current.EncounterRoom.Monsters.Any(monster => monster.UniqueId == uniqueId))
+        var defeated = _current?.EncounterRoom.Monsters.FirstOrDefault(monster => monster.UniqueId == uniqueId);
+        if (_current is null || defeated is null || !_current.DefeatedMonsterIds.Add(uniqueId))
         {
             return false;
         }
 
-        var first = _current.DefeatedMonsterIds.Add(uniqueId);
-        if (first)
+        if (_layout is { } layout && layout.BossRoomHunts.Any(hunt => hunt.MonsterId == defeated.MonsterIndex))
         {
-            TryCompleteCurrentHellRoom();
+            _bossRoomHuntKills[defeated.MonsterIndex] = _bossRoomHuntKills.GetValueOrDefault(defeated.MonsterIndex) + 1;
         }
 
-        return first;
+        TryCompleteCurrentHellRoom();
+        return true;
     }
 
     public bool HasClearedMap(ushort mapId) => mapId != 0
@@ -209,6 +214,7 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
     public void Stop()
     {
         _rooms.Clear();
+        _bossRoomHuntKills.Clear();
         _layout = null;
         _current = null;
         Difficulty = 0;
@@ -290,7 +296,9 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
                 Monsters = DungeonCatalog.PromoteChampions(
                     encounterRoom.Monsters,
                     championTargetCount,
-                    random),
+                    random,
+                    // The original champion picker excludes the named hunt monsters.
+                    _layout.BossRoomHuntPlacements.GetValueOrDefault(position)),
                 ClientRandomSeed = clientRandomSeed
             };
 

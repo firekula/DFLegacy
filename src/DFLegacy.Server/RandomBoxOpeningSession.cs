@@ -12,8 +12,10 @@ public sealed class RandomBoxOpeningSession(ItemCatalog catalog)
 
     public async Task<RandomBoxOpeningResult> OpenAsync(JsonGameStore store, string account,
         CharacterRecord expected, GameRandomBoxCommand command, uint weightLimit,
-        IDropRandomSource random, CancellationToken cancellationToken)
+        IDropRandomSource random, CancellationToken cancellationToken,
+        byte protocolId = GameProtocolEngine.UseRandomBoxCommand)
     {
+        RandomBoxOpeningResult Failure(byte error) => new(null, GameProtocolEngine.CreateRandomBoxError(error, protocolId));
         await gate.WaitAsync(cancellationToken);
         try
         {
@@ -21,7 +23,7 @@ public sealed class RandomBoxOpeningSession(ItemCatalog catalog)
             if (committed.Contains(key)) return Failure(17);
             if (!RandomBoxOpeningPlanner.TryCreate((expected.Inventory ?? []).ToDictionary(item => item.Slot),
                     command.BoxSlot, command.HammerSlot, expected.Level, catalog, weightLimit, random,
-                    out var plan, out var error)) return Failure(error);
+                    out var plan, out var error, protocolId)) return Failure(error);
             CharacterRecord? saved;
             try
             {
@@ -39,10 +41,9 @@ public sealed class RandomBoxOpeningSession(ItemCatalog catalog)
             if (order.Count == 256) committed.Remove(order.Dequeue());
             committed.Add(key);
             order.Enqueue(key);
-            return new(saved, GameProtocolEngine.CreateRandomBoxReply(command.BoxSlot, command.HammerSlot, plan.Rewards));
+            return new(saved, GameProtocolEngine.CreateRandomBoxReply(
+                command.BoxSlot, command.HammerSlot, plan.Rewards, protocolId));
         }
         finally { gate.Release(); }
     }
-
-    private static RandomBoxOpeningResult Failure(byte error) => new(null, GameProtocolEngine.CreateRandomBoxError(error));
 }

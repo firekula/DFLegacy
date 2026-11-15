@@ -32,7 +32,9 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     }
 
     internal static Core.IReleaseProvider CreateProvider(HttpClient http,Core.ReleaseSource source) =>
-        source.Provider=="local" ? new Core.LoopbackReleaseProvider(source) : new Core.ReleaseProvider(http,source);
+        source.Provider=="local" ? new Core.LoopbackReleaseProvider(source) :
+        Core.ChapterTransitionSource.IsOfficialChapterTwo(source) ? new Core.ChapterTwoReleaseProvider(http,source) :
+        new Core.ReleaseProvider(http,source);
 
     internal static string ConfigurationName(Core.InstalledReceipt? receipt)
     {
@@ -135,7 +137,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
         }
         using var report=Program.Incidents.BeginUpdate("v4-check");
         pending=await engine.CheckAsync(Forward(checkProgress),token).ConfigureAwait(false);
-        StatusMessage=$"{provider.Source.Provider} / V4：{pending.Message}"; ShowStatusNotice=pending.IsOffline;
+        var discoveryProvider = (provider as Core.ChapterTwoReleaseProvider)?.DiscoveryProvider ?? provider.Source.Provider;
+        StatusMessage=$"{discoveryProvider} / V4：{pending.Message}"; ShowStatusNotice=pending.IsOffline;
         if(pending.Target==null && pending.Installed==null)
         {
             if(provider.Source.Provider!="github") throw new InvalidDataException($"{(provider.Source.Provider=="gitea"?"Gitea":"Gitee")} 测试源尚无对应架构和类型的完整 V4 更新。");
@@ -159,7 +162,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
             return null;
         }
         var release=pending.Target!; var manifest=release.Manifest;
-        var origin=provider.Source.Provider switch {"gitea"=>Core.ReleaseSource.GiteaOrigin,"gitee"=>"https://gitee.com",_=>"https://github.com"};
+        var origin=discoveryProvider switch {"gitea"=>Core.ReleaseSource.GiteaOrigin,"gitee"=>"https://gitee.com",
+            "gitcode"=>"https://gitcode.com",_=>"https://github.com"};
         var uri=provider.Source.Provider=="local"?new Uri(provider.Source.Repository+"/"+provider.Source.ManifestAssetName):
             new Uri($"{origin}/{provider.Source.Repository}/releases/download/{release.Tag}/{provider.Source.ManifestAssetName}");
         return new(manifest.Sequence,manifest.Version,DateTimeOffset.UtcNow,true,

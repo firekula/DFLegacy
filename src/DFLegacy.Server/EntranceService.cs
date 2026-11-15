@@ -50,8 +50,12 @@ public sealed class EntranceService(
     ScriptFileSystem scripts,
     ILogger<EntranceService> logger,
     FallbackRelayService? fallbackRelay = null,
-    ListenerReadiness? readiness = null) : BackgroundService
+    ListenerReadiness? readiness = null,
+    ChapterTwoTowerRewardPlanner? towerRewardPlanner = null) : BackgroundService
 {
+    private readonly ChapterTwoEnchanting enchanting = new(store, townDirectory, itemTradeService,
+        itemCatalog, new ChapterTwoEnchantCatalog(scripts, itemCatalog), logger);
+
     private const ushort RiverLetheItemId = 3;
     private const ushort RiverLetheBellItemId = 28;
     private const ushort FatigueRecoveryItemId = 7_518;
@@ -319,6 +323,7 @@ public sealed class EntranceService(
             }
 
             var currentSkills = new List<CharacterSkillRecord>();
+            GuildBenefits guildBenefits = default;
             var currentQuests = new List<CharacterQuestRecord>();
             var completedQuestIds = new HashSet<ushort>();
             var currentSp = 0;
@@ -339,9 +344,72 @@ public sealed class EntranceService(
                 CreatureInventory = creatureInventory.Values.ToList()
             };
 
+            async Task<CharacterRecord?> SaveChapterTwoMainBagAsync(
+                CharacterRecord character,
+                int gold,
+                IEnumerable<CharacterItemRecord> plannedInventory,
+                IEnumerable<CharacterItemRecord> plannedEquipment)
+            {
+                var warehouse = warehouseInventory.Values.ToList();
+                var expected = character with
+                {
+                    Gold = currentGold,
+                    Inventory = mainInventory.Values.ToList(),
+                    Equipment = equippedInventory.Values.ToList(),
+                    Warehouse = warehouse,
+                    WarehouseCapacity = warehouseCapacity
+                };
+                try
+                {
+                    return await store.SaveCharacterItemSpacesAsync(
+                        accountName, character.Id, gold, plannedInventory, plannedEquipment,
+                        warehouse, serverToken, expectedCharacter: expected);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogWarning(exception, "Could not save item use for {CharacterId}.", character.Id);
+                    return null;
+                }
+            }
+
+            bool IsChapterTwoBagEquipmentTarget(Guid characterId, ushort targetSlot, ushort itemId, ushort materialSlot) =>
+                CharacterInventoryLayout.IsMainItemSlot(targetSlot)
+                && CharacterInventoryLayout.IsMainItemSlot(materialSlot)
+                && mainInventory.TryGetValue(targetSlot, out var target)
+                && target.ItemId == itemId
+                && !itemTradeService.IsEscrowed(characterId, 0, targetSlot)
+                && !itemTradeService.IsEscrowed(characterId, 0, materialSlot);
+
             byte currentTownId = 1;
             byte currentAreaId = 1;
             ushort currentDungeonId = 0;
+            DungeonTowerDefinition? activeTower = null;
+            Guid soloTowerAttemptId = Guid.Empty;
+            ChapterTwoTowerRankingParticipant? soloTowerRankMember = null;
+            ChapterTwoTowerPartyRun? activeTowerParty = null;
+            var towerPartyRewardMail = false;
+            var towerPartyRewardInventory = false;
+            var towerPartyCanRetry = false;
+            var towerPartyReselectWaiting = false;
+            DungeonInstance? dungeonInstance = null;
+
+            void LeaveTowerParty(Guid characterId)
+            {
+                if (activeTowerParty is { } run && !ReferenceEquals(dungeonInstance, run.Instance))
+                {
+                    run.Depart(characterId, Environment.TickCount64);
+                    if (run.AdmissionRejected) dungeonInstanceRegistry.Remove(run.Instance);
+                }
+                activeTowerParty = null;
+                towerPartyReselectWaiting = false;
+            }
+            var towerFloorNumber = 0;
+            var towerFloorLoaded = false;
+            byte towerStage = 0;
+            long towerStageStartedAt = 0;
+            long towerCompletedTime = 0;
+            var towerSettlementReady = false;
+            var towerReselectRequested = false;
             var inDungeonSelection = false;
             WorldMapDefinition? selectionWorldMap = null;
             DateTimeOffset? dungeonSelectionDeadline = null;
@@ -358,7 +426,6 @@ public sealed class EntranceService(
             // 副本实例（设计稿 §3.1）：单人 = 以自己角色 id 为键的实例；队员入场时换成队伍的实例。
             // 会话不再各存一份运行态与共享集合（存活怪/boss 上报/级联死亡/被动物件/地面掉落）：
             // 它们的主人都是这个实例，会话只经实例的锁内方法读写。
-            DungeonInstance? dungeonInstance = null;
             long dungeonInstanceVersion = -1;
             // 入队或分钟恢复可能由另一个线程完成；唤醒已挂起的读等待。
             var partyMembershipWake = new EntranceSessionWakeSignal();
@@ -378,6 +445,8 @@ public sealed class EntranceService(
             uint dungeonMonsterExperienceGained = 0;
             GameDungeonClearExperienceBreakdown? dungeonClearExperience = null;
             uint dungeonConsumedFatigue = 0;
+            uint dungeonFatigueGuildId = 0;
+            int dungeonGuildEntryLevel = 0;
             long? dungeonCreatureStomachCheckpointSeconds = null;
             var dungeonLeveledUp = false;
             short currentX = 474;
@@ -408,7 +477,11 @@ public sealed class EntranceService(
             var compoundReplay = new Dictionary<ushort, CompoundItemReplayEntry>();
             var compoundReplayOrder = new Queue<ushort>();
             var randomBoxSession = new RandomBoxOpeningSession(itemCatalog);
+            var giftBoosterSession = new GiftBoosterOpeningSession(itemCatalog);
             var guildSession = new GuildSession(store, scripts, characterSessions);
+            var pendingGuildDissolutions = new ConcurrentQueue<(Guid Member, uint Guild)>();
+            var pendingGuildAnnouncements = new ConcurrentQueue<(Guid Member, uint Guild)>();
+            var pendingGuildEvents = new ConcurrentQueue<(Guid Member, uint Guild, GameServerPacket[] Packets, bool RefreshCharacter)>();
             logger.LogInformation(
                 "Entrance client {SessionId} connected from {Remote} on local port {Port}",
                 runtimeSession.Id, remote, localPort);
@@ -495,8 +568,43 @@ public sealed class EntranceService(
                     }
                 }
 
-                GameSkillEntry[] GetCurrentGameSkills() =>
-                    PartyMemberDetailProjection.ProjectLearnedSkills(currentSkills);
+                GameSkillEntry[] GetCurrentGameSkills()
+                {
+                    var skills = PartyMemberDetailProjection.ProjectLearnedSkills(currentSkills);
+                    if (!chapter2CheckConnectionAccepted) return skills;
+
+                    var projected = skills.Where(skill => !GuildProgression.IsSkill(skill.SkillId))
+                        .Concat(guildBenefits.Skills()).ToArray();
+                    // The original recipe dialog reads the learned skill level independently of
+                    // the profession and proficiency metadata in the town appearance.
+                    if (activeCharacter is not { } character
+                        || enchanting.GetProfessionSkill(character.ExpertJob) is not { } grant
+                        || projected.Any(skill => skill.SkillId == grant.SkillId)
+                        || !skillCatalog.TryGetDefinition(character.Job, grant.SkillId, out var definition))
+                        return projected;
+
+                    var occupied = projected.Where(skill => skill.Slot.HasValue)
+                        .Select(skill => skill.Slot!.Value).ToHashSet();
+                    return skillCatalog.AllocateSlot(definition, occupied) is { } slot
+                        ? [.. projected, grant with { Slot = slot }]
+                        : projected;
+                }
+
+                async Task<bool> RefreshGuildBenefitsAsync()
+                {
+                    GuildBenefits benefits = default;
+                    if (chapter2CheckConnectionAccepted && activeCharacter is { GuildId: not 0 } member)
+                    {
+                        var snapshot = await store.GetGuildAsync(member.GuildId, serverToken);
+                        var currentMember = snapshot.Members.FirstOrDefault(candidate => candidate.Id == member.Id);
+                        if (currentMember is not null)
+                            benefits = GuildBenefits.For(snapshot.Guild, currentMember.GuildRank);
+                    }
+
+                    if (benefits == guildBenefits) return false;
+                    guildBenefits = benefits;
+                    return true;
+                }
 
                 int ApplyLevelUpSkillPoints(CharacterExperienceGrant progression)
                 {
@@ -1296,6 +1404,9 @@ public sealed class EntranceService(
                             IsChapterTwo: chapter2CheckConnectionAccepted),
                         cancellationToken);
 
+                    if (!isPvpChannel && townTicket?.Member.IsChapterTwo == true)
+                        await enchanting.AttachAsync(townTicket, accountName, partyMembershipWake.Pulse, cancellationToken);
+
                     // 组队名册**不在这里**发：必须等本成员的外观（USERINFO）广播出去之后，否则同区
                     // 旁观者先收到 NOTI 9、后来才拿到他的 user 记录，槽位 uid 查不到人 → 不建立
                     // "谁属于哪支队伍"的链接（设计稿 §6.5，与 STATUS §2.3 的"外观先于名单"同类）。
@@ -1324,6 +1435,7 @@ public sealed class EntranceService(
                             cancellationToken);
                     }
 
+                    await enchanting.LeaveAsync(townTicket, notifyLeaving: true);
                     await townDirectory.LeaveAsync(townTicket, cancellationToken);
                     townTicket = null;
 
@@ -1446,6 +1558,114 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, stamina);
                 }
 
+                async Task RefreshPendingGuildDissolutionsAsync()
+                {
+                    if (activeCharacter is null) return;
+                    while (pendingGuildDissolutions.TryDequeue(out var notice))
+                    {
+                        if (activeCharacter.Id != notice.Member
+                            || (activeCharacter.GuildId != 0 && activeCharacter.GuildId != notice.Guild))
+                            continue;
+                        activeCharacter = activeCharacter with { GuildId = 0, GuildName = null, GuildRank = 0 };
+                        guildSession.Reset();
+                        var benefitsChanged = await RefreshGuildBenefitsAsync();
+                        if (chapter2CheckConnectionAccepted)
+                        {
+                            var packet = GameProtocolEngine.CreateGuildDissolved(true);
+                            await packet.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, packet);
+                        }
+                        if (benefitsChanged) await SendCurrentSkillInfoAsync();
+                        if (currentDungeonId == 0) await SendTownAppearanceAsync();
+                        else if (benefitsChanged) await SendCurrentEquipmentStateAsync();
+                    }
+                }
+
+                async Task RefreshPendingGuildAnnouncementsAsync()
+                {
+                    var character = activeCharacter;
+                    uint guildId = 0;
+                    while (pendingGuildAnnouncements.TryDequeue(out var notice))
+                        if (chapter2CheckConnectionAccepted && character?.Id == notice.Member
+                            && character.GuildId == notice.Guild)
+                            guildId = notice.Guild;
+                    if (guildId == 0 || character is null) return;
+                    var snapshot = await store.GetGuildAsync(guildId, serverToken);
+                    if (snapshot.Guild?.Announcement is not { } announcement
+                        || !snapshot.Members.Any(member => member.Id == character.Id))
+                        return;
+                    var packet = GameProtocolEngine.CreateGuildAnnouncement(GuildRules.Encode(announcement));
+                    await packet.WriteAsync(stream, serverToken);
+                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                    LogPacket("TX", runtimeSession, packet);
+                }
+
+                async Task RefreshPendingGuildEventsAsync()
+                {
+                    var appearanceChanged = false;
+                    var refreshBenefits = false;
+                    while (pendingGuildEvents.TryDequeue(out var notice))
+                    {
+                        if (!chapter2CheckConnectionAccepted || activeCharacter is not { } character
+                            || character.Id != notice.Member)
+                            continue;
+
+                        if (notice.RefreshCharacter)
+                        {
+                            var saved = await store.GetCharacterAsync(accountName, character.Id, serverToken);
+                            if (saved is null || saved.GuildId != notice.Guild)
+                                continue;
+                            var currentRank = saved.GuildId == 0 ? (byte)5 : saved.GuildRank;
+                            if (notice.Packets.Any(packet => packet.Type == GameProtocolEngine.NotificationPacketType
+                                && packet.ProtocolId == GameProtocolEngine.GuildSelfRankNotification
+                                && packet.Payload[0] != currentRank))
+                                continue;
+                            appearanceChanged |= character.GuildId != saved.GuildId
+                                || character.GuildRank != saved.GuildRank || character.GuildName != saved.GuildName;
+                            refreshBenefits = true;
+                            activeCharacter = character with
+                            {
+                                GuildId = saved.GuildId, GuildName = saved.GuildName, GuildRank = saved.GuildRank
+                            };
+                        }
+                        else if (character.GuildId != notice.Guild)
+                        {
+                            continue;
+                        }
+
+                        foreach (var queued in notice.Packets)
+                        {
+                            var packet = queued;
+                            if (queued.Type == GameProtocolEngine.CommandPacketType
+                                && queued.ProtocolId == GameProtocolEngine.GuildMembersCommand)
+                            {
+                                var guild = await store.GetGuildAsync(notice.Guild, serverToken);
+                                if (guild.Guild is null || !guild.Members.Any(member => member.Id == character.Id))
+                                    continue;
+                                packet = guildSession.CreateRosterPacket(queued.ProtocolId, guild.Guild, guild.Members);
+                            }
+                            else if (queued.Type == GameProtocolEngine.NotificationPacketType && queued.ProtocolId == 70)
+                            {
+                                var snapshot = await store.GetGuildAsync(notice.Guild, serverToken);
+                                var member = snapshot.Members.FirstOrDefault(candidate => candidate.Id == character.Id);
+                                if (snapshot.Guild is null || member is null) continue;
+                                packet = GuildSession.CreateInfoPacket(snapshot.Guild, member.GuildRank, snapshot.Members.Length);
+                                refreshBenefits = true;
+                            }
+                            await packet.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, packet);
+                        }
+                    }
+
+                    var benefitsChanged = refreshBenefits && await RefreshGuildBenefitsAsync();
+                    if (benefitsChanged) await SendCurrentSkillInfoAsync();
+                    if ((appearanceChanged || benefitsChanged) && currentDungeonId == 0)
+                        await SendTownAppearanceAsync();
+                    else if (benefitsChanged) await SendCurrentEquipmentStateAsync();
+                }
+
                 async Task RefreshPendingVictoryPointsAsync()
                 {
                     if (activeCharacter is null || Interlocked.Exchange(ref pendingVictoryPointsRefresh, 0) == 0)
@@ -1564,6 +1784,11 @@ public sealed class EntranceService(
                         return;
                     }
 
+                    if (dungeonConsumedFatigue == 0)
+                    {
+                        dungeonFatigueGuildId = activeCharacter.GuildId;
+                        dungeonGuildEntryLevel = activeCharacter.Level;
+                    }
                     dungeonConsumedFatigue++;
 
                     var fatigue = GameProtocolEngine.CreateFatigue(
@@ -1813,6 +2038,15 @@ public sealed class EntranceService(
 
                 async Task SendEnterGameWorldCompleteAsync()
                 {
+                    if (chapter2CheckConnectionAccepted && activeCharacter is { GuildId: not 0 } guildMember)
+                    {
+                        // NOTI70 describes the guild. NOTI139 initializes the
+                        // permission on the local actor that AREA_USERS just built.
+                        var rank = GameProtocolEngine.CreateGuildSelfRank(guildMember.GuildRank);
+                        await rank.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, rank);
+                    }
                     // USERINFO locks keyboard and mouse commands at priority
                     // two. DFLegacy notification 136 clears both locks after the
                     // local actor has been constructed by AREA_USERS.
@@ -2915,11 +3149,13 @@ public sealed class EntranceService(
                                     : 0;
                             var mentorBonus = MentorGrowthPolicy.Bonus(gainedExperience,
                                 await mentorService.GetExperienceBonusRateAsync(activeCharacter.Id, runtimeSession.Id, serverToken));
+                            var guildBonus = guildBenefits.BonusExperience(gainedExperience);
+                            var experienceWithGuild = MentorGrowthPolicy.Request(gainedExperience, guildBonus);
                             var progression = experienceCatalog.Grant(
                                 activeCharacter,
-                                MentorGrowthPolicy.Request(gainedExperience, mentorBonus));
+                                MentorGrowthPolicy.Request(experienceWithGuild, mentorBonus));
                             var creditedMentorBonus = MentorGrowthPolicy.CreditedBonus(
-                                gainedExperience, mentorBonus, progression.GrantedExperience);
+                                experienceWithGuild, mentorBonus, progression.GrantedExperience);
                             if (progression.GrantedExperience > 0)
                             {
                                 var grantedSkillPoints = ApplyLevelUpSkillPoints(progression);
@@ -2944,6 +3180,10 @@ public sealed class EntranceService(
                                 }
 
                                 activeCharacter = savedProgression;
+                                if (guildBonus > 0)
+                                    logger.LogInformation("Guild skill added {GuildBonus} EXP to {CharacterId} on monster base {BaseExperience}.",
+                                        MentorGrowthPolicy.CreditedBonus(gainedExperience, guildBonus, progression.GrantedExperience),
+                                        activeCharacter.Id, gainedExperience);
                                 dungeonMonsterExperienceGained = (uint)Math.Min(
                                     uint.MaxValue,
                                     (ulong)dungeonMonsterExperienceGained
@@ -3027,6 +3267,534 @@ public sealed class EntranceService(
                 // Normal confirmations and the bounded fallback share this clear
                 // decision. Unreleased box actors stay alive for later spawns;
                 // every monster already present must complete normal settlement.
+                async Task SendChapterTwoGrowthPotionTimersAsync(CharacterRecord character)
+                {
+                    if (!chapter2CheckConnectionAccepted || character.ChapterTwoGrowthPotion is not { } state)
+                        return;
+
+                    var now = DateTimeOffset.UtcNow;
+                    var itemId = ChapterTwoGrowthPotionDefinition.ItemId;
+                    var cooldown = ChapterTwoGrowthPotionState.RemainingSeconds(state.CooldownUntilUtc, now);
+                    var effect = ChapterTwoGrowthPotionState.RemainingSeconds(state.EffectUntilUtc, now);
+                    if (cooldown > 0)
+                        await SendTownPacketAsync(
+                            GameProtocolEngine.CreateChapterTwoItemCooldownNotification(itemId, cooldown), serverToken);
+                    if (effect > 0)
+                        await SendTownPacketAsync(
+                            GameProtocolEngine.CreateChapterTwoItemEffectNotification(itemId, effect), serverToken);
+                }
+
+                double GetDungeonClearEventBonusRate(CharacterRecord character)
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    var eventRate = dungeonExperienceCatalog.GetEventBonusRate(now);
+                    if (!chapter2CheckConnectionAccepted
+                        || character.ChapterTwoGrowthPotion is not { } state
+                        || state.EffectUntilUtc <= now
+                        || !itemCatalog.TryGetDefinition(ChapterTwoGrowthPotionDefinition.ItemId, out var item)
+                        || item.GrowthPotion is not { } definition)
+                        return eventRate;
+
+                    return Math.Max(eventRate, definition.ClearExperienceBonusRate);
+                }
+
+                async Task SendTowerFloorAsync(DungeonTowerFloor floor)
+                {
+                    var instance = dungeonInstance!;
+                    var actors = floor.Apcs.Select(apc => new GameDungeonMonster(
+                        apc.MapListIndex, 0, apc.ApcId, apc.Level, Type: 5,
+                        X: (ushort)apc.Position.X, Y: (ushort)apc.Position.Y) { Team = apc.Team })
+                        .Concat(floor.Room.Monsters)
+                        .Select((actor, index) => actor with
+                        {
+                            UniqueId = checked((ushort)((floor.Definition.FloorNumber - 1) * 256 + index + 1))
+                        }).ToArray();
+                    towerFloorNumber = floor.Definition.FloorNumber;
+                    towerFloorLoaded = false;
+                    towerStage = 0;
+                    instance.EnterDetachedRoom(floor.Room with { Monsters = actors });
+                    instance.ResetGroundItems();
+                    ApplyDungeonInstanceSnapshot(instance.Snapshot());
+                    ResetRoomSettlementState();
+
+                    await SendTownPacketAsync(GameProtocolEngine.CreateChapterTwoTowerFloor(
+                        checked((ushort)towerFloorNumber), (uint)Random.Shared.NextInt64(1L << 32),
+                        floor.Definition.MapId, actors), serverToken);
+                    logger.LogInformation("Tower {DungeonId} floor {Floor} initialized for {CharacterId}: map={MapId}, actors={ActorCount}.",
+                        currentDungeonId, towerFloorNumber, activeCharacter?.Id, floor.Definition.MapId, actors.Length);
+                }
+
+                async Task EnterTowerAsync(CharacterRecord character, ushort dungeonId, byte difficulty, byte option)
+                {
+                    const string unavailable = "迷妄之塔暂时无法进入，已返回城镇。";
+                    if (difficulty != 0 || option != 0
+                        || !dungeonCatalog.TryGetTower(dungeonId, out var tower)
+                        || !dungeonCatalog.TryCreateTowerFloor(dungeonId, 1, out var floor))
+                    {
+                        await RejectTowerEntryAsync(unavailable);
+                        return;
+                    }
+
+                    if (activeTowerParty is not null)
+                    {
+                        return;
+                    }
+                    if (partyService.GetPartySlots(character.Id) is { Length: > 1 } party)
+                    {
+                        var partyId = party[0].PartyId;
+                        var town = currentTownId;
+                        var area = currentAreaId;
+                        var own = party.Single(slot => slot.CharacterId == character.Id);
+                        var parties = party.Select(slot => (slot.CharacterId, slot.SessionId, slot.SlotIndex)).ToHashSet();
+                        var townGuard = townDirectory.CaptureChapterTwoTowerSelectionGuard(
+                            party.Select(slot => slot.CharacterId).ToArray(), town, area);
+                        bool SameParty() => townGuard?.Invoke() == true
+                            && partyService.TryGetLeaderSlot(character.Id) == own.SlotIndex
+                            && partyService.GetPartySlots(character.Id) is { } current
+                            && current.Length == party.Length
+                            && current.All(slot => slot.PartyId == partyId
+                                && parties.Contains((slot.CharacterId, slot.SessionId, slot.SlotIndex)));
+                        if (!SameParty())
+                        {
+                            await RejectTowerEntryAsync(unavailable);
+                            return;
+                        }
+                        var candidate = new DungeonInstance(partyId, Guid.Empty, dungeonCatalog, itemCatalog);
+                        if (!ReferenceEquals(dungeonInstanceRegistry.GetOrCreateForParty(partyId, () => candidate), candidate))
+                        {
+                            await RejectTowerEntryAsync(unavailable);
+                            return;
+                        }
+                        var run = new ChapterTwoTowerPartyRun(candidate, tower, floor, character.Id, party, SameParty);
+                        candidate.TowerParty = run;
+                        foreach (var slot in party.Where(slot => slot.CharacterId != character.Id))
+                        {
+                            dungeonInstanceRegistry.PostEntryRequest(slot.CharacterId,
+                                new DungeonEntryRequest(partyId, dungeonId, 0, 0, town, area, character.Id, run));
+                        }
+                        await PrepareTowerPartyAsync(run, town, area);
+                        return;
+                    }
+
+                    if (character.Level < tower.MinimumLevel)
+                    {
+                        await RejectTowerEntryAsync($"达到 {tower.MinimumLevel} 级后才可进入迷妄之塔。");
+                        return;
+                    }
+
+                    var ticket = tower.Ticket;
+                    var planned = mainInventory.ToDictionary();
+                    var ticketSlots = new List<GameInventoryEntry>();
+                    var needed = ticket.Quantity;
+                    foreach (var stack in mainInventory.Values.Where(item => item.ItemId == ticket.ItemId
+                                 && !itemTradeService.IsEscrowed(character.Id, 0, item.Slot)).OrderBy(item => item.Slot))
+                    {
+                        if (needed == 0) break;
+                        var used = Math.Min(needed, stack.CountOrValue);
+                        needed -= used;
+                        var remaining = stack with { CountOrValue = stack.CountOrValue - used };
+                        if (remaining.CountOrValue == 0)
+                        {
+                            planned.Remove(stack.Slot);
+                            ticketSlots.Add(new GameInventoryEntry(stack.Slot, ushort.MaxValue, 0));
+                        }
+                        else
+                        {
+                            planned[stack.Slot] = remaining;
+                            ticketSlots.Add(ToGameInventoryEntry(remaining));
+                        }
+                    }
+
+                    if (needed != 0)
+                    {
+                        await RejectTowerEntryAsync("缺少迷妄之塔的入场邀请函。");
+                        return;
+                    }
+
+                    if (ticket.Consume && ticketSlots.Count > 0)
+                    {
+                        var saved = await SaveChapterTwoMainBagAsync(character, currentGold,
+                            planned.Values, equippedInventory.Values);
+                        if (saved is null)
+                        {
+                            await RejectTowerEntryAsync(unavailable);
+                            return;
+                        }
+                        activeCharacter = saved;
+                        mainInventory = planned;
+                    }
+
+                    inDungeonSelection = false;
+                    dungeonSelectionDeadline = null;
+                    await LeaveTownAreaAsync(serverToken);
+                    currentDungeonId = dungeonId;
+                    currentDungeonDifficulty = 0;
+                    tutorialDungeonActive = false;
+                    activeTower = tower;
+                    soloTowerAttemptId = Guid.NewGuid();
+                    soloTowerRankMember = new(character.Id, ChapterTwoTowerRankMember.Capture(character));
+                    towerCompletedTime = 0;
+                    towerSettlementReady = false;
+                    towerReselectRequested = false;
+                    dungeonCharacterAlive = true;
+                    dungeonDeathGeneration++;
+                    dungeonDeathTimeout = null;
+                    dungeonMonsterExperienceGained = 0;
+                    dungeonClearExperience = null;
+                    dungeonConsumedFatigue = 0;
+                    dungeonCreatureStomachCheckpointSeconds = null;
+                    dungeonLeveledUp = false;
+
+                    dungeonInstance = dungeonInstanceRegistry.GetOrCreateForSolo(character.Id,
+                        () => new DungeonInstance(0, character.Id, dungeonCatalog, itemCatalog));
+                    dungeonInstanceRegistry.BindCharacter(character.Id, dungeonInstance);
+                    gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, dungeonInstance);
+                    dungeonInstance.RemoveMember(character.Id);
+                    dungeonInstance.AddMember(new DungeonInstanceMember(character.Id, localUserId, PartySlot: 0,
+                        character.Name, CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                        SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: true));
+
+                    if (ticket.Consume && ticketSlots.Count > 0)
+                    {
+                        await SendTownPacketAsync(GameProtocolEngine.CreateUpdateItemList(0, ticketSlots), serverToken);
+                    }
+                    await SendTownPacketAsync(GameProtocolEngine.CreateChapterTwoTowerInfo(dungeonId,
+                        checked((ushort)tower.Floors.Count)), serverToken);
+                    await SendTowerFloorAsync(floor);
+                    lastSettledRoomX = currentDungeonRoomX;
+                    lastSettledRoomY = currentDungeonRoomY;
+
+                    async Task RejectTowerEntryAsync(string message)
+                    {
+                        // The C2 selector disables its controls after CMD16.
+                        await ReturnToTownFromDungeonAsync("tower-entry-unavailable");
+                        await SendTypedMessageNotificationAsync(GameMessageType.Type16Brown, 0,
+                            ClientEncoding.GetBytes(message));
+                    }
+                }
+
+                bool IsTowerTicketEscrowed(Guid id, ushort slot) => itemTradeService.IsEscrowed(id, 0, slot);
+
+                async Task PrepareTowerPartyAsync(ChapterTwoTowerPartyRun run, byte town, byte area)
+                {
+                    if (activeCharacter is not { } character) return;
+                    var ready = chapter2CheckConnectionAccepted && inDungeonSelection && townTicket is not null
+                        && currentDungeonId == 0 && currentTownId == town && currentAreaId == area
+                        && selectionWorldMap?.DungeonIds.Contains(run.Tower.DungeonId) == true
+                        && (activeTowerParty is null || ReferenceEquals(activeTowerParty, run));
+                    var votes = run.Apply(character.Id, runtimeSession.Id,
+                        ready ? new TowerPartyApplicant(accountName, SnapshotCeraItemState(character)) : null);
+                    if (activeTowerParty is null && currentDungeonId == 0)
+                        activeTowerParty = run;
+                    if (votes is not null)
+                    {
+                        var result = await store.ConsumeChapterTwoTowerPartyTicketsAsync(votes, run.Tower,
+                            () => run.IsAdmitting && run.EntryIsCurrent(),
+                            IsTowerTicketEscrowed, ToGameInventoryEntry, serverToken);
+                        run.CompleteAdmission(result);
+                    }
+                    await ProcessTowerPartyAsync();
+                }
+
+                async Task ProcessTowerPartyAsync()
+                {
+                    if (activeTowerParty is not { } run || activeCharacter is not { } character) return;
+                    var id = character.Id;
+                    if (activeTower is not null && run.TryPrepareReselect(id))
+                    {
+                        gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
+                        dungeonInstanceRegistry.UnbindCharacter(id);
+                        dungeonInstance = null;
+                        dungeonInstanceVersion = -1;
+                        currentDungeonId = 0;
+                        currentDungeonRoom = null;
+                        currentDungeonLayout = null;
+                        activeTower = null;
+                        towerSettlementReady = false;
+                        towerReselectRequested = false;
+                        towerPartyReselectWaiting = true;
+                        inDungeonSelection = true;
+                        currentTownId = dungeonReturnTownId;
+                        currentAreaId = dungeonReturnAreaId;
+                        currentX = dungeonReturnX;
+                        currentY = dungeonReturnY;
+                        currentDirection = dungeonReturnDirection;
+                        await EnterTownAreaAsync(serverToken);
+                        run.MarkReselectPrepared(id);
+                    }
+
+                    if (towerPartyReselectWaiting)
+                    {
+                        var members = partyService.GetPartySlots(id)?.Select(slot => slot.CharacterId).ToArray() ?? [id];
+                        if (!run.IsReselectPrepared(members)) return;
+                        towerPartyReselectWaiting = false;
+                        activeTowerParty = null;
+                        selectionWorldMap = worldMapCatalog.TryGetForGate(currentTownId, currentAreaId, out var map) ? map : null;
+                        dungeonSelectionDeadline = TowerPartyLeader(run, id) == id
+                            ? DateTimeOffset.UtcNow.AddSeconds(30) : null;
+                        await SendDungeonSelectionStateAsync(partyService.TryGetLeaderSlot(id) ?? 0);
+                        await SendDungeonPermissionsAsync();
+                        await SendDungeonSelectionEligibilityAsync();
+                        return;
+                    }
+
+                    if (activeTower is null)
+                    {
+                        var admission = run.AdmissionFor(id);
+                        if (!admission.IsReady) return;
+                        if (admission.Ticket is not { } ticket)
+                        {
+                            activeTowerParty = null;
+                            dungeonInstanceRegistry.Remove(run.Instance);
+                            if (inDungeonSelection)
+                            {
+                                await ReturnToTownFromDungeonAsync("tower-party-entry-unavailable");
+                                await SendTypedMessageNotificationAsync(GameMessageType.Type16Brown, 0,
+                                    ClientEncoding.GetBytes("队伍中有成员不满足迷妄之塔的入场条件。"));
+                            }
+                            return;
+                        }
+
+                        var own = run.Roster.Single(slot => slot.CharacterId == id);
+                        var instance = run.Instance;
+                        var liveCharacter = await store.GetCharacterAsync(accountName, id, serverToken);
+                        AdoptSavedWarehouseUpgradeState(liveCharacter ?? ticket.Character);
+                        inDungeonSelection = false;
+                        dungeonSelectionDeadline = null;
+                        currentDungeonId = run.Tower.DungeonId;
+                        currentDungeonDifficulty = 0;
+                        tutorialDungeonActive = false;
+                        activeTower = run.Tower;
+                        towerSettlementReady = false;
+                        towerReselectRequested = false;
+                        towerPartyRewardMail = false;
+                        towerPartyRewardInventory = false;
+                        towerPartyCanRetry = false;
+                        dungeonCharacterAlive = true;
+                        dungeonDeathGeneration++;
+                        dungeonDeathTimeout = null;
+                        dungeonMonsterExperienceGained = 0;
+                        dungeonClearExperience = null;
+                        dungeonConsumedFatigue = 0;
+                        dungeonCreatureStomachCheckpointSeconds = null;
+                        dungeonLeveledUp = false;
+                        dungeonInstance = instance;
+                        instance.AddMember(new DungeonInstanceMember(id, localUserId, checked((byte)own.SlotIndex),
+                            character.Name, CreateDungeonPacketDelivery(), accountName, mentorGoldIncarnation ?? Guid.Empty,
+                            SendConditional: SendConditionalDungeonPacketAsync, IsChapterTwo: true));
+                        dungeonInstanceRegistry.BindCharacter(id, instance);
+                        gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, instance);
+                        await LeaveTownAreaAsync(serverToken);
+                        await partyService.SendToOtherMembersAsync(id, SendTownAppearancePacket(), serverToken);
+                        await partyService.SendToOtherMembersAsync(id, SendTownAppearanceDetailPacket(), serverToken);
+                        if (partyService.GetRosterPacketFor(id) is { } roster)
+                            await SendTownPacketAsync(roster, serverToken);
+                        var hostSlot = partyService.TryGetLeaderSlot(id) ?? checked((byte)own.SlotIndex);
+                        await SendTownPacketAsync(GameProtocolEngine.CreateUdpHost(hostSlot), serverToken);
+                        if (BuildPartyPeerTable(run.Roster, id) is { } peers)
+                            await SendTownPacketAsync(peers, serverToken);
+                        if (ticket.Updates.Length != 0)
+                            await SendTownPacketAsync(GameProtocolEngine.CreateUpdateItemList(0, ticket.Updates), serverToken);
+                        await SendTownPacketAsync(GameProtocolEngine.CreateChapterTwoTowerInfo(run.Tower.DungeonId,
+                            checked((ushort)run.Tower.Floors.Count)), serverToken);
+                        run.Join(id);
+                    }
+
+                    if (run.BeginReward(id, Environment.TickCount64) is { } settlement)
+                    {
+                        run.QueueResult(id, await BuildTowerResultAsync(run.AttemptId, settlement, run.CaptureRankMembers()));
+                        var reward = await CommitTowerRewardsAsync(run.AttemptId, settlement.Floor);
+                        towerPartyRewardMail = reward.Mails;
+                        towerPartyRewardInventory = reward.Cards.Any(card => card.ItemId != ushort.MaxValue);
+                        run.CompleteReward(id, new TowerPartyReward(reward.Experience, reward.Cards));
+                    }
+
+                    if (run.CanPublishRewards)
+                    {
+                        var eligible = run.CurrentRewardMembers();
+                        var canRetry = await store.HasChapterTwoTowerPartyTicketsAsync(eligible, run.Tower.Ticket,
+                            IsTowerTicketEscrowed, serverToken);
+                        if (eligible.SequenceEqual(run.CurrentRewardMembers()))
+                            run.PublishRewards(canRetry);
+                    }
+
+                    foreach (var packet in run.TakePackets(id))
+                    {
+                        if (packet.ProtocolId == GameProtocolEngine.ChapterTwoTowerFloorNotification)
+                        {
+                            towerFloorNumber = BinaryPrimitives.ReadUInt16LittleEndian(packet.Payload);
+                            towerFloorLoaded = false;
+                            ApplyDungeonInstanceSnapshot(run.Instance.Snapshot());
+                            ResetRoomSettlementState();
+                        }
+                        if (packet.ProtocolId == GameProtocolEngine.FinishLoadingNotification
+                            && partyService.GetRosterPacketFor(id) is { } refreshedRoster)
+                            await SendTownPacketAsync(refreshedRoster, serverToken);
+                        await SendTownPacketAsync(packet, serverToken);
+                        if (packet is { Type: GameProtocolEngine.CommandPacketType, ProtocolId: GameProtocolEngine.EplpCommand }
+                            && packet.Payload is [1, 1, var ending])
+                        {
+                            if (ending == 2)
+                            {
+                                // Every remaining tower member received the same scene transition.
+                                // Sending old-room actor departures while they return can overlap
+                                // with the new town actor creation.
+                                await ReturnToTownFromDungeonAsync(
+                                    "tower-party-settlement", announceDungeonDeparture: false);
+                                return;
+                            }
+                            towerReselectRequested = true;
+                        }
+                        if (packet.ProtocolId == GameProtocolEngine.ChapterTwoTowerSettlementOptionsNotification)
+                        {
+                            towerPartyCanRetry = packet.Payload[0] == 1;
+                            towerSettlementReady = true;
+                            if (towerPartyRewardMail) await SendPendingMailAlarmAsync();
+                            if (towerPartyRewardInventory)
+                                await SendTownPacketAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints,
+                                    mainInventory.Values), serverToken);
+                        }
+                    }
+                }
+
+                Guid TowerPartyLeader(ChapterTwoTowerPartyRun run, Guid memberId) =>
+                    run.Roster.FirstOrDefault(slot => slot.SlotIndex == partyService.TryGetLeaderSlot(memberId))?.CharacterId
+                    ?? Guid.Empty;
+
+                async Task HandleTowerMonsterDeathAsync(ushort uid)
+                {
+                    if (!towerFloorLoaded || !dungeonCharacterAlive || dungeonInstance is not { } instance)
+                    {
+                        return;
+                    }
+
+                    var generation = instance.RoomGeneration;
+                    if (!instance.TryBeginMonsterDeath(uid, generation, out _, out _))
+                    {
+                        return;
+                    }
+
+                    try
+                    {
+                        await SendTownPacketAsync(GameProtocolEngine.CreateMonsterDie(uid), serverToken);
+                    }
+                    finally
+                    {
+                        instance.CompleteMonsterDeath(generation);
+                    }
+
+                    if (!instance.SnapshotAliveMonsters().Overlaps(
+                            currentDungeonRoom!.Monsters.Where(actor => actor.IsHostile).Select(actor => actor.UniqueId))
+                        && instance.TryEnableClear(generation))
+                    {
+                        towerCompletedTime += Environment.TickCount64 - towerStageStartedAt;
+                        if (towerFloorNumber == activeTower!.Floors.Count)
+                        {
+                            await SettleTowerAsync(towerFloorNumber);
+                        }
+                    }
+                }
+
+                async Task SettleTowerAsync(int clearedFloors)
+                {
+                    if (towerSettlementReady)
+                    {
+                        return;
+                    }
+
+                    towerSettlementReady = true;
+                    var playTime = (uint)Math.Min(towerCompletedTime, uint.MaxValue);
+                    var settlement = new TowerPartyResult(clearedFloors, playTime, DateTimeOffset.UtcNow);
+                    var result = await BuildTowerResultAsync(soloTowerAttemptId, settlement,
+                        soloTowerRankMember is { } member ? [member] : []);
+                    var reward = await CommitTowerRewardsAsync(soloTowerAttemptId, clearedFloors);
+                    await SendTownPacketAsync(result, serverToken);
+                    await SendTownPacketAsync(GameProtocolEngine.CreateChapterTwoTowerReward(reward.Experience, reward.Cards), serverToken);
+                    await SendTownPacketAsync(GameProtocolEngine.CreateChapterTwoTowerSettlementOptions(
+                        HasTowerInvitation(activeTower!.Ticket)), serverToken);
+                    if (reward.Mails)
+                        await SendPendingMailAlarmAsync();
+                    if (reward.Cards.Any(card => card.ItemId != ushort.MaxValue))
+                        await SendTownPacketAsync(CreateMainInventoryPacket(currentGold, currentVictoryPoints,
+                            mainInventory.Values), serverToken);
+                }
+
+                async Task<GameServerPacket> BuildTowerResultAsync(Guid attemptId, TowerPartyResult settlement,
+                    ChapterTwoTowerRankingParticipant[] members)
+                {
+                    var floor = checked((ushort)settlement.Floor);
+                    if (activeCharacter is not { } character || activeTower is not { } tower || members.Length == 0)
+                        return GameProtocolEngine.CreateChapterTwoTowerResult(floor, settlement.Milliseconds, false);
+
+                    var ranking = await store.SettleChapterTwoTowerRankingAsync(attemptId, tower.DungeonId, members,
+                        floor, settlement.Milliseconds, settlement.CompletedAt, character.Id, serverToken);
+                    return GameProtocolEngine.CreateChapterTwoTowerResult(floor, settlement.Milliseconds, ranking.Improved,
+                        virtualRank: ranking.VirtualRank ?? uint.MaxValue,
+                        personalBest: ranking.PersonalBest is { } best ? ProjectRank(best, ranking.PersonalRank ?? uint.MaxValue) : null,
+                        topRecords: ranking.TopFive.Select((record, index) => ProjectRank(record, (uint)index + 1)).ToArray());
+
+                    GameChapterTwoTowerRankRecord ProjectRank(ChapterTwoTowerPersonalBest record, uint rank) =>
+                        new(record.Members.Select(member => new GameChapterTwoTowerRankMember(
+                            EncodeCharacterName(member.Name), member.Job, member.GrowType)).ToArray(),
+                            record.ClearedFloor, record.TotalMilliseconds, rank);
+                }
+
+                async Task<(uint Experience, GameChapterTwoTowerRewardItem[] Cards, bool Mails)>
+                    CommitTowerRewardsAsync(Guid attemptId, int clearedFloors)
+                {
+                    if (!chapter2CheckConnectionAccepted || activeTower is null
+                        || activeCharacter is null || towerRewardPlanner is null)
+                        return (0, [], false);
+
+                    var expected = SnapshotCeraItemState(activeCharacter);
+                    var level = checked((byte)expected.Level);
+                    var rolled = towerRewardPlanner.Plan(clearedFloors, level);
+
+                    var progression = experienceCatalog.Grant(expected, rolled.Experience);
+                    var nextSp = checked(currentSp + spCatalog.CalculateProgressiveSpGrant(
+                        progression, experienceCatalog.ExperienceThresholds));
+                    var goldRemaining = (uint)Math.Min(rolled.Gold, (long)int.MaxValue - expected.Gold);
+                    var targetGold = checked(expected.Gold + (int)goldRemaining);
+                    var placed = ClearRewardGrantPlanner.Plan(mainInventory, warehouseCapacity, targetGold, rolled.Cards
+                        .Select(card => card.ItemId is > 0 and < ushort.MaxValue ? (ushort?)card.ItemId : null).ToArray(),
+                        GetInventoryWeightLimit(expected), itemCatalog);
+                    var cards = rolled.Cards.Select((card, index) =>
+                    {
+                        if (card.ItemId != 0)
+                            return placed.Granted[index] ? card : new GameChapterTwoTowerRewardItem(ushort.MaxValue, 0);
+                        var amount = Math.Min(card.QuantityOrValue, goldRemaining);
+                        goldRemaining -= amount;
+                        return amount == 0 ? new GameChapterTwoTowerRewardItem(ushort.MaxValue, 0) : card with { QuantityOrValue = amount };
+                    }).ToArray();
+                    if (progression.GrantedExperience == 0 && cards.All(card => card.ItemId == ushort.MaxValue))
+                        return (0, cards, false);
+
+                    var saved = await store.SaveChapterTwoTowerRewardAsync(accountName, attemptId, expected, placed,
+                        progression, nextSp, serverToken);
+                    if (saved is null)
+                    {
+                        logger.LogWarning("Tower rewards could not be committed for {CharacterId} in {AttemptId}.",
+                            expected.Id, attemptId);
+                        return (0, [], false);
+                    }
+
+                    AdoptSavedWarehouseUpgradeState(saved);
+                    currentGold = saved.Gold;
+                    currentSp = saved.Sp;
+                    dungeonLeveledUp |= progression.LeveledUp;
+                    if (placed.Mails.Count != 0)
+                        Interlocked.Exchange(ref pendingMailAlarm, 1);
+                    logger.LogInformation("Tower rewards committed for {CharacterId} in {AttemptId}: floor={Floor}, xp={Experience}, gold={Gold}, cards={Cards}.",
+                        saved.Id, attemptId, clearedFloors, progression.GrantedExperience, saved.Gold - expected.Gold,
+                        cards.Count(card => card.ItemId != ushort.MaxValue));
+                    return (progression.GrantedExperience, cards, placed.Mails.Count != 0);
+                }
+
+                bool HasTowerInvitation(DungeonTowerTicket ticket) =>
+                    mainInventory.Values.Where(item => item.ItemId == ticket.ItemId
+                            && activeCharacter is { } character && !itemTradeService.IsEscrowed(character.Id, 0, item.Slot))
+                        .Sum(item => (long)item.CountOrValue) >= ticket.Quantity;
+
                 async Task TryEnableRoomClearAsync(GameDungeonMonster defeatedMonster, long? expectedRoomGeneration = null)
                 {
                     if (currentDungeonRoom is null || dungeonInstance is null)
@@ -3309,8 +4077,27 @@ public sealed class EntranceService(
                     LogPacket("TX", runtimeSession, packet);
                 }
 
+                async Task InstallPendingEnchantAsync()
+                {
+                    if (activeCharacter is null || !enchanting.TryTakeInstall(townTicket, out var id, out var state))
+                        return;
+                    var refreshProfession = activeCharacter.EnchantingProficiency != state.EnchantingProficiency;
+                    var refreshEquipment = !equippedInventory.Values.OrderBy(item => item.Slot)
+                        .SequenceEqual((state.Equipment ?? []).OrderBy(item => item.Slot));
+                    activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(state, activeCharacter);
+                    currentGold = Math.Max(0, state.Gold);
+                    mainInventory = (state.Inventory ?? []).ToDictionary(item => item.Slot);
+                    equippedInventory = (state.Equipment ?? []).ToDictionary(item => item.Slot);
+                    store.AcknowledgeTradeDelivery(activeCharacter.Id, id);
+                    await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(
+                        currentGold, currentVictoryPoints, mainInventory.Values));
+                    if (refreshProfession || refreshEquipment)
+                        await SendTownAppearanceAsync();
+                }
+
                 async Task InstallPendingTradeAsync()
                 {
+                    await InstallPendingEnchantAsync();
                     if (activeCharacter is null
                         || !itemTradeService.TryTakePendingInstall(activeCharacter.Id, out var install)) return;
                     activeCharacter = EntranceWeaknessRecovery.WithRecoveryFrom(install.State, activeCharacter);
@@ -4288,8 +5075,10 @@ public sealed class EntranceService(
                             partyMemberCount: dungeonInstance?.MemberCount ?? 1);
                         var mentorBonus = MentorGrowthPolicy.Bonus(gained,
                             await mentorService.GetExperienceBonusRateAsync(activeCharacter.Id, runtimeSession.Id, serverToken));
-                        var progression = experienceCatalog.Grant(activeCharacter, MentorGrowthPolicy.Request(gained, mentorBonus));
-                        var creditedMentorBonus = MentorGrowthPolicy.CreditedBonus(gained, mentorBonus, progression.GrantedExperience);
+                        var guildBonus = guildBenefits.BonusExperience(gained);
+                        var experienceWithGuild = MentorGrowthPolicy.Request(gained, guildBonus);
+                        var progression = experienceCatalog.Grant(activeCharacter, MentorGrowthPolicy.Request(experienceWithGuild, mentorBonus));
+                        var creditedMentorBonus = MentorGrowthPolicy.CreditedBonus(experienceWithGuild, mentorBonus, progression.GrantedExperience);
                         if (progression.GrantedExperience <= 0)
                         {
                             continue;
@@ -4312,6 +5101,10 @@ public sealed class EntranceService(
                         }
 
                         activeCharacter = savedProgression;
+                        if (guildBonus > 0)
+                            logger.LogInformation("Guild skill added {GuildBonus} EXP to {CharacterId} on party monster base {BaseExperience}.",
+                                MentorGrowthPolicy.CreditedBonus(gained, guildBonus, progression.GrantedExperience),
+                                activeCharacter.Id, gained);
                         dungeonMonsterExperienceGained = (uint)Math.Min(
                             uint.MaxValue,
                             (ulong)dungeonMonsterExperienceGained + progression.GrantedExperience);
@@ -4340,7 +5133,8 @@ public sealed class EntranceService(
                 async Task ReturnToTownFromDungeonAsync(
                     string reason,
                     bool forcedDungeonExit = false,
-                    bool abandonsParty = false)
+                    bool abandonsParty = false,
+                    bool announceDungeonDeparture = true)
                 {
                     if (currentDungeonId == 0 && !inDungeonSelection)
                     {
@@ -4438,6 +5232,12 @@ public sealed class EntranceService(
                     currentDungeonId = 0;
                     currentDungeonLayout = null;
                     currentDungeonRoom = null;
+                    if (activeCharacter is { } leavingTowerCharacter) LeaveTowerParty(leavingTowerCharacter.Id);
+                    activeTower = null;
+                    towerFloorNumber = 0;
+                    towerFloorLoaded = false;
+                    towerSettlementReady = false;
+                    towerReselectRequested = false;
                     inDungeonSelection = false;
                     dungeonSelectionDeadline = null;
                     selectionWorldMap = null;
@@ -4470,7 +5270,8 @@ public sealed class EntranceService(
                             currentY,
                             currentDirection,
                             runtimeSession.Id,
-                            partyRosterAlreadyRemovesActor: partyRosterRemovedActor);
+                            partyRosterAlreadyRemovesActor: partyRosterRemovedActor,
+                            announceDeparture: announceDungeonDeparture);
                     }
 
                     dungeonInstance = null;
@@ -4680,7 +5481,11 @@ public sealed class EntranceService(
                     HiddenDungeonUnlockCatalog.ResolveVisibleDungeonIds(
                         dungeonCatalog.DungeonIds,
                         activeCharacter?.UnlockedDungeonIds)
-                    .Where(dungeonId => dungeonId != GameProtocolEngine.TutorialDungeonId)
+                    // Chapter Two WarRoom entries require their own activity admission.
+                    .Where(dungeonId => dungeonId != GameProtocolEngine.TutorialDungeonId
+                        && (!chapter2CheckConnectionAccepted
+                            || !dungeonCatalog.TryGetDefinition(dungeonId, out var definition)
+                            || definition.WarRoomMapId == 0))
                     .ToArray();
 
                 IReadOnlyList<GameDungeonPermissionEntry> GetDungeonPermissions()
@@ -4902,6 +5707,9 @@ public sealed class EntranceService(
 
                     // Capture before draining so mail arriving during this pass still wakes the read.
                     var partyMembershipChanged = partyMembershipWake.Capture();
+                    await RefreshPendingGuildDissolutionsAsync();
+                    await RefreshPendingGuildAnnouncementsAsync();
+                    await RefreshPendingGuildEventsAsync();
                     await SettleCurrentAvatarLifetimesAsync(force: Volatile.Read(ref pendingMailAlarm) != 0);
                     await SendPendingMailAlarmAsync();
                     // An external cash invalidation can wake an idle read, or arrive
@@ -4941,7 +5749,7 @@ public sealed class EntranceService(
                             isChannelPort,
                             activeCharacter is not null,
                             dungeonInstance is { IsParty: true },
-                            (activeCharacter is not null && (dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id) || mentorService.HasPendingGold(activeCharacter.Id, mentorGoldIncarnation ?? Guid.Empty) || ownerCurrencyDeliveries?.HasPending == true || pvpService.IsBusy(activeCharacter.Id)))
+                            (activeCharacter is not null && (activeTowerParty is not null || dungeonInstanceRegistry.HasPendingMail(activeCharacter.Id) || privateStoreService.HasPendingGold(activeCharacter.Id) || mentorService.HasPendingGold(activeCharacter.Id, mentorGoldIncarnation ?? Guid.Empty) || ownerCurrencyDeliveries?.HasPending == true || pvpService.IsBusy(activeCharacter.Id)))
                                 || weaknessRecovery.CanProcessPending(currentDungeonId != 0)
                                 || bossDeathSweep.HasPending,
                             activeCharacter is null ? 0 : partyService.GetPartySlots(activeCharacter.Id)?.Length ?? 0);
@@ -5012,13 +5820,20 @@ public sealed class EntranceService(
                                     && currentDungeonId != 0)
                                 {
                                     dungeonDeathTimeout = null;
-                                    logger.LogInformation(
-                                        "Dungeon death countdown expired for user {UserId} in dungeon {DungeonId}; returning to town.",
-                                        localUserId,
-                                        currentDungeonId);
-                                    await ReturnToTownFromDungeonAsync(
-                                        "death-countdown-expired",
-                                        forcedDungeonExit: true);
+                                    if (activeTower is not null)
+                                    {
+                                        await SettleTowerAsync(Math.Max(1, towerFloorNumber - 1));
+                                    }
+                                    else
+                                    {
+                                        logger.LogInformation(
+                                            "Dungeon death countdown expired for user {UserId} in dungeon {DungeonId}; returning to town.",
+                                            localUserId,
+                                            currentDungeonId);
+                                        await ReturnToTownFromDungeonAsync(
+                                            "death-countdown-expired",
+                                            forcedDungeonExit: true);
+                                    }
                                 }
 
                                 continue;
@@ -5179,7 +5994,7 @@ public sealed class EntranceService(
                             && TryDecodeChapter2Command(request, chapter2CheckConnectionAccepted, out decodedRequest);
                         if (chapter2Decoded && request.ProtocolId == GameProtocolEngine.CheckConnectionCommand)
                         {
-                            chapter2CheckConnectionAccepted = true;
+                            Volatile.Write(ref chapter2CheckConnectionAccepted, true);
                         }
 
                         if (!chapter2CheckConnectionAccepted && options.ChapterTwoRemote)
@@ -5288,7 +6103,7 @@ public sealed class EntranceService(
                     // 镜像刷新后：房间是"别人推进的"（本会话没做过饱食度结算、房间疲劳与结算标志重置），补上。
                     // 单人不会走这条（本会话自己换房间时已内联结算/重置，坐标一致 → 这里不触发）。
                     // 三者共用同一个"房间变了"判据：一次换房只补一次（同一坐标在本会话只命中一回）。
-                    if (dungeonInstance is { IsParty: true } catchUpInstance)
+                    if (dungeonInstance is { IsParty: true, TowerParty: null } catchUpInstance)
                     {
                         if ((currentDungeonRoomX, currentDungeonRoomY) != (lastSettledRoomX, lastSettledRoomY))
                         {
@@ -5367,8 +6182,13 @@ public sealed class EntranceService(
                             logger.LogInformation(
                                 "Party member {Name} picked up the dungeon entry request for dungeon {DungeonId} (party {PartyId}).",
                                 activeCharacter.Name, entryRequest.DungeonId, entryRequest.PartyId);
-                            await EnterPartyDungeonAsync(entryRequest, serverToken);
+                            if (entryRequest.Tower is { } towerRun)
+                                await PrepareTowerPartyAsync(towerRun, entryRequest.LeaderTownId, entryRequest.LeaderAreaId);
+                            else
+                                await EnterPartyDungeonAsync(entryRequest, serverToken);
                         }
+
+                        await ProcessTowerPartyAsync();
 
                         // 结算期强制回城（EPLP 超时；官服同款）：客户端卡死不发 EPLP 时由扫掠投这里的信箱。
                         if (activeCharacter is { } settlementReturnMember
@@ -5652,6 +6472,7 @@ public sealed class EntranceService(
                             warehouseInventory.Clear();
                             warehouseCapacity = CharacterWarehouseProgression.InitialCapacity;
                             currentSkills.Clear();
+                            guildBenefits = default;
                             currentQuests.Clear();
                             completedQuestIds.Clear();
                             currentSp = 0;
@@ -5661,6 +6482,8 @@ public sealed class EntranceService(
                             currentDungeonId = 0;
                             currentDungeonLayout = null;
                             currentDungeonRoom = null;
+                            if (returningCharacterId is { } towerDepartingCharacter) LeaveTowerParty(towerDepartingCharacter);
+                            activeTower = null;
                             inDungeonSelection = false;
                             currentDungeonRoomX = 0;
                             currentDungeonRoomY = 0;
@@ -5725,6 +6548,7 @@ public sealed class EntranceService(
                                 // 与 LeaveTownAreaAsync 同理：取消可能发生在移除之前，
                                 // ticket 必须保留给断线 finally 用 None 重试，否则下面就会
                                 // 把 uid 还回池子，而成员还留在目录里。
+                                await enchanting.LeaveAsync(townTicket, notifyLeaving: false);
                                 await townDirectory.LeaveAsync(townTicket, serverToken);
                                 townTicket = null;
                             }
@@ -5834,6 +6658,8 @@ public sealed class EntranceService(
 
                                 dungeonInstance = null;
                                 dungeonInstanceVersion = -1;
+                                if (activeCharacter is { } previousTowerCharacter) LeaveTowerParty(previousTowerCharacter.Id);
+                                activeTower = null;
                             }
 
                             var recoveryCharacterId = character.Id;
@@ -5895,7 +6721,20 @@ public sealed class EntranceService(
                                             .ToList()
                                     };
                                     _ = SendDungeonPermissionsAsync();
-                                }, () => { Interlocked.Exchange(ref pendingVictoryPointsRefresh, 1); partyMembershipWake.Pulse(); });
+                                }, () => { Interlocked.Exchange(ref pendingVictoryPointsRefresh, 1); partyMembershipWake.Pulse(); },
+                                guildId =>
+                                {
+                                    pendingGuildDissolutions.Enqueue((recoveryCharacterId, guildId));
+                                    partyMembershipWake.Pulse();
+                                }, guildId =>
+                                {
+                                    pendingGuildAnnouncements.Enqueue((recoveryCharacterId, guildId));
+                                    partyMembershipWake.Pulse();
+                                }, (guildId, packets, refreshCharacter) =>
+                                {
+                                    pendingGuildEvents.Enqueue((recoveryCharacterId, guildId, packets, refreshCharacter));
+                                    partyMembershipWake.Pulse();
+                                });
 
                             // A displaced connection performs its final save before
                             // releasing the character lease. Reload after the claim
@@ -6485,6 +7324,7 @@ public sealed class EntranceService(
 
                             if (chapter2CheckConnectionAccepted)
                             {
+                                await RefreshGuildBenefitsAsync();
                                 foreach (var guildPacket in await guildSession.InitialStateAsync(activeCharacter, serverToken))
                                 {
                                     await guildPacket.WriteAsync(stream, serverToken);
@@ -6514,6 +7354,7 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, initialPacket);
                             }
 
+                            await SendChapterTwoGrowthPotionTimersAsync(activeCharacter);
                             await SendAcceptableQuestListAsync();
                             await SendPvpRecordAsync();
 
@@ -6550,7 +7391,9 @@ public sealed class EntranceService(
                                 localUserId,
                                 runtimeSession.Id,
                                 packet => currencyDeliveries.SendTradeAsync(packet, p => SendTownPacketAsync(p, serverToken)),
-                                serverToken);
+                                serverToken,
+                                isChapterTwo: () => Volatile.Read(ref chapter2CheckConnectionAccepted),
+                                createdAtUtc: activeCharacter.CreatedAtUtc);
 
                             // 组队通道与好友/交易通道同生命周期：同一个 SendTownPacketAsync 入口。
                             await partyService.AttachChannelAsync(
@@ -7453,7 +8296,8 @@ public sealed class EntranceService(
                                     sourceItem.SealState,
                                     EquipmentQualitySeed:
                                         sourceItem.EquipmentQualitySeed,
-                                    InstanceId: sourceItem.InstanceId);
+                                    InstanceId: sourceItem.InstanceId,
+                                    EnchantmentCardId: sourceItem.EnchantmentCardId);
                                 sourceSlot = sourceItem.Slot;
                                 var remaining = isEquipment
                                     ? 0
@@ -8424,7 +9268,10 @@ public sealed class EntranceService(
                                 || currentDungeonId != 0
                                 || !GameProtocolEngine.TryParseCompoundItemCommand(
                                     request.Body,
-                                    out var compoundItemCommand))
+                                    out var compoundItemCommand,
+                                    allowChapterTwoPadding: chapter2Decoded)
+                                || (chapter2CheckConnectionAccepted && compoundItemCommand.SourceIsItemId
+                                    && !compoundCatalog.IsChapterTwoNpcRecipe(compoundItemCommand.SourceValue)))
                             {
                                 var error = GameProtocolEngine.CreateCompoundItemFailure(
                                     (byte)CompoundItemFailure.InvalidRecipe);
@@ -8438,7 +9285,8 @@ public sealed class EntranceService(
                                     compoundItemCommand.Sequence,
                                     out var replay))
                             {
-                                if (!request.Body.AsSpan().SequenceEqual(replay.RequestBody))
+                                if ((chapter2CheckConnectionAccepted && replay.CharacterId != activeCharacter.Id)
+                                    || !request.Body.AsSpan().SequenceEqual(replay.RequestBody))
                                 {
                                     var conflict =
                                         GameProtocolEngine.CreateCompoundItemFailure(
@@ -8452,9 +9300,14 @@ public sealed class EntranceService(
                                     continue;
                                 }
 
-                                await replay.Reply.WriteAsync(stream, serverToken);
+                                // A native C2 result reads each consumed slot again.
+                                // Replaying its rows would touch removed or reused slots.
+                                var replayReply = chapter2CheckConnectionAccepted
+                                    ? GameProtocolEngine.CreateCompoundItemReply([], [])
+                                    : replay.Reply;
+                                await replayReply.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, replay.Reply);
+                                LogPacket("TX", runtimeSession, replayReply);
                                 var replayRefresh = CreateMainInventoryPacket(
                                     currentGold,
                                     currentVictoryPoints,
@@ -8544,14 +9397,24 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var savedCompoundItem = await store.CommitCompoundItemAsync(
-                                accountName,
-                                activeCharacter.Id,
-                                expectedGold,
-                                expectedInventory,
-                                compoundItemPlan.RemainingGold,
-                                compoundItemPlan.MainInventory.Values,
-                                serverToken);
+                            CharacterRecord? savedCompoundItem = null;
+                            try
+                            {
+                                savedCompoundItem = await store.CommitCompoundItemAsync(
+                                    accountName,
+                                    activeCharacter.Id,
+                                    expectedGold,
+                                    expectedInventory,
+                                    compoundItemPlan.RemainingGold,
+                                    compoundItemPlan.MainInventory.Values,
+                                    serverToken);
+                            }
+                            catch (Exception exception) when (chapter2CheckConnectionAccepted
+                                && exception is (IOException or UnauthorizedAccessException))
+                            {
+                                logger.LogWarning(exception, "Could not save recipe {RecipeItemId} for character {CharacterId}.",
+                                    compoundItemPlan.RecipeItemId, activeCharacter.Id);
+                            }
                             if (savedCompoundItem is null)
                             {
                                 var error = GameProtocolEngine.CreateCompoundItemFailure(
@@ -8598,6 +9461,7 @@ public sealed class EntranceService(
                             compoundReplay.Add(
                                 compoundItemCommand.Sequence,
                                 new CompoundItemReplayEntry(
+                                    activeCharacter.Id,
                                     request.Body.ToArray(),
                                     compoundItemReply,
                                     refreshWarehouse));
@@ -8784,14 +9648,32 @@ public sealed class EntranceService(
                         }
 
                         if (chapter2CheckConnectionAccepted && request.Type == GameProtocolEngine.CommandPacketType
-                            && GuildSession.Handles(request.ProtocolId))
+                            && (GuildSession.Handles(request.ProtocolId) || GuildProgression.IsPurchase(request)))
                         {
                             var result = await guildSession.HandleAsync(request, accountName, activeCharacter,
-                                localUserId, currentDungeonId == 0, serverToken);
+                                localUserId, currentDungeonId == 0, serverToken, currentSp);
+                            var balancesChanged = result.ProgressionChanged
+                                || request.ProtocolId == GameProtocolEngine.GuildCreateCommand;
                             if (result.Character is { } guildCharacter)
                             {
-                                activeCharacter = guildCharacter;
-                                currentGold = guildCharacter.Gold;
+                                if (request.ProtocolId == GameProtocolEngine.GuildCreateCommand)
+                                {
+                                    activeCharacter = guildCharacter;
+                                }
+                                else
+                                {
+                                    activeCharacter = activeCharacter! with
+                                    {
+                                        GuildId = guildCharacter.GuildId,
+                                        GuildName = guildCharacter.GuildName,
+                                        GuildRank = guildCharacter.GuildRank
+                                    };
+                                }
+                                if (balancesChanged)
+                                {
+                                    currentGold = guildCharacter.Gold;
+                                    activeCharacter = activeCharacter with { Gold = currentGold };
+                                }
                             }
                             foreach (var packet in result.Packets)
                             {
@@ -8801,22 +9683,62 @@ public sealed class EntranceService(
                             }
                             if (result.Character is not null)
                             {
-                                var guildInventory = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
-                                await guildInventory.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, guildInventory);
+                                if (balancesChanged)
+                                {
+                                    var guildInventory = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                                    await guildInventory.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, guildInventory);
+                                }
+                                if (await RefreshGuildBenefitsAsync()) await SendCurrentSkillInfoAsync();
                                 await SendTownAppearanceAsync();
                             }
                             continue;
                         }
 
+                        if (chapter2CheckConnectionAccepted && request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.OpenGiftBoosterCommand)
+                        {
+                            if (activeCharacter is null || currentDungeonId != 0
+                                || !GameProtocolEngine.TryReadGiftBoosterCommand(request.Body, out var giftBoosterCommand)
+                                || itemTradeService.IsEscrowed(activeCharacter.Id, 0, giftBoosterCommand.SourceSlot))
+                            {
+                                await SendPickupReplyToRequesterAsync(GameProtocolEngine.CreateGiftBoosterError(17));
+                                continue;
+                            }
+
+                            var opening = await giftBoosterSession.OpenAsync(store, accountName,
+                                SnapshotCeraItemState(activeCharacter), giftBoosterCommand,
+                                GetInventoryWeightLimit(activeCharacter), GameRandomSource.Shared, serverToken);
+                            if (opening.Character is not { } saved)
+                            {
+                                await SendPickupReplyToRequesterAsync(opening.Reply);
+                                continue;
+                            }
+
+                            var warehouseCapacityChanged = AdoptSavedWarehouseUpgradeState(saved);
+                            avatarInventory = (saved.AvatarInventory ?? []).ToDictionary(item => item.Slot);
+                            creatureInventory = (saved.CreatureInventory ?? []).ToDictionary(item => item.Slot);
+                            await SendPickupReplyToRequesterAsync(opening.Reply);
+                            await SendPickupReplyToRequesterAsync(CreateMainInventoryPacket(currentGold,
+                                currentVictoryPoints, mainInventory.Values));
+                            await SendPickupReplyToRequesterAsync(CreateAvatarInventoryPacket(avatarInventory.Values));
+                            foreach (var packet in CreateCreatureInventoryPackets(creatureInventory.Values))
+                                await SendPickupReplyToRequesterAsync(packet);
+                            if (warehouseCapacityChanged) await SendWarehouseStateAsync();
+                            continue;
+                        }
+
                         if (request.Type == GameProtocolEngine.CommandPacketType
-                            && request.ProtocolId == GameProtocolEngine.UseRandomBoxCommand)
+                            && request.ProtocolId is GameProtocolEngine.UseRandomBoxCommand
+                                or GameProtocolEngine.UseSamsungRandomBoxCommand)
                         {
                             if (!chapter2CheckConnectionAccepted || activeCharacter is null || currentDungeonId != 0
-                                || !GameProtocolEngine.TryReadRandomBoxCommand(request.Body, out var randomBoxCommand))
+                                || !GameProtocolEngine.TryReadRandomBoxCommand(request.Body, out var randomBoxCommand)
+                                || itemTradeService.IsEscrowed(activeCharacter.Id, 0, randomBoxCommand.BoxSlot)
+                                || itemTradeService.IsEscrowed(activeCharacter.Id, 0, randomBoxCommand.HammerSlot))
                             {
-                                var invalidBox = GameProtocolEngine.CreateRandomBoxError(17);
+                                var invalidBox = GameProtocolEngine.CreateRandomBoxError(17, request.ProtocolId);
                                 await invalidBox.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, invalidBox);
@@ -8825,7 +9747,7 @@ public sealed class EntranceService(
 
                             var opening = await randomBoxSession.OpenAsync(store, accountName,
                                 SnapshotCeraItemState(activeCharacter), randomBoxCommand,
-                                GetInventoryWeightLimit(activeCharacter), GameRandomSource.Shared, serverToken);
+                                GetInventoryWeightLimit(activeCharacter), GameRandomSource.Shared, serverToken, request.ProtocolId);
                             if (opening.Character is { } savedBox)
                             {
                                 AdoptSavedWarehouseUpgradeState(savedBox);
@@ -9023,6 +9945,69 @@ public sealed class EntranceService(
                                 logger.LogWarning(
                                     "Rejected increase-status command for slot {SourceSlot}: the slot is empty.",
                                     sourceSlot);
+                                continue;
+                            }
+
+                            // The original Chapter Two client dispatches these three
+                            // cash/event items to CMD32 instead of the stackable-use command.
+                            var revivalCoins = sourceItem.ItemId switch
+                            {
+                                42 or 7180 => 1u, // coin_general, coin_newyear
+                                7181 => 5u,       // coin_book
+                                _ => 0u
+                            };
+                            if (chapter2CheckConnectionAccepted && revivalCoins > 0)
+                            {
+                                CharacterRecord? savedExchange = null;
+                                if (GameProtocolEngine.HasCommandBodyLength(request.Body, 4, allowChapterTwoPadding: chapter2Decoded)
+                                    && CharacterInventoryLayout.IsMainItemSlot(sourceSlot)
+                                    && sourceItem.CountOrValue > 0
+                                    && !itemTradeService.IsEscrowed(activeCharacter.Id, 0, sourceSlot))
+                                {
+                                    var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(mainInventory);
+                                    if (sourceItem.CountOrValue == 1)
+                                    {
+                                        plannedInventory.Remove(sourceSlot);
+                                    }
+                                    else
+                                    {
+                                        plannedInventory[sourceSlot] = sourceItem with { CountOrValue = sourceItem.CountOrValue - 1 };
+                                    }
+
+                                    if (CharacterInventoryPlanner.TryPlace(
+                                            plannedInventory,
+                                            new(CharacterInventoryLayout.RevivalCoinItemId, revivalCoins),
+                                            itemCatalog,
+                                            GetInventoryWeightLimit(activeCharacter),
+                                            out var placement,
+                                            out _))
+                                    {
+                                        savedExchange = await SaveChapterTwoMainBagAsync(activeCharacter, currentGold,
+                                            placement.Inventory.Values, equippedInventory.Values);
+                                    }
+                                }
+
+                                if (savedExchange is null)
+                                {
+                                    var error = GameProtocolEngine.CreateCommandError(request, errorCode: 17);
+                                    await error.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, error);
+                                    continue;
+                                }
+
+                                var warehouseCapacityChanged = AdoptSavedWarehouseUpgradeState(savedExchange);
+                                var exchangeReply = GameProtocolEngine.CreateChapterTwoRevivalCoinExchangeReply(sourceSlot);
+                                await exchangeReply.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, exchangeReply);
+
+                                var bagRefresh = CreateMainInventoryPacket(currentGold, currentVictoryPoints, mainInventory.Values);
+                                await bagRefresh.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, bagRefresh);
+                                if (warehouseCapacityChanged) await SendWarehouseStateAsync();
+                                await SendMessageNotificationAsync(0, ClientEncoding.GetBytes($"获得了{revivalCoins}枚复活币。"));
                                 continue;
                             }
 
@@ -9788,6 +10773,26 @@ public sealed class EntranceService(
                                 hatchPlan.Slot,
                                 activeCharacter.Id);
                             continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType && chapter2CheckConnectionAccepted
+                            && townTicket is { } enchantTicket && currentDungeonId == 0 && !inDungeonSelection
+                            && !isPvpChannel)
+                        {
+                            var op = request.ProtocolId;
+                            var response = op == GameProtocolEngine.ResponsePeerCommand;
+                            if ((response || op == GameProtocolEngine.RequestPeerCommand)
+                                && GameProtocolEngine.TryReadEnchantPeer(request.Body, response, out var peerUid, out var peerType))
+                            {
+                                await enchanting.HandlePeerAsync(enchantTicket, peerUid, peerType, response, serverToken);
+                                continue;
+                            }
+                            if (op is GameProtocolEngine.ConfirmEnchantProposalCommand
+                                or GameProtocolEngine.SubmitEnchantRecipeCommand or GameProtocolEngine.SetEnchantTermsCommand)
+                            {
+                                await enchanting.HandleCommandAsync(enchantTicket, op, request.Body, serverToken);
+                                continue;
+                            }
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
@@ -10573,7 +11578,8 @@ public sealed class EntranceService(
                                         itemToWithdraw.SealState,
                                         EquipmentQualitySeed:
                                             itemToWithdraw.EquipmentQualitySeed,
-                                        InstanceId: itemToWithdraw.InstanceId);
+                                        InstanceId: itemToWithdraw.InstanceId,
+                                        EnchantmentCardId: itemToWithdraw.EnchantmentCardId);
                                     if (!CharacterInventoryPlanner.TryPlace(
                                             mainInventory,
                                             withdrawal,
@@ -10835,7 +11841,8 @@ public sealed class EntranceService(
                                     sourceItem.SealState,
                                     EquipmentQualitySeed:
                                         sourceItem.EquipmentQualitySeed,
-                                    InstanceId: sourceItem.InstanceId);
+                                    InstanceId: sourceItem.InstanceId,
+                                    EnchantmentCardId: sourceItem.EnchantmentCardId);
                                 if (!CharacterInventoryPlanner.TryPlace(
                                         mainInventory,
                                         withdrawal,
@@ -11070,7 +12077,8 @@ public sealed class EntranceService(
                                     displacedItem!.ItemId, displacedItem.CountOrValue,
                                     displacedItem.State, displacedItem.Durability, displacedItem.SealState,
                                     EquipmentQualitySeed: displacedItem.EquipmentQualitySeed,
-                                    InstanceId: displacedItem.InstanceId);
+                                    InstanceId: displacedItem.InstanceId,
+                                    EnchantmentCardId: displacedItem.EnchantmentCardId);
                                 if (!CharacterInventoryPlanner.TryPlace(
                                         remainingBag, returnedItem, itemCatalog,
                                         GetInventoryWeightLimit(activeCharacter),
@@ -12339,6 +13347,36 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            if (chapter2CheckConnectionAccepted
+                                && consumedItem.ItemId == ChapterTwoGrowthPotionDefinition.ItemId)
+                            {
+                                var updated = towerFloorNumber == 0
+                                    && dungeonCharacterAlive
+                                    && itemCatalog.TryGetDefinition(consumedItem.ItemId, out var growthItem)
+                                    && growthItem.GrowthPotion is { } definition
+                                        ? await store.UseChapterTwoGrowthPotionAsync(
+                                            accountName, activeCharacter.Id, consumedItem, definition,
+                                            DateTimeOffset.UtcNow, serverToken)
+                                        : null;
+                                var growthReply = updated is null
+                                    ? GameProtocolEngine.CreateUseStackableItemError(17, listType)
+                                    : GameProtocolEngine.CreateUseStackableItemReply(slot, listType);
+                                if (updated is not null)
+                                {
+                                    activeCharacter = updated;
+                                    var remainingItem = updated.Inventory?.FirstOrDefault(item => item.Slot == slot);
+                                    if (remainingItem is null)
+                                        mainInventory.Remove(slot);
+                                    else
+                                        mainInventory[slot] = remainingItem;
+                                }
+
+                                await SendTownPacketAsync(growthReply, serverToken);
+                                if (updated is not null)
+                                    await SendChapterTwoGrowthPotionTimersAsync(updated);
+                                continue;
+                            }
+
                             var remaining = consumedItem.CountOrValue - 1;
                             if (remaining == 0)
                             {
@@ -13561,7 +14599,10 @@ public sealed class EntranceService(
                                 || currentDungeonId != 0
                                 || !GameProtocolEngine.TryParseUpgradeItemCommand(
                                     request.Body,
-                                    out var upgradeCommand))
+                                    out var upgradeCommand,
+                                    allowChapterTwoPadding: chapter2Decoded)
+                                || (chapter2CheckConnectionAccepted && !IsChapterTwoBagEquipmentTarget(activeCharacter.Id,
+                                    upgradeCommand.TargetSlot, upgradeCommand.TargetItemId, upgradeCommand.MaterialSlot)))
                             {
                                 var error = GameProtocolEngine.CreateCommandError(
                                     request,
@@ -13583,7 +14624,8 @@ public sealed class EntranceService(
                                     reinforcementCatalog,
                                     GameRandomSource.Shared,
                                     out var reinforcementPlan,
-                                    out var reinforcementFailure))
+                                    out var reinforcementFailure,
+                                    chapterTwo: chapter2CheckConnectionAccepted))
                             {
                                 var error = GameProtocolEngine.CreateCommandError(
                                     request,
@@ -13600,8 +14642,13 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var savedReinforcement =
-                                await store.SaveCharacterInventoryAsync(
+                            var savedReinforcement = chapter2CheckConnectionAccepted
+                                ? await SaveChapterTwoMainBagAsync(
+                                    activeCharacter,
+                                    reinforcementPlan.RemainingGold,
+                                    reinforcementPlan.MainInventory.Values,
+                                    reinforcementPlan.Equipment.Values)
+                                : await store.SaveCharacterInventoryAsync(
                                     accountName,
                                     activeCharacter.Id,
                                     reinforcementPlan.RemainingGold,
@@ -13629,10 +14676,7 @@ public sealed class EntranceService(
                                 await SendWarehouseStateAsync();
                             }
 
-                            // DF2008 refreshes a bag target before consuming the
-                            // CMD83 acknowledgement. Worn targets are updated by
-                            // the acknowledgement itself.
-                            if (reinforcementPlan.TargetListType == 0)
+                            async Task SendReinforcedBagAsync()
                             {
                                 var inventoryRefresh = CreateMainInventoryPacket(
                                     currentGold,
@@ -13642,6 +14686,14 @@ public sealed class EntranceService(
                                 await inventoryRefresh.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, inventoryRefresh);
+                            }
+
+                            // ACT1 reads the updated bag first. The Chapter Two CMD83
+                            // receiver still needs the original material and equipment
+                            // objects to process the acknowledgement.
+                            if (!chapter2CheckConnectionAccepted && reinforcementPlan.TargetListType == 0)
+                            {
+                                await SendReinforcedBagAsync();
                             }
 
                             var reinforcementReply =
@@ -13654,6 +14706,11 @@ public sealed class EntranceService(
                             await reinforcementReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, reinforcementReply);
+                            if (chapter2CheckConnectionAccepted)
+                            {
+                                await SendReinforcedBagAsync();
+                            }
+
                             logger.LogInformation(
                                 "Reinforced item {ItemId} at {ListType}:{Slot}: level={PreviousLevel}->{NewLevel}, result={ResultCode}, destroyed={Destroyed}, material={MaterialItemId}x{MaterialCount}, goldCost={GoldCost}, gold={Gold}, roll={Roll}/{RollUpperBound}.",
                                 reinforcementPlan.TargetItemId,
@@ -13680,7 +14737,10 @@ public sealed class EntranceService(
                                 || currentDungeonId != 0
                                 || !GameProtocolEngine.TryParseResetItemAttributeCommand(
                                     request.Body,
-                                    out var resetCommand))
+                                    out var resetCommand,
+                                    allowChapterTwoPadding: chapter2Decoded)
+                                || (chapter2CheckConnectionAccepted && !IsChapterTwoBagEquipmentTarget(activeCharacter.Id,
+                                    resetCommand.TargetSlot, resetCommand.TargetItemId, resetCommand.MaterialSlot)))
                             {
                                 var error =
                                     GameProtocolEngine.CreateResetItemAttributeFailure(
@@ -13718,8 +14778,13 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var savedModification =
-                                await store.CommitItemAttributeModificationAsync(
+                            var savedModification = chapter2CheckConnectionAccepted
+                                ? await SaveChapterTwoMainBagAsync(
+                                    activeCharacter,
+                                    currentGold,
+                                    modificationPlan.MainInventory.Values,
+                                    modificationPlan.Equipment.Values)
+                                : await store.CommitItemAttributeModificationAsync(
                                     accountName,
                                     activeCharacter.Id,
                                     mainInventory.Values,
@@ -14385,13 +15450,50 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.StartGameCommand)
                         {
+                            if (activeTowerParty is { } retryParty && activeTower is not null && activeCharacter is { } retryMember)
+                            {
+                                if (towerReselectRequested && retryParty.BeginReselect(retryMember.Id,
+                                         TowerPartyLeader(retryParty, retryMember.Id)))
+                                    await ProcessTowerPartyAsync();
+                                continue;
+                            }
+                            if (activeTower is not null && activeCharacter is { } towerCharacter)
+                            {
+                                if (!towerReselectRequested)
+                                {
+                                    continue;
+                                }
+
+                                // The native tower follows the EPLP acknowledgement with CMD15.
+                                // Release the completed instance without sending a town scene before selection.
+                                gameplayDatagram.SetRelayDungeonInstance(runtimeSession.Id, null);
+                                TeardownSoloDungeonInstance();
+                                dungeonInstanceRegistry.UnbindCharacter(towerCharacter.Id);
+                                dungeonInstance = null;
+                                dungeonInstanceVersion = -1;
+                                activeTowerParty = null;
+                                activeTower = null;
+                                towerSettlementReady = false;
+                                towerReselectRequested = false;
+                                dungeonDeathTimeout = null;
+                                currentTownId = dungeonReturnTownId;
+                                currentAreaId = dungeonReturnAreaId;
+                                currentX = dungeonReturnX;
+                                currentY = dungeonReturnY;
+                                currentDirection = dungeonReturnDirection;
+                            }
+
                             // Walking into a [dungeon gate] emits command 15.
                             // DF2008 handles exhausted party members in this command,
                             // before entering the dungeon-selection screen.
                             var maximumFatigue = GetFatigueLimits().Maximum;
                             var requiresTutorial = activeCharacter is { TutorialStarted: false };
+                            var entryMap = worldMapCatalog.TryGetForGate(currentTownId, currentAreaId, out var gateWorldMap)
+                                ? gateWorldMap : null;
+                            var isTowerGate = chapter2CheckConnectionAccepted
+                                && entryMap?.DungeonIds is [DungeonCatalog.TowerOfIllusionId];
                             if (activeCharacter is null
-                                || (!requiresTutorial
+                                || (!requiresTutorial && !isTowerGate
                                     && !DungeonFatigueRules.CanEnterNewDungeon(
                                         activeCharacter.UsedFatigue,
                                         maximumFatigue)))
@@ -14418,9 +15520,7 @@ public sealed class EntranceService(
                             dungeonReturnY = currentY;
                             dungeonReturnDirection = currentDirection;
                             inDungeonSelection = true;
-                            selectionWorldMap = worldMapCatalog.TryGetForGate(
-                                currentTownId, currentAreaId, out var gateWorldMap)
-                                ? gateWorldMap : null;
+                            selectionWorldMap = entryMap;
                             // Return before DF2008 auto-selects at 30.3 seconds.
                             dungeonSelectionDeadline = requiresTutorial
                                 ? null : DateTimeOffset.UtcNow.AddSeconds(30);
@@ -14494,6 +15594,14 @@ public sealed class EntranceService(
                             if (!requiresTutorial && !inDungeonSelection)
                             {
                                 logger.LogWarning("Ignored stale dungeon selection for {CharacterId}.", activeCharacter?.Id);
+                                continue;
+                            }
+
+                            if (!requiresTutorial && activeCharacter is { } towerCharacter
+                                && chapter2CheckConnectionAccepted && dungeonId == DungeonCatalog.TowerOfIllusionId
+                                && selectionWorldMap?.DungeonIds.Contains(dungeonId) == true)
+                            {
+                                await EnterTowerAsync(towerCharacter, dungeonId, difficulty, dungeonOption);
                                 continue;
                             }
 
@@ -15155,8 +16263,68 @@ public sealed class EntranceService(
                         }
 
                         if (request.Type == GameProtocolEngine.CommandPacketType
+                            && request.ProtocolId == GameProtocolEngine.ChapterTwoTowerStageCommand
+                            && chapter2CheckConnectionAccepted)
+                        {
+                            // Both dialogue callbacks send a single stage byte. The native
+                            // server only replies on error and never takes kills as a dialogue signal.
+                            var action = request.Body.Length >= 3 ? request.Body[2] : (byte)0;
+                            if (activeTowerParty is { } stageParty && activeTower is not null && activeCharacter is { } stageMember)
+                            {
+                                if (!stageParty.ProcessStage(stageMember.Id, towerFloorNumber,
+                                    TowerPartyLeader(stageParty, stageMember.Id), action, Environment.TickCount64))
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                                continue;
+                            }
+                            if (activeTower is null || !towerFloorLoaded || action is not (1 or 2))
+                            {
+                                await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                            }
+                            else if (action == 1 && towerStage == 0 && dungeonCharacterAlive)
+                            {
+                                towerStage = 1;
+                                towerStageStartedAt = Environment.TickCount64;
+                            }
+                            else if (action == 2 && towerStage == 1 && dungeonInstance?.ClearEnabled == true)
+                            {
+                                towerStage = 2;
+                            }
+                            continue;
+                        }
+
+                        if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.MoveMapCommand)
                         {
+                            if (activeTowerParty is { } movingParty && activeTower is not null && activeCharacter is { } movingMember)
+                            {
+                                if (!movingParty.TryAdvance(movingMember.Id, towerFloorNumber,
+                                        TowerPartyLeader(movingParty, movingMember.Id), dungeonCatalog))
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                                await ProcessTowerPartyAsync();
+                                continue;
+                            }
+                            if (activeTower is { } tower)
+                            {
+                                if (!dungeonCharacterAlive || towerStage != 2 || dungeonInstance?.ClearEnabled != true
+                                    || towerFloorNumber >= tower.Floors.Count)
+                                {
+                                    var error = !dungeonCharacterAlive || towerFloorNumber >= tower.Floors.Count
+                                        ? (byte)0x16 : (byte)0x13;
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request,
+                                        error), serverToken);
+                                }
+                                else if (dungeonCatalog.TryCreateTowerFloor(tower.DungeonId, towerFloorNumber + 1,
+                                             out var nextTowerFloor))
+                                {
+                                    await SendTowerFloorAsync(nextTowerFloor);
+                                }
+                                else
+                                {
+                                    await ReturnToTownFromDungeonAsync("tower-floor-unavailable");
+                                }
+                                continue;
+                            }
+
                             // DFLegacy command 48 is sequence, target room X and
                             // target room Y. Sending the next START_MAP packet
                             // completes the door transition after room clear.
@@ -15422,6 +16590,31 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.DieCharacterCommand)
                         {
+                            if (activeTowerParty is { } dyingParty && activeTower is not null && activeCharacter is { } dyingMember)
+                            {
+                                if (!dyingParty.ReportDeath(dyingMember.Id, towerFloorNumber, Environment.TickCount64))
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x12), serverToken);
+                                else
+                                    dungeonCharacterAlive = false;
+                                await ProcessTowerPartyAsync();
+                                continue;
+                            }
+                            if (activeTower is not null)
+                            {
+                                if (!dungeonCharacterAlive || !towerFloorLoaded || towerSettlementReady)
+                                {
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x12), serverToken);
+                                }
+                                else
+                                {
+                                    dungeonCharacterAlive = false;
+                                    dungeonDeathTimeout = (++dungeonDeathGeneration, DateTimeOffset.UtcNow.AddSeconds(5));
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateDieState(localUserId, isAlive: false),
+                                        serverToken);
+                                }
+                                continue;
+                            }
+
                             if (currentDungeonId == 0
                                 || activeCharacter is null
                                 || !dungeonCharacterAlive)
@@ -15481,6 +16674,12 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.UseCoinCommand)
                         {
+                            if (activeTower is not null)
+                            {
+                                await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                                continue;
+                            }
+
                             byte? errorCode = null;
                             GameUseCoinCommand useCoinCommand = default;
                             var revivalInstance = dungeonInstance is { IsParty: true } ? dungeonInstance : null;
@@ -15596,6 +16795,28 @@ public sealed class EntranceService(
                                     request.Body,
                                     out var dieCommand))
                             {
+                                if (activeTowerParty is { } killParty && activeTower is not null && activeCharacter is { } killingMember)
+                                {
+                                    if (!dieCommand.IsPassiveObject
+                                        && !killParty.ReportMonsterDeath(killingMember.Id, towerFloorNumber,
+                                            dieCommand.EntityId, Environment.TickCount64))
+                                        await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                                    await ProcessTowerPartyAsync();
+                                    continue;
+                                }
+                                if (activeTower is not null)
+                                {
+                                    if (towerStage != 1)
+                                    {
+                                        await SendTownPacketAsync(GameProtocolEngine.CreateCommandError(request, 0x13), serverToken);
+                                    }
+                                    else if (!dieCommand.IsPassiveObject)
+                                    {
+                                        await HandleTowerMonsterDeathAsync(dieCommand.EntityId);
+                                    }
+                                    continue;
+                                }
+
                                 if (dieCommand.IsPassiveObject)
                                 {
                                     if (currentDungeonRoom is not null
@@ -15816,6 +17037,26 @@ public sealed class EntranceService(
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, playResult);
 
+                                var hasDungeonDefinition = dungeonCatalog.TryGetDefinition(currentDungeonId, out var settledDungeon);
+                                if (chapter2CheckConnectionAccepted && activeCharacter is { } guildMember
+                                    && hasDungeonDefinition && dungeonFatigueGuildId != 0 && dungeonConsumedFatigue > 0)
+                                {
+                                    var contribution = GuildProgression.DungeonContribution(
+                                        dungeonGuildEntryLevel, settledDungeon.BasisLevel, dungeonConsumedFatigue);
+                                    var creditedGuild = await store.CreditGuildDungeonClearAsync(
+                                        accountName, guildMember.Id, dungeonFatigueGuildId, contribution, serverToken);
+                                    dungeonFatigueGuildId = 0;
+                                    if (creditedGuild is not null)
+                                    {
+                                        var guildSnapshot = await store.GetGuildAsync(creditedGuild.Id, serverToken);
+                                        foreach (var member in guildSnapshot.Members)
+                                            characterSessions.NotifyGuildEvents(member.Id, creditedGuild.Id,
+                                                [GuildSession.CreateInfoPacket(creditedGuild, member.GuildRank, guildSnapshot.Members.Length)]);
+                                        logger.LogInformation("Guild {GuildId} received {Contribution} dungeon guild experience; total {Experience}.",
+                                            creditedGuild.Id, contribution, creditedGuild.Experience);
+                                    }
+                                }
+
                                 if (await SettleDungeonCreatureHungerAsync(
                                         notifyClient: true,
                                         serverToken))
@@ -15828,10 +17069,6 @@ public sealed class EntranceService(
                                 }
                                 dungeonCreatureStomachCheckpointSeconds = null;
 
-                                var hasDungeonDefinition =
-                                    dungeonCatalog.TryGetDefinition(
-                                        currentDungeonId,
-                                        out var settledDungeon);
                                 var clearGrantedSkillPoints = 0;
                                 if (dungeonClearExperience is null)
                                 {
@@ -15859,9 +17096,12 @@ public sealed class EntranceService(
                                                     HasBlackDiamond: HasActivePremiumService(GameProtocolEngine.BlackDiamondServiceType),
                                                     MentorBonusRate: await mentorService.GetExperienceBonusRateAsync(
                                                         activeCharacter.Id, runtimeSession.Id, serverToken),
-                                                    EventBonusRate: dungeonExperienceCatalog.GetEventBonusRate(DateTimeOffset.UtcNow),
+                                                    EventBonusRate: GetDungeonClearEventBonusRate(activeCharacter),
                                                     ChannelBonusRate: dungeonExperienceCatalog.GetChannelBonusRate(currentDungeonId, channel.Number)))
                                             : GameDungeonClearExperienceBreakdown.Empty;
+                                    var guildClearBonus = guildBenefits.BonusExperience(calculatedClearExperience.BaseExperience);
+                                    if (guildClearBonus > 0)
+                                        calculatedClearExperience = calculatedClearExperience with { GuildBonus = guildClearBonus };
 
                                     if (activeCharacter is not null
                                         && (dungeonMonsterExperienceGained > 0
@@ -15894,6 +17134,9 @@ public sealed class EntranceService(
 
                                         currentSp = settledSp;
                                         activeCharacter = savedProgression;
+                                        if (calculatedClearExperience.GuildBonus > 0)
+                                            logger.LogInformation("Guild skill added {GuildBonus} clear EXP to {CharacterId} on clear base {BaseExperience}.",
+                                                calculatedClearExperience.GuildBonus, activeCharacter.Id, calculatedClearExperience.BaseExperience);
                                         dungeonLeveledUp |= clearProgression.LeveledUp;
                                         if (clearProgression.LeveledUp)
                                         {
@@ -16350,6 +17593,31 @@ public sealed class EntranceService(
                                 ? request.Body[3]
                                 : (byte)0;
 
+                            if (activeTower is { } settlementTower)
+                            {
+                                if (activeTowerParty is { } settlingParty && activeCharacter is { } settlingMember)
+                                {
+                                    if (towerSettlementReady)
+                                    {
+                                        settlingParty.ChooseSettlement(settlingMember.Id,
+                                            TowerPartyLeader(settlingParty, settlingMember.Id), state, option, towerPartyCanRetry);
+                                        await ProcessTowerPartyAsync();
+                                    }
+                                    continue;
+                                }
+                                if (towerSettlementReady && !towerReselectRequested && state is 1 or 2 && option <= 2
+                                    && (option == 2 || HasTowerInvitation(settlementTower.Ticket)))
+                                {
+                                    towerReselectRequested = state == 1 && option != 2;
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateEplpReply(state, option), serverToken);
+                                    if (state == 1 && option == 2)
+                                    {
+                                        await ReturnToTownFromDungeonAsync("tower-settlement");
+                                    }
+                                }
+                                continue;
+                            }
+
                             if (state == 1
                                 && roomSettlement.CardRightsSent
                                 && roomSettlement.ClearReward is not null
@@ -16407,6 +17675,32 @@ public sealed class EntranceService(
                         if (request.Type == GameProtocolEngine.CommandPacketType
                             && request.ProtocolId == GameProtocolEngine.FinishLoadingCommand)
                         {
+                            if (activeTowerParty is { } loadingParty && activeTower is not null && activeCharacter is { } loadingMember)
+                            {
+                                if (!towerFloorLoaded && towerFloorNumber != 0)
+                                {
+                                    towerFloorLoaded = true;
+                                    if (towerFloorNumber == 1)
+                                        await SendTownPacketAsync(GameProtocolEngine.CreateCommandReply(request, success: true), serverToken);
+                                    loadingParty.MarkLoaded(loadingMember.Id, towerFloorNumber);
+                                    await ProcessTowerPartyAsync();
+                                }
+                                continue;
+                            }
+                            if (activeTower is not null)
+                            {
+                                if (!towerFloorLoaded)
+                                {
+                                    towerFloorLoaded = true;
+                                    if (towerFloorNumber == 1)
+                                    {
+                                        await SendTownPacketAsync(GameProtocolEngine.CreateCommandReply(request, success: true), serverToken);
+                                    }
+                                    await SendTownPacketAsync(GameProtocolEngine.CreateFinishLoading(), serverToken);
+                                }
+                                continue;
+                            }
+
                             var loadingReply = GameProtocolEngine.CreateCommandReply(request, success: true);
                             await loadingReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -16748,7 +18042,10 @@ public sealed class EntranceService(
                         }
 
                         if (activeCharacter is not null)
+                        {
+                            LeaveTowerParty(activeCharacter.Id);
                             await privateStoreService.DetachChannelAsync(activeCharacter.Id, runtimeSession.Id, CancellationToken.None);
+                        }
 
                         if (townTicket is not null)
                         {
@@ -16756,6 +18053,7 @@ public sealed class EntranceService(
                             townTicket = null;
                             // 这里的广播发给同区其他人（他们自己的连接仍活着），
                             // 本会话的流已随 try 块结束而释放，所以不能用会话内的局部函数。
+                            await enchanting.LeaveAsync(leavingTicket, notifyLeaving: false);
                             await townDirectory.LeaveAsync(leavingTicket, CancellationToken.None);
                         }
 
@@ -16898,7 +18196,8 @@ public sealed class EntranceService(
         short y,
         byte direction,
         Guid sessionId,
-        bool partyRosterAlreadyRemovesActor = false)
+        bool partyRosterAlreadyRemovesActor = false,
+        bool announceDeparture = true)
     {
         gameplayDatagram.SetRelayDungeonInstance(sessionId, null);
 
@@ -16911,7 +18210,8 @@ public sealed class EntranceService(
         var boundInstance = dungeonInstanceRegistry.TryGetForCharacter(characterId);
         var leavingName = boundInstance?.FindMember(characterId)?.CharacterName;
         var leavingInstance = dungeonInstanceRegistry.UnbindCharacter(characterId);
-        if (leavingInstance is not { IsParty: true }
+        if (!announceDeparture
+            || leavingInstance is not { IsParty: true }
             || areaUserId == 0
             || leavingInstance.MemberCount == 0)
         {
@@ -17283,7 +18583,8 @@ public sealed class EntranceService(
             wire.AddInfo,
             wire.ItemAttr,
             wire.Durability,
-            wire.SealState);
+            wire.SealState,
+            item.EnchantmentCardId);
     }
 
     private GameMailEntry ToGameMailEntry(CharacterMailRecord mail)
@@ -17511,7 +18812,9 @@ public sealed class EntranceService(
                     character.PvpPoints),
                 GuildId: character.GuildId,
                 GuildName: character.GuildName is null ? null : GuildRules.Encode(character.GuildName),
-                GuildRank: character.GuildRank),
+                GuildRank: character.GuildRank,
+                ExpertJob: character.ExpertJob,
+                ExpertJobProficiency: character.EnchantingProficiency),
             userId,
             equipmentSnapshot
                 .Where(item => item.Slot <= EquippedTitleSlot)
@@ -19000,6 +20303,7 @@ public sealed class EntranceService(
     }
 
     private sealed record CompoundItemReplayEntry(
+        Guid CharacterId,
         byte[] RequestBody,
         GameServerPacket Reply,
         bool RefreshWarehouse);

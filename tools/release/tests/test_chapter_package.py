@@ -58,6 +58,24 @@ class ChapterPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
             self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
 
+    def test_first_gitcode_starter_seeds_all_resources_and_pins_gitcode(self):
+        bridge = self.build(self.stage('chapter1', 'c1'), 'chapter1', 'bridge')
+        baseline = self.base / 'bridge' / bridge['manifestAsset']
+        second = self.stage('chapter2', 'c2')
+        previous = self.build(second, 'chapter2', 'github', baseline=baseline)
+        path = self.base / 'gitcode'
+        result = package.build(second, path, chapter='chapter2', architecture='x64', flavor='normal',
+            version='v1.0.6', commit='b'*40, sequence=10, baseline=baseline, previous=previous['manifest'],
+            provider='gitcode', seed_provider=True)
+        self.assertEqual(result['manifest']['retired'], previous['manifest']['retired'])
+        self.assertEqual({part['release'] for row in result['manifest']['files'] for part in row['parts']}, {'v1.0.6'})
+        archive = self.base / 'client.zip'
+        package.create_starter(archive, second, path)
+        with zipfile.ZipFile(archive) as starter:
+            self.assertEqual(json.loads(starter.read('launcher.chapter2.json'))['UpdateProvider'], 'gitcode')
+            receipt = json.loads(starter.read('.dflegacy/v4/installed.json'))
+            self.assertEqual(receipt['release']['source']['provider'], 'gitcode')
+
     def test_second_chapter_carries_filter_license_and_source_location(self):
         first = self.stage('chapter1', 'c1')
         baseline = self.build(first, 'chapter1', 'baseline')

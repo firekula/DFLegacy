@@ -28,6 +28,7 @@ internal static class TestRun
         if (await LocalBundleTests.Dispatch(args) is { } bundleResult) return bundleResult;
         if (TransactionTests.Dispatch(args) is { } child) return child;
         if (ChapterTransitionTests.Dispatch(args) is { } chapterChild) return chapterChild;
+        if (args is ["--gitcode"]) { await GitCodeProviderTests.Run(); Console.WriteLine($"GitCode update: {checks} assertions passed"); return 0; }
         var root = Path.Combine(Path.GetTempPath(), "dflegacy-v4-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         try
@@ -36,6 +37,7 @@ internal static class TestRun
             await ManifestTests.Run(root);
             await DownloadTests.Run(root);
             await ProviderTests.Run();
+            await GitCodeProviderTests.Run();
             await LoopbackProviderTests.Run();
             MigrationTests.Run();
             await TransactionTests.Run(root);

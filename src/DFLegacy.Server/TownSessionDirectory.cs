@@ -205,6 +205,17 @@ public sealed class TownSessionDirectory(
         return Current() ? Current : null;
     }
 
+    internal Func<bool>? CaptureChapterTwoTowerSelectionGuard(IReadOnlyCollection<Guid> characterIds, byte town, byte area)
+    {
+        var members = characterIds.Select(id => _membersByCharacter.GetValueOrDefault(id)).OfType<TownMember>().ToArray();
+        // The native selector retains the town membership but advertises a non-town scene.
+        bool Current() => members.Length == characterIds.Count
+            && members.All(member => member.IsChapterTwo && member.Instance == 0
+                && member.TownId == town && member.AreaId == area
+                && member.Peer is not null && IsRegistered(member));
+        return Current() ? Current : null;
+    }
+
     internal async Task<bool> SendPartyAppearanceIfUnknownAsync(
         Guid recipientId, Guid subjectId, ushort userId, GameServerPacket fallback,
         Func<bool> isCurrent, Func<GameServerPacket, Task<bool>> send, CancellationToken cancellationToken)

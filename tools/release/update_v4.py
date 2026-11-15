@@ -202,14 +202,14 @@ def ensure_release_unreferenced(tag, manifests):
 
 def preflight_limits(provider, sizes, existing_bytes=0):
     sizes=list(sizes)
-    require(provider in ('github','gitee','gitea') and integer(existing_bytes) and all(integer(s) for s in sizes), 'invalid provider inventory')
+    require(provider in ('github','gitee','gitea','gitcode') and integer(existing_bytes) and all(integer(s) for s in sizes), 'invalid provider inventory')
     if provider == 'github':
         require(len(sizes) <= 1000, 'GitHub release exceeds 1000 attachments')
         require(all(s < 2**31 for s in sizes), 'GitHub attachment must be smaller than 2 GiB')
     elif provider == 'gitee':
         require(all(s <= 100000000 for s in sizes), 'Gitee attachment exceeds 100 MB')
         require(sum(sizes) + existing_bytes <= 1000000000, 'Gitee repository attachments exceed 1 GB')
-    else:
+    elif provider == 'gitea':
         require(all(s <= GITEA_ATTACHMENT_LIMIT for s in sizes), 'Gitea attachment exceeds conservative 100 MB limit')
 
 
@@ -300,7 +300,7 @@ def build_manifest(**kwargs):
 
 
 def validate_source(provider, repository):
-    require(provider in ('github','gitee','gitea') and isinstance(repository,str)
+    require(provider in ('github','gitee','gitea','gitcode') and isinstance(repository,str)
             and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*',repository), 'invalid provider/repository')
     require(provider != 'gitea' or repository == 'firekula/DFLegacy', 'Gitea test repository must be firekula/DFLegacy')
 
@@ -360,18 +360,21 @@ class ReleaseApi:
     Gitea 1.26 uses /api/v1, limit=50 pagination, assets and multipart attachment.
     Gitee API 5.4.93: /api/v5/swagger_doc; release attachments use attach_files,
     multipart field file, and the canonical per-attachment download endpoint.
-    No credential-bearing URL, ambient cookies, proxy auth, or redirect forwarding.
+    GitCode V5 uses inline attachments and a separate signed object PUT.
+    No credential-bearing API URLs, ambient cookies, proxy auth, or automatic redirects.
     """
     def __init__(self, provider, repository, token=None, api_root=None):
         validate_source(provider,repository)
         require(token is None or isinstance(token,str) and token and not any(c.isspace() for c in token), 'invalid publishing credential')
         self.provider=provider; self.repository=repository; self.token=token
-        self.root=api_root or {'github':'https://api.github.com','gitee':'https://gitee.com/api/v5','gitea':GITEA_ORIGIN+'/api/v1'}[provider]
+        self.root=api_root or {'github':'https://api.github.com','gitee':'https://gitee.com/api/v5',
+                              'gitea':GITEA_ORIGIN+'/api/v1','gitcode':'https://api.gitcode.com/api/v5'}[provider]
         self.test_root=api_root
         if api_root:
             p=urllib.parse.urlsplit(api_root)
             require(p.scheme=='http' and p.hostname=='127.0.0.1' and not p.username and not p.password and not p.query and not p.fragment and p.path=='', 'custom API root must be loopback')
             if provider=='gitea': self.root+='/api/v1'
+            if provider=='gitcode': self.root+='/api/v5'
         self.prefix='/repos/'+repository
         self.opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
 
@@ -422,13 +425,30 @@ class ReleaseApi:
         require(name(tag), 'invalid release tag')
         row=self.request('GET','/releases/tags/'+tag,missing_ok=True,authenticated=authenticated)
         if row is not None:
-            require(isinstance(row,dict) and row.get('tag_name')==tag and integer(row.get('id'),1), 'invalid release identity')
+            require(isinstance(row,dict) and row.get('tag_name')==tag, 'invalid release identity')
+            self.release_identity(row)
         return row
 
-    def attachments(self,release,authenticated=False):
+    def release_identity(self,release):
+        if self.provider=='gitcode':
+            tag=release.get('tag_name'); commit=release.get('target_commitish'); created=release.get('created_at')
+            require(name(tag) and checksum(commit,40) and isinstance(created,str) and 0<len(created)<=64,
+                    'invalid GitCode release identity')
+            return tag,commit,created
         require(integer(release.get('id'),1), 'invalid release ID')
-        suffix='attach_files' if self.provider=='gitee' else 'assets'
-        rows=self.listing(f'/releases/{release["id"]}/{suffix}',authenticated)
+        return release['id']
+
+    def attachments(self,release,authenticated=False):
+        identity=self.release_identity(release)
+        if self.provider=='gitcode':
+            fresh=self.release(release['tag_name'],authenticated)
+            require(fresh is not None and self.release_identity(fresh)==identity, 'GitCode release changed before attachment lookup')
+            assets=fresh.get('assets')
+            require(isinstance(assets,list) and all(isinstance(asset,dict) for asset in assets), 'invalid GitCode attachment list')
+            rows=[asset for asset in assets if asset.get('type')=='attach']
+        else:
+            suffix='attach_files' if self.provider=='gitee' else 'assets'
+            rows=self.listing(f'/releases/{identity}/{suffix}',authenticated)
         names=set(); ids=set()
         for asset in rows:
             require(integer(asset.get('id'),1) and asset['id'] not in ids and isinstance(asset.get('name'),str)
@@ -445,16 +465,27 @@ class ReleaseApi:
     def create(self,m,target_commitish):
         require(checksum(target_commitish,40), 'target_commitish must be the existing public repository commit SHA')
         body=dict(tag_name=m['version'],name=m['version'],body='DFLegacy V4 client resources. Manifest is uploaded only after resources are verified.',
-                  target_commitish=target_commitish,prerelease=self.provider in ('gitee','gitea') or m['flavor']=='test')
+                  target_commitish=target_commitish)
+        if self.provider=='gitcode':
+            body['release_status']='pre' if m['flavor']=='test' else 'latest'
+        else:
+            body['prerelease']=self.provider in ('gitee','gitea') or m['flavor']=='test'
         if self.provider in ('github','gitea'): body['draft']=True
         release=self.request('POST','/releases',body,authenticated=True)
-        require(isinstance(release,dict) and integer(release.get('id'),1) and release.get('tag_name')==m['version'], 'created release identity differs')
+        require(isinstance(release,dict) and release.get('tag_name')==m['version'], 'created release identity differs')
+        self.release_identity(release)
+        if self.provider=='gitcode':
+            require(release['target_commitish']==target_commitish, 'created GitCode release points to a different commit')
         if self.provider=='gitea': require(release.get('draft') is True, 'Gitea did not create the required draft; attachments were not uploaded')
         return release
 
     def upload(self,release,path,asset_name):
-        require(integer(release.get('id'),1) and name(asset_name), 'invalid upload identity')
+        self.release_identity(release)
+        require(name(asset_name), 'invalid upload identity')
         path=Path(path); no_links(path)
+        if self.provider=='gitcode':
+            self.upload_gitcode(release['tag_name'],path,asset_name)
+            return
         if self.provider=='github':
             root=self.test_root or 'https://uploads.github.com'
             url=root+self.prefix+f'/releases/{release["id"]}/assets?name='+asset_name
@@ -477,7 +508,37 @@ class ReleaseApi:
             # Never trust or print a server-supplied upload URL: re-read structured attachments.
             response.read(MAX_METADATA+1)
 
+    def upload_gitcode(self,tag,path,asset_name):
+        signed=self.request('GET',f'/releases/{tag}/upload_url?file_name='+asset_name,authenticated=True)
+        require(isinstance(signed,dict) and isinstance(signed.get('url'),str) and isinstance(signed.get('headers'),dict),
+                'invalid GitCode signed upload metadata')
+        url=signed['url']
+        try:
+            endpoint=urllib.parse.urlsplit(url)
+            port=endpoint.port
+        except ValueError:
+            raise ReleaseError('untrusted GitCode signed upload destination') from None
+        require(url.isascii() and len(url)<=16384 and not any(c.isspace() or ord(c)<32 or c=='\\' for c in url)
+                and endpoint.username is None and endpoint.password is None and not endpoint.fragment and endpoint.query,
+                'untrusted GitCode signed upload destination')
+        if self.test_root:
+            require(url.startswith(self.test_root+'/'), 'untrusted GitCode signed upload destination')
+        else:
+            require(endpoint.scheme=='https' and port in (None,443) and endpoint.hostname=='file.gitcode.com',
+                    'untrusted GitCode signed upload destination')
+        headers={key.lower():value for key,value in signed['headers'].items()}
+        allowed={'content-type','x-obs-meta-project-id','x-obs-acl','x-obs-callback'}
+        require(set(headers)==allowed and len(signed['headers'])==len(allowed)
+                and all(isinstance(value,str) and 0<len(value)<=16384 and all(32<=ord(c)<127 for c in value)
+                        for value in headers.values()), 'invalid GitCode signed upload headers')
+        headers['Content-Length']=str(path.stat().st_size)
+        with path.open('rb') as file, self._open(url,'PUT',file,headers) as response:
+            require(200<=response.status<300, f'GitCode upload failed (HTTP {response.status}); manifest may remain unpublished')
+
     def download_url(self,release,asset,draft=False):
+        if self.provider=='gitcode':
+            require(name(release.get('tag_name')) and name(asset.get('name')), 'invalid GitCode attachment identity')
+            return self.root+self.prefix+f'/releases/{release["tag_name"]}/attach_files/{asset["name"]}/download'
         if self.provider=='gitee':
             return self.root+self.prefix+f'/releases/{release["id"]}/attach_files/{asset["id"]}/download'
         if self.provider=='gitea':
@@ -513,6 +574,13 @@ class ReleaseApi:
         require(p.scheme=='https' and p.port in (None,443), 'untrusted attachment redirect')
         if self.provider=='github':
             require(p.hostname in ('release-assets.githubusercontent.com','objects.githubusercontent.com'), 'untrusted GitHub attachment redirect')
+        elif self.provider=='gitcode':
+            expected=asset.get('name') if asset is not None else None
+            signed=urllib.parse.parse_qs(p.query,keep_blank_values=True)
+            require(p.hostname=='file-cdn.gitcode.com' and name(expected) and len(p.query)<=4096
+                    and set(signed)=={'auth_key'} and len(signed['auth_key'])==1 and signed['auth_key'][0]
+                    and re.fullmatch(r'/[0-9]+/releases/[A-Za-z0-9_-]+/'+re.escape(expected),urllib.parse.unquote(p.path)),
+                    'unverified GitCode attachment redirect')
         else:
             # Observed anonymously from the structured attachment API (2026-11-08).
             # The CDN path is valid only as a redirect from that source-bound endpoint.
@@ -540,7 +608,7 @@ class ReleaseApi:
             with self._open(url,**options) as response:
                 if response.status in (301,302,303,307,308):
                     url=urllib.parse.urljoin(url,response.headers.get('Location',''))
-                    if self.provider=='gitea': self.validate_redirect(url,release,asset)
+                    if self.provider in ('gitea','gitcode'): self.validate_redirect(url,release,asset)
                     else: self.validate_redirect(url)
                     continue
                 require(response.status in (200,206), f'anonymous attachment download failed (HTTP {response.status})')
@@ -565,12 +633,14 @@ def bind_api(receipt,api):
     require(api.provider==receipt['provider'] and api.repository==receipt['repository'], 'provider/repository differs from bundle')
 
 
-def verify_remote(bundle,api=None):
+def verify_remote(bundle,api=None,expected_release_identity=None):
     receipt=verify_local(bundle)
     api=api or ReleaseApi(receipt['provider'],receipt['repository'])
     bind_api(receipt,api); public=api.anonymous(); m=receipt['manifest']
     target=public.release(m['version'])
     require(target is not None and not target.get('draft',False), 'published target is unavailable')
+    identity=public.release_identity(target)
+    require(expected_release_identity is None or identity==expected_release_identity, 'published target release identity changed')
     resources={}
     for f in m['files']:
         for p in f['parts']: resources[(p['release'],p['asset'])]=(p['sha256'],p['size'])
@@ -587,9 +657,10 @@ def verify_remote(bundle,api=None):
         if range_result['range']=='supported': require(range_result['sha256']==full['tailSha256'],'Range bytes differ from verified full attachment')
         checks.append(dict(release=tag,asset=asset_name,sha256=digest,size=size,range=range_result['range']))
     fresh=public.release(m['version'])
-    require(fresh is not None and fresh['id']==target['id'],'release identity changed during verification')
+    require(fresh is not None and public.release_identity(fresh)==identity,'release identity changed during verification')
     return dict(status='published-verified',provider=receipt['provider'],repository=receipt['repository'],version=m['version'],
-                releaseId=target['id'],manifestSha256=receipt['manifestSha256'],checks=checks)
+                releaseId=target['tag_name'] if api.provider=='gitcode' else identity,
+                manifestSha256=receipt['manifestSha256'],checks=checks)
 
 
 def publish(bundle,api=None,target_commitish=None):
@@ -627,7 +698,12 @@ def publish_many(bundles,api=None,target_commitish=None):
     bind_api(receipt,api)
     require(checksum(target_commitish,40),'target_commitish must be the existing public repository commit SHA')
     repository=api.request('GET','',authenticated=True)
-    require(isinstance(repository,dict) and repository.get('private') is False, 'publishing requires a public repository')
+    require(isinstance(repository,dict), 'invalid provider repository metadata')
+    if api.provider=='gitcode':
+        # The GitCode schema and example use numeric and Boolean flags.
+        require(repository.get('private')==0 and repository.get('public')==1, 'publishing requires a public repository')
+    else:
+        require(repository.get('private') is False, 'publishing requires a public repository')
     require(api.release(m['version'],authenticated=True) is None,'release tag is immutable; use a new version')
     # The GitHub tag endpoint omits drafts. Never accidentally mutate an interrupted draft.
     existing=api.listing('/releases',authenticated=True)
@@ -655,11 +731,11 @@ def publish_many(bundles,api=None,target_commitish=None):
         verifier=api if draft else public
         verifier.verify_asset(release,assets[asset],digest,size,draft=draft)
     if api.provider in ('github','gitea'): api.request('PATCH',f'/releases/{release["id"]}',{'draft':False},authenticated=True)
-    verified=[verify_remote(bundle,api)|{'manifestAsset':item['manifestAsset'],
+    identity=api.release_identity(release)
+    verified=[verify_remote(bundle,api,identity)|{'manifestAsset':item['manifestAsset'],
                'architecture':item['manifest']['architecture'],'flavor':item['manifest']['flavor']} for bundle,item in prepared]
-    require(all(result['releaseId']==release['id'] for result in verified),'grouped release identity changed during verification')
     return dict(status='published-verified',provider=api.provider,repository=api.repository,version=m['version'],
-                releaseId=release['id'],bundles=verified)
+                releaseId=release['tag_name'] if api.provider=='gitcode' else identity,bundles=verified)
 
 
 def main(argv=None):

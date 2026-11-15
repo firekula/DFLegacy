@@ -91,12 +91,9 @@ internal static class ChapterTwoGuildStoreSmokeTests
                 "guild string reader accepts the exact native C2 zero padding");
             padded[^1] = 1;
             check(!GameProtocolEngine.TryReadGuildText(padded, out _), "nonzero guild command padding is rejected");
-            foreach (var command in new byte[] { 76, 78, 162, 163, 164, 165, 166 })
-            {
-                var unsupported = await session.HandleAsync(Command(command), "guilds", third, 3, true, default);
-                check(unsupported.Packets.Any(packet => packet.Type == 0 && packet.ProtocolId == GameProtocolEngine.MessageNotification),
-                    $"unimplemented guild menu command {command} returns explicit in-game feedback");
-            }
+            var unsupported = await session.HandleAsync(Command(78), "guilds", third, 3, true, default);
+            check(unsupported.Packets.Any(packet => packet.Type == 0 && packet.ProtocolId == GameProtocolEngine.MessageNotification),
+                "unimplemented guild application returns explicit in-game feedback");
             var legacyOptions = new ServerOptions { DataPath = Path.Combine(root.FullName, "legacy.json"), SeedTestAccount = false };
             await File.WriteAllTextAsync(legacyOptions.DataPath, legacyAccounts);
             var legacy = new JsonGameStore(legacyOptions, NullLogger<JsonGameStore>.Instance);

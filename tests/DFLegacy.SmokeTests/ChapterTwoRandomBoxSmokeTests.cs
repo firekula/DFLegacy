@@ -1,5 +1,8 @@
+using System.Buffers.Binary;
+using System.Security.Cryptography;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 internal static class ChapterTwoRandomBoxSmokeTests
@@ -60,7 +63,158 @@ internal static class ChapterTwoRandomBoxSmokeTests
                 new Rolls(), out _, out var weightError) && weightError == 21,
             "overweight rewards reject the whole opening with error21 before any mutation");
         await Persistence(fixture, check);
-        if (actualPvf is not null) CheckActual(actualPvf, check);
+        if (actualPvf is not null)
+        {
+            CheckActual(actualPvf, check);
+            var samsungStatePath = Path.Combine(Path.GetDirectoryName(fixture.Options.DataPath)!, "samsung-state.json");
+            await CheckSamsungBoxAsync(actualPvf, samsungStatePath, check, replyPath);
+        }
+    }
+
+    private static async Task CheckSamsungBoxAsync(
+        string path, string statePath, Action<bool, string> check, string? replyPath)
+    {
+        var options = new ServerOptions
+        {
+            ScriptPvfPath = path,
+            DataPath = statePath,
+            SeedTestAccount = false,
+            SkipUnsupportedChapterTwoCashContainers = true,
+            Channel = new() { Port = 47001 }
+        };
+        var catalog = new ItemCatalog(new ScriptFileSystem(options, NullLogger<ScriptFileSystem>.Instance),
+            NullLogger<ItemCatalog>.Instance, options);
+        check(catalog.TryGetDefinition(202, out var box)
+            && box.RandomBox is { Groups.Count: 1 } contents
+            && contents.RequiredItems.OrderBy(pair => pair.Key).SequenceEqual(
+                new KeyValuePair<ushort, uint>[] { new(202, 1), new(203, 1) })
+            && contents.Groups[0].Fallback == new RandomBoxReward(3, 1, 0, 0)
+            && contents.Groups[0].Rewards.SequenceEqual(new RandomBoxReward[]
+            {
+                new(8, 100, 20000, 0), new(201, 10, 20000, 0),
+                new(15, 10, 20000, 0), new(42, 30, 20000, 0)
+            }),
+            "actual C2 PVF loads Samsung box 202 with one group and consumes one each of 202/203");
+
+        const string user = "samsungbox";
+        const byte samsungCommand = GameProtocolEngine.UseSamsungRandomBoxCommand;
+        const ushort boxSlot = 41, hammerSlot = 73, ordinaryBoxSlot = 42, ordinaryHammerSlot = 74;
+        var ingredients = new Dictionary<ushort, CharacterItemRecord>
+        {
+            [boxSlot] = new(boxSlot, 202, 2), [hammerSlot] = new(hammerSlot, 203, 2)
+        };
+        foreach (var (roll, itemId, count) in new (int, ushort, uint)[]
+        {
+            (0, 8, 100), (19999, 8, 100), (20000, 201, 10), (40000, 15, 10),
+            (60000, 42, 30), (79999, 42, 30), (80000, 3, 1), (99999, 3, 1)
+        })
+        {
+            check(RandomBoxOpeningPlanner.TryCreate(ingredients, boxSlot, hammerSlot, 60, catalog,
+                    uint.MaxValue, new Rolls(roll), out var plan, out _, samsungCommand)
+                && plan.Inventory[boxSlot].CountOrValue == 1 && plan.Inventory[hammerSlot].CountOrValue == 1
+                && plan.Rewards.Count > 0 && plan.Rewards.All(reward => reward.ItemId == itemId && reward.Attribute == 0)
+                && plan.Rewards.Sum(reward => reward.CountOrValue) == count
+                && ingredients[boxSlot].CountOrValue == 2 && ingredients[hammerSlot].CountOrValue == 2,
+                $"actual Samsung pool roll {roll} delivers {itemId}x{count} and leaves its inputs immutable");
+        }
+        var full = new Dictionary<ushort, CharacterItemRecord>(ingredients);
+        foreach (var slot in Enumerable.Range(3, 6).Concat(Enumerable.Range(42, 31)))
+            full[(ushort)slot] = new((ushort)slot, 15, 1);
+        check(!RandomBoxOpeningPlanner.TryCreate(full, boxSlot, hammerSlot, 60, catalog, uint.MaxValue,
+                new Rolls(99999), out _, out var fullError, samsungCommand) && fullError == 4,
+            "a full destination category rejects the Samsung reward");
+        check(!RandomBoxOpeningPlanner.TryCreate(ingredients, boxSlot, hammerSlot, 60, catalog, 0,
+                new Rolls(99999), out _, out var heavyError, samsungCommand) && heavyError == 21,
+            "an overweight destination rejects the Samsung reward");
+
+        var failSave = false;
+        var replacement = new AtomicSnapshotReplacement((source, target) =>
+        {
+            if (failSave) throw new IOException("Samsung box injected failure");
+            File.Move(source, target, true);
+        }, (_, _) => Task.CompletedTask);
+        var store = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance, replacement, itemCatalog: catalog);
+        await store.InitializeAsync();
+        await store.CreateAccountAsync(new(user, "password", OicqCode: "123456"));
+        var character = (await store.CreateCharacterAsync(user, new("SamsungBox", Level: 60))).Character!;
+        await store.SaveCharacterItemSpacesAsync(user, character.Id, 100,
+            [new(boxSlot, 202, 2), new(hammerSlot, 203, 2), new(ordinaryBoxSlot, 200, 1), new(ordinaryHammerSlot, 201, 4)],
+            [], []);
+        var previousCipherSetting = Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER");
+        Environment.SetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER", "1");
+        try
+        {
+            await using var services = NewCharacterDefaultsSmokeTests.CreateSessionServices(options, store, catalog);
+            var entrance = ActivatorUtilities.CreateInstance<EntranceService>(services);
+            await using var connection = await NewCharacterDefaultsSmokeTests.Connection.CreateAsync(entrance, options, 47001);
+            await connection.LoginAsync(user, character.Slot);
+            await connection.EnableChapterTwoAsync();
+            var before = await File.ReadAllBytesAsync(options.DataPath);
+            var wrongPair = await Open(samsungCommand, 30, ordinaryBoxSlot, ordinaryHammerSlot);
+            var reversePair = await Open(191, 31, boxSlot, hammerSlot);
+            var afterWrongPairs = await File.ReadAllBytesAsync(options.DataPath);
+            check(wrongPair?.Payload is [0, ..] && reversePair?.Payload is [0, ..]
+                && before.SequenceEqual(afterWrongPairs),
+                "CMD192 rejects ordinary ingredients and CMD191 rejects Samsung ingredients without saving");
+
+            failSave = true;
+            var failedSave = await Open(samsungCommand, 32, boxSlot, hammerSlot);
+            var afterFailedSave = await File.ReadAllBytesAsync(options.DataPath);
+            var afterFailedCharacter = await store.GetCharacterAsync(user, character.Id);
+            check(failedSave?.Payload is [0, 17] && before.SequenceEqual(afterFailedSave)
+                && afterFailedCharacter?.Inventory?.Single(item => item.ItemId == 202).CountOrValue == 2,
+                "a failed Samsung commit returns a native failure and preserves live and persisted ingredients");
+            failSave = false;
+            var reply = await Open(samsungCommand, 32, boxSlot, hammerSlot);
+            check(reply?.Payload is [1, 41, 0, 73, 0, 1, 0, ..] && reply.Payload.Length == 18,
+                "AES/CRC CMD192 replies on 192 with two source slots, u16 count and one 11-byte reward");
+            if (reply?.Payload is not [1, ..] || reply.Payload.Length != 18) return;
+            if (replyPath is not null) await File.WriteAllBytesAsync(replyPath + ".samsung", reply.Payload);
+            var rewardSlot = BinaryPrimitives.ReadUInt16LittleEndian(reply.Payload.AsSpan(7));
+            var rewardId = BinaryPrimitives.ReadUInt16LittleEndian(reply.Payload.AsSpan(9));
+            var rewardCount = BinaryPrimitives.ReadUInt32LittleEndian(reply.Payload.AsSpan(11));
+            var after = await store.GetCharacterAsync(user, character.Id);
+            var inventory = after?.Inventory ?? [];
+            var expectedRewardCount = rewardId switch { 3 => 1u, 8 => 100u, 201 or 15 => 10u, 42 => 30u, _ => 0u };
+            check(expectedRewardCount == rewardCount && rewardCount != 0
+                && inventory.SingleOrDefault(item => item.Slot == boxSlot) is { ItemId: 202, CountOrValue: 1 }
+                && inventory.SingleOrDefault(item => item.Slot == hammerSlot) is { ItemId: 203, CountOrValue: 1 }
+                && inventory.SingleOrDefault(item => item.Slot == ordinaryBoxSlot) is { ItemId: 200, CountOrValue: 1 }
+                && inventory.Any(item => item.Slot == rewardSlot && item.ItemId == rewardId)
+                && inventory.Where(item => item.ItemId == rewardId).Sum(item => item.CountOrValue)
+                    == rewardCount + (rewardId == 201 ? 4 : 0),
+                "one committed Samsung opening consumes one of both ingredients and records exactly the reply reward");
+            var committed = await File.ReadAllBytesAsync(options.DataPath);
+            var replay = await Open(samsungCommand, 32, boxSlot, hammerSlot);
+            var afterReplay = await File.ReadAllBytesAsync(options.DataPath);
+            check(replay?.Payload is [0, ..] && committed.SequenceEqual(afterReplay),
+                "replaying encrypted CMD192 cannot consume or grant a second time");
+
+            var reloaded = new JsonGameStore(options, NullLogger<JsonGameStore>.Instance, itemCatalog: catalog);
+            await reloaded.InitializeAsync();
+            var durable = await reloaded.GetCharacterAsync(user, character.Id);
+            check(durable?.Gold == 100 && durable.Inventory?.SequenceEqual(inventory) == true,
+                "Samsung reward and both consumed counts survive loading a new store");
+
+            async Task<GameServerPacket?> Open(byte protocolId, ushort sequence, ushort firstSlot, ushort secondSlot)
+            {
+                var plain = new byte[18];
+                BinaryPrimitives.WriteUInt16LittleEndian(plain, sequence);
+                BinaryPrimitives.WriteUInt16LittleEndian(plain.AsSpan(2), firstSlot);
+                BinaryPrimitives.WriteUInt16LittleEndian(plain.AsSpan(4), secondSlot);
+                var wire = plain.ToArray();
+                using var aes = Aes.Create();
+                aes.Key = Convert.FromHexString("46494A4946474546444A44404A424758");
+                aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), PaddingMode.None);
+                await connection.SendAsync(new PacketFrame(1, protocolId, Crc32.Compute(plain), wire).Encode());
+                try { return await connection.ReadAsync(1, protocolId, TimeSpan.FromSeconds(2)); }
+                catch (TimeoutException) { return null; }
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER", previousCipherSetting);
+        }
     }
 
     private static void CheckActual(string path, Action<bool, string> check)

@@ -44,10 +44,20 @@ Replace-Verified '        const bool secondary=true;' ('        const bool secon
 Replace-Verified 'endpoint.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'endpoint.sin_addr.s_addr=bindAddress;'
 Replace-Verified 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(INADDR_ANY)' 'address.sin_addr.s_addr==htonl(INADDR_LOOPBACK) || address.sin_addr.s_addr==htonl(0x7f000002) || address.sin_addr.s_addr==htonl(INADDR_ANY)'
 Replace-Verified 'address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'address.sin_addr.s_addr=bindAddress;'
-Replace-Verified '(address==0x7f000001 || address==0x7f000002)' '(remote ? request.address.sin_addr.s_addr==remoteAddress.s_addr : (address==0x7f000001 || address==0x7f000002))'
+$isolatedFallback = @'
+                    const bool isolatedFallback=!remote && address==0x7f000003 && port==47005;
+                    if(request.address.sin_family==AF_INET &&
+                       (isolatedFallback || (remote ? request.address.sin_addr.s_addr==remoteAddress.s_addr
+                                                   : (address==0x7f000001 || address==0x7f000002))) &&
+'@
+$connectAddress = @'
+                    if(request.address.sin_family==AF_INET &&
+                       (address==0x7f000001 || address==0x7f000002) &&
+'@
+Replace-Verified ($connectAddress.Replace("`r`n", "`n")) ($isolatedFallback.Replace("`r`n", "`n"))
 Replace-Verified '(port==42311 || port==42312 || port==47001 || port==47005 ||' '(port==42311 || port==42312 || port==47001 || port==47005 || (localRelay && port==48090) || ((remote || localRelay) && dfl::chapter_two::IsPvpPort(port)) ||'
-Replace-Verified 'isolated.sin_addr.s_addr=htonl(0x7f000002);' 'isolated.sin_addr.s_addr=localRelay ? relayAddress.s_addr : remote ? remoteAddress.s_addr : htonl(0x7f000002);'
-Replace-Verified 'std::printf("LOOPBACK_BROKER_CONNECT port=%hu to=127.0.0.2:%hu\n",port,ntohs(isolated.sin_port));' 'std::printf("GAME_BROKER_CONNECT port=%hu to=%s:%hu\n",port,localRelay ? relayText : remote ? remoteText : "127.0.0.2",ntohs(isolated.sin_port));'
+Replace-Verified 'isolated.sin_addr.s_addr=htonl(0x7f000002);' 'if(!isolatedFallback)isolated.sin_addr.s_addr=localRelay ? relayAddress.s_addr : remote ? remoteAddress.s_addr : htonl(0x7f000002);'
+Replace-Verified 'std::printf("LOOPBACK_BROKER_CONNECT port=%hu to=127.0.0.2:%hu\n",port,ntohs(isolated.sin_port));' 'std::printf("GAME_BROKER_CONNECT port=%hu to=%s:%hu\n",port,isolatedFallback ? "127.0.0.3" : localRelay ? relayText : remote ? remoteText : "127.0.0.2",ntohs(isolated.sin_port));'
 $connectBind = @'
                         sockaddr_in local{};
                         int localLength=sizeof(local);
@@ -163,6 +173,11 @@ Replace-Verified ($originalInheritance.Replace("`r`n", "`n")) $performanceInheri
 Replace-Verified ' const bool traceDispatch=' " const bool detailedDiagnostics=GetEnvironmentVariableW(L`"DFL_S1C2_DETAILED_DIAGNOSTICS`",nullptr,0)!=0;`n const bool traceDispatch="
 Replace-Verified 'if(s.fUnicode)std::wprintf(L"DEBUG %ls\n",(wchar_t*)b.data());else std::printf("DEBUG %s\n",b.data());' @'
 if(s.fUnicode){if(detailedDiagnostics)std::wprintf(L"DEBUG %ls\n",(wchar_t*)b.data());}
+else if(std::strcmp(b.data(),"DFL_S1C2_GUILD_OPEN")==0){
+    // The game shares stdout and can leave an unterminated line.
+    std::printf("\nLOCAL_GUILD_OPEN %lu\n",pi.dwProcessId);
+    std::fflush(stdout);
+}
 else if(GetEnvironmentVariableW(L"DFLEGACY_CH2_PAYMENT_URL",nullptr,0) &&
         std::strncmp(b.data(),"DFL_S1C2_PAY_REQUEST ",21)==0){
     const auto request=b.data()+21;

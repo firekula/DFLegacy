@@ -9,9 +9,9 @@ internal sealed record ChapterTwoConnection(string Host, bool UseRelay, string? 
     internal string AccountServiceUrl => new UriBuilder("http", Host, 48091).Uri.GetLeftPart(UriPartial.Authority);
     internal static readonly int[] TcpPorts = [42312, 47001, 48090, 47005, 7004, 7100, 7101, 7102, 7103, 7104, 7105, 7110, 7111, 7112];
     internal static readonly int[] UdpPorts = [42312, 47012, 47013, 47005];
-    internal static HttpClient CreateAccountHttpClient(string url) => new(new SocketsHttpHandler
+    internal static HttpClient CreateAccountHttpClient(string url, bool useCookies = true) => new(new SocketsHttpHandler
     {
-        UseProxy = false, AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromSeconds(30),
+        UseProxy = false, AllowAutoRedirect = false, UseCookies = useCookies, PooledConnectionLifetime = TimeSpan.FromSeconds(30),
         ConnectCallback = (context, token) => DFLegacy.Relay.DomainHttpConnection.ConnectAsync(context.DnsEndPoint.Host, context.DnsEndPoint.Port, token)
     }) { BaseAddress = new Uri(url.TrimEnd('/') + "/"), Timeout = TimeSpan.FromSeconds(12) };
     internal static ChapterTwoConnection Parse(string? host, string? legacyIpv4)

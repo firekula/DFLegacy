@@ -2,9 +2,10 @@ using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
-public sealed record GuildSessionResult(GameServerPacket[] Packets, CharacterRecord? Character = null);
+public sealed record GuildSessionResult(GameServerPacket[] Packets, CharacterRecord? Character = null,
+    bool ProgressionChanged = false);
 
-public sealed class GuildSession(JsonGameStore store, ScriptFileSystem scripts, CharacterSessionRegistry sessions)
+public sealed partial class GuildSession(JsonGameStore store, ScriptFileSystem scripts, CharacterSessionRegistry sessions)
 {
     private Guid _characterId;
     private string? _name;
@@ -13,8 +14,18 @@ public sealed class GuildSession(JsonGameStore store, ScriptFileSystem scripts, 
     public static bool Handles(byte command) => command is GameProtocolEngine.GuildMembersCommand
         or GameProtocolEngine.GuildCreateCommand or GameProtocolEngine.GuildInfoCommand
         or GameProtocolEngine.GuildAllMembersCommand or GameProtocolEngine.GuildMembersNextCommand
+        or GameProtocolEngine.GuildSetAnnouncementCommand
         or GameProtocolEngine.GuildCheckNameCommand or GameProtocolEngine.GuildCheckAddressCommand
-        or GameProtocolEngine.GuildOpenCreateCommand or 76 or 78 or 162 or 163 or 164 or 165 or 166;
+        or GameProtocolEngine.GuildOpenCreateCommand or GameProtocolEngine.GuildDissolveCommand
+        or GameProtocolEngine.GuildInviteCommand or GameProtocolEngine.GuildInviteResponseCommand
+        or GameProtocolEngine.GuildSecedeCommand or GameProtocolEngine.GuildDelegateMasterCommand
+        or GameProtocolEngine.GuildSetMemberRankCommand
+        or GameProtocolEngine.GuildUpgradeCommand or 78;
+
+    internal static GameServerPacket CreateInfoPacket(GuildRecord guild, byte rank, int memberCount) =>
+        GameProtocolEngine.CreateGuildInfo(GuildRules.Encode(guild.Name), rank, checked((ushort)memberCount),
+            GuildRules.Encode(guild.Announcement ?? ""), guild.Level, guild.Experience, guild.SkillPoints,
+            GuildBenefits.For(guild, 1).Skills().ToArray());
 
     public void Reset()
     {
@@ -27,29 +38,26 @@ public sealed class GuildSession(JsonGameStore store, ScriptFileSystem scripts, 
     {
         var snapshot = await store.GetGuildAsync(character.GuildId, ct);
         return snapshot.Guild is null ? [] :
-            [GameProtocolEngine.CreateGuildInfo(GuildRules.Encode(snapshot.Guild.Name), character.GuildRank,
-                checked((ushort)snapshot.Members.Length))];
+            [CreateInfoPacket(snapshot.Guild, character.GuildRank, snapshot.Members.Length)];
     }
 
     public async Task<GuildSessionResult> HandleAsync(PacketFrame request, string accountName,
-        CharacterRecord? character, ushort userId, bool inTown, CancellationToken ct)
+        CharacterRecord? character, ushort userId, bool inTown, CancellationToken ct, int skillPoints = 0)
     {
-        GuildSessionResult Error(byte error) => new([GameProtocolEngine.CreateCommandError(request, error)]);
+        GuildSessionResult Error(byte error) => new([request.ProtocolId == GameProtocolEngine.GuildDissolveCommand
+            ? GameProtocolEngine.CreateGuildDissolved(false) : GameProtocolEngine.CreateCommandError(request, error)]);
         if (character is null || !inTown) { Reset(); return Error(17); }
         if (_characterId != character.Id) { Reset(); _characterId = character.Id; }
-        var unavailable = request.ProtocolId switch
-        {
-            76 => "公会升级暂未开放。",
-            78 => "公会申请加入暂未开放。",
-            162 or 163 => "公会邀请加入暂未开放。",
-            164 => "公会退出与移除成员暂未开放。",
-            165 => "公会公告暂未开放。",
-            166 => "公会会长转让暂未开放。",
-            _ => null
-        };
-        if (unavailable is not null)
+        if (request.ProtocolId is GameProtocolEngine.GuildInviteCommand or GameProtocolEngine.GuildInviteResponseCommand)
+            return await HandleInvitationAsync(request, accountName, character, ct);
+        if (request.ProtocolId is GameProtocolEngine.GuildSecedeCommand or GameProtocolEngine.GuildDelegateMasterCommand
+            or GameProtocolEngine.GuildSetMemberRankCommand)
+            return await HandleMembershipAsync(request, accountName, character, ct);
+        if (request.ProtocolId == GameProtocolEngine.GuildUpgradeCommand || GuildProgression.IsPurchase(request))
+            return await HandleProgressionAsync(request, accountName, character, skillPoints, ct);
+        if (request.ProtocolId == 78)
             return new([GameProtocolEngine.CreateCommandError(request, 17),
-                GameProtocolEngine.CreateMessageNotification(GameMessageType.Type16Brown, userId, GuildRules.Encode(unavailable))]);
+                GameProtocolEngine.CreateMessageNotification(GameMessageType.Type16Brown, userId, GuildRules.Encode("公会申请加入暂未开放。"))]);
         if (request.ProtocolId == GameProtocolEngine.GuildOpenCreateCommand)
         {
             _name = null;
@@ -70,7 +78,26 @@ public sealed class GuildSession(JsonGameStore store, ScriptFileSystem scripts, 
             if (nameCheck) _name = value; else _address = value;
             return new([GameProtocolEngine.CreateCommandReply(request, true)]);
         }
+        if (request.ProtocolId == GameProtocolEngine.GuildSetAnnouncementCommand)
+        {
+            if (!GameProtocolEngine.TryReadGuildAnnouncement(request.Body, out var announcement)) return Error(108);
+            var update = await store.SetGuildAnnouncementAsync(accountName, character.Id, character.GuildId, announcement, ct);
+            if (update.Error != 0) return Error(update.Error);
+            if (update.Members is not null)
+                foreach (var member in update.Members)
+                    sessions.NotifyGuildAnnouncementChanged(member, character.GuildId);
+            return new([GameProtocolEngine.CreateCommandReply(request, true)]);
+        }
         if (!GameProtocolEngine.HasCommandBodyLength(request.Body, 2, true)) return Error(17);
+        if (request.ProtocolId == GameProtocolEngine.GuildDissolveCommand)
+        {
+            var dissolution = await store.DissolveGuildAsync(accountName, character.Id, character.GuildId, ct);
+            if (dissolution is null) return Error(17);
+            Reset();
+            foreach (var member in dissolution.OtherMembers)
+                sessions.NotifyGuildDissolved(member, character.GuildId);
+            return new([GameProtocolEngine.CreateGuildDissolved(true)], dissolution.Founder);
+        }
         if (request.ProtocolId == GameProtocolEngine.GuildCreateCommand)
         {
             if (_name is null) return Error(109);
@@ -80,17 +107,26 @@ public sealed class GuildSession(JsonGameStore store, ScriptFileSystem scripts, 
             if (result.Error != 0) return Error(result.Error);
             var info = await InitialStateAsync(result.Character!, ct);
             return new([GameProtocolEngine.CreateCommandReply(request, true),
-                GameProtocolEngine.CreateGuildCreated(result.Guild!.Id, GuildRules.Encode(result.Guild.Name)), ..info], result.Character);
+                GameProtocolEngine.CreateGuildCreated(result.Guild!.Id, GuildRules.Encode(result.Guild.Name)),
+                ..info, GameProtocolEngine.CreateGuildSelfRank(result.Character!.GuildRank)], result.Character);
         }
         var guild = await store.GetGuildAsync(character.GuildId, ct);
         if (guild.Guild is null) return Error(32);
         if (request.ProtocolId == GameProtocolEngine.GuildInfoCommand)
             return new([GameProtocolEngine.CreateCommandReply(request, true), ..await InitialStateAsync(character, ct)]);
-        var members = request.ProtocolId == GameProtocolEngine.GuildMembersNextCommand ? [] : guild.Members
+        return new([CreateRosterPacket(request.ProtocolId, guild.Guild, guild.Members)]);
+    }
+
+    internal GameServerPacket CreateRosterPacket(byte command, GuildRecord guild, CharacterRecord[] members) =>
+        CreateRosterPacket(command, guild, members, sessions);
+
+    internal static GameServerPacket CreateRosterPacket(byte command, GuildRecord guild, CharacterRecord[] members,
+        CharacterSessionRegistry sessions)
+    {
+        var rows = command == GameProtocolEngine.GuildMembersNextCommand ? [] : members
             .Select(member => new GameGuildMember(GuildRules.Encode(member.Name), (ushort)Math.Clamp(member.Level, 1, 255),
                 (byte)member.Job, (byte)member.GrowType, (byte)member.AwakeningType,
                 member.GuildRank, sessions.IsOnline(member.Id))).ToArray();
-        return new([GameProtocolEngine.CreateGuildMembers(request.ProtocolId, guild.Guild.Id,
-            GuildRules.Encode(guild.Guild.Name), members)]);
+        return GameProtocolEngine.CreateGuildMembers(command, guild.Id, GuildRules.Encode(guild.Name), rows);
     }
 }

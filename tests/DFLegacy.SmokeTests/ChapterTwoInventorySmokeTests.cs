@@ -36,6 +36,28 @@ internal static class ChapterTwoInventorySmokeTests
         check(ReferenceEquals(otherPacket, ChapterTwoPacketProjection.Apply(otherPacket)),
             "character selection keeps its own packet format");
 
+        foreach (byte state in new byte[] { 0, 1, 0xff })
+        {
+            var userState = GameProtocolEngine.CreateUserState(0x3412, state);
+            var chapterTwoState = ChapterTwoPacketProjection.Apply(userState);
+            check(userState.Payload.AsSpan().SequenceEqual(new byte[] { 0x12, 0x34, state })
+                && chapterTwoState.Payload.AsSpan().SequenceEqual(new byte[] { 1, 0x12, 0x34, state })
+                && chapterTwoState.Type == userState.Type && chapterTwoState.ProtocolId == userState.ProtocolId,
+                $"Chapter Two prefixes one user-state row while preserving ACT1 and state {state}");
+            check(ReferenceEquals(chapterTwoState, ChapterTwoPacketProjection.Apply(chapterTwoState)),
+                "the projected user-state row keeps its existing count");
+        }
+        var userStatePacket = GameProtocolEngine.CreateUserState(0x3412, 1);
+        foreach (byte[] payload in new byte[][] { [], [0], [1, 0x12], [2, 0x12, 0x34, 1], [2, 0x12, 0x34, 1, 0x56, 0x78, 0] })
+        {
+            var packet = userStatePacket with { Payload = payload };
+            check(ReferenceEquals(packet, ChapterTwoPacketProjection.Apply(packet)),
+                "unknown or already counted user-state payload shapes pass through unchanged");
+        }
+        var userStateCommand = userStatePacket with { Type = GameProtocolEngine.CommandPacketType };
+        check(ReferenceEquals(userStateCommand, ChapterTwoPacketProjection.Apply(userStateCommand)),
+            "the Chapter Two user-state count applies only to notifications");
+
         var legacyExperience = GameProtocolEngine.CreateExperienceGained(3, 160, 0, 2, 15);
         var chapterTwoExperience = GameProtocolEngine.CreateExperienceGained(3, 160, 0, 2, 15,
             chapterTwoVictoryPoints: 0x78563412);

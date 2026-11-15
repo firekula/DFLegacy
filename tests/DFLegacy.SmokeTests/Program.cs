@@ -9,6 +9,71 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args is ["--chapter-two-cemetery", var cemeteryPvf])
+{
+    var checks = 0;
+    ChapterTwoCemeterySmokeTests.Run(cemeteryPvf, (condition, message) =>
+    {
+        checks++;
+        Check(condition, message);
+    });
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two cemetery smoke: {checks} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args is ["--chapter-two-tower", var towerPvf])
+{
+    var checks = 0;
+    ChapterTwoTowerCatalogSmokeTests.Run(towerPvf, CheckTower);
+    ChapterTwoTowerProtocolSmokeTests.Run(CheckTower);
+    ChapterTwoTowerRewardPlannerSmokeTests.Run(towerPvf, CheckTower);
+    await ChapterTwoTowerRankingSmokeTests.RunAsync(CheckTower);
+    await ChapterTwoTowerRunSmokeTests.RunAsync(CheckTower, towerPvf);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two tower smoke: {checks} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+
+    void CheckTower(bool condition, string message)
+    {
+        checks++;
+        Check(condition, message);
+    }
+}
+
+if (args is ["--chapter-two-tower-wire"])
+{
+    ChapterTwoTowerProtocolSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two tower protocol smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args is ["--chapter-two-recipe", var recipePvf])
+{
+    await CompoundItemSmokeTests.CheckChapterTwoWireAsync(Check, recipePvf);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two recipe smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args is ["--chapter-two-item-use", var itemUsePvf])
+{
+    EquipmentReinforcementSmokeTests.Run(Check);
+    await ChapterTwoItemUseSmokeTests.RunAsync(Check, itemUsePvf);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two item use smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args is ["--chapter-two-booster", var boosterPvf, ..])
+{
+    await ChapterTwoBoosterSmokeTests.RunAsync(Check, boosterPvf, args.ElementAtOrDefault(2));
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Chapter Two gift box smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--chapter-two-avatar-compound", var compoundPvf])
 {
     AvatarCompoundSmokeTests.Run(Check);
@@ -18,6 +83,17 @@ if (args is ["--chapter-two-avatar-compound", var compoundPvf])
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Length == 0 || args.Contains("--chapter-two-guild-progression"))
+{
+    await ChapterTwoGuildProgressionSmokeTests.RunAsync(Check);
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two guild progression smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Length == 0 || args.Contains("--chapter-two-guild"))
 {
     await ChapterTwoGuildSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));
@@ -25,6 +101,39 @@ if (args.Length == 0 || args.Contains("--chapter-two-guild"))
     {
         foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
         Console.WriteLine($"Chapter Two guild smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args.Contains("--chapter-two-guild-invitation"))
+{
+    await ChapterTwoGuildInvitationSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two guild invitation smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args.Contains("--chapter-two-guild-membership"))
+{
+    await ChapterTwoGuildMembershipSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two guild membership smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
+if (args.Length == 0 || args.Contains("--chapter-two-guild-web"))
+{
+    await ChapterTwoGuildWebSmokeTests.RunAsync(Check);
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two guild web smoke: {failures.Count} failures");
         return failures.Count > 0 ? 1 : 0;
     }
 }
@@ -9285,12 +9394,13 @@ Check(generatedClearReward.FreeGoldAmount == 388,
             continue;
         }
 
+        var huntPlacementRolls = new int[parsedDungeon.BossRoomHunts.Sum(hunt => hunt.SpawnCount)];
         for (var mazeOffset = 0; mazeOffset < parsedDungeon.Mazes.Length; mazeOffset++)
         {
             if (!pvfDungeonCatalog.TryCreateLayout(
                     parsedDungeonId,
                     out var parsedLayout,
-                    random: new SequenceDropRandomSource(mazeOffset, 0, 0)))
+                    random: new SequenceDropRandomSource([mazeOffset, 0, 0, .. huntPlacementRolls])))
             {
                 invalidDungeonLayouts.Add($"{parsedDungeonId}:{mazeOffset}:layout");
                 continue;

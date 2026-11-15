@@ -26,8 +26,14 @@ public sealed record RandomBoxDefinition(
 {
     internal static RandomBoxDefinition? Parse(string typeTag, string text)
     {
-        if (typeTag != "random upgradable legacy") return null;
-        var block = Regex.Match(text, @"\[RANDOMBOX\](.*?)\[/RANDOMBOX\]", RegexOptions.Singleline);
+        var blockPattern = typeTag switch
+        {
+            "random upgradable legacy" => @"\[RANDOMBOX\](.*?)\[/RANDOMBOX\]",
+            "random ss upgradable legacy" => @"\[RANDOMBOX_SAMSUNG\](.*?)\[/RANDOMBOX_SAMSUNG\]",
+            _ => null
+        };
+        if (blockPattern is null) return null;
+        var block = Regex.Match(text, blockPattern, RegexOptions.Singleline);
         if (!block.Success) return null;
         var groups = new List<RandomBoxRewardGroup>();
         foreach (Match group in Regex.Matches(block.Groups[1].Value, @"\[int data\](.*?)\[/int data\]", RegexOptions.Singleline))

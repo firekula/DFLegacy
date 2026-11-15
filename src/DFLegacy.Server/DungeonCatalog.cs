@@ -44,12 +44,16 @@ public sealed record DungeonDefinition(
 
     public ushort[] HellTicketItemIds { get; init; } = [];
 
+    internal DungeonBossRoomHunt[] BossRoomHunts { get; init; } = [];
+
     // DF2008 stores one value for each of its four dungeon difficulties. The
     // selected value is an expected maze-wide amount, not an exact quota.
     public int[] ChampionCounts { get; init; } = new int[4];
 }
 
 public readonly record struct DungeonRoomPosition(byte X, byte Y);
+
+internal readonly record struct DungeonBossRoomHunt(ushort MonsterId, int SpawnCount, int KillCount);
 
 public sealed record DungeonMazeDefinition(
     byte MazeIndex,
@@ -100,6 +104,11 @@ public sealed class DungeonLayout
     public byte BossX { get; }
 
     public byte BossY { get; }
+
+    internal DungeonBossRoomHunt[] BossRoomHunts { get; init; } = [];
+
+    internal IReadOnlyDictionary<DungeonRoomPosition, List<ushort>> BossRoomHuntPlacements { get; init; } =
+        new Dictionary<DungeonRoomPosition, List<ushort>>();
 
     internal bool TryGetResolvedMap(DungeonRoomPosition position, out ushort mapId) =>
         _resolvedMaps.TryGetValue(position, out mapId);
@@ -167,7 +176,7 @@ public sealed record DungeonRoomDefinition(
     public uint ClientRandomSeed { get; init; }
 }
 
-public sealed class DungeonCatalog
+public sealed partial class DungeonCatalog
 {
     private static readonly Encoding ScriptEncoding = CreateScriptEncoding();
     private static readonly Regex ListEntryPattern = new(
@@ -193,6 +202,9 @@ public sealed class DungeonCatalog
         _objectDropGenerator = objectDropGenerator;
         _state = new Lazy<CatalogState>(
             () => Load(scripts),
+            LazyThreadSafetyMode.ExecutionAndPublication);
+        _tower = new Lazy<TowerCatalogEntry?>(
+            () => LoadTower(scripts),
             LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
@@ -286,7 +298,40 @@ public sealed class DungeonCatalog
         var boss = bossCandidates.Length > 0
             ? bossCandidates[random.Next(bossCandidates.Length)]
             : new DungeonRoomPosition(byte.MaxValue, byte.MaxValue);
-        layout = new DungeonLayout(dungeonId, maze, start, boss);
+        var huntPlacements = new Dictionary<DungeonRoomPosition, List<ushort>>();
+        foreach (var hunt in definition.BossRoomHunts)
+        {
+            var candidates = maze.MapSpecifications
+                .Where(room => room.Key != start && room.Key != boss && room.Value.Length > 0
+                    && room.Value.All(id => state.Maps.TryGetValue(id, out var map)
+                        && map.ConditionalMonsters.Any(monster => monster.MonsterIndex == hunt.MonsterId)))
+                .Select(room => room.Key)
+                .OrderBy(point => point.Y)
+                .ThenBy(point => point.X)
+                .ToArray();
+            if (candidates.Length == 0)
+            {
+                return false;
+            }
+
+            // The original grid setup draws independently for each spawn. Multiple
+            // guardians can be placed in the same room, even for one template.
+            for (var spawn = 0; spawn < hunt.SpawnCount; spawn++)
+            {
+                var position = candidates[random.Next(candidates.Length)];
+                if (!huntPlacements.TryGetValue(position, out var monsters))
+                {
+                    huntPlacements.Add(position, monsters = []);
+                }
+                monsters.Add(hunt.MonsterId);
+            }
+        }
+
+        layout = new DungeonLayout(dungeonId, maze, start, boss)
+        {
+            BossRoomHunts = definition.BossRoomHunts,
+            BossRoomHuntPlacements = huntPlacements
+        };
         return true;
     }
 
@@ -352,7 +397,8 @@ public sealed class DungeonCatalog
     internal static GameDungeonMonster[] PromoteChampions(
         IEnumerable<GameDungeonMonster>? monsters,
         int count,
-        IDropRandomSource? random = null)
+        IDropRandomSource? random = null,
+        IReadOnlyCollection<ushort>? huntMonsterIds = null)
     {
         var promoted = (monsters ?? []).ToArray();
         if (count <= 0 || promoted.Length == 0)
@@ -362,7 +408,9 @@ public sealed class DungeonCatalog
 
         random ??= GameRandomSource.Shared;
         var candidates = Enumerable.Range(0, promoted.Length)
-            .Where(index => IsChampionCandidate(promoted[index]))
+            .Where(index => IsChampionCandidate(promoted[index])
+                && (huntMonsterIds?.Contains(promoted[index].MonsterIndex) != true
+                    || !DungeonExperienceCatalog.IsNamedMonster(promoted[index].MonsterIndex)))
             .ToList();
         for (var promotedCount = 0;
              promotedCount < count && candidates.Count > 0;
@@ -530,13 +578,15 @@ public sealed class DungeonCatalog
 
         if (!TryBuildRoom(
                 state,
-                definition,
+                definition.BasisLevel,
+                definition.PassiveItemGroups,
                 map,
                 topology,
                 dungeonDifficulty,
                 random,
                 isHellRoom: false,
-                out room))
+                out room,
+                layout.BossRoomHuntPlacements.GetValueOrDefault(point)))
         {
             return false;
         }
@@ -574,41 +624,53 @@ public sealed class DungeonCatalog
             : '\0';
         return TryBuildRoom(
             state,
-            definition,
+            definition.BasisLevel,
+            definition.PassiveItemGroups,
             map,
             topology,
             dungeonDifficulty,
             random ?? GameRandomSource.Shared,
             isHellRoom: true,
-            out room);
+            out room,
+            layout.BossRoomHuntPlacements.GetValueOrDefault(position));
     }
 
     private bool TryBuildRoom(
         CatalogState state,
-        DungeonDefinition definition,
+        byte basisLevel,
+        DungeonPassiveItemGroup[] passiveItemGroups,
         MapDefinition map,
         char topology,
         byte dungeonDifficulty,
         IDropRandomSource random,
         bool isHellRoom,
-        out DungeonRoomDefinition room)
+        out DungeonRoomDefinition room,
+        IReadOnlyList<ushort>? huntMonsters = null)
     {
-        var monsterRows = map.Monsters.Take(byte.MaxValue).ToArray();
+        // NOTI 29 uses the original client MAP row ordinal. The client appends
+        // [monster condition] rows after [monster], even when some do not spawn.
+        var monsterRows = map.Monsters.Select((monster, index) => (Monster: monster, ScriptIndex: index))
+            .Concat((huntMonsters ?? []).SelectMany(id => map.ConditionalMonsters
+                .Select((monster, index) => (Monster: monster, ScriptIndex: map.Monsters.Length + index))
+                .Where(row => row.Monster.MonsterIndex == id && row.ScriptIndex <= byte.MaxValue)))
+            .Take(byte.MaxValue)
+            .ToArray();
         var mapMarksBoss = monsterRows.Any(monster =>
-            monster.Team == 100 && monster.Type == GameDungeonMonsterTypes.Boss);
+            monster.Monster.Team == 100 && monster.Monster.Type == GameDungeonMonsterTypes.Boss);
         var monsters = monsterRows
-            .Select((monster, index) =>
+            .Select((row, index) =>
             {
+                var (monster, scriptIndex) = row;
                 var level = monster.UsesDungeonLevel
-                    ? definition.BasisLevel + monster.LevelOffsetOrFixedLevel
+                    ? basisLevel + monster.LevelOffsetOrFixedLevel
                     : monster.LevelOffsetOrFixedLevel;
                 if (level <= 0)
                 {
-                    level = definition.BasisLevel;
+                    level = basisLevel;
                 }
 
                 return new GameDungeonMonster(
-                    MapListIndex: checked((byte)index),
+                    MapListIndex: checked((byte)scriptIndex),
                     UniqueId: checked((ushort)index),
                     MonsterIndex: monster.MonsterIndex,
                     Level: checked((byte)Math.Clamp(level, 1, byte.MaxValue)),
@@ -667,15 +729,15 @@ public sealed class DungeonCatalog
                          .Where(action => action.Type == PassiveObjectActionType.Item))
             {
                 if (action.Value1 < 0
-                    || action.Value1 >= definition.PassiveItemGroups.Length)
+                    || action.Value1 >= passiveItemGroups.Length)
                 {
                     continue;
                 }
 
-                var group = definition.PassiveItemGroups[action.Value1];
+                var group = passiveItemGroups[action.Value1];
                 var generationLevel = group.LevelOverride > 0
                     ? (byte)Math.Clamp((int)group.LevelOverride, 1, byte.MaxValue)
-                    : definition.BasisLevel;
+                    : basisLevel;
                 if (!_objectDropGenerator.Enabled)
                 {
                     continue;
@@ -817,6 +879,11 @@ public sealed class DungeonCatalog
                 }
 
                 var text = scripts.ReadAllText(dungeonPath, ScriptEncoding);
+                if (dungeonId == TowerOfIllusionId && IsTowerScript(text))
+                {
+                    continue;
+                }
+
                 if (!TryParseDungeon(
                         dungeonId,
                         text,
@@ -986,7 +1053,11 @@ public sealed class DungeonCatalog
                 ParseTopologySymbols(text),
                 ParseStandaloneMapChampionCount(text),
                 monsters,
-                passiveObjects);
+                passiveObjects)
+            {
+                ScriptPath = mapPath,
+                ConditionalMonsters = ParseMonsterRows(text, "monster condition")
+            };
         }
 
         return maps;
@@ -1072,6 +1143,7 @@ public sealed class DungeonCatalog
                 ? checked((ushort)warRoomMap)
                 : (ushort)0,
             HellTicketItemIds = hellTicketItemIds,
+            BossRoomHunts = ParseBossRoomHunts(text),
             ChampionCounts = NormalizeChampionCounts(
                 ParseInlineIntegers(text, "champion"))
         };
@@ -1391,12 +1463,32 @@ public sealed class DungeonCatalog
         return true;
     }
 
-    private static MapMonsterDefinition[] ParseMonsterRows(string text)
+    private static DungeonBossRoomHunt[] ParseBossRoomHunts(string text)
+    {
+        var match = Regex.Match(text,
+            @"(?im)^\s*\[boss room entrance condition\][ \t]*(?://[^\r\n]*)?[\r\n]+[ \t]*`\[hunt monster\]`[ \t]*(?://[^\r\n]*)?[\r\n]+([^\[]*)",
+            RegexOptions.CultureInvariant);
+        if (!match.Success) return [];
+
+        var rows = ParseDataLines(match.Groups[1].Value).Select(ParseIntegers).ToArray();
+        if (rows.Length == 0 || rows[0] is not [var count] || count <= 0 || count >= rows.Length)
+        {
+            return [];
+        }
+
+        return rows.Skip(1).Take(count)
+            .Where(row => row is [> 0 and <= ushort.MaxValue, > 0, > 0])
+            .Select(row => new DungeonBossRoomHunt((ushort)row[0], row[1], row[2]))
+            .ToArray();
+    }
+
+    private static MapMonsterDefinition[] ParseMonsterRows(string text, string tag = "monster")
     {
         var result = new List<MapMonsterDefinition>();
-        var teams = ParseAllBlocks(text, "monster team")
-            .SelectMany(ParseDataLines).SelectMany(ParseIntegers).ToArray();
-        foreach (var block in ParseAllBlocks(text, "monster"))
+        var teams = tag == "monster"
+            ? ParseAllBlocks(text, "monster team").SelectMany(ParseDataLines).SelectMany(ParseIntegers).ToArray()
+            : [];
+        foreach (var block in ParseAllBlocks(text, tag))
         {
             foreach (var rawLine in block.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
             {
@@ -1918,7 +2010,12 @@ public sealed class DungeonCatalog
         char[] TopologySymbols,
         int BaseChampionCount,
         MapMonsterDefinition[] Monsters,
-        MapSpecialPassiveObject[] PassiveObjects);
+        MapSpecialPassiveObject[] PassiveObjects)
+    {
+        public string? ScriptPath { get; init; }
+
+        public MapMonsterDefinition[] ConditionalMonsters { get; init; } = [];
+    }
 
     private readonly record struct MapMonsterDefinition(
         ushort MonsterIndex,

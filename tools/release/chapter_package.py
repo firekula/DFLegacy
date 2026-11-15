@@ -36,9 +36,13 @@ def _manifest(value):
     return v4.validate_manifest(v4.load_json(value) if isinstance(value, (str, Path)) else copy.deepcopy(value))
 
 
-def build(root, output, *, chapter, architecture, flavor, version, commit, sequence, baseline=None, previous=None):
+def build(root, output, *, chapter, architecture, flavor, version, commit, sequence, baseline=None,
+          previous=None, provider='github', seed_provider=False):
     root, output = Path(root).absolute(), Path(output).absolute()
     v4.require(chapter in ('chapter1', 'chapter2'), 'invalid chapter')
+    v4.require(provider == 'github' or (provider == 'gitcode' and chapter == 'chapter2'),
+               'invalid provider for the public chapter')
+    v4.require(not seed_provider or provider == 'gitcode', 'provider seed requires GitCode')
     v4.require(architecture in ('x86', 'x64') and flavor in ('normal', 'test'), 'invalid variant')
     required = inventory.required_files(root, chapter) | inventory.FIXED_COMPONENTS
     old = _manifest(baseline) if baseline is not None else None
@@ -68,7 +72,12 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
         channel='stable' if chapter=='chapter1' else CHANNEL,sequence=sequence,
         minimum_sequence=old['sequence'] if chapter=='chapter2' else (old['minimumSequence'] if old else 0),includes=includes,excludes=excludes)
     if prior is not None:
-        options['previous'] = [prior]
+        v4.require(sequence > prior['sequence'] and version != prior['version']
+                   and options['minimum_sequence'] >= prior['minimumSequence'], 'previous chapter version does not advance')
+        if seed_provider:
+            options['migrations'] = prior['migrations']
+        else:
+            options['previous'] = [prior]
     planned = v4.plan_resources(**options)
     names = {f['path'] for f in planned['manifest']['files']}
     folded = {name.casefold() for name in names}
@@ -81,21 +90,22 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
                 retired.setdefault(file['path'].casefold(),dict(path=file['path'],action='delete',sequence=sequence))
     options['retired'] = list(retired.values())
     if old and chapter=='chapter1': options['previous'] = [old]
-    return v4.build(output, 'github', REPOSITORY, **options)
+    return v4.build(output, provider, REPOSITORY, **options)
 
 
-def public_configuration(flavor):
+def public_configuration(flavor, provider='github'):
     return dict(ClientPath='DNF.exe',StartServer=False,ChapterTwoServerHost='games.firekula.site',
         ChapterTwoDebugEnabled=False,ChapterTwoTestMuteEnabled=False,DisableGitHubUpdates=False,
         ChapterTwoPostProcess='none',
-        UpdateProvider='github',UpdateRepository=REPOSITORY,UpdateChannel=CHANNEL,
+        UpdateProvider=provider,UpdateRepository=REPOSITORY,UpdateChannel=CHANNEL,
         UpdateFlavor=flavor,UpdateServiceUrl='',Relay=dict(Enabled=True,Preference='ipv6'))
 
 
 def create_starter(output, root, bundle):
     output, root, bundle = Path(output).absolute(), Path(root).absolute(), Path(bundle).absolute()
     receipt = v4.verify_local(bundle); manifest = receipt['manifest']
-    v4.require(receipt['provider']=='github' and receipt['repository']==REPOSITORY and manifest['channel']==CHANNEL,
+    v4.require(receipt['provider'] in ('github', 'gitcode')
+               and receipt['repository']==REPOSITORY and manifest['channel']==CHANNEL,
                'starter is only for the pinned Chapter Two public source')
     inventory.required_files(root,'chapter2')
     rows = {f['path']:f for f in manifest['files']}
@@ -106,7 +116,7 @@ def create_starter(output, root, bundle):
                'starter output must be outside source/bundle')
     v4.no_links(output); v4.require(not output.exists(),'starter output already exists')
     raw = (bundle/receipt['manifestAsset']).read_bytes()
-    source = dict(provider='github',repository=REPOSITORY,channel=CHANNEL,
+    source = dict(provider=receipt['provider'],repository=REPOSITORY,channel=CHANNEL,
                   architecture=manifest['architecture'],flavor=manifest['flavor'])
     installed = dict(release=dict(source=source,tag=manifest['version'],manifestSha256=receipt['manifestSha256'],
                                  manifestBytes=base64.b64encode(raw).decode('ascii')),
@@ -119,7 +129,7 @@ def create_starter(output, root, bundle):
         for name,row in sorted(rows.items(),key=lambda p:p[0].casefold()):
             bootstrap_package._write_zip_file(archive,root/name,name,(row['sha256'],row['size']))
         archive.writestr('.dflegacy/v4/installed.json',v4.json_bytes(installed))
-        archive.writestr('launcher.chapter2.json',v4.json_bytes(public_configuration(manifest['flavor'])))
+        archive.writestr('launcher.chapter2.json',v4.json_bytes(public_configuration(manifest['flavor'], receipt['provider'])))
         archive.writestr('.dflegacy/bootstrap/recovery.ini',bootstrap_package._descriptor(manifest['architecture'],
             rows['DFLegacy.Launcher.App.exe']['sha256'],rows['DFLegacy.Updater.exe']['sha256']))
         updater = rows['DFLegacy.Updater.exe']

@@ -29,6 +29,12 @@ internal static class ChapterTwoPacketProjection
             return packet;
         }
 
+        if (packet.ProtocolId == GameProtocolEngine.UserStateNotification && payload.Length == 3)
+        {
+            // Ver_OB_216 reads a row count before the shared UID and state fields.
+            return packet with { Payload = [1, .. packet.Payload] };
+        }
+
         if (packet.ProtocolId == GameProtocolEngine.PrivateStoreInfoNotification
             && payload.Length >= 2 && payload.Length == 2 + payload[1] * 15)
         {
@@ -82,7 +88,7 @@ internal static class ChapterTwoPacketProjection
 
             var count = BinaryPrimitives.ReadUInt16LittleEndian(payload[countOffset..]);
             return payload.Length == recordsOffset + count * 12
-                ? ExpandRecords(packet, recordsOffset, count, 12, [0, 0])
+                ? ExpandRecords(packet, recordsOffset, count, 12, [0, 0], packet.ChapterTwoInventoryEnchantments)
                 : packet;
         }
 
@@ -101,7 +107,7 @@ internal static class ChapterTwoPacketProjection
             if (payload.Length >= countOffset + 1 + count * 10)
             {
                 // Native detail handling skips the optional item link for FFFF.
-                return ExpandRecords(packet, countOffset + 1, count, 10, [0xff, 0xff, 0, 0]);
+                return ExpandRecords(packet, countOffset + 1, count, 10, [0xff, 0xff, 0, 0], packet.ChapterTwoInventoryEnchantments);
             }
         }
 
@@ -109,7 +115,8 @@ internal static class ChapterTwoPacketProjection
     }
 
     private static GameServerPacket ExpandRecords(
-        GameServerPacket packet, int offset, int count, int stride, ReadOnlySpan<byte> extra)
+        GameServerPacket packet, int offset, int count, int stride, ReadOnlySpan<byte> extra,
+        ushort[]? enchantments = null)
     {
         if (count == 0)
         {
@@ -124,6 +131,8 @@ internal static class ChapterTwoPacketProjection
         {
             source.Slice(offset, stride).CopyTo(payload.AsSpan(destination));
             extra.CopyTo(payload.AsSpan(destination + stride));
+            if (enchantments?.Length == count)
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(destination + stride + extra.Length - sizeof(ushort)), enchantments[index]);
             offset += stride;
             destination += stride + extra.Length;
         }

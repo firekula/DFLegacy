@@ -74,10 +74,9 @@ internal static class UpdateV4HelperTests
             check(parent.ExitCode==0 && File.Exists(Path.Combine(root,"ready.marker")),"V4 authenticated helper ready before parent exits ("+mode+")");
             var helperPath=File.ReadAllText(Path.Combine(root,"helper.path"));
             var outcome=Path.Combine(Path.GetDirectoryName(helperPath)!,"helper-outcome.json");
-            while(!File.Exists(outcome)) await Task.Delay(30,timeout.Token);
-            var outcomeText=File.ReadAllText(outcome);
-            using(var result=JsonDocument.Parse(outcomeText))
-                if(result.RootElement.GetProperty("exitCode").GetInt32()!=(mode=="valid"?0:1)) throw new Exception("V4 helper unexpected outcome: "+outcomeText);
+            using(var result=await ReadHelperOutcomeAsync(outcome,timeout.Token))
+                if(result.RootElement.GetProperty("exitCode").GetInt32()!=(mode=="valid"?0:1))
+                    throw new Exception("V4 helper unexpected outcome: "+result.RootElement.GetRawText());
             check(true,"V4 helper returns actual install outcome ("+mode+")");
             if(mode=="valid")
             {
@@ -202,19 +201,24 @@ internal static class UpdateV4HelperTests
         check(parent.ExitCode==0 && File.Exists(Path.Combine(root,"helper.path")),"chapter helper authenticates actual parent ("+mode+")");
         var helper=File.ReadAllText(Path.Combine(root,"helper.path"));
         var outcome=Path.Combine(Path.GetDirectoryName(helper)!,"helper-outcome.json");
+        using var result=await ReadHelperOutcomeAsync(outcome,timeout.Token);
+        return result.RootElement.GetProperty("exitCode").GetInt32();
+    }
+
+    private static async Task<JsonDocument> ReadHelperOutcomeAsync(string path,CancellationToken token)
+    {
         // File creation precedes close/flush. Wait for a complete readable result,
         // not only its directory entry (observed sharing violation under load).
         while(true)
         {
-            timeout.Token.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
             try
             {
-                using var result=JsonDocument.Parse(File.ReadAllBytes(outcome));
-                return result.RootElement.GetProperty("exitCode").GetInt32();
+                return JsonDocument.Parse(File.ReadAllBytes(path));
             }
             catch(IOException){ }
             catch(JsonException){ }
-            await Task.Delay(30,timeout.Token);
+            await Task.Delay(30,token);
         }
     }
 

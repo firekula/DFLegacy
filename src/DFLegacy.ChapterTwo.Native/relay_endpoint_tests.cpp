@@ -29,6 +29,20 @@ int main()
     }
     SetEnvironmentVariableA("DFL_S1C2_LOCAL_RELAY_IPV4", nullptr);
     check(!ReadLocalRelayIpv4(host, address), "legacy mode remains unmodified");
+    for (const auto port : {47001, 7100, 7101, 7102, 7103, 7104, 7105}) {
+        check(IsChannelSwitchPort(2, static_cast<unsigned short>(port)), "town channel can resume after leaving PvP");
+        check(!IsChannelSwitchPort(4, static_cast<unsigned short>(port)), "town channel is not a PvP destination");
+    }
+    for (const auto port : {7004, 7110, 7111, 7112}) {
+        check(IsChannelSwitchPort(4, static_cast<unsigned short>(port)), "PvP channel can resume on entry");
+        check(!IsChannelSwitchPort(2, static_cast<unsigned short>(port)), "PvP channel is not a town destination");
+    }
+    for (const auto port : {7100, 7101, 7102, 7103, 7104, 7105}) {
+        check(IsChannelSwitchPort(0, static_cast<unsigned short>(port)), "regional channel can resume after leaving PvP");
+    }
+    check(!IsChannelSwitchPort(1, 47001) && !IsChannelSwitchPort(2, 47005)
+        && !IsChannelSwitchPort(0, 47001) && !IsChannelSwitchPort(0, 7004) && !IsChannelSwitchPort(4, 7113),
+        "unsupported channel selections stay outside the reconnect hook");
     if (passed) std::puts("PASS native local relay endpoint mapping");
     return passed ? 0 : 1;
 }

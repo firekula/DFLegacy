@@ -8,6 +8,7 @@
 int main()
 {
     using dfl::chapter_two::ResolveLocalPartyRelayHost;
+    using dfl::chapter_two::ResolveGamePeerHost;
     bool passed = true;
     const auto check = [&](bool condition, const char* message)
     {
@@ -37,6 +38,15 @@ int main()
         "an explicit remote address resolves to the exact requested server");
     check(!ResolveLocalPartyRelayHost("192.0.2.21"), "adjacent addresses remain denied");
     SetEnvironmentVariableA("DFL_S1C2_REMOTE_IPV4", nullptr);
+    checkAddress(ResolveGamePeerHost("127.0.0.1", 0xA4F493), "127.0.0.1", 1,
+        "the original local peer lookup preserves its literal");
+    const auto* peer = ResolveGamePeerHost("192.0.2.21", 0xA4F4E3);
+    const unsigned char peerAddress[]{192, 0, 2, 21};
+    check(peer && peer->h_addr_list[0] && std::memcmp(peer->h_addr_list[0], peerAddress, sizeof(peerAddress)) == 0,
+        "the original public peer lookup accepts a different address from the game server");
+    check(!ResolveGamePeerHost("192.0.2.21", 0xA4F533), "the relay lookup keeps its own allowlist");
+    for (const auto* denied : {"localhost", "192.0.2", "192.000.2.21", "224.0.0.1", "0.0.0.0", "255.255.255.255"})
+        check(!ResolveGamePeerHost(denied, 0xA4F4E3), "peer lookup accepts only usable IPv4 literals");
     if (passed) std::puts("Chapter Two party relay lookup checks passed");
     return passed ? 0 : 1;
 }

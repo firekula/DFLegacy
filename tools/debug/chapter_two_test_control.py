@@ -51,13 +51,15 @@ def fresh(s, now):
 
 def encode_request(s, operation, target, x, y, now, request_id):
     fresh(s, now)
-    require(operation in (1,2,3,4,5) and type(target) is int and 0<=target<=65535, 'Invalid semantic target')
+    require(operation in (1,2,3,4,5,6,7) and type(target) is int and 0<=target<=65535, 'Invalid semantic target')
     require((operation==3)==(s.get('scene',3)==1), 'Semantic scene mismatch')
     require(type(x) is int and type(y) is int and -32768<=x<=32767 and -32768<=y<=32767, 'Coordinate overflow')
     if operation==1:
         require(x==y==0, 'Kill cannot carry coordinates')
         require(target in [t['uid'] for t in s['targets']], 'Target is not a live local monster')
     elif operation in (2,3):require(target==s['uid'], 'Position is self only')
+    elif operation in (6,7):
+        require(s.get('scene')==10 and target==s['uid'] and x==y==0, 'Combat override requires the local tower actor')
     else:
         c=s.get('cards',{});kind='free' if operation==4 else 'paid';unset=4294967295
         require(target<4 and x==y==0 and c.get('available') is True and c.get('count')==4
@@ -144,12 +146,19 @@ def run_action(pid, operation, *, target=None, x=0, y=0, peers=(), timeout=3):
     elif operation in ('free-card','paid-card'):
         require(not peers, 'Card selection invokes one exact private owner')
         code=4 if operation=='free-card' else 5
+    elif operation in ('invincible-on','invincible-off'):
+        require(not peers, 'Combat override uses one exact private owner')
+        target=before[pid]['uid'];code=6 if operation=='invincible-on' else 7
     else:raise RuntimeError('Unknown semantic operation')
     native=submit(selected,code,target,x,y,before[selected])
     result=dict(pid=selected,target=target,operation=operation,applied=native['applied'],reason=native['reason'],
                 status='rejected',synchronization=dict(complete=False,clients={}))
     if not native['applied']:return result
-    if code>=4:
+    if code in (6,7):
+        enabled=code==6
+        result['status']='native_observed' if native.get('invincible') is enabled else 'partial'
+        return result
+    if code in (4,5):
         result['status']='native_selection_pending' if native['reason']=='applied_native_card_selection' else 'partial'
         return result
     if code==3:
@@ -172,7 +181,7 @@ def run_action(pid, operation, *, target=None, x=0, y=0, peers=(), timeout=3):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pid',type=int,required=True)
-    parser.add_argument('operation',choices=['status','kill','teleport','walk','free-card','paid-card'])
+    parser.add_argument('operation',choices=['status','kill','teleport','walk','free-card','paid-card','invincible-on','invincible-off'])
     parser.add_argument('--uid',type=int)
     parser.add_argument('--x',type=int);parser.add_argument('--y',type=int)
     parser.add_argument('--peers',type=int,nargs='*',default=[])

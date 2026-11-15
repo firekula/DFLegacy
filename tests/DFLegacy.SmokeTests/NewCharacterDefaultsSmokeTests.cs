@@ -295,7 +295,8 @@ internal static class NewCharacterDefaultsSmokeTests
         typeof(CeraShopCatalog), typeof(PremiumBenefitCatalog), typeof(DungeonCatalog), typeof(WorldMapCatalog),
         typeof(WorldDropCatalog), typeof(GoldDropCatalog), typeof(MonsterDropCatalog), typeof(MonsterChampionDropCatalog),
         typeof(DungeonDropGenerator), typeof(HellDropCatalog), typeof(ObjectDropCatalog), typeof(ObjectDropGenerator),
-        typeof(ClearRewardCatalog), typeof(ClearRewardGenerator), typeof(GameplayDatagramService)];
+        typeof(ClearRewardCatalog), typeof(ClearRewardGenerator), typeof(ChapterTwoTowerRewardPlanner),
+        typeof(GameplayDatagramService)];
     foreach (var type in types) services.AddSingleton(type);
     return services.BuildServiceProvider();
     }
@@ -360,7 +361,7 @@ internal static class NewCharacterDefaultsSmokeTests
         }
         internal async Task SendAsync(byte[] bytes) => await _peer.GetStream().WriteAsync(bytes, _stop.Token);
 
-        internal async Task EnableChapterTwoAsync()
+        internal async Task EnableChapterTwoAsync(Action<GameServerPacket>? observe = null)
         {
             var plain = new byte[18];
             BinaryPrimitives.WriteUInt16LittleEndian(plain, ++_sequence);
@@ -372,7 +373,7 @@ internal static class NewCharacterDefaultsSmokeTests
             aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), System.Security.Cryptography.PaddingMode.None);
             await SendAsync(new PacketFrame(1, GameProtocolEngine.CheckConnectionCommand,
                 Crc32.Compute(plain), wire).Encode());
-            await ReadAsync(0, GameProtocolEngine.ChannelInfoNotification);
+            await ReadAsync(0, GameProtocolEngine.ChannelInfoNotification, observe: observe);
         }
         internal async Task<GameServerPacket> ReadAsync(byte? type, byte id, TimeSpan? timeout = null,
             Action<GameServerPacket>? observe = null)
@@ -399,9 +400,11 @@ internal static class NewCharacterDefaultsSmokeTests
                 throw new TimeoutException($"no reply type={type} id={id} within {timeout ?? TimeSpan.FromSeconds(5)}");
             }
         }
-        internal async Task LoginAsync(string userName, byte slot, bool expectSelection = true)
+        internal async Task LoginAsync(string userName, byte slot, bool expectSelection = true,
+            bool chapterTwo = false, Action<GameServerPacket>? observe = null)
         {
             await ReadAsync(null, 0); // Real channel greeting has a built-in 750 ms delay.
+            if (chapterTwo) await EnableChapterTwoAsync();
             using var credentials = new MemoryStream();
             using (var writer = new BinaryWriter(credentials, Encoding.ASCII, leaveOpen: true))
             {
@@ -415,15 +418,15 @@ internal static class NewCharacterDefaultsSmokeTests
             await SendAsync(Command(4, slot));
             SelectReply = await ReadAsync(GameProtocolEngine.CommandPacketType, GameProtocolEngine.SelectCharacterCommand);
             if (!expectSelection) return;
-            do { MainList = await ReadAsync(0, 13); } while (MainList.Payload[0] != 0);
-            await ReadAsync(0, 19);
+            do { MainList = await ReadAsync(0, 13, observe: observe); } while (MainList.Payload[0] != 0);
+            await ReadAsync(0, 19, observe: observe);
             // Direct CHECK_CONNECTION stays plaintext and does not advance the
             // rolling cipher. Its reply is a barrier after all selection hooks.
             var body = new byte[10];
             BinaryPrimitives.WriteUInt16LittleEndian(body, ++_sequence);
             var barrier = new PacketFrame(1, 0, Crc32.Compute(body), body);
             await SendAsync(barrier.Encode());
-            await ReadAsync(0, GameProtocolEngine.ChannelInfoNotification);
+            await ReadAsync(0, GameProtocolEngine.ChannelInfoNotification, observe: observe);
         }
 
         private async Task PumpAsync()

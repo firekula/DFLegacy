@@ -67,6 +67,13 @@ try
         return failures==0?0:1;
     }
     if(args.Length==0)ChapterTwoGameSettingsTests.Run(root,Check);
+    if (args is ["--chapter-two-guild-site-tests"])
+    {
+        await ChapterTwoGuildSiteTests.RunAsync(Check);
+        Console.WriteLine($"Chapter Two guild website: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
+    if (args.Length == 0) await ChapterTwoGuildSiteTests.RunAsync(Check);
     if (args.Contains("--chapter-update-layout"))
     {
         ChapterTransitionOfferTests.Run(root, Check);

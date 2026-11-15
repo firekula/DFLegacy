@@ -39,7 +39,8 @@ public static class EquipmentReinforcementPlanner
         EquipmentReinforcementCatalog reinforcementCatalog,
         IDropRandomSource random,
         out EquipmentReinforcementPlan plan,
-        out EquipmentReinforcementFailure failure)
+        out EquipmentReinforcementFailure failure,
+        bool chapterTwo = false)
     {
         ArgumentNullException.ThrowIfNull(mainInventory);
         ArgumentNullException.ThrowIfNull(equipment);
@@ -69,7 +70,8 @@ public static class EquipmentReinforcementPlanner
         if (!reinforcementCatalog.TryGetCost(
                 previousLevel,
                 definition,
-                out var cost))
+                out var cost,
+                chapterTwo))
         {
             failure = EquipmentReinforcementFailure.RuleUnavailable;
             return false;

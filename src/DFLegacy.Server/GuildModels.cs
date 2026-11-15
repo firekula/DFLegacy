@@ -1,19 +1,37 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
 
-public sealed record GuildRecord(uint Id, string Name, string Address, Guid FounderCharacterId, DateTimeOffset CreatedAt);
+public sealed record GuildRecord(uint Id, string Name, string Address, Guid FounderCharacterId,
+    DateTimeOffset CreatedAt, string? Announcement = null)
+{
+    public byte Level { get; init; } = 1;
+    public uint Experience { get; init; }
+    public ushort SkillPoints { get; init; }
+    public byte StatusSkillLevel { get; init; }
+    public byte ExperienceSkillLevel { get; init; }
+    public byte[]? IconPixels { get; init; }
+}
 public sealed record GuildCreateResult(byte Error, CharacterRecord? Character = null, GuildRecord? Guild = null,
     bool Replayed = false, bool Unknown = false);
+internal sealed record GuildDissolutionResult(CharacterRecord Founder, Guid[] OtherMembers);
+internal sealed record GuildAnnouncementResult(byte Error, Guid[]? Members = null);
 
 public static class GuildRules
 {
+    internal const int IconSize = 16;
+    internal const byte IconMinimumGuildLevel = 2;
     private static readonly Encoding Encoding = CreateEncoding();
-    public static bool TryReadName(byte[] bytes, out string name) => TryDecode(bytes, 1, 14, out name);
+    public static bool TryReadName(byte[] bytes, out string name) =>
+        TryDecode(bytes, 1, 14, out name) && name.Trim() == name;
     public static bool TryReadAddress(byte[] bytes, out string address) =>
         TryDecode(bytes, 3, 12, out address) && address[0] != '_'
         && address.All(character => char.IsAsciiLetterOrDigit(character) || character == '_');
+
+    internal static bool TryReadAnnouncement(byte[] bytes, out string announcement) =>
+        TryDecode(bytes, 1, GameProtocolEngine.GuildAnnouncementMaxBytes, out announcement);
 
     public static bool IsName(string name) => TryEncode(name, out var bytes) && TryReadName(bytes, out _);
     public static bool IsAddress(string address) => TryEncode(address, out var bytes) && TryReadAddress(bytes, out _);
@@ -34,7 +52,7 @@ public static class GuildRules
         if (bytes.Length < minimum || bytes.Length > maximum) return false;
         try { value = Encoding.GetString(bytes); }
         catch (DecoderFallbackException) { return false; }
-        return value.Length > 0 && value.Trim() == value && !value.Any(char.IsControl)
+        return value.Length > 0 && !value.Any(char.IsControl)
             && Encoding.GetBytes(value).AsSpan().SequenceEqual(bytes);
     }
 

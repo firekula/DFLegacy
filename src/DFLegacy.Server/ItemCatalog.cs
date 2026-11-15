@@ -193,7 +193,9 @@ public sealed record ItemDefinition(
     int? InventoryLimit = null,
     bool IsEpicRoutingItem = false,
     int UsableJobMask = 0,
-    RandomBoxDefinition? RandomBox = null)
+    RandomBoxDefinition? RandomBox = null,
+    CeraBoosterDefinition? GiftBooster = null,
+    ChapterTwoGrowthPotionDefinition? GrowthPotion = null)
 {
     public bool IsEquipment => ScriptKind == ItemScriptKind.Equipment;
 
@@ -230,6 +232,9 @@ public sealed class ItemCatalog
     private static readonly Regex AttachTypePattern = CreateTokenTagPattern("attach type");
     private static readonly Regex EquipmentTypePattern = CreateTokenTagPattern("equipment type");
     private static readonly Regex StackableTypePattern = CreateTokenTagPattern("stackable type");
+    private static readonly Regex GrowthPotionCooldownPattern = CreateIntegerTagPattern("cool time");
+    private static readonly Regex GrowthPotionDurationPattern = CreateIntegerTagPattern("stat change duration");
+    private static readonly Regex GrowthPotionBonusPattern = CreateDecimalTagPattern("exp bonus rate");
     private static readonly Regex GradePattern = CreateIntegerTagPattern("grade");
     private static readonly Regex RarityPattern = CreateIntegerTagPattern("rarity");
     private static readonly Regex EpicRoutingPattern = CreateIntegerTagPattern("epic routing");
@@ -724,8 +729,23 @@ public sealed class ItemCatalog
                      ReadInteger(InventoryLimitPattern, text),
                      IsEpicRoutingItem: ReadInteger(EpicRoutingPattern, text) == 1,
                      UsableJobMask: ReadUsableJobs(text),
-                     RandomBox: RandomBoxDefinition.Parse(typeTag, text)));
+                     RandomBox: RandomBoxDefinition.Parse(typeTag, text),
+                     GiftBooster: ReadGiftBooster(typeTag, text, scriptPath),
+                     GrowthPotion: ReadGrowthPotion(itemId, typeTag, text)));
         }
+    }
+
+    private static ChapterTwoGrowthPotionDefinition? ReadGrowthPotion(ushort itemId, string typeTag, string text)
+    {
+        if (itemId != ChapterTwoGrowthPotionDefinition.ItemId || typeTag != "waste")
+            return null;
+
+        var cooldown = ReadInteger(GrowthPotionCooldownPattern, text);
+        var duration = ReadInteger(GrowthPotionDurationPattern, text);
+        var bonus = ReadDecimal(GrowthPotionBonusPattern, text);
+        return cooldown is > 0 && duration is > 0 && bonus is > 0
+            ? new ChapterTwoGrowthPotionDefinition(cooldown.Value, duration.Value, (double)bonus.Value)
+            : null;
     }
 
     private static CeraPackageDefinition? ReadCeraPackage(
@@ -781,13 +801,24 @@ public sealed class ItemCatalog
     private static CeraBoosterDefinition? ReadCeraBooster(
         string typeTag,
         string text,
-        string scriptPath)
+        string scriptPath) => typeTag == "cera booster" ? ReadBoosterInfo(text, scriptPath) : null;
+
+    private CeraBoosterDefinition? ReadGiftBooster(string typeTag, string text, string scriptPath)
     {
-        if (typeTag != "cera booster")
+        if (typeTag != "booster" || !BoosterInfoPattern.IsMatch(text)) return null;
+        try
         {
+            return ReadBoosterInfo(text, scriptPath);
+        }
+        catch (Exception exception) when (exception is InvalidDataException or OverflowException)
+        {
+            _logger.LogWarning(exception, "Could not read gift-box rewards from {ScriptPath}.", scriptPath);
             return null;
         }
+    }
 
+    private static CeraBoosterDefinition ReadBoosterInfo(string text, string scriptPath)
+    {
         var infoMatch = BoosterInfoPattern.Match(text);
         if (!infoMatch.Success)
         {

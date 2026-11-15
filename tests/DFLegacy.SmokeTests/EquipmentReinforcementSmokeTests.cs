@@ -45,6 +45,7 @@ internal static class EquipmentReinforcementSmokeTests
                 "reinforcement catalog reads material, gold and chance rows from upgrade.etc");
             CheckPlans(check, items, catalog);
             CheckInstanceMoves(check, items);
+            CheckChapterTwoCosts(check, fixtureRoot, scripts, items);
         }
         finally
         {
@@ -53,6 +54,59 @@ internal static class EquipmentReinforcementSmokeTests
                 Directory.Delete(fixtureRoot, recursive: true);
             }
         }
+    }
+
+    private static void CheckChapterTwoCosts(
+        Action<bool, string> check,
+        string fixtureRoot,
+        ScriptFileSystem scripts,
+        ItemCatalog items)
+    {
+        var path = Path.Combine(fixtureRoot, "etc", "upgrade.etc");
+        File.WriteAllText(path, """
+            [table]
+            0 0 0 0 0 0 0 0 3171 1
+            [cost]
+            0
+            -1
+            2147483647
+            200
+            1
+            2147483648
+            42
+            [cost weights by rarity]
+            3
+            -1
+            Infinity
+            100000000
+            1
+            [type]
+            1.5
+            0
+            1
+            1
+            1
+            1
+            1
+            1
+            1
+            1
+            """);
+        var catalog = new EquipmentReinforcementCatalog(scripts, NullLogger<EquipmentReinforcementCatalog>.Instance);
+        var found = items.TryGetDefinition(1000, out var weapon);
+        if (!found) { check(false, "the malformed price fixture loads its test equipment"); return; }
+        catalog.TryGetCost(0, weapon with { Grade = 4 }, out var fractional, chapterTwo: true);
+        catalog.TryGetCost(0, weapon with { Grade = 6 }, out var afterMalformedRow, chapterTwo: true);
+        check(fractional?.Gold == 3 && afterMalformedRow?.Gold == 189,
+            $"Chapter Two truncates each price product ({fractional?.Gold}) and preserves PVF indices after a malformed row ({afterMalformedRow?.Gold})");
+        check(!catalog.TryGetCost(0, weapon, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = 2 }, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = 3, Rarity = 1 }, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = 3, Rarity = 2 }, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = 3, Rarity = 3 }, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = 5 }, out _, chapterTwo: true)
+                && !catalog.TryGetCost(0, weapon with { Grade = null }, out _, chapterTwo: true),
+            "Chapter Two declines missing, negative, non-finite and overflowing PVF prices");
     }
 
     private static void CheckInstanceMoves(Action<bool, string> check, ItemCatalog items)
@@ -329,7 +383,7 @@ internal static class EquipmentReinforcementSmokeTests
         File.WriteAllText(
             Path.Combine(equipmentDirectory, "test.equ"),
             "[name] `Test Weapon`\n"
-            + "[equipment type] `weapon`\n"
+            + "[equipment type] `[weapon]`\n"
             + "[attach type] `free`\n"
             + "[grade] 1\n"
             + "[rarity] 0\n"

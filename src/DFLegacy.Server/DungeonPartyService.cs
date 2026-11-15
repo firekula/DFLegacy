@@ -530,7 +530,7 @@ public sealed class DungeonPartyService : BackgroundService
     private async Task SweepSettlementTimersAsync(DungeonInstance instance, CancellationToken cancellationToken)
     {
         // 单人实例不参与结算倒计时扫描（保持改造前行为）：单人的换房走会话里那条立即推进的分支。
-        if (!instance.IsParty)
+        if (!instance.IsParty || instance.TowerParty is not null)
         {
             return;
         }

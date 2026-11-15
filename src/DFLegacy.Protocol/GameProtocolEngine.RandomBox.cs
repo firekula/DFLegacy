@@ -9,6 +9,7 @@ public sealed record GameRandomBoxReward(ushort DestinationSlot, ushort ItemId, 
 public static partial class GameProtocolEngine
 {
     public const byte UseRandomBoxCommand = 191;
+    public const byte UseSamsungRandomBoxCommand = 192;
     public static bool TryReadRandomBoxCommand(ReadOnlySpan<byte> body, out GameRandomBoxCommand command)
     {
         command = default;
@@ -23,13 +24,13 @@ public static partial class GameProtocolEngine
     }
 
     public static GameServerPacket CreateRandomBoxReply(ushort boxSlot, ushort hammerSlot,
-        IReadOnlyList<GameRandomBoxReward> rewards)
+        IReadOnlyList<GameRandomBoxReward> rewards, byte protocolId = UseRandomBoxCommand)
     {
         if (rewards.Count > ushort.MaxValue) throw new ArgumentOutOfRangeException(nameof(rewards));
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
-        // C2 0x41C13F closes its animated window, then reads both consumed
-        // slots, a u16 reward count, and 11 bytes per reward at 0x41C3A0.
+        // The 191 and 192 readers close their own window and then consume
+        // the same two slot fields, reward count and 11-byte reward rows.
         writer.Write((byte)1);
         writer.Write(boxSlot);
         writer.Write(hammerSlot);
@@ -42,8 +43,9 @@ public static partial class GameProtocolEngine
             writer.Write(reward.InstanceValue);
             writer.Write(reward.Attribute);
         }
-        return new(CommandPacketType, UseRandomBoxCommand, payload.ToArray());
+        return new(CommandPacketType, protocolId, payload.ToArray());
     }
 
-    public static GameServerPacket CreateRandomBoxError(byte error) => new(CommandPacketType, UseRandomBoxCommand, [0, error]);
+    public static GameServerPacket CreateRandomBoxError(byte error, byte protocolId = UseRandomBoxCommand) =>
+        new(CommandPacketType, protocolId, [0, error]);
 }

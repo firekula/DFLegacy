@@ -208,7 +208,7 @@ try {
                     & $trace $candidate $arguments 2>&1 | ForEach-Object {
                         $line = [string]$_
                         if (!$line.StartsWith('LOCAL_PAY_REQUEST ', [StringComparison]::Ordinal)) { $writer.WriteLine($line) }
-                        if ($line -cmatch '\A(?:OWNED_PID [1-9][0-9]{0,9}|LOCAL_PAY_REQUEST [1-9][0-9]{0,9} [1-9][0-9]{0,9} [a-z-]{1,32} (?:[0-9a-fA-F]{2,2048}|-))\z') {
+                        if ($line -cmatch '\A(?:(?:OWNED_PID|LOCAL_GUILD_OPEN) [1-9][0-9]{0,9}|LOCAL_PAY_REQUEST [1-9][0-9]{0,9} [1-9][0-9]{0,9} [a-z-]{1,32} (?:[0-9a-fA-F]{2,2048}|-))\z') {
                             [Console]::WriteLine($line)
                             [Console]::Out.Flush()
                         }

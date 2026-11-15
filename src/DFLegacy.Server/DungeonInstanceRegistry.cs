@@ -13,7 +13,8 @@ internal sealed record DungeonEntryRequest(
     byte DungeonOption,
     byte LeaderTownId,
     byte LeaderAreaId,
-    Guid LeaderCharacterId);
+    Guid LeaderCharacterId,
+    ChapterTwoTowerPartyRun? Tower = null);
 
 /// <summary>
 /// 一只怪的死（给队友算经验用）：等级/类型/索引及旧级联标记。
@@ -114,7 +115,11 @@ public sealed class DungeonInstanceRegistry
     /// </summary>
     internal DungeonInstance? UnbindCharacter(Guid characterId)
     {
-        _pendingEntries.TryRemove(characterId, out _);
+        if (_pendingEntries.TryRemove(characterId, out var pending) && pending.Tower is { } tower)
+        {
+            tower.Depart(characterId, Environment.TickCount64);
+            if (tower.AdmissionRejected) Remove(tower.Instance);
+        }
         _pendingSelections.TryRemove(characterId, out _);
         _pendingSelectionCancels.TryRemove(characterId, out _);
         _pendingKillCredits.TryRemove(characterId, out _);
@@ -123,7 +128,9 @@ public sealed class DungeonInstanceRegistry
             return null;
         }
 
-        if (instance.RemoveMember(characterId) && instance.MemberCount == 0)
+        var removed = instance.RemoveMember(characterId);
+        instance.TowerParty?.Depart(characterId, Environment.TickCount64);
+        if (removed && instance.MemberCount == 0)
         {
             Remove(instance);
         }

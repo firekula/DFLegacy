@@ -9,6 +9,7 @@
     <BuildRandomNativeReference Condition="'$(MSBuildRuntimeType)' == 'Full' and ('$(BuildingSolutionFile)' == 'true' or '$(BuildingInsideVisualStudio)' == 'true')">true</BuildRandomNativeReference>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="ClientGuildAssets/*" LogicalName="ClientGuild/%(Filename)%(Extension)" />
     <Content Update="wwwroot\**">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

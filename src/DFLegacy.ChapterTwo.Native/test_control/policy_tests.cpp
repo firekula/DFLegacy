@@ -35,6 +35,18 @@ int main(){
  Check(Validate(walk,s,18,10001)!=nullptr,"town navigation cannot run in dungeon");
  walk.operation=2;Check(Validate(walk,town,18,10001)!=nullptr,"dungeon teleport cannot run in town");
  walk.operation=1;walk.x=walk.y=0;Check(Validate(walk,town,18,10001)!=nullptr,"monster action cannot run in town");
+ auto tower=s;tower.scene=10;
+ Check(!Validate(r,tower,18,10001),"explicit local monster action accepted on current tower floor");
+ auto towerPosition=Command(tower);towerPosition.operation=2;towerPosition.target=tower.uid;
+ towerPosition.x=440;towerPosition.y=260;
+ Check(!Validate(towerPosition,tower,18,10001),"relocation stays bound to the current tower stage");
+ for(unsigned operation:{6u,7u}){
+  auto combat=r;combat.operation=operation;combat.target=tower.uid;
+  Check(!Validate(combat,tower,18,10001),"combat override can be enabled or disabled for self in the tower");
+  combat.target++;Check(Validate(combat,tower,18,10001)!=nullptr,"combat override cannot target another actor");
+  combat.target=tower.uid;Check(Validate(combat,s,18,10001)!=nullptr,"combat override stays in the private tower mode");
+  combat.x=1;Check(Validate(combat,tower,18,10001)!=nullptr,"combat override cannot carry unrelated position");
+ }
  for(unsigned operation:{4u,5u}){
   auto card=r;card.operation=operation;card.target=3;
   Check(!Validate(card,s,18,10001),"explicit native card column accepted in dungeon");

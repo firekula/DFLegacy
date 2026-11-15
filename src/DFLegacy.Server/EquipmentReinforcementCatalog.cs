@@ -51,7 +51,8 @@ public sealed class EquipmentReinforcementCatalog
     public bool TryGetCost(
         byte currentLevel,
         ItemDefinition equipment,
-        out EquipmentReinforcementCost cost)
+        out EquipmentReinforcementCost cost,
+        bool chapterTwo = false)
     {
         ArgumentNullException.ThrowIfNull(equipment);
         cost = null!;
@@ -65,11 +66,14 @@ public sealed class EquipmentReinforcementCatalog
             return false;
         }
 
+        var gold = chapterTwo ? CalculateChapterTwoGold(state, equipment) : CalculateGold(state, equipment);
+        if (gold is null) return false;
+
         var row = state.Rows[targetLevel - 1];
         cost = new EquipmentReinforcementCost(
             row.MaterialItemId,
             row.MaterialCount,
-            CalculateGold(state, equipment),
+            gold.Value,
             row.FailureWeight,
             row.PenaltyType,
             checked((byte)targetLevel));
@@ -102,10 +106,12 @@ public sealed class EquipmentReinforcementCatalog
                 $"{ScriptPath} does not contain any valid reinforcement rows.");
         }
 
-        var costsByLevel = ReadIntList(GetSection(sections, "cost"));
-        var rarityWeights = ReadDoubleList(
-            GetSection(sections, "cost weights by rarity"));
-        var typeWeights = ReadDoubleList(GetSection(sections, "type"));
+        var costRows = GetSection(sections, "cost");
+        var rarityRows = GetSection(sections, "cost weights by rarity");
+        var typeRows = GetSection(sections, "type");
+        var costsByLevel = ReadIntList(costRows);
+        var rarityWeights = ReadDoubleList(rarityRows);
+        var typeWeights = ReadDoubleList(typeRows);
         _logger.LogInformation(
             "Cached DFLegacy reinforcement rules from {Source}: rows={RowCount}, levelCosts={CostCount}, rarityWeights={RarityCount}, typeWeights={TypeCount}.",
             _scripts.SourceDescription,
@@ -113,8 +119,54 @@ public sealed class EquipmentReinforcementCatalog
             costsByLevel.Count,
             rarityWeights.Count,
             typeWeights.Count);
-        return new CatalogState(rows, costsByLevel, rarityWeights, typeWeights);
+        return new CatalogState(rows, costsByLevel, rarityWeights, typeWeights,
+            ReadChapterTwoPrices(costRows), ReadChapterTwoPrices(rarityRows), ReadChapterTwoPrices(typeRows));
     }
+
+    private static int? CalculateChapterTwoGold(CatalogState state, ItemDefinition equipment)
+    {
+        // Ver_OB_216 uses [grade] as the [cost] index. It multiplies by the
+        // equipment type and rarity in order, truncating each product.
+        var typeIndex = equipment.TypeTag switch
+        {
+            "weapon" => 0,
+            "title name" => 1,
+            "coat" => 2,
+            "shoulder" => 3,
+            "pants" => 4,
+            "shoes" => 5,
+            "waist" => 6,
+            "amulet" => 7,
+            "wrist" => 8,
+            "ring" => 9,
+            _ => -1
+        };
+        if (typeIndex < 0 || typeIndex >= state.ChapterTwoTypeWeights.Length
+            || equipment.Grade is not { } grade || grade < 0 || grade >= Math.Min(100, state.ChapterTwoGradePrices.Length)
+            || equipment.Rarity is not { } rarity || rarity is < 0 or >= 5 || rarity >= state.ChapterTwoRarityWeights.Length)
+        {
+            return null;
+        }
+
+        var basePrice = state.ChapterTwoGradePrices[grade];
+        var typeWeight = state.ChapterTwoTypeWeights[typeIndex];
+        var rarityWeight = state.ChapterTwoRarityWeights[rarity];
+        if (basePrice is < 0 or > int.MaxValue || !double.IsInteger(basePrice)
+            || typeWeight is < 0 or > float.MaxValue || !double.IsFinite(typeWeight)
+            || rarityWeight is < 0 or > float.MaxValue || !double.IsFinite(rarityWeight))
+        {
+            return null;
+        }
+
+        var typeAdjusted = Math.Truncate(basePrice * (float)typeWeight);
+        var total = Math.Truncate(typeAdjusted * (float)rarityWeight);
+        return typeAdjusted <= int.MaxValue && total <= int.MaxValue ? (int)total : null;
+    }
+
+    private static double[] ReadChapterTwoPrices(IReadOnlyList<string> rows) =>
+        rows.Select(row =>
+            double.TryParse(SplitValues(row)[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                ? value : double.NaN).ToArray();
 
     private static int CalculateGold(
         CatalogState state,
@@ -442,8 +494,11 @@ public sealed class EquipmentReinforcementCatalog
         IReadOnlyList<ReinforcementRow> Rows,
         IReadOnlyList<int> CostsByLevel,
         IReadOnlyList<double> RarityWeights,
-        IReadOnlyList<double> TypeWeights)
+        IReadOnlyList<double> TypeWeights,
+        double[] ChapterTwoGradePrices,
+        double[] ChapterTwoRarityWeights,
+        double[] ChapterTwoTypeWeights)
     {
-        public static CatalogState Empty { get; } = new([], [], [], []);
+        public static CatalogState Empty { get; } = new([], [], [], [], [], [], []);
     }
 }

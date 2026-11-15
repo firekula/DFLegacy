@@ -524,6 +524,7 @@ internal sealed partial class DungeonInstance(
 
     /// <summary>队伍实例（PartyId != 0）；单人实例以角色 id 为键。</summary>
     public bool IsParty => PartyId != 0;
+    internal ChapterTwoTowerPartyRun? TowerParty { get; set; }
 
     /// <summary>实例锁。状态一律走本类的锁内方法改；调用方不要直接改公开集合。</summary>
     public object Gate { get; } = new();
@@ -1334,6 +1335,13 @@ internal sealed partial class DungeonInstance(
             {
                 transition = null;
                 errorCode = 4;
+                return false;
+            }
+
+            if (_run.IsBossRoomHuntPending(roomX, roomY))
+            {
+                transition = null;
+                errorCode = 7;
                 return false;
             }
 

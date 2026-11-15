@@ -15,7 +15,7 @@ public static class ChapterTransitionSource
     }
 
     public static bool IsOfficialChapterTwo(ReleaseSource source) =>
-        source is { Provider: "github", Repository: OfficialRepository, Channel: SecondChannel };
+        source is { Provider: "github" or "gitcode", Repository: OfficialRepository, Channel: SecondChannel };
 
     public static void RequireUpgrade(ReleaseSource baseline, ReleaseSource target)
     {

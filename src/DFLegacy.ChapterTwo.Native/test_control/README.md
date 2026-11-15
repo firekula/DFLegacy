@@ -1,6 +1,6 @@
 # Isolated Chapter Two test control
 
-This directory is deliberately absent from the ordinary C2 CMake link. Only the separately generated DO-NOT-SHIP host includes `Install`, and it additionally requires the dedicated process-name prefix plus explicit output-root and run-nonce environment variables. Semantic actions: reposition the local living player within the current native dungeon, or clear one explicitly identified, live, locally controlled monster. No arbitrary-address interface, persisted character edit, reward grant, synthetic clear, cross-map positioning, or timer change exists here.
+This directory is deliberately absent from the ordinary C2 CMake link. Only the separately generated DO-NOT-SHIP host includes `Install`, and it additionally requires the dedicated process-name prefix plus explicit output-root and run-nonce environment variables. Combat actions control the bound local player or defeat one explicitly identified, live, locally controlled monster. No arbitrary-address interface, persisted character edit, reward grant, synthetic clear, cross-map positioning, or timer change exists here.
 
 The game-frame entry checks original C2 method signatures, current native scene, local actor and own-user binding, protected actor/global identity, stage/map agreement, native health/dead state, exact current map membership and target authority. Each request binds the exact process creation time, run nonce, recent snapshot, actor/map/stage and monotonically increasing request identity. A worker handles file I/O; the original native setter is called on the game thread. Actual death, peer synchronization and settlement still need their own live evidence.
 
@@ -34,3 +34,9 @@ Native monster identities include zero; this is distinct from the nonzero player
 ## Native explicit card selection (private only)
 
 `free-card --uid COLUMN` and `paid-card --uid COLUMN` accept columns0–3 when the original four-player reward screen exposes an unowned visible card and this player has no selected/pending card of that type. They invoke the original C2 explicit selection routine on the game thread. `native_selection_pending` means the original routine accepted input, not a persisted reward or rendering pass. Independently reconcile service source/owner/receipts and four native views. Original timers are unchanged; these semantic actions are not physical mouse clicks.
+
+## Tower invincibility (private only)
+
+Start the private Chapter Two host and enter the Tower of Illusion. Run `python tools/debug/chapter_two_test_control.py --pid <PID> invincible-on` to enable the override and use `invincible-off` to disable it. `status` reports the active override and the player HP.
+
+While enabled, the local player ignores HP loss and has current and maximum HP and MP and all four primary attributes set to 1,000,000. The client computes derived stats from these values. Turning the override off or leaving the tower restores the original combat values in memory.

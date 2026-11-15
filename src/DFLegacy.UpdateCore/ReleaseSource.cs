@@ -11,8 +11,9 @@ public sealed record ReleaseSource(string Provider, string Repository, string Ch
     public void Validate()
     {
         if ((Provider == "local" ? !IsLocalRepository(Repository)
-                : Provider is not ("github" or "gitee" or "gitea") || Repository != "firekula/DFLegacy") || !ManifestCodec.IsName(Channel)
+                : Provider is not ("github" or "gitee" or "gitea" or "gitcode") || Repository != "firekula/DFLegacy") || !ManifestCodec.IsName(Channel)
             || Provider == "gitea" && Channel != "gitea-test"
+            || Provider == "gitcode" && Channel != "chapter-two"
             || Architecture is not ("x86" or "x64") || Flavor is not ("normal" or "test")) throw new InvalidDataException("更新源配置无效。");
     }
 

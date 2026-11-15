@@ -20,6 +20,8 @@ internal sealed class ItemTradeChannel
     public required ushort AreaUserId { get; init; }
     public required Guid SessionId { get; init; }
     public required Func<GameServerPacket, ValueTask> Send { get; init; }
+    public Func<bool>? IsChapterTwo { get; init; }
+    public uint CharacterCreatedAtUnixSeconds { get; init; }
 }
 
 internal sealed class ItemTradeSide
@@ -124,7 +126,9 @@ public sealed class ItemTradeService : BackgroundService
         ushort areaUserId,
         Guid sessionId,
         Func<GameServerPacket, ValueTask> send,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<bool>? isChapterTwo = null,
+        DateTimeOffset? createdAtUtc = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(accountName);
         ArgumentException.ThrowIfNullOrWhiteSpace(characterName);
@@ -139,6 +143,7 @@ public sealed class ItemTradeService : BackgroundService
             await CancelSessionForCharacterAsync(characterId, characterId, cancellationToken);
         }
 
+        var createdAtUnixSeconds = createdAtUtc?.ToUnixTimeSeconds();
         _channels[characterId] = new ItemTradeChannel
         {
             AccountName = accountName,
@@ -146,7 +151,11 @@ public sealed class ItemTradeService : BackgroundService
             CharacterId = characterId,
             AreaUserId = areaUserId,
             SessionId = sessionId,
-            Send = send
+            Send = send,
+            IsChapterTwo = isChapterTwo,
+            // Ver_OB_216 passes the field to its signed 32-bit local-time converter.
+            CharacterCreatedAtUnixSeconds = createdAtUnixSeconds is > 0 and <= int.MaxValue
+                ? (uint)createdAtUnixSeconds.Value : 0
         };
     }
 
@@ -301,7 +310,8 @@ public sealed class ItemTradeService : BackgroundService
             // 原样透传 CMD 10 的 u32（旧实现回传 requester.AreaUserId 正是真机 1 克假报错的根因）。
             GameProtocolEngine.CreateRequestPeerNotification(
                 session.Initiator.Channel.AreaUserId,
-                session.Initiator.WeightDelta),
+                session.Initiator.WeightDelta,
+                target.IsChapterTwo?.Invoke() == true ? requester.CharacterCreatedAtUnixSeconds : null),
             cancellationToken);
         _logger.LogInformation(
             "Trade {TradeId}: {Requester} requested {Target} (weight delta 0x{WeightDelta:X8}).",
@@ -342,7 +352,9 @@ public sealed class ItemTradeService : BackgroundService
             GameProtocolEngine.CreateResponsePeerNotification(
                 session.Partner.Channel.AreaUserId,
                 session.Partner.WeightDelta,
-                mode: 0),
+                mode: 0,
+                characterCreatedAtUnixSeconds: session.Initiator.Channel.IsChapterTwo?.Invoke() == true
+                    ? session.Partner.Channel.CharacterCreatedAtUnixSeconds : null),
             cancellationToken);
         await SendAsync(
             session.Partner,

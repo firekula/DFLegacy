@@ -90,7 +90,10 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<byte[]>? popupNotification = null,
         Action<byte>? weaknessRecovery = null,
         Action<ushort, byte>? dungeonPermission = null,
-        Action? victoryPointsChanged = null)
+        Action? victoryPointsChanged = null,
+        Action<uint>? guildDissolved = null,
+        Action<uint>? guildAnnouncementChanged = null,
+        Action<uint, GameServerPacket[], bool>? guildEvents = null)
     {
         if (characterNo == 0)
         {
@@ -112,7 +115,10 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             popupNotification,
             weaknessRecovery,
             dungeonPermission,
-            victoryPointsChanged);
+            victoryPointsChanged,
+            guildDissolved,
+            guildAnnouncementChanged,
+            guildEvents);
     }
 
     private async Task<CharacterSessionLease> ClaimCoreAsync(
@@ -130,7 +136,10 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action<byte[]>? popupNotification,
         Action<byte>? weaknessRecovery,
         Action<ushort, byte>? dungeonPermission,
-        Action? victoryPointsChanged = null)
+        Action? victoryPointsChanged = null,
+        Action<uint>? guildDissolved = null,
+        Action<uint>? guildAnnouncementChanged = null,
+        Action<uint, GameServerPacket[], bool>? guildEvents = null)
     {
         var candidate = new CharacterSessionLease(
             key,
@@ -146,7 +155,10 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             popupNotification,
             weaknessRecovery,
             dungeonPermission,
-            victoryPointsChanged);
+            victoryPointsChanged,
+            guildDissolved,
+            guildAnnouncementChanged,
+            guildEvents);
         while (true)
         {
             if (_activeCharacters.TryAdd(key, candidate))
@@ -438,6 +450,21 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
 
     public bool IsOnline(Guid characterId) => FindByCharacterId(characterId) is not null;
 
+    internal void NotifyGuildDissolved(Guid characterId, uint guildId) =>
+        FindByCharacterId(characterId)?.NotifyGuildDissolved(guildId);
+
+    internal void NotifyGuildAnnouncementChanged(Guid characterId, uint guildId) =>
+        FindByCharacterId(characterId)?.NotifyGuildAnnouncementChanged(guildId);
+
+    internal bool NotifyGuildEvents(Guid characterId, uint guildId, GameServerPacket[] packets,
+        bool refreshCharacter = false, Guid? expectedSessionId = null) =>
+        FindByCharacterId(characterId) is { } lease
+        && (expectedSessionId is null || lease.SessionId == expectedSessionId)
+        && lease.TryNotifyGuildEvents(guildId, packets, refreshCharacter);
+
+    internal Guid? GetGuildSessionId(Guid characterId) =>
+        FindByCharacterId(characterId) is { WasReplaced: false } lease ? lease.SessionId : null;
+
     internal void Disconnect(Guid characterId) => FindByCharacterId(characterId)?.Kick();
 
     private CharacterSessionLease? FindByCharacterId(Guid characterId)
@@ -473,6 +500,9 @@ public sealed class CharacterSessionLease
     private readonly Action<byte>? _weaknessRecovery;
     private readonly Action<ushort, byte>? _dungeonPermission;
     private readonly Action? _victoryPointsChanged;
+    private readonly Action<uint>? _guildDissolved;
+    private readonly Action<uint>? _guildAnnouncementChanged;
+    private readonly Action<uint, GameServerPacket[], bool>? _guildEvents;
     private readonly TaskCompletionSource _released =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _kickIssued;
@@ -491,7 +521,10 @@ public sealed class CharacterSessionLease
         Action<byte[]>? popupNotification,
         Action<byte>? weaknessRecovery,
         Action<ushort, byte>? dungeonPermission,
-        Action? victoryPointsChanged = null)
+        Action? victoryPointsChanged = null,
+        Action<uint>? guildDissolved = null,
+        Action<uint>? guildAnnouncementChanged = null,
+        Action<uint, GameServerPacket[], bool>? guildEvents = null)
     {
         Key = key;
         CharacterId = characterId;
@@ -507,6 +540,9 @@ public sealed class CharacterSessionLease
         _weaknessRecovery = weaknessRecovery;
         _dungeonPermission = dungeonPermission;
         _victoryPointsChanged = victoryPointsChanged;
+        _guildDissolved = guildDissolved;
+        _guildAnnouncementChanged = guildAnnouncementChanged;
+        _guildEvents = guildEvents;
     }
 
     public Guid CharacterId { get; }
@@ -546,6 +582,15 @@ public sealed class CharacterSessionLease
     internal void NotifyCera(uint value) => _ceraInfo?.Invoke(value);
 
     internal void NotifyVictoryPointsChanged() => _victoryPointsChanged?.Invoke();
+    internal void NotifyGuildDissolved(uint guildId) => _guildDissolved?.Invoke(guildId);
+    internal void NotifyGuildAnnouncementChanged(uint guildId) => _guildAnnouncementChanged?.Invoke(guildId);
+
+    internal bool TryNotifyGuildEvents(uint guildId, GameServerPacket[] packets, bool refreshCharacter)
+    {
+        if (_guildEvents is null || WasReplaced) return false;
+        _guildEvents(guildId, packets, refreshCharacter);
+        return true;
+    }
 
     internal void NotifyFatigueReset() => _fatigueReset?.Invoke();
 

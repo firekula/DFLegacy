@@ -14,7 +14,9 @@ public sealed record GameCharacterSummary(
     byte PvpGrade = 0,
     uint GuildId = 0,
     byte[]? GuildName = null,
-    byte GuildRank = 0);
+    byte GuildRank = 0,
+    byte ExpertJob = 0,
+    uint ExpertJobProficiency = 0);
 
 public sealed record GameInventoryEntry(
     ushort Slot,
@@ -22,7 +24,8 @@ public sealed record GameInventoryEntry(
     uint CountOrValue,
     byte State = 0,
     ushort Durability = 0,
-    byte SealState = 0);
+    byte SealState = 0,
+    ushort EnchantmentCardId = 0);
 public sealed record GameCreatureInfoEntry(
     uint Uid,
     byte Stomach,
@@ -149,6 +152,8 @@ public sealed record GameDungeonClearExperienceBreakdown
 
     public uint CreatureBonus { get; init; }
 
+    public uint GuildBonus { get; init; }
+
     public uint TotalExperience => (uint)Math.Min(
         uint.MaxValue,
         (ulong)BaseExperience
@@ -159,7 +164,8 @@ public sealed record GameDungeonClearExperienceBreakdown
         + BlackDiamondBonus
         + ChannelBonus
         + MentorBonus
-        + CreatureBonus);
+        + CreatureBonus
+        + GuildBonus);
 }
 
 public sealed record GameDungeonDrop(
@@ -795,7 +801,8 @@ public static partial class GameProtocolEngine
 
     public static bool TryParseCompoundItemCommand(
         ReadOnlySpan<byte> body,
-        out GameCompoundItemCommand command)
+        out GameCompoundItemCommand command,
+        bool allowChapterTwoPadding = false)
     {
         command = default;
         const int bodyLength = sizeof(ushort) // command sequence
@@ -804,7 +811,7 @@ public static partial class GameProtocolEngine
             + sizeof(byte)                   // craft count
             + sizeof(byte)                   // reserved zero
             + sizeof(byte);                  // fixed one
-        if (body.Length != bodyLength
+        if (!HasCommandBodyLength(body, bodyLength, allowChapterTwoPadding)
             || body[4] > 1
             || body[5] == 0
             || body[6] != 0
@@ -872,14 +879,15 @@ public static partial class GameProtocolEngine
 
     public static bool TryParseUpgradeItemCommand(
         ReadOnlySpan<byte> body,
-        out GameUpgradeItemCommand command)
+        out GameUpgradeItemCommand command,
+        bool allowChapterTwoPadding = false)
     {
         command = default;
         const int bodyLength = sizeof(ushort) // command sequence
             + sizeof(ushort)                 // target slot
             + sizeof(ushort)                 // target item id
             + sizeof(ushort);                // material slot
-        if (body.Length != bodyLength)
+        if (!HasCommandBodyLength(body, bodyLength, allowChapterTwoPadding))
         {
             return false;
         }
@@ -920,14 +928,15 @@ public static partial class GameProtocolEngine
 
     public static bool TryParseResetItemAttributeCommand(
         ReadOnlySpan<byte> body,
-        out GameResetItemAttributeCommand command)
+        out GameResetItemAttributeCommand command,
+        bool allowChapterTwoPadding = false)
     {
         command = default;
         const int bodyLength = sizeof(ushort) // command sequence
             + sizeof(ushort)                 // target slot
             + sizeof(ushort)                 // target item id
             + sizeof(ushort);                // material slot
-        if (body.Length != bodyLength)
+        if (!HasCommandBodyLength(body, bodyLength, allowChapterTwoPadding))
         {
             return false;
         }
@@ -1091,6 +1100,18 @@ public static partial class GameProtocolEngine
             CommandPacketType,
             IncreaseStatusCommand,
             payload.ToArray());
+    }
+
+    public static GameServerPacket CreateChapterTwoRevivalCoinExchangeReply(ushort sourceSlot)
+    {
+        // The stock CMD32 reader consumes one source before dispatching the
+        // status effect. Type 255 leaves every status unchanged. The coin
+        // balance is published through the main item list that follows.
+        var payload = new byte[10];
+        payload[0] = 1;
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(1), sourceSlot);
+        payload[3] = byte.MaxValue;
+        return new GameServerPacket(CommandPacketType, IncreaseStatusCommand, payload);
     }
 
     public static GameServerPacket CreateMailboxOpenReply(ushort notLoadedCount = 0)
@@ -1556,8 +1577,11 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             ItemListNotification,
-            payload.ToArray());
+            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(items) };
     }
+
+    private static ushort[]? InventoryEnchantments(IReadOnlyList<GameInventoryEntry> items) =>
+        items.Any(item => item.EnchantmentCardId != 0) ? items.Select(item => item.EnchantmentCardId).ToArray() : null;
 
     public static GameServerPacket CreateMainItemList(
         uint gold,
@@ -1624,7 +1648,7 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             UpdateItemListNotification,
-            payload.ToArray());
+            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(items) };
     }
 
     public static GameServerPacket CreateCreatureInfo(
@@ -2124,13 +2148,15 @@ public static partial class GameProtocolEngine
     /// <c>CNUser+0xF4</c>（0x41B5E9），锁定时的负重自检（0x4623A0）直接读它。
     /// 传 uid 或 0 会让对方算出 1 克的假缺额并拒绝发锁定包。
     /// </summary>
-    public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint weightDelta)
+    public static GameServerPacket CreateRequestPeerNotification(ushort requesterUid, uint weightDelta,
+        uint? characterCreatedAtUnixSeconds = null)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
         writer.Write(requesterUid);
         writer.Write((byte)1);
         writer.Write(weightDelta);
+        if (characterCreatedAtUnixSeconds is { } createdAt) writer.Write(createdAt);
         return new GameServerPacket(
             NotificationPacketType,
             RequestPeerNotification,
@@ -2144,7 +2170,8 @@ public static partial class GameProtocolEngine
     public static GameServerPacket CreateResponsePeerNotification(
         ushort accepterUid,
         uint weightDelta,
-        byte mode)
+        byte mode,
+        uint? characterCreatedAtUnixSeconds = null)
     {
         using var payload = new MemoryStream();
         using var writer = new BinaryWriter(payload);
@@ -2152,6 +2179,7 @@ public static partial class GameProtocolEngine
         writer.Write((byte)1);
         writer.Write(weightDelta);
         writer.Write(mode);
+        if (characterCreatedAtUnixSeconds is { } createdAt) writer.Write(createdAt);
         return new GameServerPacket(
             NotificationPacketType,
             ResponsePeerNotification,
@@ -4033,7 +4061,7 @@ public static partial class GameProtocolEngine
         // base plus the party bonus rather than base alone.
         writer.Write((uint)Math.Min(
             uint.MaxValue,
-            (ulong)experience.BaseExperience + experience.PartyBonus));
+            (ulong)experience.BaseExperience + experience.PartyBonus + experience.GuildBonus));
         writer.Write(experience.RankBonus);
         writer.Write(experience.PartyBonus);
         writer.Write(experience.AvatarBonus);
@@ -4494,8 +4522,8 @@ public static partial class GameProtocolEngine
             // Native mode 0 reads this layout after the guild name.
             writer.Write(0u);
             writer.Write((byte)1);
-            writer.Write((byte)0);
-            writer.Write(0u);
+            writer.Write(character.ExpertJob);
+            writer.Write(character.ExpertJobProficiency);
             writer.Write((byte)1);   // actor state applied by the mode-0 handler
             writer.Write(0u);
             writer.Write(0u);
@@ -4596,7 +4624,7 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             UserInfoNotification,
-            payload.ToArray());
+            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment) };
     }
 
     /// <summary>
@@ -4727,7 +4755,7 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             UserInfoNotification,
-            payload.ToArray());
+            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment) };
     }
 
     private static readonly GameCharacterCombatStats DefaultCombatStats = new(

@@ -4,6 +4,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include "Policy.h"
+#include "CombatOverride.h"
 #include <array>
 #include <cstdio>
 #include <cstring>
@@ -19,7 +20,7 @@ struct Coordinates {bool valid=false;float x=0,y=0,z=0;};
 struct Player {U uid=0,hp=0;bool dead=false;Coordinates position{};};
 struct Enemy {U uid=0,hp=0;bool dead=false,local=false;};
 struct Observation {State state{};Cards cards{};std::array<Target,256> targets{};unsigned count=0;
- Coordinates position{};std::array<Player,4> players{};unsigned playerCount=0;
+ Coordinates position{};std::array<Player,4> players{};unsigned playerCount=0;bool invincible=false;
  std::array<Enemy,256> enemies{};unsigned enemyCount=0;};
 struct Published {Observation observation{};std::uint64_t request=0;unsigned applied=0;char reason[64]="none";};
 SRWLOCK Lock=SRWLOCK_INIT;
@@ -27,6 +28,37 @@ Published Out{};Request Inbox{};bool Pending=false;
 State Identity{};std::uint64_t Consumed=0,Sequence=0,LastFrame=0;
 DWORD GameThread=0;wchar_t Directory[MAX_PATH]{};
 using Draw=int(__fastcall*)(void*,void*);Draw PreviousDraw=nullptr;
+using SetHp=void(__thiscall*)(void*,int,bool,void*);
+SetHp OriginalSetHp=nullptr;
+CombatOverride PlayerOverride{};
+U OverrideActor=0,OverrideUid=0;
+bool WantInvincible=false,CombatKeyDown=false,CombatTogglePending=false;
+constexpr U SetHpAddress=0x499850;
+constexpr unsigned char OriginalHpEntry[]={0xe9,0x93,0xb0,0xb5,0};
+std::array<unsigned char,5> InstalledHpEntry{};
+bool NativeTowerMode(){
+ const auto game=Read<U>(0xd564ac);
+ const auto mode=game?Read<U>(game+0x20):0;
+ return mode&&Read<U>(mode+0x23c)==10;
+}
+void __fastcall SetHpGuard(void* actor,void*,int hp,bool force,void* source){
+ const auto address=reinterpret_cast<U>(actor);
+ if(GetCurrentThreadId()==GameThread&&address==Read<U>(0xd7a8bc)&&PlayerOverride.BlocksHealthLoss(address,hp)&&NativeTowerMode())return;
+ OriginalSetHp(actor,hp,force,source);
+}
+bool InstallHealthGuard(){
+ if(OriginalSetHp)return std::memcmp(reinterpret_cast<void*>(SetHpAddress),InstalledHpEntry.data(),InstalledHpEntry.size())==0;
+ if(std::memcmp(reinterpret_cast<void*>(SetHpAddress),OriginalHpEntry,sizeof(OriginalHpEntry)))return false;
+ DWORD access=0;if(!VirtualProtect(reinterpret_cast<void*>(SetHpAddress),sizeof(OriginalHpEntry),PAGE_EXECUTE_READWRITE,&access))return false;
+ OriginalSetHp=reinterpret_cast<SetHp>(SetHpAddress+5+Read<std::int32_t>(SetHpAddress+1));
+ InstalledHpEntry[0]=0xe9;
+ const auto relative=reinterpret_cast<U>(&SetHpGuard)-(SetHpAddress+5);
+ std::memcpy(InstalledHpEntry.data()+1,&relative,4);
+ std::memcpy(reinterpret_cast<void*>(SetHpAddress),InstalledHpEntry.data(),InstalledHpEntry.size());
+ FlushInstructionCache(GetCurrentProcess(),reinterpret_cast<void*>(SetHpAddress),InstalledHpEntry.size());
+ DWORD ignored=0;VirtualProtect(reinterpret_cast<void*>(SetHpAddress),InstalledHpEntry.size(),access,&ignored);
+ return true;
+}
 bool Secure(U address,U& value){
  const auto manager=Read<U>(0xf35af0),key=Read<U>(0xf35af4);
  const auto encoded=Read<U>(address),index=Read<U>(address+4);
@@ -40,16 +72,44 @@ bool Secure(U address,U& value){
 bool Method(U actor,U offset,U expected){const auto vt=Read<U>(actor);return vt>=0x400000&&vt<0x1257000&&Read<U>(vt+offset)==expected;}
 bool Signatures(){
  constexpr unsigned char authority[]={0x8b,0x01,0xff,0x90,0x60,0x01,0,0,0x8b,0x0d,0xbc,0xa8,0xd7,0};
- constexpr unsigned char entry[]={0xe9,0x93,0xb0,0xb5,0};
  constexpr unsigned char owner[]={0x8b,0x81,0xb4,0x04,0,0,0xc3};
  constexpr unsigned char hp[]={0x81,0xc1,0x04,0x12,0,0,0xe9,0xf5,0x21,0x35,0};
  constexpr unsigned char dead[]={0x8b,0x91,0x24,0x15,0,0,0x33,0xc0,0x85,0xd2,0x0f,0x95,0xc0,0xc3};
  return !std::memcmp(reinterpret_cast<void*>(0x489bc0),authority,sizeof(authority))&&
- !std::memcmp(reinterpret_cast<void*>(0x499850),entry,sizeof(entry))&&
+ !std::memcmp(reinterpret_cast<void*>(SetHpAddress),OriginalSetHp?InstalledHpEntry.data():OriginalHpEntry,sizeof(OriginalHpEntry))&&
  !std::memcmp(reinterpret_cast<void*>(0x498ea0),owner,sizeof(owner))&&
  !std::memcmp(reinterpret_cast<void*>(0x6f48b0),hp,sizeof(hp))&&
  !std::memcmp(reinterpret_cast<void*>(0x6f4500),dead,sizeof(dead))&&
  Read<unsigned char>(0x4dafae)==0xc2&&Read<unsigned short>(0x4dafaf)==0x0c;
+}
+bool CombatRead(void*,U address,U& value) noexcept{return Secure(address,value);}
+bool CombatWrite(void*,U address,U value) noexcept{
+ U previous=0;if(!Secure(address,previous))return false;
+ using SetSecure=void(__thiscall*)(void*,const U*);
+ reinterpret_cast<SetSecure>(0x42fac0)(reinterpret_cast<void*>(address),&value);
+ return true;
+}
+constexpr CombatAccess PlayerCombatAccess{nullptr,&CombatRead,&CombatWrite};
+bool RestoreCombat(){
+ if(!OverrideActor){WantInvincible=false;return true;}
+ U uid=0;
+ if(Read<U>(0xd7a8bc)==OverrideActor&&Secure(OverrideActor+0xe8,uid)&&uid==OverrideUid&&
+  !PlayerOverride.Disable(OverrideActor,PlayerCombatAccess))return false;
+ PlayerOverride=CombatOverride{};
+ OverrideActor=0;OverrideUid=0;WantInvincible=false;
+ return true;
+}
+bool SetCombat(const State&s,bool enable){
+ constexpr unsigned char setter[]={0x55,0x8b,0xec,0x8b,0x15,0xf0,0x5a,0xf3,0};
+ if(s.scene!=10||s.actor!=Read<U>(0xd7a8bc)||!Method(s.actor,0x230,0x6f48c0)||
+  !Method(s.actor,0x33c,0x6f43e0)||!Method(s.actor,0x3f0,0x6f4910)||
+  std::memcmp(reinterpret_cast<void*>(0x42fac0),setter,sizeof(setter)))return false;
+ if(!enable)return RestoreCombat();
+ if(OverrideActor&&(OverrideActor!=s.actor||OverrideUid!=s.uid)){PlayerOverride=CombatOverride{};OverrideActor=0;OverrideUid=0;}
+ if(!InstallHealthGuard())return false;
+ const auto armed=PlayerOverride.Enable(s.actor,PlayerCombatAccess);
+ if(!armed){PlayerOverride.Disable(s.actor,PlayerCombatAccess);return false;}
+ OverrideActor=s.actor;OverrideUid=s.uid;WantInvincible=true;return true;
 }
 bool RegistryBinding(U registry,U uid,U user){
  const auto head=Read<U>(registry+0xc),count=Read<U>(registry+0x10);
@@ -72,20 +132,44 @@ bool Context(State& s){
   if(!area||!Read<U>(area+0x50))return false;
   s.actor=actor;s.map=map;s.stage=area;s.uid=uid;s.scene=1;return true;
  }
- if(scene!=3)return false;
+ if(scene!=3&&scene!=10)return false;
  const auto actor=Read<U>(0xd7a8bc),user=Read<U>(registry+0x2c);
  if(!actor||!user||Read<U>(user+0x168)!=actor||!Secure(actor+0xe8,uid)||!uid||uid>65535||!RegistryBinding(registry,uid,user))return false;
  U globalUid=0;if(!Secure(0xd7a8e4,globalUid)||globalUid!=uid)return false;
- const auto map=Read<U>(actor+0xfc),stage=Read<U>(ui+0x200010);
+ const auto mode=Read<U>(game+0x20);
+ const bool isTower=scene==10||(mode&&Read<U>(mode+0x23c)==10);
+ const auto tower=isTower?Read<U>(game+0x40):0;
+ const auto map=Read<U>(actor+0xfc),stage=isTower?(tower?Read<U>(tower+0x14):0):Read<U>(ui+0x200010);
  if(!map||!stage||Read<U>(stage+0xb0)!=map||Read<U>(actor+0x1524)||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
  if(!Method(actor,0x22c,0x6f48b0)||!Method(actor,0x3d0,0x6f4500))return false;
- s.actor=actor;s.map=map;s.stage=stage;s.uid=uid;s.scene=3;return true;
+ s.actor=actor;s.map=map;s.stage=stage;s.uid=uid;s.scene=isTower?10:3;return true;
+}
+bool IsTowerApc(U actor,const State&s){
+ if(!actor||s.scene!=10||actor==s.actor||(Read<U>(actor+0xe0)&0x111)!=0x111)return false;
+ const auto table=Read<U>(actor);
+ if(table!=0xb791cc&&table!=0xb79984&&table!=0xb7a13c&&table!=0xb7a91c&&table!=0xb7b0d4)return false;
+ U ai=0;return Method(actor,0x34,0x4aa0d0)&&Secure(actor+0x2670,ai)&&ai!=0&&Read<unsigned char>(actor+0x26c8)==1;
 }
 bool TargetFor(U actor,const State&s,Target& t){
- if(!actor||actor==s.actor||(Read<U>(actor+0xe0)&0x211)!=0x211||Read<U>(actor+0xfc)!=s.map||Read<U>(actor+0x4b4)!=s.actor||Read<U>(actor+0x1524))return false;
- constexpr U offsets[]={0x2c,0x160,0x22c,0x354,0x3d0,0x3dc,0x3e0};
- constexpr U methods[]={0x486fb0,0x498ea0,0x6f48b0,0x6f4400,0x6f4500,0x499850,0x4daea0};
- for(unsigned i=0;i<7;++i)if(!Method(actor,offsets[i],methods[i]))return false;
+ if(!actor||actor==s.actor)return false;
+ const bool towerApc=IsTowerApc(actor,s);
+ if(!towerApc&&(Read<U>(actor+0xe0)&0x211)!=0x211)return false;
+ if(Read<U>(actor+0xfc)!=s.map||Read<U>(actor+0x4b4)!=s.actor||Read<U>(actor+0x1524))return false;
+ if(towerApc){
+  if(!Method(actor,0x160,0x4a8830)||!Method(actor,0x1bc,0x4344c0)||!Method(actor,0x22c,0x6f48b0)||
+   !Method(actor,0x3d0,0x6f4500)||!Method(actor,0x3dc,0x499850))return false;
+  using GetTeam=int(__thiscall*)(void*);
+  if(reinterpret_cast<GetTeam>(0x4344c0)(reinterpret_cast<void*>(actor))!=100)return false;
+ }else{
+  const auto table=Read<U>(actor);
+  if(s.scene==10&&(table==0xbefb2c||table==0xbeab9c)&&
+   (!Method(actor,0x3fc,0x74f040)||Read<unsigned char>(actor+0x2675)!=1))return false;
+  if(s.scene==10&&table==0xbe5ec4&&
+   (!Method(actor,0x224,0x72de50)||Read<unsigned char>(actor+0x2630)!=1))return false;
+  constexpr U offsets[]={0x2c,0x160,0x22c,0x354,0x3d0,0x3dc,0x3e0};
+  constexpr U methods[]={0x486fb0,0x498ea0,0x6f48b0,0x6f4400,0x6f4500,0x499850,0x4daea0};
+  for(unsigned i=0;i<7;++i)if(!Method(actor,offsets[i],methods[i]))return false;
+ }
  U uid=0,hp=0;if(!Secure(actor+0xe8,uid)||uid>65535||!Secure(actor+0x1204,hp)||!hp||hp>INT_MAX)return false;
  t={actor,uid,hp};return true;
 }
@@ -175,12 +259,13 @@ bool Observe(Observation& o){
  PositionBinding own{};if(PositionFor(o.state.actor,own))o.position=own.position;
  for(auto at=begin;at<end;at+=4){const auto actor=Read<U>(at);if(!actor)continue;
   const auto kind=Read<U>(actor+0xe0);U uid=0,hp=0;
-  if(kind==0x111&&Read<U>(actor+0xfc)==o.state.map&&Secure(actor+0xe8,uid)&&uid&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
+  const bool towerApc=IsTowerApc(actor,o.state);
+  if(kind==0x111&&!towerApc&&Read<U>(actor+0xfc)==o.state.map&&Secure(actor+0xe8,uid)&&uid&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
    if(o.playerCount==o.players.size())return false;
    for(unsigned i=0;i<o.playerCount;++i)if(o.players[i].uid==uid)return false;
    PositionBinding p{};PositionFor(actor,p);o.players[o.playerCount++]={uid,hp,Read<U>(actor+0x1524)!=0,p.position};
   }
-  if((kind&0x211)==0x211&&Read<U>(actor+0xfc)==o.state.map&&Method(actor,0x22c,0x6f48b0)&&Method(actor,0x3d0,0x6f4500)&&Secure(actor+0xe8,uid)&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
+  if(((kind&0x211)==0x211||towerApc)&&Read<U>(actor+0xfc)==o.state.map&&Method(actor,0x22c,0x6f48b0)&&Method(actor,0x3d0,0x6f4500)&&Secure(actor+0xe8,uid)&&uid<=65535&&Secure(actor+0x1204,hp)&&hp<=INT_MAX){
    if(o.enemyCount==o.enemies.size())return false;
    for(unsigned i=0;i<o.enemyCount;++i)if(o.enemies[i].uid==uid)return false;
    o.enemies[o.enemyCount++]={uid,hp,Read<U>(actor+0x1524)!=0,Read<U>(actor+0x4b4)==o.state.actor};
@@ -189,7 +274,7 @@ bool Observe(Observation& o){
   if(o.count==o.targets.size())return false;
   for(unsigned i=0;i<o.count;++i)if(o.targets[i].uid==target.uid)return false;
   o.targets[o.count++]=target;
- }}o.cards=ReadCards(o.state);o.state.valid=true;return true;
+ }}o.cards=ReadCards(o.state);o.invincible=PlayerOverride.ActiveFor(o.state.actor);o.state.valid=true;return true;
 }
 bool SameContext(const State&a,const State&b){return a.actor==b.actor&&a.map==b.map&&a.stage==b.stage&&a.uid==b.uid&&a.scene==b.scene;}
 const char* Apply(const Request&r,const Observation& before,unsigned& applied){
@@ -197,7 +282,11 @@ const char* Apply(const Request&r,const Observation& before,unsigned& applied){
  Consumed=r.id;State live=Identity;if(!Signatures()||!Context(live)||!SameContext(live,before.state))return "context_changed";
  if(r.operation==3)return TownWalk(r,live,applied);
  if(r.operation==2)return Position(r,live,applied);
- if(r.operation>=4)return SelectCard(r,live,before.cards,applied);
+ if(r.operation==4||r.operation==5)return SelectCard(r,live,before.cards,applied);
+ if(r.operation==6||r.operation==7){
+  if(!SetCombat(live,r.operation==6))return "combat_override_failed";
+  applied=1;return r.operation==6?"invincible_enabled":"invincible_disabled";
+ }
  const auto begin=Read<U>(live.map+0x10),end=Read<U>(live.map+0x14);
  if(end<begin||(end-begin)%4||end-begin>4096)return "map_vector";
  Target found{};
@@ -217,6 +306,16 @@ void TickSafe(){
  unsigned applied=0;const char* reason=nullptr;
  __try {
   if(have)reason=Apply(request,before,applied);
+  State local=Identity;
+  if(Context(local)&&local.scene==10){
+   if(CombatTogglePending){
+    const auto enable=!WantInvincible;
+    if(SetCombat(local,enable))OutputDebugStringA(enable?"C2 private invincibility enabled.\n":"C2 private invincibility disabled.\n");
+   }else if(WantInvincible)SetCombat(local,true);
+  }else{
+   if(WantInvincible&&!NativeTowerMode())RestoreCombat();
+  }
+  CombatTogglePending=false;
   Observe(next);
  }__except(EXCEPTION_EXECUTE_HANDLER){next={};next.state=Identity;next.state.tick=GetTickCount64();next.state.snapshot=++Sequence;reason="native_context_exception";}
  AcquireSRWLockExclusive(&Lock);Out.observation=next;
@@ -225,7 +324,17 @@ void TickSafe(){
 }
 int __fastcall DrawFrame(void* state,void* extra){
  const int result=PreviousDraw(state,extra);
- const auto now=GetTickCount64();if(GetCurrentThreadId()==GameThread&&now-LastFrame>=100){LastFrame=now;TickSafe();}return result;
+ if(GetCurrentThreadId()==GameThread){
+  const bool pressed=(GetAsyncKeyState(VK_CONTROL)&0x8000)!=0&&(GetAsyncKeyState(VK_F10)&0x8000)!=0;
+  if(pressed&&!CombatKeyDown){
+   DWORD foreground=0;GetWindowThreadProcessId(GetForegroundWindow(),&foreground);
+   CombatTogglePending=foreground==GetCurrentProcessId();
+  }
+  CombatKeyDown=pressed;
+  const auto now=GetTickCount64();
+  if(CombatTogglePending||now-LastFrame>=100){LastFrame=now;TickSafe();}
+ }
+ return result;
 }
 void Save(const Published&p){
  wchar_t pending[MAX_PATH]{},destination[MAX_PATH]{};
@@ -235,7 +344,7 @@ void Save(const Published&p){
  std::fprintf(f,"{\"testOnly\":true,\"controlVersion\":2,\"pid\":%u,\"processStarted\":\"%llu\",\"nonce\":\"%llu\",\"snapshot\":\"%llu\",\"tick\":\"%llu\",\"enabled\":%s,\"supported\":%s,\"valid\":%s,\"actor\":%u,\"map\":%u,\"stage\":%u,\"uid\":%u,\"requestId\":\"%llu\",\"applied\":%u,\"reason\":\"%s\",\"targets\":[",s.pid,s.processStarted,s.nonce,s.snapshot,s.tick,s.enabled?"true":"false",s.supported?"true":"false",s.valid?"true":"false",s.actor,s.map,s.stage,s.uid,p.request,p.applied,p.reason);
  for(unsigned i=0;i<p.observation.count;++i){const auto&t=p.observation.targets[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":%u}",i?",":"",t.uid,t.hp);}
  const auto position=[&](const Coordinates&c){if(c.valid)std::fprintf(f,"{\"x\":%.6f,\"y\":%.6f,\"z\":%.6f}",c.x,c.y,c.z);else std::fprintf(f,"null");};
- std::fprintf(f,"],\"scene\":%u,\"position\":",s.scene);position(p.observation.position);std::fprintf(f,",\"players\":[");
+ std::fprintf(f,"],\"scene\":%u,\"invincible\":%s,\"position\":",s.scene,p.observation.invincible?"true":"false");position(p.observation.position);std::fprintf(f,",\"players\":[");
  for(unsigned i=0;i<p.observation.playerCount;++i){const auto&row=p.observation.players[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":",i?",":"",row.uid);if(s.scene==1)std::fprintf(f,"null,\"dead\":null");else std::fprintf(f,"%u,\"dead\":%s",row.hp,row.dead?"true":"false");std::fprintf(f,",\"position\":");position(row.position);std::fprintf(f,"}");}
  std::fprintf(f,"],\"enemies\":[");for(unsigned i=0;i<p.observation.enemyCount;++i){const auto&e=p.observation.enemies[i];std::fprintf(f,"%s{\"uid\":%u,\"hp\":%u,\"dead\":%s,\"local\":%s}",i?",":"",e.uid,e.hp,e.dead?"true":"false",e.local?"true":"false");}
  const auto&c=p.observation.cards;

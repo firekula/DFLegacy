@@ -24,6 +24,7 @@ public sealed record CompoundRecipeDefinition(
 public sealed class CompoundCatalog
 {
     private const string StackableListPath = "stackable/stackable.lst";
+    private const string ChapterTwoNpcRecipePath = "itemshop/itemproduct1.shp";
     private const int MaximumRowCount = 64;
 
     private static readonly Encoding ScriptEncoding = CreateScriptEncoding();
@@ -37,6 +38,10 @@ public sealed class CompoundCatalog
         RegexOptions.IgnoreCase | RegexOptions.Multiline);
     private static readonly Regex IntDataPattern = new(
         @"\[int data\]\s*(?<value>.*?)\s*\[/int data\]",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant |
+        RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex NpcRecipeListPattern = new(
+        @"\[sell item\](?<rows>.*?)\[/sell item\]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant |
         RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex IntegerPattern = new(
@@ -78,6 +83,9 @@ public sealed class CompoundCatalog
         ushort recipeItemId,
         out CompoundRecipeDefinition definition) =>
         _state.Value.Recipes.TryGetValue(recipeItemId, out definition!);
+
+    public bool IsChapterTwoNpcRecipe(ushort itemId) =>
+        _state.Value.ChapterTwoNpcRecipes.Contains(itemId);
 
     private CatalogState Load()
     {
@@ -151,7 +159,32 @@ public sealed class CompoundCatalog
             invalidRecipes,
             missingScripts);
         return new CatalogState(
-            new ReadOnlyDictionary<ushort, CompoundRecipeDefinition>(recipes));
+            new ReadOnlyDictionary<ushort, CompoundRecipeDefinition>(recipes),
+            LoadChapterTwoNpcRecipes(recipes));
+    }
+
+    private HashSet<ushort> LoadChapterTwoNpcRecipes(
+        IReadOnlyDictionary<ushort, CompoundRecipeDefinition> recipes)
+    {
+        // Roger's product list contains the Chapter Two recipes that the NPC
+        // sends directly by item ID.
+        if (!_scripts.FileExists(ChapterTwoNpcRecipePath)) return [];
+
+        var script = _scripts.ReadAllTextUncached(ChapterTwoNpcRecipePath, ScriptEncoding);
+        var entries = NpcRecipeListPattern.Match(script).Groups["rows"].Value;
+        var result = new HashSet<ushort>();
+        foreach (var line in entries.Split('\n'))
+        {
+            var comment = line.IndexOf("//", StringComparison.Ordinal);
+            var value = (comment < 0 ? line.AsSpan() : line.AsSpan(0, comment)).Trim();
+            if (ushort.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var id)
+                && recipes.ContainsKey(id))
+            {
+                result.Add(id);
+            }
+        }
+
+        return result;
     }
 
     private static bool TryParseRecipe(
@@ -347,10 +380,12 @@ public sealed class CompoundCatalog
     }
 
     private sealed record CatalogState(
-        IReadOnlyDictionary<ushort, CompoundRecipeDefinition> Recipes)
+        IReadOnlyDictionary<ushort, CompoundRecipeDefinition> Recipes,
+        HashSet<ushort> ChapterTwoNpcRecipes)
     {
         public static CatalogState Empty { get; } = new(
             new ReadOnlyDictionary<ushort, CompoundRecipeDefinition>(
-                new Dictionary<ushort, CompoundRecipeDefinition>()));
+                new Dictionary<ushort, CompoundRecipeDefinition>()),
+            []);
     }
 }

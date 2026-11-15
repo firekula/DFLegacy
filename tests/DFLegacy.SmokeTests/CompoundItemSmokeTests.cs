@@ -2,7 +2,7 @@ using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.Logging.Abstractions;
 
-internal static class CompoundItemSmokeTests
+internal static partial class CompoundItemSmokeTests
 {
     public static async Task RunAsync(Action<bool, string> check)
     {

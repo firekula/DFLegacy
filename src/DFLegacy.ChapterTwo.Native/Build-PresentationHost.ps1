@@ -142,19 +142,28 @@ $localPartyRelay = @'
     }
 '@
 $original = $original.Replace($originalPartyRelay, $localPartyRelay)
+$peerLookupAnchor = '    static char loopbackName[]="localhost";'
+$peerLookup = @'
+    if(auto* peer=dfl::chapter_two::ResolveGamePeerHost(name,reinterpret_cast<uintptr_t>(_ReturnAddress()))){
+        report("GAME_HOST_LOOKUP peer %s\n", peer->h_name);
+        return peer;
+    }
+'@
+if (!$original.Contains($peerLookupAnchor)) { throw 'Missing verified game peer lookup.' }
+$original = $original.Replace($peerLookupAnchor, $peerLookup.Replace("`r`n", "`n") + "`n" + $peerLookupAnchor)
 $channelReset = 'if(port==47001 || (port>=7100 && port<=7105))InterlockedExchange(&resetChannelCipher,1);'
 if (!$original.Contains($channelReset)) { throw 'Missing verified channel reset anchor.' }
-$original = $original.Replace($channelReset, 'if(port==47001 || (port>=7100 && port<=7105) || dfl::chapter_two::IsPvpPort(port))InterlockedExchange(&resetChannelCipher,1);')
+$original = $original.Replace($channelReset, 'if(dfl::chapter_two::IsTownChannelPort(port) || dfl::chapter_two::IsPvpPort(port))InterlockedExchange(&resetChannelCipher,1);')
 $pvpExitAnchor = 'static int WSAAPI GameBind(SOCKET socket,const sockaddr* address,int length)'
 if (!$original.Contains($pvpExitAnchor)) { throw 'Missing verified game socket hook section.' }
 $pvpExitHook = @'
-static void __fastcall CloseAndResumeRemoteDuel(unsigned char* network, void*)
+static void __fastcall CloseAndResumeChannelSwitch(unsigned char* network, void*)
 {
     using NativeRoutine = void(__thiscall*)(void*);
     using ReadSecure = int(__thiscall*)(void*);
     // This is the successful EXIT path in the channel transition scene.
     // A close performed here can consume the native FD_CLOSE before it arms
-    // the reconnect timer, leaving the selected duel channel on a black screen.
+    // the reconnect timer for the selected town or duel channel.
     reinterpret_cast<NativeRoutine>(0x009cc190)(network);
     const auto* game = *reinterpret_cast<unsigned char**>(0x00d564ac);
     if (!game || network != *reinterpret_cast<unsigned char**>(0x00dfcc98)
@@ -166,7 +175,7 @@ static void __fastcall CloseAndResumeRemoteDuel(unsigned char* network, void*)
     const int group = *reinterpret_cast<const int*>(channel+0x290);
     const int category = *reinterpret_cast<const int*>(channel+0x298);
     const int row = *reinterpret_cast<const int*>(channel+0x2a0);
-    if (group < 0 || group >= 109 || category != 4 || row < 0) return;
+    if (group < 0 || group >= 109 || (category != 0 && category != 2 && category != 4) || row < 0) return;
 
     const auto* table = channel+0x2044+group*0xcc+category*0x10;
     const auto begin = *reinterpret_cast<const uintptr_t*>(table);
@@ -180,7 +189,7 @@ static void __fastcall CloseAndResumeRemoteDuel(unsigned char* network, void*)
     const int port = *reinterpret_cast<const int*>(record+0x54);
     char host[16]{};
     in_addr remote{}, dial{};
-    if (port < 1 || port > 65535 || !dfl::chapter_two::IsPvpPort(static_cast<unsigned short>(port))
+    if (port < 1 || port > 65535 || !dfl::chapter_two::IsChannelSwitchPort(category, static_cast<unsigned short>(port))
         || record[0x58] == 1 || !std::memchr(record+0x40,0,16)
         || InetPtonA(AF_INET,reinterpret_cast<const char*>(record+0x40),&dial) != 1) return;
     const bool localRelay = dfl::chapter_two::ReadLocalRelayIpv4(host,remote);
@@ -205,7 +214,7 @@ $pvpInstall = @'
                 return 46;
             }
             auto* call = base+0x1078f;
-            const DWORD displacement = reinterpret_cast<DWORD>(CloseAndResumeRemoteDuel)
+            const DWORD displacement = reinterpret_cast<DWORD>(CloseAndResumeChannelSwitch)
                 - reinterpret_cast<DWORD>(call+5);
             std::memcpy(call+1,&displacement,sizeof(displacement));
         }
@@ -366,6 +375,9 @@ $configure = @(
     '        return 40;',
     '    }',
     '    OutputDebugStringA("DFLegacy Chapter Two: native payment URL installed.\n");',
+    '    OutputDebugStringA(dfl::chapter_two::InstallGuildNavigation(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: native guild website navigation installed.\n"',
+    '        : "DFLegacy Chapter Two: guild website navigation signature mismatch.\n");',
     '    if (dfl::chapter_two::InstallPaymentViewport(base, nt->OptionalHeader.SizeOfImage))',
     '        OutputDebugStringA("DFLegacy Chapter Two: native payment layout installed.\n");',
     '    if (dfl::chapter_two::InstallNpcDialogueLayout(base, nt->OptionalHeader.SizeOfImage))',
@@ -416,6 +428,7 @@ $configure = @(
 ) -join $nl
 $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTwoPerformance.h"' + $nl +
     '#include "ChapterTwoPaymentProtocol.h"' + $nl + '#include "ChapterTwoPaymentViewport.h"' + $nl +
+    '#include "ChapterTwoGuildNavigation.h"' + $nl +
     '#include "ChapterTwoNpcDialogue.h"' + $nl +
     '#include "ChapterTwoWarehouseUpgrade.h"' + $nl +
     '#include "ChapterTwoInventoryTab.h"' + $nl +
@@ -491,6 +504,8 @@ if ($LASTEXITCODE) { throw 'Chapter Two native creature shop tests failed.' }
 if ($LASTEXITCODE) { throw 'Chapter Two cursor auto tests failed.' }
 & (Join-Path $build 'Release/chapter_two_payment_protocol_tests.exe')
 if ($LASTEXITCODE) { throw 'Chapter Two local payment routing tests failed.' }
+& (Join-Path $build 'Release/chapter_two_guild_navigation_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two native guild website navigation tests failed.' }
 & (Join-Path $build 'Release/chapter_two_hud_portrait_cache_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two HUD portrait cache tests failed.' }
 & (Join-Path $build 'Release/chapter_two_hud_portrait_fallback_tests.exe') $image

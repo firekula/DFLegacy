@@ -13,9 +13,14 @@ public sealed class ReleaseProvider : IReleaseProvider
     public ReleaseSource Source { get; }
     public string Identity => Source.Identity;
     private string Api => Source.Provider switch
-    { "github" => "https://api.github.com", "gitea" => ReleaseSource.GiteaOrigin + "/api/v1", _ => "https://gitee.com/api/v5" };
-    private int PageSize => Source.Provider == "gitea" ? 50 : 100;
-    private sealed record Attachment(string Name, long Size, Uri Url, string? Digest, long Id, long ReleaseId = 0);
+    {
+        "github" => "https://api.github.com",
+        "gitcode" => "https://api.gitcode.com/api/v5",
+        "gitea" => ReleaseSource.GiteaOrigin + "/api/v1",
+        _ => "https://gitee.com/api/v5"
+    };
+    private int PageSize => Source.Provider switch { "gitcode" => 20, "gitea" => 50, _ => 100 };
+    private sealed record Attachment(string Name, long? Size, Uri Url, string? Digest, long Id, long ReleaseId = 0);
     public ReleaseProvider(HttpClient http, ReleaseSource source)
     {
         source.Validate();
@@ -35,7 +40,7 @@ public sealed class ReleaseProvider : IReleaseProvider
         var candidates = new List<VerifiedRelease>();
         for (var page = 1; page <= 3; page++)
         {
-            var paging = Source.Provider == "gitea" ? "limit=50" : "per_page=100";
+            var paging = Source.Provider == "gitea" ? $"limit={PageSize}" : $"per_page={PageSize}";
             using var releases = await JsonAsync($"/repos/{Source.Repository}/releases?{paging}&page={page}", token).ConfigureAwait(false);
             if (releases.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException("发行版列表不是数组。");
             foreach (var release in releases.RootElement.EnumerateArray())
@@ -48,12 +53,12 @@ public sealed class ReleaseProvider : IReleaseProvider
                 if (manifests.Length == 0) continue; // Gitee makes a release visible before the last manifest upload.
                 if (manifests.Length != 1) throw new InvalidDataException("发行版中有重复更新清单。");
                 var asset = manifests[0]; ValidateAttachment(asset, tag!);
-                if (asset.Size <= 0 || asset.Size > ManifestCodec.MaxBytes) throw new InvalidDataException("更新清单附件大小无效。");
+                if (asset.Size is <= 0 or > ManifestCodec.MaxBytes) throw new InvalidDataException("更新清单附件大小无效。");
                 using var response = await AssetAsync(asset, tag!, 0, null, token).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode(); RejectHtml(response);
                 var bytes = await ReadBoundedAsync(response, ManifestCodec.MaxBytes, token).ConfigureAwait(false);
                 var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
-                if (bytes.LongLength != asset.Size || asset.Digest != null && asset.Digest != "sha256:" + hash)
+                if (asset.Size is long size && bytes.LongLength != size || asset.Digest != null && asset.Digest != "sha256:" + hash)
                     throw new InvalidDataException("更新清单附件摘要或长度不符。");
                 var found = new VerifiedRelease(Source, tag!, hash, bytes); found.Validate(Source); candidates.Add(found);
             }
@@ -68,9 +73,7 @@ public sealed class ReleaseProvider : IReleaseProvider
     private static bool IsDraft(JsonElement release) => release.TryGetProperty("draft", out var value) && value.ValueKind == JsonValueKind.True;
     private async Task<List<Attachment>> AttachmentsAsync(JsonElement release, CancellationToken token)
     {
-        // Gitea's Release embeds its complete attachment array, like GitHub.
-        // Avoid one extra API request for every historical non-V4 release.
-        if (Source.Provider is "github" or "gitea") return ParseAttachments(release.GetProperty("assets"));
+        if (Source.Provider is "github" or "gitea" or "gitcode") return ParseAttachments(release.GetProperty("assets"));
         var id = release.GetProperty("id").GetInt64();
         if (id <= 0) throw new InvalidDataException("发行版 ID 无效。");
         var result = new List<Attachment>();
@@ -82,18 +85,21 @@ public sealed class ReleaseProvider : IReleaseProvider
         }
         throw new InvalidDataException("发行版附件列表过大或分页未结束。");
     }
-    private static List<Attachment> ParseAttachments(JsonElement array)
+    private List<Attachment> ParseAttachments(JsonElement array)
     {
         if (array.ValueKind != JsonValueKind.Array) throw new InvalidDataException("附件列表格式无效。");
         var result = new List<Attachment>();
         foreach (var item in array.EnumerateArray())
         {
+            var gitcode = Source.Provider == "gitcode";
+            if (gitcode && item.TryGetProperty("type", out var type) && type.GetString() == "source") continue;
             var name = item.GetProperty("name").GetString() ?? "";
             if (!ManifestCodec.IsName(name)) continue;
             if (!Uri.TryCreate(item.GetProperty("browser_download_url").GetString(), UriKind.Absolute, out var uri)) throw new InvalidDataException("附件地址无效。");
-            var size = item.GetProperty("size").GetInt64();
-            var id = item.GetProperty("id").GetInt64();
+            long? size = gitcode && !item.TryGetProperty("size", out _) ? null : item.GetProperty("size").GetInt64();
+            var id = gitcode ? 0L : item.GetProperty("id").GetInt64();
             var digest = item.TryGetProperty("digest", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+            if (gitcode && string.IsNullOrEmpty(digest)) digest = null;
             result.Add(new(name, size, uri, digest, id));
         }
         return result;
@@ -102,7 +108,10 @@ public sealed class ReleaseProvider : IReleaseProvider
     {
         if (!ManifestCodec.IsName(part.Release) || !ManifestCodec.IsName(part.Asset)) throw new InvalidDataException("附件身份无效。");
         var assets = (await FixedAttachmentsAsync(part.Release,token).ConfigureAwait(false)).Where(a => a.Name == part.Asset).ToArray();
-        if (assets.Length != 1 || assets[0].Size != part.Size || assets[0].Digest != null && assets[0].Digest != "sha256:" + part.Sha256)
+        if (assets.Length == 0 && Source.Provider is "github" or "gitcode")
+            throw new HttpRequestException("发行版中没有所需的更新资源。", null, HttpStatusCode.NotFound);
+        if (assets.Length != 1 || assets[0].Size is long size && size != part.Size
+            || assets[0].Digest != null && assets[0].Digest != "sha256:" + part.Sha256)
             throw new InvalidDataException("更新资源附件缺失、重复或内容身份不符。");
         ValidateAttachment(assets[0], part.Release);
         return await AssetAsync(assets[0], part.Release, offset, etag, token).ConfigureAwait(false);
@@ -125,7 +134,9 @@ public sealed class ReleaseProvider : IReleaseProvider
     private void ValidateAttachment(Attachment asset, string tag)
     {
         var uri = asset.Url; RequireTransport(uri);
-        var valid = Source.Provider == "github"
+        var valid = Source.Provider == "gitcode"
+            ? IsGitCodeAttachment(uri, tag, asset.Name)
+            : Source.Provider == "github"
             ? uri.Host == "github.com" && uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}"
             : Source.Provider == "gitea"
             ? asset.Id > 0 && IsGiteaOrigin(uri) && (uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{asset.Name}" || IsGiteaAttachment(uri))
@@ -136,6 +147,11 @@ public sealed class ReleaseProvider : IReleaseProvider
                  || uri.AbsolutePath == $"/api/v5/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download");
         if (!valid || uri.Query.Length != 0) throw new InvalidDataException("附件地址不属于所配置发行版。");
     }
+    private bool IsGitCodeAttachment(Uri uri, string tag, string name) =>
+        (uri.Host is "gitcode.com" or "atomgit.com" && uri.AbsolutePath == $"/{Source.Repository}/releases/download/{tag}/{name}")
+        || (uri.Host is "api.gitcode.com" or "api.atomgit.com" && uri.AbsolutePath == GitCodeDownloadPath(tag, name));
+    private string GitCodeDownloadPath(string tag, string name) =>
+        $"/api/v5/repos/{Source.Repository}/releases/{tag}/attach_files/{name}/download";
     private static bool IsGiteaOrigin(Uri uri) => uri.Scheme == "http" && uri.Host == "firekula.site" && uri.Port == 3000;
     private static bool IsGiteaAttachment(Uri uri) => System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath,
         @"\A/attachments/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\z");
@@ -153,15 +169,23 @@ public sealed class ReleaseProvider : IReleaseProvider
     private async Task<HttpResponseMessage> AssetAsync(Attachment asset, string tag, long offset, string? etag, CancellationToken token)
     {
         ValidateAttachment(asset, tag);
-        var canonical = Source.Provider == "gitee"
-            ? new Uri($"{Api}/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download") : asset.Url;
+        var canonical = Source.Provider switch
+        {
+            "gitee" => new Uri($"{Api}/repos/{Source.Repository}/releases/{asset.ReleaseId}/attach_files/{asset.Id}/download"),
+            "gitcode" => new Uri("https://api.gitcode.com" + GitCodeDownloadPath(tag, asset.Name)),
+            _ => asset.Url
+        };
         var uri = canonical;
         for (var hop = 0; hop < 6; hop++)
         {
             RequireTransport(uri);
             if (hop > 0)
             {
-                var valid = Source.Provider == "github"
+                var valid = Source.Provider == "gitcode"
+                    ? uri == canonical || (uri.Host == "file-cdn.gitcode.com"
+                        && uri.AbsolutePath.EndsWith("/" + asset.Name, StringComparison.Ordinal)
+                        && uri.Query.StartsWith("?auth_key=", StringComparison.Ordinal))
+                    : Source.Provider == "github"
                     ? uri.Host is "release-assets.githubusercontent.com" or "objects.githubusercontent.com" || uri == asset.Url
                     : Source.Provider == "gitea"
                     ? IsGiteaOrigin(uri) && uri.Query.Length == 0 && (uri == asset.Url || IsGiteaAttachment(uri))
@@ -200,7 +224,7 @@ public sealed class ReleaseProvider : IReleaseProvider
         {
             using var idle = CancellationTokenSource.CreateLinkedTokenSource(token); idle.CancelAfter(TimeSpan.FromSeconds(20));
             using var response = await SendAsync(new Uri(Api + relative), 0, null, true, idle.Token).ConfigureAwait(false);
-            if (((int)response.StatusCode is 429 or >= 500) && attempt < 3)
+            if (((int)response.StatusCode is 429 or >= 500) && Source.Provider != "gitcode" && attempt < 3)
             {
                 var delay = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromMilliseconds(500 * Math.Pow(2, attempt));
                 await Task.Delay(TimeSpan.FromMilliseconds(Math.Clamp(delay.TotalMilliseconds, 0, 30000)), token).ConfigureAwait(false); continue;

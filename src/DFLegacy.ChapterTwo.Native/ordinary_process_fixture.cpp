@@ -70,6 +70,38 @@ static bool LoopbackBoundary()
     OutputDebugStringA("DFLegacy Chapter Two: FIXTURE_LOOPBACK bind=127.0.0.2 external=denied wrongport=denied");
     return true;
 }
+static bool IsolatedFallbackBoundary()
+{
+    const auto inputText = Environment(L"DFL_S1C2_BROKER_IN"), outputText = Environment(L"DFL_S1C2_BROKER_OUT");
+    const auto input = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(_wcstoui64(inputText.c_str(), nullptr, 10)));
+    const auto output = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(_wcstoui64(outputText.c_str(), nullptr, 10)));
+    const auto exchange = [input, output](const localwire::Request& request, localwire::Reply& reply) {
+        return localwire::write(output, &request, sizeof(request)) && localwire::read(input, &reply, sizeof(reply));
+    };
+    // Connect a datagram socket to exercise the broker route without a listener.
+    localwire::Request request{};
+    localwire::Reply reply{};
+    request.op = localwire::Operation::Open;
+    request.family = AF_INET;
+    request.type = SOCK_DGRAM;
+    request.protocol = IPPROTO_UDP;
+    if (!exchange(request, reply) || reply.result || !reply.id) return false;
+    request.id = reply.id;
+    request.op = localwire::Operation::Connect;
+    request.address.sin_family = AF_INET;
+    request.address.sin_addr.s_addr = htonl(0x7f000003);
+    request.address.sin_port = htons(47001);
+    if (!exchange(request, reply) || reply.result != SOCKET_ERROR || reply.error != WSAEACCES) return false;
+    request.address.sin_port = htons(47005);
+    if (!exchange(request, reply) || reply.result) {
+        OutputDebugStringA("DFLegacy Chapter Two: FIXTURE_FALLBACK isolated endpoint denied");
+        return false;
+    }
+    request.op = localwire::Operation::Close;
+    if (!exchange(request, reply) || reply.result) return false;
+    OutputDebugStringA("DFLegacy Chapter Two: FIXTURE_FALLBACK connected");
+    return true;
+}
 static void HandledFault()
 {
     __try { RaiseException(0xE0424242, 0, 0, nullptr); }
@@ -98,10 +130,17 @@ int wmain(int argc, wchar_t** argv)
     if (wcscmp(argv[1], L"without-broker")) {
         if (!InheritedLog(L"DFL_S1C2_PERF_INTERVAL_HANDLE") || !InheritedLog(L"DFL_S1C2_PERF_TOTAL_HANDLE") || !InheritedLog(L"DFL_S1C2_PERF_SLOW_HANDLE")) return 49;
         if (!LoopbackBoundary()) return 50;
+        if (!IsolatedFallbackBoundary()) return 51;
     }
     OutputDebugStringA("DFLegacy Chapter Two: FIXTURE_IDENTITY appcontainer=0 desktop=unchanged session=unchanged");
     HandledFault();
     OutputDebugStringA("DFLegacy Chapter Two: FIXTURE_HANDLED_EXCEPTION recovered");
+    if (!wcscmp(argv[1], L"normal")) {
+        OutputDebugStringA("DFL_S1C2_GUILD_OPEN");
+        std::fputs("NATIVE_CHANNEL_BODY", stdout);
+        std::fflush(stdout);
+        OutputDebugStringA("DFL_S1C2_GUILD_OPEN");
+    }
     if (!wcscmp(argv[1], L"crash")) *reinterpret_cast<volatile int*>(0) = 7;
     return !wcscmp(argv[1], L"nonzero") ? 5 : 0;
 }

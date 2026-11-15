@@ -11,6 +11,9 @@ public sealed record GameServerPacket(byte Type, byte ProtocolId, byte[] Payload
 {
     public const int HeaderLength = 6;
 
+    // Receiver-specific item fields stay out of the original ACT1 packet body.
+    public ushort[]? ChapterTwoInventoryEnchantments { get; init; }
+
     public int TotalLength => checked(HeaderLength + Payload.Length);
 
     public byte[] Encode()

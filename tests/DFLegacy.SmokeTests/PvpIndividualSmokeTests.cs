@@ -12,6 +12,7 @@ internal static class PvpIndividualSmokeTests
     {
         Configuration(check);
         ChapterTwoRoomCreate(check);
+        await ChapterTwoPvpQuickJoinSmokeTests.RunAsync(check);
         await RoomsAndMatches(check);
         await TimeoutsAndForfeits(check);
         await Persistence(check);

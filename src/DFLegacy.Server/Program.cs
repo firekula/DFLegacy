@@ -164,6 +164,7 @@ builder.Services.AddSingleton<HellDropCatalog>();
 builder.Services.AddSingleton<ObjectDropCatalog>();
 builder.Services.AddSingleton<ObjectDropGenerator>();
 builder.Services.AddSingleton<ClearRewardCatalog>();
+builder.Services.AddSingleton<ChapterTwoTowerRewardPlanner>();
 builder.Services.AddSingleton<ClearRewardGenerator>();
 builder.Services.AddSingleton<GameplayDatagramService>();
 builder.Services.AddSingleton<FallbackRelayService>();
@@ -403,6 +404,7 @@ app.MapGet("/client", () => Results.Redirect("/client/client_pay.htm"));
 app.MapGet("/client/", () => Results.Redirect("/client/client_pay.htm"));
 app.MapGet("/client/client_pay", () => Results.Redirect("/client/client_pay.htm"));
 app.MapGet("/client/client_diamond", () => Results.Redirect("/client/client_diamond.htm"));
+app.MapClientGuild();
 app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));

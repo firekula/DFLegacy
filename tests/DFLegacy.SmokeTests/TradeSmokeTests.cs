@@ -11,6 +11,7 @@ internal static class TradeSmokeTests
     {
         ArgumentNullException.ThrowIfNull(check);
         CheckTradePackets(check);
+        await ChapterTwoTradePeerSmokeTests.RunAsync(check);
         CheckPlanner(check);
         await CheckStoreAsync(check);
         await CheckRequestFlowAsync(check);

@@ -37,7 +37,9 @@ public sealed record CharacterItemRecord(
     Guid InstanceId = default,
     // Server UTC deadline; the legacy AvatarExpireAt key above remains seconds.
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    long? AvatarExpiresAtUnixSeconds = null);
+    long? AvatarExpiresAtUnixSeconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ushort EnchantmentCardId = 0);
 
 public sealed record CharacterSkillRecord(
     byte Slot,
@@ -61,7 +63,9 @@ public sealed record CharacterMailAttachmentRecord(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     Guid InstanceId = default,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    long? AvatarExpiresAtUnixSeconds = null);
+    long? AvatarExpiresAtUnixSeconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ushort EnchantmentCardId = 0);
 
 public sealed record CharacterMailRecord(
     uint Id,
@@ -276,7 +280,7 @@ public sealed record CharacterWeaknessRecoveryUpdate(
     Guid CharacterId,
     byte Recovery);
 
-public sealed record CharacterRecord(
+public sealed partial record CharacterRecord(
     Guid Id,
     string Name,
     int Job,
@@ -343,6 +347,9 @@ public sealed record CharacterRecord(
     byte MentorExperienceBonusPercent = 0,
     uint MentorRelationshipExperience = 0)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? CreatedAtUtc { get; init; }
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<DungeonGoldCredit>? PendingDungeonGoldCredits { get; init; }
 
@@ -693,6 +700,7 @@ public sealed partial class JsonGameStore(
         public List<PvpSettlementReceipt> PvpLedger { get; set; } = [];
         public List<AdminVictoryPointReceipt> AdminVictoryPointGrants { get; set; } = [];
         public List<AdminMailBatchReceipt> AdminMailBatches { get; set; } = [];
+        public ChapterTwoTowerRankingState? ChapterTwoTowerRanking { get; set; }
         public List<GuildRecord> Guilds { get; set; } = [];
         public uint NextGuildId { get; set; } = 1;
     }
@@ -764,6 +772,7 @@ public sealed partial class JsonGameStore(
                     _pvpLedger = state.PvpLedger ?? [];
                     _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
                     _adminMailBatches = state.AdminMailBatches ?? [];
+                    _chapterTwoTowerRanking = state.ChapterTwoTowerRanking ?? new(default, [], []);
                     _guilds = state.Guilds ?? [];
                     var maximumGuildId = _guilds.Select(guild => guild.Id).DefaultIfEmpty(0u).Max();
                     _nextGuildId = Math.Max(state.NextGuildId, maximumGuildId == uint.MaxValue ? uint.MaxValue : maximumGuildId + 1);
@@ -1912,7 +1921,10 @@ public sealed partial class JsonGameStore(
             Slot: checked((byte)account.Characters.Count),
             UnlockedDungeonIds: [],
             DungeonProgress: [],
-            TutorialStarted: false);
+            TutorialStarted: false)
+        {
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
         account.Characters.Add(character);
         return character;
     }
@@ -3504,6 +3516,7 @@ public sealed partial class JsonGameStore(
         _dungeonRewardLedger = state.DungeonRewardLedger; _dungeonGoldLedger = state.DungeonGoldLedger; _pvpLedger = state.PvpLedger ?? [];
         _adminVictoryPointGrants = state.AdminVictoryPointGrants ?? [];
         _adminMailBatches = state.AdminMailBatches ?? [];
+        _chapterTwoTowerRanking = state.ChapterTwoTowerRanking ?? new(default, [], []);
         _rewardQuarantined = false;
     }
 
@@ -3896,7 +3909,17 @@ public sealed partial class JsonGameStore(
             };
             updated = ReconcileAvatarLifetimes(SettleWarehouseUpgradeItems(updated), character);
             account.Characters[characterIndex] = updated;
-            await SaveLockedAsync(cancellationToken);
+            var snapshotCommitted = false;
+            try
+            {
+                await SaveLockedAsync(cancellationToken, () => snapshotCommitted = true,
+                    isolateCommittedDiagnostics: true);
+            }
+            catch
+            {
+                if (!snapshotCommitted) account.Characters[characterIndex] = character;
+                throw;
+            }
             return updated;
         }
         finally
@@ -6640,7 +6663,8 @@ public sealed partial class JsonGameStore(
     private async Task WriteRewardStatePrivilegedAsync(List<AccountRecord> accounts, List<DungeonRewardLedgerEntry> ledger,
         CancellationToken cancellationToken, List<DungeonGoldLedgerEntry>? goldLedger = null, List<PvpSettlementReceipt>? pvpLedger = null,
         List<AdminVictoryPointReceipt>? adminVictoryPointGrants = null, List<AdminMailBatchReceipt>? adminMailBatches = null,
-        List<GuildRecord>? guilds = null, uint? nextGuildId = null)
+        List<GuildRecord>? guilds = null, uint? nextGuildId = null,
+        ChapterTwoTowerRankingState? chapterTwoTowerRanking = null)
     {
         var snapshot = JsonSerializer.SerializeToUtf8Bytes(new JsonGameStoreState
         {
@@ -6654,6 +6678,7 @@ public sealed partial class JsonGameStore(
             PvpLedger = pvpLedger ?? _pvpLedger,
             AdminVictoryPointGrants = adminVictoryPointGrants ?? _adminVictoryPointGrants,
             AdminMailBatches = adminMailBatches ?? _adminMailBatches,
+            ChapterTwoTowerRanking = chapterTwoTowerRanking ?? _chapterTwoTowerRanking,
             Guilds = guilds ?? _guilds,
             NextGuildId = nextGuildId ?? _nextGuildId
         }, new JsonSerializerOptions { WriteIndented = true });
@@ -6683,6 +6708,7 @@ public sealed partial class JsonGameStore(
                     PvpLedger = _pvpLedger,
                     AdminVictoryPointGrants = _adminVictoryPointGrants,
                     AdminMailBatches = _adminMailBatches,
+                    ChapterTwoTowerRanking = _chapterTwoTowerRanking,
                     Guilds = _guilds,
                     NextGuildId = _nextGuildId
                 },
