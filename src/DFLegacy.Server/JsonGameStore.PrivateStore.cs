@@ -1,0 +1,279 @@
+using System.Text.Json;
+using DFLegacy.Protocol;
+
+namespace DFLegacy.Server;
+
+public sealed partial class JsonGameStore
+{
+    internal CommerceActivityRegistry Commerce { get; } = new();
+    private PrivateStoreCatalog? _storeCatalog;
+    private PrivateStoreCatalog StoreCatalog => privateStoreCatalog ?? (_storeCatalog ??= new(new ScriptFileSystem(options,
+        Microsoft.Extensions.Logging.Abstractions.NullLogger<ScriptFileSystem>.Instance)));
+    private bool IsEconomicWriteBlocked(Guid id) => Commerce.Is(id, CommerceActivity.Pvp) || _pendingTradeDeliveries.ContainsKey(id) || Commerce.Is(id, CommerceActivity.Store) || Commerce.Is(id, CommerceActivity.StoreRevoked)
+        || StoreCharacter(_accounts, id)?.PrivateStoreStock is not null;
+    private static long PendingStoreGold(CharacterRecord c) => c.PendingPrivateStoreGoldCredits?.Sum(x => (long)x.Amount) ?? 0;
+    private List<AccountRecord> CopyStoreAccountsLocked() => JsonSerializer.Deserialize<List<AccountRecord>>(JsonSerializer.Serialize(_accounts))!;
+    private static CharacterRecord? StoreCharacter(IEnumerable<AccountRecord> accounts, Guid id) => accounts.SelectMany(a => a.Characters).FirstOrDefault(c => c.Id == id);
+    private static void SetStoreCharacter(List<AccountRecord> accounts, CharacterRecord c)
+    {
+        var a = accounts.First(a => a.Characters.Any(old => old.Id == c.Id));
+        a.Characters[a.Characters.FindIndex(old => old.Id == c.Id)] = c;
+    }
+    private async Task<bool> SaveStoreAccountsLockedAsync(List<AccountRecord> accounts, CancellationToken ct)
+    {
+        try { await WriteRewardStatePrivilegedAsync(accounts, _dungeonRewardLedger, ct); }
+        catch (Exception e)
+        { _rewardQuarantined = true; logger.LogError(e, "Private-store snapshot outcome uncertain; store quarantined."); return false; }
+        _accounts = accounts; return true;
+    }
+
+    internal async Task<PrivateStoreMutationResult> DisplayPrivateStoreAsync(Guid owner, Guid token,
+        IReadOnlyList<PrivateStoreDisplayRequest> requests, CancellationToken ct = default, bool chapterTwo = false)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_rewardQuarantined) return new(DungeonRewardLedgerStatus.Unknown);
+            var c = StoreCharacter(_accounts, owner);
+            if (c is null) return new(DungeonRewardLedgerStatus.Rejected, 58);
+            if (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is not null)
+                return new(DungeonRewardLedgerStatus.Rejected, 57);
+            if (itemCatalog is null || requests.Count is < 1 or > GameProtocolEngine.PrivateStoreMaximumListings
+                || requests.Select(r => r.Slot).Distinct().Count() != requests.Count
+                || requests.Select(r => r.SourceSlot).Distinct().Count() != requests.Count || _pendingTradeDeliveries.ContainsKey(owner))
+                return new(DungeonRewardLedgerStatus.Rejected, 17);
+            var inventory = (c.Inventory ?? []).ToDictionary(i => i.Slot);
+            var sourceReservations = requests.ToDictionary(r => r.SourceSlot, r => r.AddInfo);
+            var listings = new List<PrivateStoreListing>(); long total = 0;
+            foreach (var request in requests)
+            {
+                if (request.Slot >= GameProtocolEngine.PrivateStoreMaximumListings || request.SourceKind != 0 || request.UnitPrice is 0 or > int.MaxValue
+                    || !CharacterInventoryLayout.IsMainItemSlot(request.SourceSlot)
+                    || !inventory.TryGetValue(request.SourceSlot, out var item)
+                    || !itemCatalog.TryGetDefinition(item.ItemId, out var def)
+                    || CharacterItemIdentity.RequiresInstanceId(def) && item.InstanceId == Guid.Empty
+                    || def.InventoryCategory is not (ItemInventoryCategory.Equipment or ItemInventoryCategory.Material or ItemInventoryCategory.Consumable)
+                    || def.Cash is > 0 || !CharacterItemSealing.CanTrade(item, def))
+                    return new(DungeonRewardLedgerStatus.Rejected, 17);
+                var wire = CharacterItemWireProjection.Project(item, itemCatalog);
+                var count = def.IsStackable ? request.AddInfo : 1;
+                if (count == 0 || !def.IsStackable && request.AddInfo != wire.AddInfo)
+                    return new(DungeonRewardLedgerStatus.Rejected, 17);
+                total += (long)request.UnitPrice * count;
+                if (total > int.MaxValue) return new(DungeonRewardLedgerStatus.Rejected, 17);
+                List<PrivateStoreSourcePart>? sourceParts = null;
+                var anchorQuantity = Math.Min(item.CountOrValue, count);
+                var rest = def.IsStackable ? item.CountOrValue - anchorQuantity : 0;
+                var stock = def.IsStackable ? item with
+                {
+                    CountOrValue = count,
+                    InstanceId = rest > 0 && item.InstanceId != Guid.Empty ? Guid.NewGuid() : item.InstanceId
+                } : item;
+                if (rest == 0) inventory.Remove(request.SourceSlot);
+                else inventory[request.SourceSlot] = item with { CountOrValue = rest };
+                sourceReservations.Remove(request.SourceSlot);
+                if (def.IsStackable && count > anchorQuantity)
+                {
+                    // ACT1 may merge compatible stacks into one listing and send only the anchor slot.
+                    if (anchorQuantity == 0 || item.InstanceId != Guid.Empty) return new(DungeonRewardLedgerStatus.Rejected, 17);
+                    sourceParts = [new(request.SourceSlot, anchorQuantity)];
+                    var remaining = count - anchorQuantity;
+                    var candidates = inventory.Values.Where(candidate =>
+                            CharacterInventoryLayout.IsCompatibleSlot(def, candidate.Slot)
+                            && candidate.CountOrValue > sourceReservations.GetValueOrDefault(candidate.Slot)
+                            && candidate == (item with { Slot = candidate.Slot, CountOrValue = candidate.CountOrValue }))
+                        .OrderBy(candidate => candidate.Slot).ToArray();
+                    foreach (var candidate in candidates)
+                    {
+                        var available = candidate.CountOrValue - sourceReservations.GetValueOrDefault(candidate.Slot);
+                        var taken = Math.Min(remaining, available);
+                        sourceParts.Add(new(candidate.Slot, taken));
+                        if (taken == candidate.CountOrValue) inventory.Remove(candidate.Slot);
+                        else inventory[candidate.Slot] = candidate with { CountOrValue = candidate.CountOrValue - taken };
+                        remaining -= taken;
+                        if (remaining == 0) break;
+                    }
+                    if (remaining != 0) return new(DungeonRewardLedgerStatus.Rejected, 17);
+                }
+                listings.Add(new(request.Slot, request.UnitPrice, request.SourceSlot, item.InstanceId, stock, count, request.AddInfo, sourceParts));
+            }
+            var updated = c with { Inventory = inventory.Values.OrderBy(i => i.Slot).ToList(), PrivateStoreStock = new(token, listings) };
+            var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updated);
+            return await SaveStoreAccountsLockedAsync(accounts, ct) ? new(DungeonRewardLedgerStatus.Committed, Character: updated) : new(DungeonRewardLedgerStatus.Unknown);
+        }
+        finally { _gate.Release(); }
+    }
+
+    internal async Task<PrivateStorePurchaseResult> BuyPrivateStoreAsync(Guid buyerId, Guid sellerId, Guid token,
+        ushort slot, uint addInfo, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_rewardQuarantined) return new(DungeonRewardLedgerStatus.Unknown);
+            PrivateStorePurchaseResult Reject(byte e) => new(DungeonRewardLedgerStatus.Rejected, e);
+            var buyer = StoreCharacter(_accounts, buyerId); var seller = StoreCharacter(_accounts, sellerId);
+            if (seller is null || buyer is null || itemCatalog is null || statCatalog is null) return Reject(58);
+            if (buyerId == sellerId || Commerce.Is(buyerId, CommerceActivity.Store)) return Reject(60);
+            if (Commerce.Is(buyerId, CommerceActivity.Pvp) || Commerce.Is(buyerId, CommerceActivity.Trade) || _pendingTradeDeliveries.ContainsKey(buyerId)) return Reject(1);
+            if (seller.PrivateStoreStock?.StoreId != token || !Commerce.Owns(sellerId, CommerceActivity.Store, token)) return Reject(21);
+            var listing = seller.PrivateStoreStock.Listings.FirstOrDefault(l => l.Slot == slot);
+            if (listing is null || !itemCatalog.TryGetDefinition(listing.Item.ItemId, out var def)) return Reject(17);
+            var quantity = def.IsStackable ? addInfo : 1;
+            if (def.IsStackable ? addInfo == 0 : addInfo != listing.AddInfo) return Reject(1);
+            if (quantity > listing.Quantity) return Reject(17);
+            var gross64 = (long)listing.UnitPrice * quantity;
+            if (gross64 is <= 0 or > int.MaxValue) return Reject(1);
+            var gross = (uint)gross64; var fee = (uint)(gross64 * 4 / 100);
+            var pending = PendingDungeonGold(seller) + PendingStoreGold(seller) + PendingMentorGold(seller);
+            if (!StoreCatalog.TryGetGoldLimit(seller.Level, out var sellerLimit) || seller.Gold + pending + gross64 > sellerLimit) return Reject(22);
+            if (buyer.Gold < gross64) return Reject(10);
+            var moved = def.IsStackable ? listing.Item with
+            {
+                CountOrValue = quantity,
+                InstanceId = quantity < listing.Quantity && listing.Item.InstanceId != Guid.Empty ? Guid.NewGuid() : listing.Item.InstanceId
+            } : listing.Item;
+            if (!TryPlaceStorePurchase(buyer, moved, def, listing.SourceParts is not null, out var inventory, out var placed)) return Reject(4);
+            var updatedBuyer = buyer with { Gold = checked(buyer.Gold - (int)gross), Inventory = inventory };
+            var stock = seller.PrivateStoreStock.Listings.Where(l => l.Slot != slot).ToList();
+            if (quantity < listing.Quantity) stock.Add(listing with { Quantity = listing.Quantity - quantity, AddInfo = listing.AddInfo - quantity,
+                Item = listing.Item with { CountOrValue = listing.Item.CountOrValue - quantity } });
+            var updatedSeller = seller with { PrivateStoreStock = seller.PrivateStoreStock with { Listings = stock.OrderBy(l => l.Slot).ToList() },
+                PendingPrivateStoreGoldCredits = [.. seller.PendingPrivateStoreGoldCredits ?? [], new(Guid.NewGuid(), gross - fee)] };
+            var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updatedBuyer); SetStoreCharacter(accounts, updatedSeller);
+            if (!await SaveStoreAccountsLockedAsync(accounts, ct)) return new(DungeonRewardLedgerStatus.Unknown);
+            var cash = accounts.First(a => a.Characters.Any(c => c.Id == buyerId)).Cash;
+            return new(DungeonRewardLedgerStatus.Committed, Buyer: updatedBuyer, Seller: updatedSeller, Item: placed,
+                DestinationSlot: placed.Slot, Gross: gross, Fee: fee, SoldQuantity: quantity,
+                ProjectedSellerGold: checked((uint)(seller.Gold + PendingStoreGold(updatedSeller))), Cash: (uint)Math.Max(0, cash ?? 0));
+        }
+        finally { _gate.Release(); }
+    }
+
+    private bool TryPlaceStorePurchase(CharacterRecord buyer, CharacterItemRecord moved, ItemDefinition def, bool mergedListing,
+        out List<CharacterItemRecord> items, out CharacterItemRecord placed)
+    {
+        items = []; placed = null!;
+        if (itemCatalog is null || statCatalog is null || !CharacterInventoryLayout.TryGetCategoryRange(def.InventoryCategory, out var start, out var end)) return false;
+        var inventory = (buyer.Inventory ?? []).ToDictionary(i => i.Slot);
+        if (def.MaximumHavingCount is > 0 && inventory.Values.Where(i => i.ItemId == def.Id).Sum(i => (long)i.CountOrValue) + (def.IsStackable ? moved.CountOrValue : 1) > def.MaximumHavingCount) return false;
+        var weightLimit = CharacterInventoryPlanner.CalculateCarriedWeightLimit(statCatalog.Get(buyer).InventoryLimit, buyer.Equipment ?? [], itemCatalog);
+        var category = Enumerable.Range(start, end - start).Select(i => (ushort)i).ToArray();
+        var quick = Enumerable.Range(CharacterInventoryLayout.QuickSlotStart, CharacterInventoryLayout.QuickSlotEnd - CharacterInventoryLayout.QuickSlotStart).Select(i => (ushort)i).ToArray();
+        ushort? destination = null;
+        if (def.IsStackable)
+        {
+            foreach (var s in quick.Concat(category))
+            {
+                if (!inventory.TryGetValue(s, out var old) || !CanStackStoreItems(old, moved)) continue;
+                if ((long)old.CountOrValue + moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def)) continue;
+                destination = s; break;
+            }
+        }
+        if (destination is null)
+        {
+            var empty = def.IsStackable && def.InventoryCategory == ItemInventoryCategory.Consumable ? quick.Concat(category) : category.Concat(quick);
+            foreach (var s in empty) if (!inventory.ContainsKey(s)) { destination = s; break; }
+        }
+        if (destination is null || def.IsStackable && moved.CountOrValue > CharacterInventoryPlanner.GetStackLimit(def))
+        {
+            if (!mergedListing) return false;
+            var attachment = new CharacterMailAttachmentRecord(moved.ItemId, moved.CountOrValue, moved.State, moved.Durability, moved.SealState);
+            if (!CharacterInventoryPlanner.TryPlace(inventory, attachment, itemCatalog, (uint)Math.Min(weightLimit, uint.MaxValue), out var plan, out _)
+                || CharacterInventoryPlanner.CalculateCarriedWeight(plan.Inventory.Values, buyer.Equipment ?? [], buyer.CreatureInventory ?? [], itemCatalog) > weightLimit)
+                return false;
+            var first = plan.Inventory[plan.DestinationSlot];
+            // CMD85 acknowledges one slot. The entrance session then refreshes the full inventory.
+            placed = first with { CountOrValue = first.CountOrValue - (inventory.GetValueOrDefault(first.Slot)?.CountOrValue ?? 0) };
+            items = plan.Inventory.Values.OrderBy(i => i.Slot).ToList();
+            return true;
+        }
+        placed = moved with { Slot = destination.Value };
+        inventory[destination.Value] = inventory.TryGetValue(destination.Value, out var existing)
+            ? existing with { CountOrValue = existing.CountOrValue + moved.CountOrValue } : placed;
+        if (CharacterInventoryPlanner.CalculateCarriedWeight(inventory.Values, buyer.Equipment ?? [], buyer.CreatureInventory ?? [], itemCatalog) > weightLimit) return false;
+        items = inventory.Values.OrderBy(i => i.Slot).ToList(); return true;
+    }
+    private static bool CanStackStoreItems(CharacterItemRecord a, CharacterItemRecord b) => a.ItemId == b.ItemId
+        && a.State == b.State && a.Durability == b.Durability && a.SealState == b.SealState;
+
+    private bool TryRestoreStoreStockLocked(CharacterRecord c, bool force, out CharacterRecord updated)
+    {
+        updated = c;
+        var inventory = (c.Inventory ?? []).ToDictionary(i => i.Slot);
+        var mails = new List<CreateCharacterMailRequest>();
+        foreach (var listing in c.PrivateStoreStock?.Listings ?? [])
+        {
+            var remaining = listing.Quantity;
+            foreach (var part in listing.SourceParts ?? [new(listing.SourceSlot, remaining)])
+            {
+                var count = Math.Min(remaining, part.Quantity);
+                var item = listing.Item with { Slot = part.Slot, CountOrValue = listing.SourceParts is null ? listing.Item.CountOrValue : count };
+                if (!inventory.TryGetValue(part.Slot, out var existing))
+                    inventory[part.Slot] = item;
+                else if (existing.InstanceId == listing.SourceInstanceId && CanStackStoreItems(existing, item)
+                    && itemCatalog?.TryGetDefinition(existing.ItemId, out var def) == true && def.IsStackable
+                    && (long)existing.CountOrValue + count <= CharacterInventoryPlanner.GetStackLimit(def))
+                    inventory[part.Slot] = existing with { CountOrValue = existing.CountOrValue + count };
+                else
+                {
+                    if (!force) return false;
+                    mails.Add(new("个人商店", "离场收摊时返还的物品。", Attachment: new(item.ItemId, item.CountOrValue, item.State, item.Durability, item.SealState,
+                        item.AvatarRemainingSeconds, item.AvatarAbilityIndex, item.EquipmentQualitySeed, item.InstanceId, item.AvatarExpiresAtUnixSeconds)));
+                }
+                remaining -= count;
+                if (remaining == 0) break;
+            }
+            if (remaining != 0) return false;
+        }
+        if (!TryAppendGeneratedMailsLocked(c, mails, out var mailbox, out _, out _)) return false;
+        updated = c with { Inventory = inventory.Values.OrderBy(i => i.Slot).ToList(), PrivateStoreStock = null,
+            Gold = checked((int)(c.Gold + PendingStoreGold(c))), PendingPrivateStoreGoldCredits = null, Mailbox = mailbox };
+        return true;
+    }
+    internal async Task<PrivateStoreMutationResult> ClosePrivateStoreAsync(Guid owner, Guid token, bool force, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            if (_rewardQuarantined) return new(DungeonRewardLedgerStatus.Unknown);
+            var c = StoreCharacter(_accounts, owner);
+            if (c is null) return new(DungeonRewardLedgerStatus.Rejected, 58);
+            var revoked = force && Commerce.Owns(owner, CommerceActivity.StoreRevoked, token);
+            if (!revoked && (!Commerce.Owns(owner, CommerceActivity.Store, token) || c.PrivateStoreStock is { } s && s.StoreId != token))
+                return new(DungeonRewardLedgerStatus.Rejected, 59);
+            if (!TryRestoreStoreStockLocked(c, force, out var updated)) return new(DungeonRewardLedgerStatus.Rejected, 22);
+            var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updated);
+            return await SaveStoreAccountsLockedAsync(accounts, ct) ? new(DungeonRewardLedgerStatus.Committed, Character: updated) : new(DungeonRewardLedgerStatus.Unknown);
+        }
+        finally { _gate.Release(); }
+    }
+    internal async Task<CharacterRecord?> ConsumePrivateStoreGoldCreditsAsync(Guid owner, CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            ThrowIfRewardQuarantinedLocked();
+            if (_pendingTradeDeliveries.ContainsKey(owner)) return null;
+            var c = StoreCharacter(_accounts, owner);
+            if (c?.PendingPrivateStoreGoldCredits is not { Count: > 0 }) return null;
+            var updated = c with { Gold = checked((int)(c.Gold + PendingStoreGold(c))), PendingPrivateStoreGoldCredits = null };
+            var accounts = CopyStoreAccountsLocked(); SetStoreCharacter(accounts, updated);
+            if (!await SaveStoreAccountsLockedAsync(accounts, ct)) throw new IOException("Private-store credit outcome uncertain.");
+            return updated;
+        }
+        finally { _gate.Release(); }
+    }
+    private async Task RecoverPrivateStoresAtStartupLockedAsync(CancellationToken ct)
+    {
+        if (_rewardQuarantined || !_accounts.SelectMany(a => a.Characters).Any(c => c.PrivateStoreStock is not null || c.PendingPrivateStoreGoldCredits is { Count: > 0 })) return;
+        var accounts = CopyStoreAccountsLocked();
+        foreach (var c in accounts.SelectMany(a => a.Characters).ToArray())
+            if (c.PrivateStoreStock is not null || c.PendingPrivateStoreGoldCredits is { Count: > 0 })
+            {
+                if (!TryRestoreStoreStockLocked(c, true, out var restored)) throw new IOException("Private-store stock could not be safely returned at startup.");
+                SetStoreCharacter(accounts, restored);
+            }
+        if (!await SaveStoreAccountsLockedAsync(accounts, ct)) throw new IOException("Private-store startup recovery outcome uncertain.");
+    }
+}

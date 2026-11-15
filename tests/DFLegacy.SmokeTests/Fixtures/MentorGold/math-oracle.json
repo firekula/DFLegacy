@@ -1,0 +1,3632 @@
+{
+  "rates": [
+    {
+      "level": 1,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3CA3D70A",
+      "award1000": 19,
+      "awardMax": 85899343
+    },
+    {
+      "level": 1,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3CF5C28F",
+      "award1000": 29,
+      "awardMax": 128849015
+    },
+    {
+      "level": 1,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 1,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 1,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D75C290",
+      "award1000": 60,
+      "awardMax": 257698047
+    },
+    {
+      "level": 1,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3C851EB8",
+      "award1000": 16,
+      "awardMax": 69793215
+    },
+    {
+      "level": 1,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3CB851EC",
+      "award1000": 22,
+      "awardMax": 96636767
+    },
+    {
+      "level": 1,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3C99999A",
+      "rateBits": "3CEB851F",
+      "award1000": 28,
+      "awardMax": 123480311
+    },
+    {
+      "level": 1,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D0F5C29",
+      "award1000": 35,
+      "awardMax": 150323855
+    },
+    {
+      "level": 1,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D000000",
+      "rateBits": "3D28F5C2",
+      "award1000": 41,
+      "awardMax": 177167391
+    },
+    {
+      "level": 1,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D19999A",
+      "rateBits": "3D428F5C",
+      "award1000": 47,
+      "awardMax": 204010943
+    },
+    {
+      "level": 1,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D333333",
+      "rateBits": "3D5C28F6",
+      "award1000": 53,
+      "awardMax": 230854495
+    },
+    {
+      "level": 1,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D75C290",
+      "award1000": 60,
+      "awardMax": 257698047
+    },
+    {
+      "level": 1,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3C75C28F",
+      "award1000": 14,
+      "awardMax": 64424507
+    },
+    {
+      "level": 1,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3CA3D70A",
+      "award1000": 19,
+      "awardMax": 85899343
+    },
+    {
+      "level": 1,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3CCCCCCC",
+      "award1000": 24,
+      "awardMax": 107374175
+    },
+    {
+      "level": 1,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3CF5C28F",
+      "award1000": 29,
+      "awardMax": 128849015
+    },
+    {
+      "level": 1,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D0F5C29",
+      "award1000": 35,
+      "awardMax": 150323855
+    },
+    {
+      "level": 1,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 1,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3D3851EC",
+      "award1000": 45,
+      "awardMax": 193273535
+    },
+    {
+      "level": 1,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 1,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 1,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3C23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D75C290",
+      "award1000": 60,
+      "awardMax": 257698047
+    },
+    {
+      "level": 2,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3CF5C28F",
+      "award1000": 29,
+      "awardMax": 128849015
+    },
+    {
+      "level": 2,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 2,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 2,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 2,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 2,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3CD70A3D",
+      "award1000": 26,
+      "awardMax": 112742887
+    },
+    {
+      "level": 2,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3D051EB8",
+      "award1000": 32,
+      "awardMax": 139586431
+    },
+    {
+      "level": 2,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3C99999A",
+      "rateBits": "3D1EB852",
+      "award1000": 38,
+      "awardMax": 166429983
+    },
+    {
+      "level": 2,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D3851EC",
+      "award1000": 45,
+      "awardMax": 193273535
+    },
+    {
+      "level": 2,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D000000",
+      "rateBits": "3D51EB85",
+      "award1000": 51,
+      "awardMax": 220117071
+    },
+    {
+      "level": 2,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D19999A",
+      "rateBits": "3D6B851F",
+      "award1000": 57,
+      "awardMax": 246960623
+    },
+    {
+      "level": 2,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D333333",
+      "rateBits": "3D828F5C",
+      "award1000": 63,
+      "awardMax": 273804159
+    },
+    {
+      "level": 2,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 2,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3CCCCCCC",
+      "award1000": 24,
+      "awardMax": 107374175
+    },
+    {
+      "level": 2,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3CF5C28F",
+      "award1000": 29,
+      "awardMax": 128849015
+    },
+    {
+      "level": 2,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3D0F5C29",
+      "award1000": 35,
+      "awardMax": 150323855
+    },
+    {
+      "level": 2,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 2,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D3851EC",
+      "award1000": 45,
+      "awardMax": 193273535
+    },
+    {
+      "level": 2,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 2,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 2,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 2,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 2,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3CA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 3,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 3,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 3,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 3,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 3,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 3,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3D147AE1",
+      "award1000": 36,
+      "awardMax": 155692559
+    },
+    {
+      "level": 3,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3D2E147B",
+      "award1000": 42,
+      "awardMax": 182536111
+    },
+    {
+      "level": 3,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3C99999A",
+      "rateBits": "3D47AE14",
+      "award1000": 48,
+      "awardMax": 209379647
+    },
+    {
+      "level": 3,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 3,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D000000",
+      "rateBits": "3D7AE148",
+      "award1000": 61,
+      "awardMax": 263066751
+    },
+    {
+      "level": 3,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D19999A",
+      "rateBits": "3D8A3D71",
+      "award1000": 67,
+      "awardMax": 289910303
+    },
+    {
+      "level": 3,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D333333",
+      "rateBits": "3D970A3D",
+      "award1000": 73,
+      "awardMax": 316753823
+    },
+    {
+      "level": 3,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 3,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3D0F5C29",
+      "award1000": 35,
+      "awardMax": 150323855
+    },
+    {
+      "level": 3,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D23D70A",
+      "award1000": 39,
+      "awardMax": 171798687
+    },
+    {
+      "level": 3,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3D3851EB",
+      "award1000": 44,
+      "awardMax": 193273519
+    },
+    {
+      "level": 3,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 3,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 3,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 3,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 3,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 3,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3D99999A",
+      "award1000": 75,
+      "awardMax": 322122559
+    },
+    {
+      "level": 3,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3CF5C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 4,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 4,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 4,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 4,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 4,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 4,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3D3D70A4",
+      "award1000": 46,
+      "awardMax": 198642239
+    },
+    {
+      "level": 4,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3D570A3D",
+      "award1000": 52,
+      "awardMax": 225485775
+    },
+    {
+      "level": 4,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3C99999A",
+      "rateBits": "3D70A3D7",
+      "award1000": 58,
+      "awardMax": 252329327
+    },
+    {
+      "level": 4,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 4,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D000000",
+      "rateBits": "3D91EB85",
+      "award1000": 71,
+      "awardMax": 306016415
+    },
+    {
+      "level": 4,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D19999A",
+      "rateBits": "3D9EB852",
+      "award1000": 77,
+      "awardMax": 332859967
+    },
+    {
+      "level": 4,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D333333",
+      "rateBits": "3DAB851E",
+      "award1000": 83,
+      "awardMax": 359703487
+    },
+    {
+      "level": 4,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 4,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3D3851EB",
+      "award1000": 44,
+      "awardMax": 193273519
+    },
+    {
+      "level": 4,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D4CCCCC",
+      "award1000": 49,
+      "awardMax": 214748351
+    },
+    {
+      "level": 4,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 4,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D75C28F",
+      "award1000": 59,
+      "awardMax": 257698031
+    },
+    {
+      "level": 4,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 4,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 4,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3D99999A",
+      "award1000": 75,
+      "awardMax": 322122559
+    },
+    {
+      "level": 4,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 4,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 4,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3D23D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 5,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D75C290",
+      "award1000": 60,
+      "awardMax": 257698047
+    },
+    {
+      "level": 5,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 5,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 5,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 5,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 5,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3D666667",
+      "award1000": 56,
+      "awardMax": 241591919
+    },
+    {
+      "level": 5,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3D800000",
+      "award1000": 62,
+      "awardMax": 268435455
+    },
+    {
+      "level": 5,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3C99999A",
+      "rateBits": "3D8CCCCD",
+      "award1000": 68,
+      "awardMax": 295279007
+    },
+    {
+      "level": 5,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D99999A",
+      "award1000": 75,
+      "awardMax": 322122559
+    },
+    {
+      "level": 5,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D000000",
+      "rateBits": "3DA66666",
+      "award1000": 81,
+      "awardMax": 348966079
+    },
+    {
+      "level": 5,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D19999A",
+      "rateBits": "3DB33334",
+      "award1000": 87,
+      "awardMax": 375809663
+    },
+    {
+      "level": 5,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D333333",
+      "rateBits": "3DC00000",
+      "award1000": 93,
+      "awardMax": 402653183
+    },
+    {
+      "level": 5,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 5,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3D6147AE",
+      "award1000": 54,
+      "awardMax": 236223199
+    },
+    {
+      "level": 5,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D75C290",
+      "award1000": 60,
+      "awardMax": 257698047
+    },
+    {
+      "level": 5,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 5,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 5,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3D99999A",
+      "award1000": 75,
+      "awardMax": 322122559
+    },
+    {
+      "level": 5,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 5,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 5,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 5,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3DC28F5C",
+      "award1000": 94,
+      "awardMax": 408021887
+    },
+    {
+      "level": 5,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3D4CCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 6,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 6,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 6,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DB851EB",
+      "award1000": 89,
+      "awardMax": 386547039
+    },
+    {
+      "level": 6,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DCCCCCC",
+      "award1000": 99,
+      "awardMax": 429496703
+    },
+    {
+      "level": 6,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 6,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3D87AE14",
+      "award1000": 66,
+      "awardMax": 284541567
+    },
+    {
+      "level": 6,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3D947AE1",
+      "award1000": 72,
+      "awardMax": 311385119
+    },
+    {
+      "level": 6,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3C99999A",
+      "rateBits": "3DA147AE",
+      "award1000": 78,
+      "awardMax": 338228671
+    },
+    {
+      "level": 6,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 6,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D000000",
+      "rateBits": "3DBAE148",
+      "award1000": 91,
+      "awardMax": 391915775
+    },
+    {
+      "level": 6,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D19999A",
+      "rateBits": "3DC7AE14",
+      "award1000": 97,
+      "awardMax": 418759295
+    },
+    {
+      "level": 6,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D333333",
+      "rateBits": "3DD47AE1",
+      "award1000": 103,
+      "awardMax": 445602847
+    },
+    {
+      "level": 6,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 6,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3D851EB8",
+      "award1000": 64,
+      "awardMax": 279172863
+    },
+    {
+      "level": 6,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3D8F5C29",
+      "award1000": 70,
+      "awardMax": 300647711
+    },
+    {
+      "level": 6,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3D999999",
+      "award1000": 74,
+      "awardMax": 322122527
+    },
+    {
+      "level": 6,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 6,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 6,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DB851EB",
+      "award1000": 89,
+      "awardMax": 386547039
+    },
+    {
+      "level": 6,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3DC28F5C",
+      "award1000": 94,
+      "awardMax": 408021887
+    },
+    {
+      "level": 6,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DCCCCCC",
+      "award1000": 99,
+      "awardMax": 429496703
+    },
+    {
+      "level": 6,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3DD70A3E",
+      "award1000": 105,
+      "awardMax": 450971583
+    },
+    {
+      "level": 6,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3D75C28F",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 7,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 7,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 7,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 7,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 7,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 7,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3D9C28F6",
+      "award1000": 76,
+      "awardMax": 327491263
+    },
+    {
+      "level": 7,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3DA8F5C3",
+      "award1000": 82,
+      "awardMax": 354334815
+    },
+    {
+      "level": 7,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3C99999A",
+      "rateBits": "3DB5C290",
+      "award1000": 88,
+      "awardMax": 381178367
+    },
+    {
+      "level": 7,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DC28F5C",
+      "award1000": 94,
+      "awardMax": 408021887
+    },
+    {
+      "level": 7,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D000000",
+      "rateBits": "3DCF5C29",
+      "award1000": 101,
+      "awardMax": 434865439
+    },
+    {
+      "level": 7,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D19999A",
+      "rateBits": "3DDC28F6",
+      "award1000": 107,
+      "awardMax": 461708991
+    },
+    {
+      "level": 7,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D333333",
+      "rateBits": "3DE8F5C2",
+      "award1000": 113,
+      "awardMax": 488552511
+    },
+    {
+      "level": 7,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 7,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3D99999A",
+      "award1000": 75,
+      "awardMax": 322122559
+    },
+    {
+      "level": 7,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DA3D70A",
+      "award1000": 79,
+      "awardMax": 343597375
+    },
+    {
+      "level": 7,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 7,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DB851EC",
+      "award1000": 90,
+      "awardMax": 386547071
+    },
+    {
+      "level": 7,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DC28F5C",
+      "award1000": 94,
+      "awardMax": 408021887
+    },
+    {
+      "level": 7,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 7,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3DD70A3E",
+      "award1000": 105,
+      "awardMax": 450971583
+    },
+    {
+      "level": 7,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 7,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3DEB851F",
+      "award1000": 115,
+      "awardMax": 493921247
+    },
+    {
+      "level": 7,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3D8F5C29",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 8,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DB851EB",
+      "award1000": 89,
+      "awardMax": 386547039
+    },
+    {
+      "level": 8,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DCCCCCC",
+      "award1000": 99,
+      "awardMax": 429496703
+    },
+    {
+      "level": 8,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 8,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DF5C28F",
+      "award1000": 119,
+      "awardMax": 515396063
+    },
+    {
+      "level": 8,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 8,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3DB0A3D7",
+      "award1000": 86,
+      "awardMax": 370440927
+    },
+    {
+      "level": 8,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3DBD70A4",
+      "award1000": 92,
+      "awardMax": 397284479
+    },
+    {
+      "level": 8,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3C99999A",
+      "rateBits": "3DCA3D70",
+      "award1000": 98,
+      "awardMax": 424127999
+    },
+    {
+      "level": 8,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DD70A3D",
+      "award1000": 104,
+      "awardMax": 450971551
+    },
+    {
+      "level": 8,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D000000",
+      "rateBits": "3DE3D70A",
+      "award1000": 111,
+      "awardMax": 477815103
+    },
+    {
+      "level": 8,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D19999A",
+      "rateBits": "3DF0A3D7",
+      "award1000": 117,
+      "awardMax": 504658655
+    },
+    {
+      "level": 8,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D333333",
+      "rateBits": "3DFD70A4",
+      "award1000": 123,
+      "awardMax": 531502207
+    },
+    {
+      "level": 8,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 8,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3DAE147B",
+      "award1000": 85,
+      "awardMax": 365072223
+    },
+    {
+      "level": 8,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DB851EB",
+      "award1000": 89,
+      "awardMax": 386547039
+    },
+    {
+      "level": 8,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3DC28F5C",
+      "award1000": 94,
+      "awardMax": 408021887
+    },
+    {
+      "level": 8,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DCCCCCC",
+      "award1000": 99,
+      "awardMax": 429496703
+    },
+    {
+      "level": 8,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DD70A3D",
+      "award1000": 104,
+      "awardMax": 450971551
+    },
+    {
+      "level": 8,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 8,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3DEB851E",
+      "award1000": 114,
+      "awardMax": 493921215
+    },
+    {
+      "level": 8,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3DF5C28F",
+      "award1000": 119,
+      "awardMax": 515396063
+    },
+    {
+      "level": 8,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3E000000",
+      "award1000": 125,
+      "awardMax": 536870911
+    },
+    {
+      "level": 8,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3DA3D70A",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 9,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 9,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 9,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 9,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 9,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E0F5C29",
+      "award1000": 140,
+      "awardMax": 601295423
+    },
+    {
+      "level": 9,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3DC51EB9",
+      "award1000": 96,
+      "awardMax": 413390623
+    },
+    {
+      "level": 9,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3DD1EB86",
+      "award1000": 102,
+      "awardMax": 440234175
+    },
+    {
+      "level": 9,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3C99999A",
+      "rateBits": "3DDEB852",
+      "award1000": 108,
+      "awardMax": 467077695
+    },
+    {
+      "level": 9,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DEB851F",
+      "award1000": 115,
+      "awardMax": 493921247
+    },
+    {
+      "level": 9,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D000000",
+      "rateBits": "3DF851EC",
+      "award1000": 121,
+      "awardMax": 520764799
+    },
+    {
+      "level": 9,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D19999A",
+      "rateBits": "3E028F5C",
+      "award1000": 127,
+      "awardMax": 547608319
+    },
+    {
+      "level": 9,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D333333",
+      "rateBits": "3E08F5C3",
+      "award1000": 133,
+      "awardMax": 574451903
+    },
+    {
+      "level": 9,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E0F5C29",
+      "award1000": 140,
+      "awardMax": 601295423
+    },
+    {
+      "level": 9,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3DC28F5D",
+      "award1000": 95,
+      "awardMax": 408021919
+    },
+    {
+      "level": 9,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DCCCCCD",
+      "award1000": 100,
+      "awardMax": 429496735
+    },
+    {
+      "level": 9,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3DD70A3E",
+      "award1000": 105,
+      "awardMax": 450971583
+    },
+    {
+      "level": 9,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 9,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3DEB851F",
+      "award1000": 115,
+      "awardMax": 493921247
+    },
+    {
+      "level": 9,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 9,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3E000000",
+      "award1000": 125,
+      "awardMax": 536870911
+    },
+    {
+      "level": 9,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 9,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3E0A3D71",
+      "award1000": 135,
+      "awardMax": 579820607
+    },
+    {
+      "level": 9,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3DB851EC",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E0F5C29",
+      "award1000": 140,
+      "awardMax": 601295423
+    },
+    {
+      "level": 10,
+      "count": 1,
+      "capacity": 5,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 10,
+      "count": 2,
+      "capacity": 5,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 10,
+      "count": 3,
+      "capacity": 5,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 10,
+      "count": 4,
+      "capacity": 5,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3E0F5C29",
+      "award1000": 140,
+      "awardMax": 601295423
+    },
+    {
+      "level": 10,
+      "count": 5,
+      "capacity": 5,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E19999A",
+      "award1000": 150,
+      "awardMax": 644245119
+    },
+    {
+      "level": 10,
+      "count": 1,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3BCCCCCD",
+      "rateBits": "3DD9999A",
+      "award1000": 106,
+      "awardMax": 456340287
+    },
+    {
+      "level": 10,
+      "count": 2,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3C4CCCCD",
+      "rateBits": "3DE66667",
+      "award1000": 112,
+      "awardMax": 483183839
+    },
+    {
+      "level": 10,
+      "count": 3,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3C99999A",
+      "rateBits": "3DF33334",
+      "award1000": 118,
+      "awardMax": 510027391
+    },
+    {
+      "level": 10,
+      "count": 4,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3E000000",
+      "award1000": 125,
+      "awardMax": 536870911
+    },
+    {
+      "level": 10,
+      "count": 5,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D000000",
+      "rateBits": "3E066666",
+      "award1000": 131,
+      "awardMax": 563714431
+    },
+    {
+      "level": 10,
+      "count": 6,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D19999A",
+      "rateBits": "3E0CCCCD",
+      "award1000": 137,
+      "awardMax": 590558015
+    },
+    {
+      "level": 10,
+      "count": 7,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D333333",
+      "rateBits": "3E133333",
+      "award1000": 143,
+      "awardMax": 617401535
+    },
+    {
+      "level": 10,
+      "count": 8,
+      "capacity": 8,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E19999A",
+      "award1000": 150,
+      "awardMax": 644245119
+    },
+    {
+      "level": 10,
+      "count": 1,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3BA3D70A",
+      "rateBits": "3DD70A3E",
+      "award1000": 105,
+      "awardMax": 450971583
+    },
+    {
+      "level": 10,
+      "count": 2,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3C23D70A",
+      "rateBits": "3DE147AE",
+      "award1000": 109,
+      "awardMax": 472446399
+    },
+    {
+      "level": 10,
+      "count": 3,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3C75C28F",
+      "rateBits": "3DEB851F",
+      "award1000": 115,
+      "awardMax": 493921247
+    },
+    {
+      "level": 10,
+      "count": 4,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CA3D70A",
+      "rateBits": "3DF5C290",
+      "award1000": 120,
+      "awardMax": 515396095
+    },
+    {
+      "level": 10,
+      "count": 5,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CCCCCCD",
+      "rateBits": "3E000000",
+      "award1000": 125,
+      "awardMax": 536870911
+    },
+    {
+      "level": 10,
+      "count": 6,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3CF5C28F",
+      "rateBits": "3E051EB8",
+      "award1000": 129,
+      "awardMax": 558345727
+    },
+    {
+      "level": 10,
+      "count": 7,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D0F5C29",
+      "rateBits": "3E0A3D71",
+      "award1000": 135,
+      "awardMax": 579820607
+    },
+    {
+      "level": 10,
+      "count": 8,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D23D70A",
+      "rateBits": "3E0F5C29",
+      "award1000": 140,
+      "awardMax": 601295423
+    },
+    {
+      "level": 10,
+      "count": 9,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D3851EC",
+      "rateBits": "3E147AE2",
+      "award1000": 145,
+      "awardMax": 622770303
+    },
+    {
+      "level": 10,
+      "count": 10,
+      "capacity": 10,
+      "component1Bits": "3DCCCCCD",
+      "component2Bits": "3D4CCCCD",
+      "rateBits": "3E19999A",
+      "award1000": 150,
+      "awardMax": 644245119
+    }
+  ],
+  "integerBoundaries": [
+    {
+      "basis": 4071271090,
+      "rateBits": "3CA3D70A",
+      "award": 81425419
+    },
+    {
+      "basis": 4071271091,
+      "rateBits": "3CA3D70A",
+      "award": 81425419
+    },
+    {
+      "basis": 4071271092,
+      "rateBits": "3CA3D70A",
+      "award": 81425420
+    },
+    {
+      "basis": 3862487952,
+      "rateBits": "3CF5C28F",
+      "award": 115874635
+    },
+    {
+      "basis": 3862487953,
+      "rateBits": "3CF5C28F",
+      "award": 115874635
+    },
+    {
+      "basis": 3862487954,
+      "rateBits": "3CF5C28F",
+      "award": 115874636
+    },
+    {
+      "basis": 4205488818,
+      "rateBits": "3D23D70A",
+      "award": 168219548
+    },
+    {
+      "basis": 4205488819,
+      "rateBits": "3D23D70A",
+      "award": 168219548
+    },
+    {
+      "basis": 4205488820,
+      "rateBits": "3D23D70A",
+      "award": 168219549
+    },
+    {
+      "basis": 4244635652,
+      "rateBits": "3D4CCCCC",
+      "award": 212231769
+    },
+    {
+      "basis": 4244635653,
+      "rateBits": "3D4CCCCC",
+      "award": 212231769
+    },
+    {
+      "basis": 4244635654,
+      "rateBits": "3D4CCCCC",
+      "award": 212231770
+    },
+    {
+      "basis": 4191507788,
+      "rateBits": "3CB851EC",
+      "award": 94308928
+    },
+    {
+      "basis": 4191507789,
+      "rateBits": "3CB851EC",
+      "award": 94308928
+    },
+    {
+      "basis": 4191507790,
+      "rateBits": "3CB851EC",
+      "award": 94308929
+    },
+    {
+      "basis": 4086450464,
+      "rateBits": "3CEB851F",
+      "award": 117485452
+    },
+    {
+      "basis": 4086450465,
+      "rateBits": "3CEB851F",
+      "award": 117485452
+    },
+    {
+      "basis": 4086450466,
+      "rateBits": "3CEB851F",
+      "award": 117485453
+    },
+    {
+      "basis": 4261412838,
+      "rateBits": "3D0F5C29",
+      "award": 149149449
+    },
+    {
+      "basis": 4261412839,
+      "rateBits": "3D0F5C29",
+      "award": 149149449
+    },
+    {
+      "basis": 4261412840,
+      "rateBits": "3D0F5C29",
+      "award": 149149450
+    },
+    {
+      "basis": 4256020190,
+      "rateBits": "3D28F5C2",
+      "award": 175560823
+    },
+    {
+      "basis": 4256020191,
+      "rateBits": "3D28F5C2",
+      "award": 175560823
+    },
+    {
+      "basis": 4256020192,
+      "rateBits": "3D28F5C2",
+      "award": 175560824
+    }
+  ],
+  "alternateJitter": [
+    {
+      "seed": 0,
+      "jitter": 109
+    },
+    {
+      "seed": 1,
+      "jitter": 37
+    },
+    {
+      "seed": 2,
+      "jitter": 220
+    },
+    {
+      "seed": 3,
+      "jitter": 1
+    },
+    {
+      "seed": 4,
+      "jitter": 104
+    },
+    {
+      "seed": 5,
+      "jitter": 208
+    },
+    {
+      "seed": 6,
+      "jitter": 243
+    },
+    {
+      "seed": 7,
+      "jitter": 296
+    },
+    {
+      "seed": 8,
+      "jitter": 275
+    },
+    {
+      "seed": 9,
+      "jitter": 103
+    },
+    {
+      "seed": 10,
+      "jitter": 238
+    },
+    {
+      "seed": 11,
+      "jitter": 43
+    },
+    {
+      "seed": 12,
+      "jitter": 222
+    },
+    {
+      "seed": 13,
+      "jitter": 226
+    },
+    {
+      "seed": 14,
+      "jitter": 285
+    },
+    {
+      "seed": 15,
+      "jitter": 114
+    },
+    {
+      "seed": 16,
+      "jitter": 168
+    },
+    {
+      "seed": 17,
+      "jitter": 221
+    },
+    {
+      "seed": 18,
+      "jitter": 4
+    },
+    {
+      "seed": 19,
+      "jitter": 237
+    },
+    {
+      "seed": 20,
+      "jitter": 215
+    },
+    {
+      "seed": 21,
+      "jitter": 44
+    },
+    {
+      "seed": 22,
+      "jitter": 175
+    },
+    {
+      "seed": 23,
+      "jitter": 108
+    },
+    {
+      "seed": 24,
+      "jitter": 162
+    },
+    {
+      "seed": 25,
+      "jitter": 39
+    },
+    {
+      "seed": 26,
+      "jitter": 122
+    },
+    {
+      "seed": 27,
+      "jitter": 3
+    },
+    {
+      "seed": 28,
+      "jitter": 209
+    },
+    {
+      "seed": 29,
+      "jitter": 162
+    },
+    {
+      "seed": 30,
+      "jitter": 69
+    },
+    {
+      "seed": 31,
+      "jitter": 174
+    },
+    {
+      "seed": 32,
+      "jitter": 204
+    },
+    {
+      "seed": 33,
+      "jitter": 109
+    },
+    {
+      "seed": 34,
+      "jitter": 240
+    },
+    {
+      "seed": 35,
+      "jitter": 44
+    },
+    {
+      "seed": 36,
+      "jitter": 51
+    },
+    {
+      "seed": 37,
+      "jitter": 56
+    },
+    {
+      "seed": 38,
+      "jitter": 111
+    },
+    {
+      "seed": 39,
+      "jitter": 291
+    },
+    {
+      "seed": 40,
+      "jitter": 46
+    },
+    {
+      "seed": 41,
+      "jitter": 3
+    },
+    {
+      "seed": 42,
+      "jitter": 134
+    },
+    {
+      "seed": 43,
+      "jitter": 286
+    },
+    {
+      "seed": 44,
+      "jitter": 169
+    },
+    {
+      "seed": 45,
+      "jitter": 298
+    },
+    {
+      "seed": 46,
+      "jitter": 181
+    },
+    {
+      "seed": 47,
+      "jitter": 233
+    },
+    {
+      "seed": 48,
+      "jitter": 164
+    },
+    {
+      "seed": 49,
+      "jitter": 245
+    },
+    {
+      "seed": 50,
+      "jitter": 252
+    },
+    {
+      "seed": 51,
+      "jitter": 280
+    },
+    {
+      "seed": 52,
+      "jitter": 287
+    },
+    {
+      "seed": 53,
+      "jitter": 192
+    },
+    {
+      "seed": 54,
+      "jitter": 246
+    },
+    {
+      "seed": 55,
+      "jitter": 51
+    },
+    {
+      "seed": 56,
+      "jitter": 234
+    },
+    {
+      "seed": 57,
+      "jitter": 63
+    },
+    {
+      "seed": 58,
+      "jitter": 241
+    },
+    {
+      "seed": 59,
+      "jitter": 298
+    },
+    {
+      "seed": 60,
+      "jitter": 105
+    },
+    {
+      "seed": 61,
+      "jitter": 110
+    },
+    {
+      "seed": 62,
+      "jitter": 140
+    },
+    {
+      "seed": 63,
+      "jitter": 117
+    },
+    {
+      "seed": 64,
+      "jitter": 276
+    },
+    {
+      "seed": 65,
+      "jitter": 257
+    },
+    {
+      "seed": 66,
+      "jitter": 187
+    },
+    {
+      "seed": 67,
+      "jitter": 288
+    },
+    {
+      "seed": 68,
+      "jitter": 123
+    },
+    {
+      "seed": 69,
+      "jitter": 4
+    },
+    {
+      "seed": 70,
+      "jitter": 58
+    },
+    {
+      "seed": 71,
+      "jitter": 111
+    },
+    {
+      "seed": 72,
+      "jitter": 242
+    },
+    {
+      "seed": 73,
+      "jitter": 298
+    },
+    {
+      "seed": 74,
+      "jitter": 229
+    },
+    {
+      "seed": 75,
+      "jitter": 182
+    },
+    {
+      "seed": 76,
+      "jitter": 65
+    },
+    {
+      "seed": 77,
+      "jitter": 121
+    },
+    {
+      "seed": 78,
+      "jitter": 176
+    },
+    {
+      "seed": 79,
+      "jitter": 229
+    },
+    {
+      "seed": 80,
+      "jitter": 136
+    },
+    {
+      "seed": 81,
+      "jitter": 16
+    },
+    {
+      "seed": 82,
+      "jitter": 123
+    },
+    {
+      "seed": 83,
+      "jitter": 0
+    },
+    {
+      "seed": 84,
+      "jitter": 183
+    },
+    {
+      "seed": 85,
+      "jitter": 263
+    },
+    {
+      "seed": 86,
+      "jitter": 170
+    },
+    {
+      "seed": 87,
+      "jitter": 47
+    },
+    {
+      "seed": 88,
+      "jitter": 30
+    },
+    {
+      "seed": 89,
+      "jitter": 134
+    },
+    {
+      "seed": 90,
+      "jitter": 113
+    },
+    {
+      "seed": 91,
+      "jitter": 246
+    },
+    {
+      "seed": 92,
+      "jitter": 76
+    },
+    {
+      "seed": 93,
+      "jitter": 129
+    },
+    {
+      "seed": 94,
+      "jitter": 236
+    },
+    {
+      "seed": 95,
+      "jitter": 117
+    },
+    {
+      "seed": 96,
+      "jitter": 247
+    },
+    {
+      "seed": 97,
+      "jitter": 76
+    },
+    {
+      "seed": 98,
+      "jitter": 7
+    },
+    {
+      "seed": 99,
+      "jitter": 236
+    },
+    {
+      "seed": 100,
+      "jitter": 194
+    },
+    {
+      "seed": 101,
+      "jitter": 23
+    },
+    {
+      "seed": 102,
+      "jitter": 54
+    },
+    {
+      "seed": 103,
+      "jitter": 183
+    },
+    {
+      "seed": 104,
+      "jitter": 141
+    },
+    {
+      "seed": 105,
+      "jitter": 194
+    },
+    {
+      "seed": 106,
+      "jitter": 125
+    },
+    {
+      "seed": 107,
+      "jitter": 54
+    },
+    {
+      "seed": 108,
+      "jitter": 260
+    },
+    {
+      "seed": 109,
+      "jitter": 241
+    },
+    {
+      "seed": 110,
+      "jitter": 172
+    },
+    {
+      "seed": 111,
+      "jitter": 76
+    },
+    {
+      "seed": 112,
+      "jitter": 207
+    },
+    {
+      "seed": 113,
+      "jitter": 236
+    },
+    {
+      "seed": 114,
+      "jitter": 243
+    },
+    {
+      "seed": 115,
+      "jitter": 23
+    },
+    {
+      "seed": 116,
+      "jitter": 78
+    },
+    {
+      "seed": 117,
+      "jitter": 7
+    },
+    {
+      "seed": 118,
+      "jitter": 190
+    },
+    {
+      "seed": 119,
+      "jitter": 70
+    },
+    {
+      "seed": 120,
+      "jitter": 125
+    },
+    {
+      "seed": 121,
+      "jitter": 78
+    },
+    {
+      "seed": 122,
+      "jitter": 61
+    },
+    {
+      "seed": 123,
+      "jitter": 141
+    },
+    {
+      "seed": 124,
+      "jitter": 148
+    },
+    {
+      "seed": 125,
+      "jitter": 125
+    },
+    {
+      "seed": 126,
+      "jitter": 256
+    },
+    {
+      "seed": 127,
+      "jitter": 264
+    },
+    {
+      "seed": 128,
+      "jitter": 19
+    },
+    {
+      "seed": 129,
+      "jitter": 72
+    },
+    {
+      "seed": 130,
+      "jitter": 202
+    },
+    {
+      "seed": 131,
+      "jitter": 259
+    },
+    {
+      "seed": 132,
+      "jitter": 266
+    },
+    {
+      "seed": 133,
+      "jitter": 243
+    },
+    {
+      "seed": 134,
+      "jitter": 249
+    },
+    {
+      "seed": 135,
+      "jitter": 30
+    },
+    {
+      "seed": 136,
+      "jitter": 137
+    },
+    {
+      "seed": 137,
+      "jitter": 190
+    },
+    {
+      "seed": 138,
+      "jitter": 20
+    },
+    {
+      "seed": 139,
+      "jitter": 25
+    },
+    {
+      "seed": 140,
+      "jitter": 84
+    },
+    {
+      "seed": 141,
+      "jitter": 13
+    },
+    {
+      "seed": 142,
+      "jitter": 67
+    },
+    {
+      "seed": 143,
+      "jitter": 196
+    },
+    {
+      "seed": 144,
+      "jitter": 155
+    },
+    {
+      "seed": 145,
+      "jitter": 184
+    },
+    {
+      "seed": 146,
+      "jitter": 138
+    },
+    {
+      "seed": 147,
+      "jitter": 219
+    },
+    {
+      "seed": 148,
+      "jitter": 74
+    },
+    {
+      "seed": 149,
+      "jitter": 230
+    },
+    {
+      "seed": 150,
+      "jitter": 37
+    },
+    {
+      "seed": 151,
+      "jitter": 90
+    },
+    {
+      "seed": 152,
+      "jitter": 121
+    },
+    {
+      "seed": 153,
+      "jitter": 25
+    },
+    {
+      "seed": 154,
+      "jitter": 208
+    },
+    {
+      "seed": 155,
+      "jitter": 261
+    },
+    {
+      "seed": 156,
+      "jitter": 192
+    },
+    {
+      "seed": 157,
+      "jitter": 72
+    },
+    {
+      "seed": 158,
+      "jitter": 79
+    },
+    {
+      "seed": 159,
+      "jitter": 84
+    },
+    {
+      "seed": 160,
+      "jitter": 15
+    },
+    {
+      "seed": 161,
+      "jitter": 67
+    },
+    {
+      "seed": 162,
+      "jitter": 274
+    },
+    {
+      "seed": 163,
+      "jitter": 155
+    },
+    {
+      "seed": 164,
+      "jitter": 134
+    },
+    {
+      "seed": 165,
+      "jitter": 190
+    },
+    {
+      "seed": 166,
+      "jitter": 97
+    },
+    {
+      "seed": 167,
+      "jitter": 278
+    },
+    {
+      "seed": 168,
+      "jitter": 256
+    },
+    {
+      "seed": 169,
+      "jitter": 185
+    },
+    {
+      "seed": 170,
+      "jitter": 44
+    },
+    {
+      "seed": 171,
+      "jitter": 221
+    },
+    {
+      "seed": 172,
+      "jitter": 127
+    },
+    {
+      "seed": 173,
+      "jitter": 208
+    },
+    {
+      "seed": 174,
+      "jitter": 215
+    },
+    {
+      "seed": 175,
+      "jitter": 268
+    },
+    {
+      "seed": 176,
+      "jitter": 150
+    },
+    {
+      "seed": 177,
+      "jitter": 255
+    },
+    {
+      "seed": 178,
+      "jitter": 86
+    },
+    {
+      "seed": 179,
+      "jitter": 115
+    },
+    {
+      "seed": 180,
+      "jitter": 269
+    },
+    {
+      "seed": 181,
+      "jitter": 26
+    },
+    {
+      "seed": 182,
+      "jitter": 208
+    },
+    {
+      "seed": 183,
+      "jitter": 87
+    },
+    {
+      "seed": 184,
+      "jitter": 139
+    },
+    {
+      "seed": 185,
+      "jitter": 150
+    },
+    {
+      "seed": 186,
+      "jitter": 279
+    },
+    {
+      "seed": 187,
+      "jitter": 134
+    },
+    {
+      "seed": 188,
+      "jitter": 86
+    },
+    {
+      "seed": 189,
+      "jitter": 293
+    },
+    {
+      "seed": 190,
+      "jitter": 26
+    },
+    {
+      "seed": 191,
+      "jitter": 80
+    },
+    {
+      "seed": 192,
+      "jitter": 209
+    },
+    {
+      "seed": 193,
+      "jitter": 40
+    },
+    {
+      "seed": 194,
+      "jitter": 97
+    },
+    {
+      "seed": 195,
+      "jitter": 251
+    },
+    {
+      "seed": 196,
+      "jitter": 204
+    },
+    {
+      "seed": 197,
+      "jitter": 287
+    },
+    {
+      "seed": 198,
+      "jitter": 92
+    },
+    {
+      "seed": 199,
+      "jitter": 198
+    },
+    {
+      "seed": 200,
+      "jitter": 27
+    },
+    {
+      "seed": 201,
+      "jitter": 158
+    },
+    {
+      "seed": 202,
+      "jitter": 39
+    },
+    {
+      "seed": 203,
+      "jitter": 145
+    },
+    {
+      "seed": 204,
+      "jitter": 22
+    },
+    {
+      "seed": 205,
+      "jitter": 29
+    },
+    {
+      "seed": 206,
+      "jitter": 286
+    },
+    {
+      "seed": 207,
+      "jitter": 140
+    },
+    {
+      "seed": 208,
+      "jitter": 145
+    },
+    {
+      "seed": 209,
+      "jitter": 52
+    },
+    {
+      "seed": 210,
+      "jitter": 156
+    },
+    {
+      "seed": 211,
+      "jitter": 211
+    },
+    {
+      "seed": 212,
+      "jitter": 268
+    },
+    {
+      "seed": 213,
+      "jitter": 223
+    },
+    {
+      "seed": 214,
+      "jitter": 227
+    },
+    {
+      "seed": 215,
+      "jitter": 34
+    },
+    {
+      "seed": 216,
+      "jitter": 87
+    },
+    {
+      "seed": 217,
+      "jitter": 46
+    },
+    {
+      "seed": 218,
+      "jitter": 22
+    },
+    {
+      "seed": 219,
+      "jitter": 29
+    },
+    {
+      "seed": 220,
+      "jitter": 110
+    },
+    {
+      "seed": 221,
+      "jitter": 41
+    },
+    {
+      "seed": 222,
+      "jitter": 145
+    },
+    {
+      "seed": 223,
+      "jitter": 152
+    },
+    {
+      "seed": 224,
+      "jitter": 281
+    },
+    {
+      "seed": 225,
+      "jitter": 112
+    },
+    {
+      "seed": 226,
+      "jitter": 216
+    },
+    {
+      "seed": 227,
+      "jitter": 147
+    },
+    {
+      "seed": 228,
+      "jitter": 228
+    },
+    {
+      "seed": 229,
+      "jitter": 182
+    },
+    {
+      "seed": 230,
+      "jitter": 87
+    },
+    {
+      "seed": 231,
+      "jitter": 194
+    },
+    {
+      "seed": 232,
+      "jitter": 175
+    },
+    {
+      "seed": 233,
+      "jitter": 229
+    },
+    {
+      "seed": 234,
+      "jitter": 206
+    },
+    {
+      "seed": 235,
+      "jitter": 217
+    },
+    {
+      "seed": 236,
+      "jitter": 46
+    },
+    {
+      "seed": 237,
+      "jitter": 100
+    },
+    {
+      "seed": 238,
+      "jitter": 229
+    },
+    {
+      "seed": 239,
+      "jitter": 212
+    },
+    {
+      "seed": 240,
+      "jitter": 93
+    },
+    {
+      "seed": 241,
+      "jitter": 299
+    },
+    {
+      "seed": 242,
+      "jitter": 100
+    },
+    {
+      "seed": 243,
+      "jitter": 31
+    },
+    {
+      "seed": 244,
+      "jitter": 164
+    },
+    {
+      "seed": 245,
+      "jitter": 170
+    },
+    {
+      "seed": 246,
+      "jitter": 271
+    },
+    {
+      "seed": 247,
+      "jitter": 278
+    },
+    {
+      "seed": 248,
+      "jitter": 286
+    },
+    {
+      "seed": 249,
+      "jitter": 41
+    },
+    {
+      "seed": 250,
+      "jitter": 94
+    },
+    {
+      "seed": 251,
+      "jitter": 225
+    },
+    {
+      "seed": 252,
+      "jitter": 5
+    },
+    {
+      "seed": 253,
+      "jitter": 212
+    },
+    {
+      "seed": 254,
+      "jitter": 165
+    },
+    {
+      "seed": 255,
+      "jitter": 124
+    },
+    {
+      "seed": 256,
+      "jitter": 52
+    },
+    {
+      "seed": 257,
+      "jitter": 83
+    },
+    {
+      "seed": 258,
+      "jitter": 288
+    },
+    {
+      "seed": 259,
+      "jitter": 119
+    },
+    {
+      "seed": 260,
+      "jitter": 47
+    },
+    {
+      "seed": 261,
+      "jitter": 54
+    },
+    {
+      "seed": 262,
+      "jitter": 159
+    },
+    {
+      "seed": 263,
+      "jitter": 166
+    },
+    {
+      "seed": 264,
+      "jitter": 70
+    },
+    {
+      "seed": 265,
+      "jitter": 101
+    },
+    {
+      "seed": 266,
+      "jitter": 206
+    },
+    {
+      "seed": 267,
+      "jitter": 236
+    },
+    {
+      "seed": 268,
+      "jitter": 241
+    },
+    {
+      "seed": 269,
+      "jitter": 96
+    },
+    {
+      "seed": 270,
+      "jitter": 101
+    },
+    {
+      "seed": 271,
+      "jitter": 59
+    },
+    {
+      "seed": 272,
+      "jitter": 112
+    },
+    {
+      "seed": 273,
+      "jitter": 219
+    },
+    {
+      "seed": 274,
+      "jitter": 48
+    },
+    {
+      "seed": 275,
+      "jitter": 230
+    },
+    {
+      "seed": 276,
+      "jitter": 59
+    },
+    {
+      "seed": 277,
+      "jitter": 290
+    },
+    {
+      "seed": 278,
+      "jitter": 219
+    },
+    {
+      "seed": 279,
+      "jitter": 125
+    },
+    {
+      "seed": 280,
+      "jitter": 106
+    },
+    {
+      "seed": 281,
+      "jitter": 37
+    },
+    {
+      "seed": 282,
+      "jitter": 166
+    },
+    {
+      "seed": 283,
+      "jitter": 296
+    },
+    {
+      "seed": 284,
+      "jitter": 177
+    },
+    {
+      "seed": 285,
+      "jitter": 108
+    },
+    {
+      "seed": 286,
+      "jitter": 36
+    },
+    {
+      "seed": 287,
+      "jitter": 243
+    },
+    {
+      "seed": 288,
+      "jitter": 248
+    },
+    {
+      "seed": 289,
+      "jitter": 279
+    },
+    {
+      "seed": 290,
+      "jitter": 59
+    },
+    {
+      "seed": 291,
+      "jitter": 66
+    },
+    {
+      "seed": 292,
+      "jitter": 167
+    },
+    {
+      "seed": 293,
+      "jitter": 174
+    },
+    {
+      "seed": 294,
+      "jitter": 6
+    },
+    {
+      "seed": 295,
+      "jitter": 61
+    },
+    {
+      "seed": 296,
+      "jitter": 290
+    },
+    {
+      "seed": 297,
+      "jitter": 121
+    },
+    {
+      "seed": 298,
+      "jitter": 53
+    },
+    {
+      "seed": 299,
+      "jitter": 184
+    },
+    {
+      "seed": 300,
+      "jitter": 61
+    }
+  ]
+}

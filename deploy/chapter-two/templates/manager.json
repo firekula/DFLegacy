@@ -1,0 +1,7 @@
+{
+  "ChapterTwoLocal": true,
+  "AdvertisedHost": "127.0.0.2",
+  "AccountServiceUrl": "http://127.0.0.2:48091",
+  "Autostart": true,
+  "Configured": true
+}

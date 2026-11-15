@@ -1,0 +1,28 @@
+[name] `³èÎïµ° (ÒÁ¶û±¾)`
+[name2] `An Egg of Nazarl`
+[grade] 0
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 1
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 4
+[output index] 63027
+
+[cool time] 10000
+
+[MP MAX rate] 5.00
+[all elemental resistance] 5
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1
+

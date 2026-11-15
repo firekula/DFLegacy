@@ -1,0 +1,19 @@
+{
+  "DFLegacy": {
+    "SeedTestAccount": false,
+    "EnableTestCeraTopUp": false,
+    "EnablePacketTracing": false,
+    "SkipUnsupportedChapterTwoCashContainers": true,
+    "ChapterTwoFreeRevivalCoinAmount": 1,
+    "Admin": { "Host": "127.0.0.2", "Port": 48091 },
+    "Entrance": { "Host": "127.0.0.2", "Port": 42312, "AdditionalPorts": [48090] },
+    "CharacterDatagram": { "Host": "127.0.0.2", "Port": 42312 },
+    "GameplayDatagram": { "Host": "127.0.0.2", "AdvertisedHost": "127.0.0.2", "PrimaryPort": 47012, "SecondaryPort": 47013 },
+    "Channel": { "Host": "127.0.0.2", "Port": 47001, "RegionalChannelsEnabled": true },
+    "FallbackRelay": { "Enabled": true, "Host": "127.0.0.2", "AdvertisedHost": "127.0.0.2", "TcpPort": 47005, "UdpPort": 47005 },
+    "Pvp": { "Enabled": false },
+    "GameProbe": { "Enabled": false, "Host": "127.0.0.2" },
+    "WebPanels": { "Player": { "Enabled": false, "Host": "127.0.0.2" }, "Gm": { "Enabled": false, "Host": "127.0.0.2" } },
+    "Drop": { "Enabled": true, "ForceDrops": false }
+  }
+}

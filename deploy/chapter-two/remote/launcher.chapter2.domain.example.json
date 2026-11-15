@@ -1,0 +1,6 @@
+{
+  "ChapterTwoServerHost": "game.example.com",
+  "Relay": { "Preference": "ipv6" },
+  "DisableGitHubUpdates": true,
+  "ChapterTwoTestMuteEnabled": true
+}

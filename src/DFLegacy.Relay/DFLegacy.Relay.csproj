@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DFLegacy.Relay</AssemblyName>
+    <!-- No culture, calendar or collation use: keeps the tool runnable on hosts
+         without ICU, matching the "minimal container" story of the server. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
+  </ItemGroup>
+</Project>

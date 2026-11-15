@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/DFLegacy.Manager/DFLegacy.Manager.csproj" />
+    <ProjectReference Include="../../src/DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
+    <Compile Include="../DFLegacy.Manager.Tests/ChapterTwoConfigTests.cs" Link="ChapterTwoConfigTests.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/ChapterTwoConnection.cs" Link="ChapterTwoConnection.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/ChapterTwoDebugApi.cs" Link="ChapterTwoDebugApi.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/LocalPaymentSite.cs" Link="LocalPaymentSite.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/ClientServiceConfiguration.cs" Link="ClientServiceConfiguration.cs" />
+    <Compile Include="../../src/DFLegacy.Launcher/IniConfiguration.cs" Link="IniConfiguration.cs" />
+    <EmbeddedResource Include="../../src/DFLegacy.Server/wwwroot/client/**/*" LogicalName="ClientPay/%(RecursiveDir)%(Filename)%(Extension)" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>

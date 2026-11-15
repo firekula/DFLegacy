@@ -1,0 +1,130 @@
+using System.Net;
+
+namespace DFLegacy.UpdateCore.Tests;
+
+internal static class EngineTests
+{
+    internal static async Task Run(string scratch)
+    {
+        var root = Path.Combine(scratch, "engine"); Directory.CreateDirectory(root);
+        var source = new ReleaseSource("gitee", "firekula/DFLegacy", "gitee-test", "x86", "test");
+        var m = ManifestTests.Sample(); var raw = ManifestCodec.Serialize(m);
+        var release = new VerifiedRelease(source, m.Version, TestRun.Hash(raw), raw);
+        var provider = new MemoryProvider(source, release);
+        foreach (var text in new[] { "abc", "pvf", "dll", "" }) provider.Blobs[TestRun.Hash(TestRun.Bytes(text))] = TestRun.Bytes(text);
+        var engine = new UpdateEngine(root, provider);
+        File.WriteAllText(Path.Combine(root, "client-package.json"), "old corrupted metadata");
+        var check = await engine.CheckAsync();
+        TestRun.Check(check.NeedsInstall && check.Verification!.Problems.Count == 4, "online target repairs missing files without old metadata");
+        var stage = await engine.DownloadAsync(check);
+        InstallTransaction.Apply(root, stage);
+        TestRun.Check((await engine.ValidateInstalledAsync()).CanLaunch, "committed installation can launch after complete validation");
+        // A completed receipt must authorize launch even when asset bytes cannot be read.
+        // Reintroducing per-start hashing causes this real Windows sharing lock to fail.
+        using (var held = new FileStream(Path.Combine(root, "ImagePacks2/a.npk"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            TestRun.Check((await engine.ValidateInstalledAsync()).CanLaunch, "validated receipt launches without opening resource contents");
+            var quick = await engine.CheckAsync();
+            TestRun.Check(quick.CanLaunch && !quick.NeedsInstall && quick.Verification == null, "same release discovery reuses receipt without content verification");
+        }
+        provider.Downloads.Clear();
+        File.WriteAllText(Path.Combine(root, "ImagePacks2/a.npk"), "bad");
+        TestRun.Check((await engine.CheckAsync()).CanLaunch, "normal launch trusts unchanged completed resource record");
+        check = await engine.CheckAsync(forceVerification: true);
+        TestRun.Check(check.NeedsInstall && check.Verification!.Problems.Single().Path == "ImagePacks2/a.npk", "same version corrupt file requires repair");
+        // Remove only this object's cache to prove exactly one remote fetch is needed.
+        File.Delete(new ContentCache(stage.CacheDirectory).ObjectPath(m.Files[0].Sha256, m.Files[0].Size));
+        stage = await engine.DownloadAsync(check); InstallTransaction.Apply(root, stage);
+        TestRun.Check(provider.Downloads.SequenceEqual(new[] { m.Files[0].Sha256 }), "same-version repair fetches only corrupt managed file");
+        var marker = Path.Combine(root, ".dflegacy/v4/validated.json");
+        File.Delete(marker);
+        var upgradeProgress = new CaptureProgress();
+        TestRun.Check((await engine.ValidateInstalledAsync(upgradeProgress)).CanLaunch && upgradeProgress.Count > 0 && File.Exists(marker), "legacy receipt is fully verified once before durable upgrade");
+        File.WriteAllText(marker, "{");
+        upgradeProgress = new();
+        TestRun.Check((await engine.ValidateInstalledAsync(upgradeProgress)).CanLaunch && upgradeProgress.Count > 0, "malformed validation record falls back to complete verification");
+        check = await engine.CheckAsync();
+        TestRun.Check(!check.NeedsInstall && check.CanLaunch && !check.IsOffline, "same version fully verified on online check");
+        provider.Unavailable = true;
+        check = await engine.CheckAsync();
+        TestRun.Check(check.CanLaunch && check.IsOffline && check.Message.Contains("未确认线上最新版本"), "valid installed baseline allowed offline with explicit warning");
+        File.WriteAllText(Path.Combine(root, "DFLegacy.Client.dll"), "xxx");
+        check = await engine.CheckAsync();
+        TestRun.Check(!check.CanLaunch, "offline corrupt baseline cannot launch");
+        provider.Unavailable = false; stage = await engine.DownloadAsync(await engine.CheckAsync()); InstallTransaction.Apply(root, stage);
+        var nextFile = ManifestTests.Entry("ImagePacks2/a.npk", "changed");
+        var next = m with { Version = "v4.0.2-test", Sequence = 3, Files = [nextFile, .. m.Files.Skip(1)] };
+        raw = ManifestCodec.Serialize(next); provider.Target = new(source, next.Version, TestRun.Hash(raw), raw);
+        provider.Blobs[nextFile.Sha256] = TestRun.Bytes("changed");
+        check = await engine.CheckAsync();
+        TestRun.Check(check.NeedsInstall && check.CanLaunch, "discovering B does not invalidate verified installed A");
+        using (var cancel = new CancellationTokenSource())
+        {
+            cancel.Cancel();
+            try { await engine.DownloadAsync(check, token: cancel.Token); throw new Exception("cancel ignored"); } catch (OperationCanceledException) { }
+        }
+        provider.Unavailable = true;
+        check = await new UpdateEngine(root, provider).CheckAsync();
+        TestRun.Check(check.CanLaunch && check.Installed!.Release.Manifest.Version == m.Version, "cancelled B and offline restart still validate A, not B");
+        provider.Unavailable = false;
+        var before = provider.Target;
+        var old = m with { Sequence = 1 }; raw = ManifestCodec.Serialize(old); provider.Target = new(source, old.Version, TestRun.Hash(raw), raw);
+        File.Delete(marker); // Freshly extracted full packages have no machine-bound validation stamp.
+        var downloadsBeforeOlderCheck = provider.Downloads.Count;
+        check = await engine.CheckAsync();
+        TestRun.Check(check.CanLaunch && !check.NeedsInstall && check.Target is null && check.Verification?.IsValid == true
+            && check.Installed?.Release.ManifestSha256 == release.ManifestSha256 && File.Exists(marker),
+            "newer full package remains launchable after complete local verification against an older online release");
+        await TestRun.RejectAsync(async () => await engine.DownloadAsync(check), "older online release cannot be downloaded as an update");
+        TestRun.Check(provider.Downloads.Count == downloadsBeforeOlderCheck
+            && new InstallationStore(root).ReadInstalled()!.Release.ManifestSha256 == release.ManifestSha256,
+            "older release does not overwrite local installation or fetch content");
+        File.WriteAllText(Path.Combine(root, "ImagePacks2/a.npk"), "bad");
+        check = await engine.CheckAsync();
+        TestRun.Check(!check.CanLaunch && !check.NeedsInstall && check.Target is null,
+            "older online release cannot bless a damaged newer full package");
+        File.WriteAllBytes(Path.Combine(root, "ImagePacks2/a.npk"), provider.Blobs[m.Files[0].Sha256]);
+        var rewritten = m with { Commit = new string('b', 40) };
+        raw = ManifestCodec.Serialize(rewritten); provider.Target = new(source, rewritten.Version, TestRun.Hash(raw), raw);
+        await TestRun.RejectAsync(async () => await engine.CheckAsync(), "same sequence replacement remains rejected");
+        provider.Target = before;
+        TestRun.Check((await engine.CheckAsync()).NeedsInstall, "genuine later updates remain discoverable after an older release was skipped");
+        // A publisher omitting retirement must never silently drop an old DLL from verification.
+        var omitted = next with { Files = next.Files.Where(f => f.Path != "DFLegacy.Client.dll").ToArray() }; raw = ManifestCodec.Serialize(omitted);
+        provider.Target = new(source, omitted.Version, TestRun.Hash(raw), raw);
+        await TestRun.RejectAsync(async () => await engine.CheckAsync(), "undeclared managed omission");
+        var retired=next with {Files=omitted.Files,Retired=[new("DFLegacy.Client.dll","delete",3)]};
+        raw=ManifestCodec.Serialize(retired); provider.Target=new(source,retired.Version,TestRun.Hash(raw),raw);
+        stage=await engine.DownloadAsync(await engine.CheckAsync()); InstallTransaction.Apply(root,stage);
+        var losesHistory=retired with {Version="v4.0.3-test",Sequence=4,Retired=[]};
+        raw=ManifestCodec.Serialize(losesHistory); provider.Target=new(source,losesHistory.Version,TestRun.Hash(raw),raw);
+        await TestRun.RejectAsync(async()=>await engine.CheckAsync(),"historical tombstone omission rejected before downloading");
+    }
+    private sealed class CaptureProgress : IProgress<UpdateProgress>
+    {
+        internal int Count;
+        public void Report(UpdateProgress value) { if (value.Phase == "verify") Count++; }
+    }
+    internal sealed class MemoryProvider(ReleaseSource source, VerifiedRelease release) : IReleaseProvider
+    {
+        public ReleaseSource Source => source;
+        public string Identity => source.Identity;
+        public VerifiedRelease? Target { get; set; } = release;
+        public bool Unavailable { get; set; }
+        public Dictionary<string, byte[]> Blobs { get; } = new();
+        public List<string> Downloads { get; } = [];
+        public Task<VerifiedRelease?> FindAsync(CancellationToken token = default)
+        {
+            token.ThrowIfCancellationRequested();
+            if (Unavailable) throw new HttpRequestException("fixture offline");
+            return Task.FromResult(Target);
+        }
+        public Task<HttpResponseMessage> OpenAsync(ResourcePart part, long offset, string? etag, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested(); Downloads.Add(part.Sha256);
+            var body = Blobs[part.Sha256]; var response = new HttpResponseMessage(offset == 0 ? HttpStatusCode.OK : HttpStatusCode.PartialContent) { Content = new ByteArrayContent(body[(int)offset..]) };
+            if (offset > 0) response.Content.Headers.ContentRange = new(offset, body.Length - 1, body.Length);
+            return Task.FromResult(response);
+        }
+    }
+}

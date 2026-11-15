@@ -1,0 +1,355 @@
+using System.Buffers.Binary;
+using DFLegacy.Protocol;
+using DFLegacy.Server;
+
+internal static class DungeonBossDeathSmokeTests
+{
+    public static void Run(Action<bool, string> check)
+    {
+        using var fixture = new DungeonFixture();
+        var now = new DateTimeOffset(2026, 10, 24, 0, 0, 0, TimeSpan.Zero);
+        var boss = DungeonFixture.Monster(0, GameDungeonMonsterTypes.Boss);
+        var secondBoss = DungeonFixture.Monster(1, GameDungeonMonsterTypes.Boss);
+        var normal = DungeonFixture.Monster(2);
+        var boxed = DungeonFixture.Monster(3) with { IsBoxMonster = 1, BoxIndex = 5 };
+        var room = DungeonFixture.Room([boss, secondBoss, normal, boxed]) with
+        {
+            MapType = DungeonMapType.Boss,
+            HasScriptBossActor = true
+        };
+        var instance = fixture.CreatePartyInstance(2000);
+        instance.EnterDetachedRoom(room);
+        check(!instance.TryStartBossDeathCascade(out _),
+            "an ALLDIE request cannot kill monsters while real bosses are still alive");
+        instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+        instance.TryReportBossDeath(boss.UniqueId, [boss.UniqueId, secondBoss.UniqueId], out _);
+        check(!instance.TryStartBossDeathCascade(out _),
+            "defeating one of two bosses does not start the room death cascade");
+        instance.TryTakeMonsterDeath(secondBoss.UniqueId, out _);
+        instance.TryReportBossDeath(secondBoss.UniqueId, [boss.UniqueId, secondBoss.UniqueId], out _);
+        check(instance.TryStartBossDeathCascade(out var first) && first
+                && instance.TryStartBossDeathCascade(out first) && !first
+                && instance.SnapshotBossDeathCascadeTargets().SequenceEqual([normal.UniqueId]),
+            "the final boss starts one cascade and leaves an unopened box monster dormant");
+        check(instance.TryAnnounceBossDeathCascade() && !instance.TryAnnounceBossDeathCascade(),
+            "only one final-boss announcement is broadcast to all clients");
+
+        var alpha = new DungeonBossDeathSweep();
+        var bravo = new DungeonBossDeathSweep();
+        check(alpha.Schedule(instance, now) == 1 && bravo.Schedule(instance, now) == 1
+                && instance.AliveMonsterCount == 2
+                && !instance.EvaluateRoomClear(secondBoss).ShouldEnableClear,
+            "scheduling all-die keeps active monsters alive until their normal death settlement");
+        alpha.Schedule(instance, now.AddSeconds(4));
+        check(alpha.TakeDue(instance, now.AddSeconds(4)).Length == 0,
+            "normal death confirmations receive the complete grace period");
+        var aDue = alpha.TakeDue(instance, now.AddSeconds(5));
+        var bDue = bravo.TakeDue(instance, now.AddSeconds(5));
+        check(aDue.SequenceEqual([normal.UniqueId]) && bDue.SequenceEqual(aDue),
+            "duplicate all-die requests do not postpone the death fallback deadline");
+
+        // Both session loops can race on a native report and their due fallback.
+        // This is the same atomic entry used before production generates rewards.
+        var rewardPackets = new List<GameServerPacket>();
+        var gate = new object();
+        var deathGeneration = instance.RoomGeneration;
+        Parallel.ForEach(aDue.Concat(bDue).Concat([normal.UniqueId]), id =>
+        {
+            if (!instance.TryBeginMonsterDeath(id, deathGeneration, out _, out var ordinal))
+            {
+                return;
+            }
+            try
+            {
+                var drop = instance.AddGroundItem(
+                    new DungeonGeneratedDrop(true, 0, 100), 7, id, 0, 0, 100, 100);
+                var packet = GameProtocolEngine.CreateMonsterDie(id,
+                    [new GameDungeonDrop(drop.GroundId, drop.ItemId,
+                        drop.GetClientAddInfo(fixture.Items), drop.GetClientDurability(fixture.Items), drop.OwnerUserId)], ordinal);
+                lock (gate) { rewardPackets.Add(packet); }
+            }
+            finally
+            {
+                instance.CompleteMonsterDeath(deathGeneration);
+            }
+        });
+        check(instance.NormalMonsterKills == 1 && instance.GetRoomGroundItems(0, 0).Length == 1
+                && rewardPackets.Count == 1 && rewardPackets[0].Payload[2] == 1
+                && BinaryPrimitives.ReadUInt16LittleEndian(rewardPackets[0].Payload) == normal.UniqueId,
+            "concurrent normal reports and fallback deaths generate exactly one kill, drop and drop-bearing NOTI38");
+        check(instance.EvaluateRoomClear(normal).ShouldEnableClear && instance.TryEnableClear()
+                && instance.SnapshotAliveMonsters().SetEquals([boxed.UniqueId]),
+            "the boss room settles after present monsters die without deleting an unopened box monster");
+
+        lock (instance.Gate) { instance.DestroyedPassiveObjects.Add(boxed.BoxIndex); }
+        check(instance.SnapshotBossDeathCascadeTargets().SequenceEqual([boxed.UniqueId])
+                && alpha.Schedule(instance, now.AddSeconds(6)) == 1,
+            "breaking a box after settlement activates its pending monster death");
+        check(instance.TryTakeMonsterDeath(boxed.UniqueId, out _)
+                && !instance.TryTakeMonsterDeath(boxed.UniqueId, out _)
+                && !instance.TryEnableClear()
+                && alpha.TakeDue(instance, now.AddSeconds(20)).Length == 0,
+            "a late box monster accepts one normal death without repeating settlement or fallback rewards");
+
+        var stale = new DungeonBossDeathSweep();
+        instance.EnterDetachedRoom(room);
+        instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+        instance.TryTakeMonsterDeath(secondBoss.UniqueId, out _);
+        instance.TryStartBossDeathCascade(out _);
+        stale.Schedule(instance, now);
+        var oldGeneration = instance.RoomGeneration;
+        instance.EnterDetachedRoom(room);
+        check(stale.TakeDue(instance, now.AddSeconds(10)).Length == 0
+                && !instance.TryTakeMonsterDeath(normal.UniqueId, out _, oldGeneration)
+                && instance.SnapshotAliveMonsters().SetEquals([0, 1, 2, 3])
+                && instance.TryAnnounceBossDeathCascade(),
+            "a new room generation discards old fallback deaths and final-boss broadcast state even when ids are reused");
+        stale.Schedule(instance, now);
+        check(stale.TakeDue(null, now.AddSeconds(10)).Length == 0 && !stale.HasPending,
+            "leaving the instance cancels deferred boss deaths");
+
+        CheckUnopenedBoxClearEvidence(check, fixture, boss, normal, boxed);
+        CheckSettlementBarrier(check, fixture, boss, normal);
+        CheckCompletedRunRoomGate(check, fixture);
+        CheckFinalBossDeathRoomGate(check);
+        CheckFriendlyProtectionTarget(check);
+    }
+
+    private static void CheckFriendlyProtectionTarget(Action<bool, string> check)
+    {
+        // Iceheart's real map distinguishes Charlie (team 100) from the heart
+        // (team 0). A third allied row and a missing team entry exercise the
+        // per-row mapping and the legacy enemy default through the real parser.
+        using var fixture = new DungeonFixture(
+            "1030 1 0 286 469 0 20 1 `[fixed]` `[boss]`\n"
+            + "1034 0 20 1159 837 0 1 1 `[fixed]` `[normal]`\n"
+            + "2 1 0 300 400 0 1 1 `[fixed]` `[normal]`\n"
+            + "3 1 0 400 400 0 1 1 `[fixed]` `[normal]`\n",
+            "100\n0 // protection target\n1");
+        foreach (var party in new[] { false, true })
+        {
+            var instance = party ? fixture.CreatePartyInstance(2010) : fixture.CreateInstance();
+            check(instance.TryStartRun(fixture.Layout, 0, 0, out _)
+                && instance.TryMoveRoom(1, 0, out _) && instance.TryMoveRoom(2, 0, out _),
+                "protection-target fixture reaches the boss room through PVF parsing");
+            var room = instance.RunCurrentRoom!;
+            var boss = room.Monsters[0];
+            var heart = room.Monsters[1];
+            var enemy = room.Monsters[3];
+            var noBoss = room with { Monsters = [heart, enemy with { IsBoxMonster = 1, BoxIndex = 5 }] };
+            check(!DungeonRoomClearRules.Evaluate(noBoss, enemy,
+                    new HashSet<ushort> { heart.UniqueId, enemy.UniqueId }, new HashSet<byte>()).ShouldEnableClear,
+                "a boss-marked map without a boss still waits for its unopened hostile box monster");
+            var promoted = DungeonCatalog.PromoteChampions(room.Monsters, 100, fixture.Random);
+            check(promoted[1].Type == 0 && promoted[2].Type == 0 && promoted[3].Type == 1,
+                "champion promotion leaves protection targets and allies unchanged but promotes an omitted-team enemy");
+            instance.TryReportBossDeath(boss.UniqueId, [boss.UniqueId], out _);
+            instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+            instance.TryStartBossDeathCascade(out _);
+            var sweep = new DungeonBossDeathSweep();
+            var now = DateTimeOffset.UtcNow;
+            check(sweep.Schedule(instance, now) == 1
+                && sweep.TakeDue(instance, now.AddSeconds(5)).SequenceEqual([enemy.UniqueId]),
+                $"{(party ? "party" : "solo")} boss fallback never kills a living protection target or ally");
+            check(!instance.EvaluateRoomClear(boss).ShouldEnableClear,
+                "the hostile survivor must still complete normal death settlement");
+            instance.TryBeginMonsterDeath(enemy.UniqueId, instance.RoomGeneration, out _, out _);
+            instance.CompleteMonsterDeath(instance.RoomGeneration);
+            check(instance.EvaluateRoomClear(enemy).ShouldEnableClear && instance.TryEnableClear()
+                && instance.SnapshotAliveMonsters().SetEquals([heart.UniqueId, (ushort)2])
+                && instance.SnapshotBossDeathCascadeTargets().Length == 0,
+                "normal clear and card settlement can begin with the heart and ally still alive");
+            check(DungeonRunState.IsRoomCleared(room, new HashSet<ushort> { boss.UniqueId, enemy.UniqueId }, new HashSet<byte>()),
+                "map-clear quest evidence requires hostile deaths, not destruction of protected allies");
+            check(instance.TryTakeMonsterDeath(heart.UniqueId, out var cascadeDeath) && !cascadeDeath,
+                "a genuine protection-target death remains reportable and is never marked as boss cleanup");
+        }
+    }
+
+    private static void CheckFinalBossDeathRoomGate(Action<bool, string> check)
+    {
+        using var fixture = new DungeonFixture(
+            "1 1 1 100 100 0 1 1 `[fixed]` `[boss]`\n"
+            + "1 1 1 200 100 0 1 1 `[fixed]` `[boss]`\n"
+            + "1 1 1 300 100 0 1 1 `[fixed]` `[normal]`\n");
+        foreach (var party in new[] { false, true })
+        {
+            DungeonInstance Start()
+            {
+                var instance = party ? fixture.CreatePartyInstance(2005) : fixture.CreateInstance();
+                instance.TryStartRun(fixture.Layout, 0, 0, out _);
+                instance.TryMoveRoom(1, 0, out _);
+                instance.TryMoveRoom(2, 0, out _);
+                return instance;
+            }
+            var unfinished = Start();
+            var firstBosses = unfinished.RunCurrentRoom!.Monsters.Where(monster => monster.Type == 3).ToArray();
+            check(firstBosses.Length == 2, "the real map fixture contains two independent bosses");
+            unfinished.TryTakeMonsterDeath(firstBosses[0].UniqueId, out _);
+            unfinished.TryReportBossDeath(firstBosses[0].UniqueId, firstBosses.Select(monster => monster.UniqueId).ToArray(), out _);
+            check(unfinished.TryMoveRoom(1, 0, out _),
+                "one defeated/reported boss does not block movement while another boss is alive");
+
+            foreach (var phase in new[] { "reported", "cascade", "rewards-pending" })
+            {
+                var instance = Start();
+                var monsters = instance.RunCurrentRoom!.Monsters;
+                var bosses = monsters.Where(monster => monster.Type == 3).Select(monster => monster.UniqueId).ToArray();
+                var normal = monsters.Single(monster => monster.Type == 0);
+                var generation = instance.RoomGeneration;
+                var sweep = new DungeonBossDeathSweep();
+                var now = DateTimeOffset.UtcNow;
+                if (phase == "rewards-pending")
+                {
+                    instance.TryBeginMonsterDeath(bosses[0], generation, out _, out _);
+                    instance.CompleteMonsterDeath(generation);
+                    instance.TryBeginMonsterDeath(bosses[1], generation, out _, out _);
+                }
+                else
+                {
+                    foreach (var bossId in bosses) instance.TryReportBossDeath(bossId, bosses, out _);
+                    if (phase == "cascade")
+                    {
+                        instance.TryStartBossDeathCascade(out _);
+                        check(sweep.Schedule(instance, now) == 1, "native all-die schedules the remaining normal monster fallback");
+                    }
+                }
+                var version = instance.Version;
+                var alive = instance.SnapshotAliveMonsters();
+                var direct = instance.TryMoveRoom(1, 0, out _);
+                var advanced = instance.TryAdvanceRoom(1, 0, out _, out var error);
+                check(!direct && !advanced && error == 19 && !instance.ClearEnabled
+                        && instance.RoomGeneration == generation && instance.Version == version
+                        && instance.SnapshotAliveMonsters().SetEquals(alive),
+                    $"{(party ? "party" : "solo")} {phase}: terminal boss death blocks both room paths before clear without losing death state");
+                if (phase == "cascade")
+                    check(sweep.TakeDue(instance, now.AddSeconds(5)).SequenceEqual([normal.UniqueId]),
+                        "a rejected immediate door request preserves the scheduled five-second death reconciliation");
+                if (phase == "rewards-pending") instance.CompleteMonsterDeath(generation);
+                foreach (var monster in monsters) instance.TryTakeMonsterDeath(monster.UniqueId, out _, generation);
+                check(instance.EvaluateRoomClear(normal, generation).ShouldEnableClear && instance.TryEnableClear(generation),
+                    "the original boss room can finish its normal death settlement after the early door rejection");
+            }
+        }
+    }
+
+    private static void CheckCompletedRunRoomGate(Action<bool, string> check, DungeonFixture fixture)
+    {
+        foreach (var party in new[] { false, true })
+        {
+            var characterId = Guid.NewGuid();
+            var instance = party ? fixture.CreatePartyInstance(2002) : fixture.CreateSoloInstance(characterId);
+            instance.AddMember(fixture.Member(characterId, 0, "completed run"));
+            check(instance.TryStartRun(fixture.Layout, 0, 0, out _)
+                    && instance.TryMoveRoom(1, 0, out _)
+                    && instance.TryAdvanceRoom(2, 0, out var bossEntry, out var entryError)
+                    && entryError == 0 && bossEntry?.Room.MapType == DungeonMapType.Boss,
+                $"{(party ? "party" : "solo")} normal room transitions still reach the boss room");
+            var generation = instance.RoomGeneration;
+            var monsters = instance.RunCurrentRoom!.Monsters;
+            foreach (var monster in monsters) instance.TryTakeMonsterDeath(monster.UniqueId, out _);
+            check(instance.EvaluateRoomClear(monsters[^1]).ShouldEnableClear && instance.TryEnableClear(generation),
+                "defeating the boss room opens final settlement before a queued door request runs");
+            var drop = instance.AddGroundItem(new DungeonGeneratedDrop(true, 0, 100), 7, 99, 2, 0, 120, 130);
+            var cards = instance.EnsurePartyCardSettlement();
+            var settlementId = instance.PartyCardSettlementId;
+            var deadline = DateTimeOffset.UtcNow.AddSeconds(20);
+            instance.ArmSettlementReturn(characterId, deadline);
+            var before = instance.Snapshot();
+            var moves = 0;
+            Parallel.For(0, 8, attempt =>
+            {
+                if (instance.TryMoveRoom(1, 0, out _)) Interlocked.Increment(ref moves);
+            });
+            check(moves == 0 && instance.Snapshot() == before && instance.RoomGeneration == generation
+                    && instance.ClearEnabled && instance.GetRoomGroundItems(2, 0).Contains(drop),
+                $"{(party ? "party" : "solo")} direct and queued post-clear moves preserve room, generation, drops and clear state");
+            check(!instance.TryAdvanceRoom(1, 0, out var rejected, out var error)
+                    && rejected is null && error == 19,
+                "a completed run rejects a door request with native state error 19");
+            check(instance.EnsurePartyCardSettlement() == cards && instance.PartyCardSettlementId == settlementId
+                    && instance.TakeExpiredSettlementReturns(deadline).SequenceEqual([characterId]),
+                "a rejected post-clear move preserves card settlement and its return deadline");
+            check(!instance.TryEnableClear(generation) && instance.Snapshot() == before,
+                "duplicate completion after a rejected door request cannot reopen settlement");
+            instance.StopRun();
+            check(instance.TryStartRun(fixture.Layout, 0, 0, out _)
+                    && !instance.TryEnableClear(generation) && !instance.ClearEnabled
+                    && instance.TryMoveRoom(1, 0, out _),
+                "a fresh run can move normally and rejects delayed completion from the old room generation");
+        }
+
+        var hell = fixture.CreateInstance();
+        check(hell.TryStartRun(fixture.HellLayout, 0, 1, out _) && hell.TryMoveRoom(1, 0, out _),
+            "the hell encounter fixture starts");
+        foreach (var monster in hell.RunCurrentRoom!.Monsters) hell.TryTakeMonsterDeath(monster.UniqueId, out _);
+        check(hell.IsCurrentHellRoomCleared() && !hell.ClearEnabled
+                && hell.TryMoveRoom(0, 0, out _) && hell.TryMoveRoom(1, 0, out _),
+            "clearing a hell encounter still permits return and revisit before final dungeon settlement");
+    }
+
+    private static void CheckSettlementBarrier(
+        Action<bool, string> check, DungeonFixture fixture,
+        GameDungeonMonster boss, GameDungeonMonster normal)
+    {
+        var other = DungeonFixture.Monster(4);
+        var room = DungeonFixture.Room([boss, normal, other]) with { MapType = DungeonMapType.Boss };
+        var instance = fixture.CreatePartyInstance(2001);
+        instance.EnterDetachedRoom(room);
+        instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+        var generation = instance.RoomGeneration;
+        check(instance.TryBeginMonsterDeath(normal.UniqueId, generation, out _, out _)
+                && instance.TryBeginMonsterDeath(other.UniqueId, generation, out _, out _)
+                && instance.AliveMonsterCount == 0
+                && !instance.EvaluateRoomClear(normal).ShouldEnableClear
+                && !instance.TryEnableClear(),
+            "claiming every monster cannot open settlement while either death is still generating/broadcasting rewards");
+        instance.CompleteMonsterDeath(generation);
+        check(!instance.EvaluateRoomClear(other).ShouldEnableClear && !instance.TryEnableClear(),
+            "one session finishing its rewards cannot pass another session's in-flight death");
+        instance.CompleteMonsterDeath(generation);
+        check(instance.EvaluateRoomClear(other).ShouldEnableClear && instance.TryEnableClear()
+                && !instance.TryEnableClear(),
+            "the last completed death opens settlement exactly once after every reward pipeline completes");
+
+        instance.EnterDetachedRoom(room);
+        var oldGeneration = instance.RoomGeneration;
+        instance.TryBeginMonsterDeath(normal.UniqueId, oldGeneration, out _, out _);
+        instance.EnterDetachedRoom(room);
+        var newGeneration = instance.RoomGeneration;
+        instance.TryTakeMonsterDeath(boss.UniqueId, out _);
+        instance.TryBeginMonsterDeath(normal.UniqueId, newGeneration, out _, out _);
+        instance.TryBeginMonsterDeath(other.UniqueId, newGeneration, out _, out _);
+        check(!instance.CompleteMonsterDeath(oldGeneration),
+            "an old room's delayed death completion cannot decrement the next room's settlement barrier");
+        instance.CompleteMonsterDeath(newGeneration);
+        check(!instance.TryEnableClear(), "the new room still waits for its own remaining death completion");
+        instance.CompleteMonsterDeath(newGeneration);
+        check(instance.TryEnableClear(), "a reset death barrier releases only for the new room's completed rewards");
+    }
+
+    private static void CheckUnopenedBoxClearEvidence(
+        Action<bool, string> check, DungeonFixture fixture,
+        GameDungeonMonster boss, GameDungeonMonster normal, GameDungeonMonster boxed)
+    {
+        var room = DungeonFixture.Room([boss, normal, boxed]) with { MapType = DungeonMapType.Boss };
+        HashSet<ushort> defeated = [boss.UniqueId, normal.UniqueId];
+        HashSet<byte> destroyed = [];
+        check(DungeonRunState.IsRoomCleared(room, defeated, destroyed),
+            "unopened boxes do not block a defeated boss room's clear-map quest evidence");
+        destroyed.Add(boxed.BoxIndex);
+        check(!DungeonRunState.IsRoomCleared(room, defeated, destroyed),
+            "an already released box monster must die before the initial boss-room clear");
+        defeated.Add(boxed.UniqueId);
+        check(DungeonRunState.IsRoomCleared(room, defeated, destroyed),
+            "the late box monster's normal death satisfies complete map-clear evidence");
+        var run = new DungeonRunState(fixture.Catalog);
+        check(run.TryStart(fixture.Layout, 0, 0, out _, fixture.Random), "map-clear latch fixture starts");
+        var mapId = run.CurrentRoom!.MapId;
+        run.MarkCurrentRoomCleared();
+        check(run.HasClearedMap(mapId),
+            "opening settlement latches map-clear evidence independently of later live monster changes");
+        run.Stop();
+        check(!run.HasClearedMap(mapId), "the next run cannot inherit latched map-clear evidence");
+    }
+}

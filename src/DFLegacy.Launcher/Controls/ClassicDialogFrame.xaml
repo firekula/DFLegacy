@@ -1,0 +1,37 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="clr-namespace:DFLegacy.Launcher.Controls">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="../Views/ClassicStyles.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
+  <ImageBrush x:Key="ClassicDialogTexture" ImageSource="{StaticResource ClassicPanel}"
+              Viewbox="0.05,0.05,0.9,0.9" ViewboxUnits="RelativeToBoundingBox"
+              Viewport="0,0,320,285" ViewportUnits="Absolute" TileMode="Tile" Stretch="Fill"/>
+  <Style TargetType="c:ClassicDialogFrame">
+    <Setter Property="FontFamily" Value="宋体"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource ClassicInk}"/>
+    <Setter Property="Focusable" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="c:ClassicDialogFrame">
+          <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="82"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Border Grid.RowSpan="2" Margin="4,29,4,4" Background="{StaticResource ClassicDialogTexture}"/>
+            <c:SkinFrame Grid.RowSpan="2" Margin="0,23,0,0" Source="{StaticResource ClassicPanel}" Insets="12"/>
+            <Image Source="../Assets/Skin/classic-crest.png" Width="233" Height="48" VerticalAlignment="Top" IsHitTestVisible="False"/>
+            <c:PixelText Text="{TemplateBinding Title}" TextAlignment="Center" TextWrapping="NoWrap"
+                         FontSize="20" Foreground="{StaticResource ClassicGold}" Margin="46,44,46,0"
+                         Height="30" VerticalAlignment="Top" IsHitTestVisible="False"/>
+            <c:SkinButton x:Name="PART_CloseButton" Width="25" Height="23" HorizontalAlignment="Right"
+                          VerticalAlignment="Top" Margin="0,46,15,0" Style="{StaticResource ClassicImageButton}"
+                          NormalSource="../Assets/Skin/buton_close00.png" HoverSource="../Assets/Skin/buton_close01.png"
+                          PressedSource="../Assets/Skin/buton_close02.png" AutomationProperties.Name="关闭窗口"
+                          IsEnabled="{TemplateBinding CanClose}"/>
+            <ContentPresenter Grid.Row="1" Margin="24,6,24,22"/>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

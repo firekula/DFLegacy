@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DFLegacy 后台</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=20261110-mail-grid">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">DF</span>
+        <div>
+          <strong>DFLegacy</strong>
+          <span>GM工具</span>
+        </div>
+      </div>
+      <nav class="nav" aria-label="后台功能">
+        <button class="nav-item active admin-only" type="button" data-view="mail">邮件</button>
+        <button class="nav-item admin-only" type="button" data-view="victory">胜点发放</button>
+        <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
+        <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
+        <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
+        <button class="nav-item admin-only" type="button" data-view="users">账号管理</button>
+        <button class="nav-item admin-only" type="button" data-view="diagnostics">客户端故障</button>
+        <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
+      </nav>
+      <div class="sidebar-foot">
+        <span id="onlineCount" class="admin-only">0 名角色在线</span>
+        <button id="refreshData" class="quiet-button" type="button">刷新数据</button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">邮件</h1>
+          <p id="pageSubtitle">发送系统邮件和游戏物品</p>
+        </div>
+        <div class="topbar-meta">
+          <div class="identity">
+            <span id="identityRole" class="identity-role">当前身份：未登录</span>
+            <span id="identityName" class="identity-name">—</span>
+          </div>
+          <div id="serverState" class="server-state pending">
+            <span class="state-dot"></span>
+            <span>正在连接服务端</span>
+          </div>
+          <button id="logoutButton" class="quiet-button" type="button">退出登录</button>
+        </div>
+      </header>
+
+      <section class="view admin-only" data-view-panel="diagnostics">
+        <form id="diagnosticFilters" class="surface form-layout">
+          <h2>客户端故障</h2>
+          <p>自动收集的脱敏基本报告。原始内存转储仅保存在玩家本机。</p>
+          <div class="form-grid two-column">
+            <label class="field"><span>类型</span><select name="kind"><option value="">全部</option><option>crash</option><option>error</option><option>networkerror</option></select></label>
+            <label class="field"><span>处理状态</span><select name="status"><option value="">全部</option><option value="new">新问题</option><option value="investigating">处理中</option><option value="resolved">已处理</option></select></label>
+            <label class="field"><span>客户端版本</span><input name="version" maxlength="128"></label>
+            <label class="field"><span>系统</span><input name="system" maxlength="256"></label>
+            <label class="field"><span>显卡</span><input name="gpu" maxlength="256"></label>
+            <label class="field"><span>开始时间</span><input name="from" type="datetime-local"></label>
+            <label class="field"><span>结束时间</span><input name="to" type="datetime-local"></label>
+          </div>
+          <button class="primary-button" type="submit">查询故障</button>
+        </form>
+        <section class="surface form-layout">
+          <p id="diagnosticSummary" role="status">点击查询故障以加载报告。</p>
+          <div id="diagnosticGroups"></div>
+          <div class="form-actions"><button id="diagnosticPrevious" class="secondary-button" type="button">上一页</button><button id="diagnosticNext" class="secondary-button" type="button">下一页</button></div>
+        </section>
+        <section class="surface form-layout"><h2>报告详情</h2><pre id="diagnosticDetail"></pre><div id="diagnosticActions" class="form-actions"></div></section>
+      </section>
+
+      <section class="view active admin-only" data-view-panel="mail">
+        <form id="mailForm" class="surface form-layout">
+          <div class="section-heading">
+            <h2>新邮件</h2>
+            <p>原版客户端每封邮件只能携带一种物品。多个物品格会自动拆成多封邮件，金币仅附首封。</p>
+          </div>
+          <fieldset id="mailDraftFields" class="mail-draft-fields">
+          <div class="form-grid two-column">
+            <label class="field span-two">
+              <span>发送范围</span>
+              <select id="mailScope" name="scope">
+                <option value="single">指定角色</option>
+                <option value="all">全服现有角色（含离线）</option>
+              </select>
+            </label>
+            <label id="mailCharacterField" class="field span-two">
+              <span>收件角色</span>
+              <select class="character-select" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>发件人</span>
+              <input name="sender" value="DFLegacy" maxlength="20" required>
+            </label>
+            <label class="field">
+              <span>金币</span>
+              <input name="gold" type="number" min="0" step="1" value="0" required>
+            </label>
+            <label class="field span-two">
+              <span>正文</span>
+              <textarea name="text" maxlength="255" rows="4" placeholder="邮件内容"></textarea>
+            </label>
+          </div>
+          <section class="mail-attachments" aria-labelledby="mailAttachmentsTitle" aria-describedby="mailAttachmentsHelp">
+            <div class="mail-attachments-heading">
+              <h3 id="mailAttachmentsTitle">物品附件</h3>
+              <p id="mailAttachmentCount" aria-live="polite">0 / 10 格</p>
+            </div>
+            <p id="mailAttachmentsHelp" class="mail-attachment-help">最多 10 格为管理端单次操作上限；不添加物品格时，仅发送文字／金币邮件。</p>
+            <div id="mailAttachmentRows" class="mail-attachment-rows"></div>
+            <button id="mailAddAttachment" class="secondary-button" type="button">添加物品格</button>
+          </section>
+          </fieldset>
+          <div class="form-actions">
+            <button id="mailSubmit" class="primary-button" type="submit">发送邮件</button>
+          </div>
+        </form>
+        <section id="mailBatchPending" class="surface form-layout hidden" aria-live="polite">
+          <p>当前批次：<code id="mailPendingId"></code></p>
+          <p>批次内容已锁定。响应异常或刷新网页后，请先恢复原批次结果，避免重复发送。</p>
+          <div class="mail-pending-actions">
+            <button id="mailBatchRecover" class="secondary-button" type="button">恢复原批次／查询结果</button>
+            <button id="mailBatchCancel" class="secondary-button" type="button">取消预览并编辑</button>
+          </div>
+        </section>
+        <section id="mailBatchPreview" class="surface form-layout hidden" aria-live="polite">
+          <h2>确认全服邮件</h2>
+          <p id="mailBatchPreviewText"></p>
+          <p>按物品格自动拆信，金币仅附每位角色的首封；包含离线角色，之后新建的角色不补发。</p>
+          <div class="form-actions">
+            <button id="mailBatchConfirm" class="danger-button" type="button">确认发送</button>
+          </div>
+        </section>
+        <section id="mailBatchResult" class="surface form-layout hidden" aria-live="polite">
+          <h2>全服邮件结果</h2>
+          <p id="mailBatchSummary"></p>
+          <p>批次：<code id="mailBatchId"></code></p>
+          <ul id="mailBatchFailures"></ul>
+          <div class="form-actions">
+            <button id="mailBatchRetry" class="secondary-button hidden" type="button">仅补发失败角色</button>
+            <button id="mailBatchNew" class="secondary-button" type="button">新建全服邮件批次</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="view admin-only" data-view-panel="victory">
+        <form id="victoryForm" class="surface form-layout">
+          <div class="section-heading">
+            <h2>发放决斗胜点</h2>
+            <p>在线、离线角色均可发放；只增加可消费胜点，不改变决斗段位和战绩。</p>
+          </div>
+          <label class="field">
+            <span>目标角色</span>
+            <select class="character-select" name="characterId" required></select>
+          </label>
+          <p id="victoryBalance" aria-live="polite">当前胜点：—</p>
+          <p id="victoryOperation" aria-live="polite"></p>
+          <label class="field">
+            <span>发放数量</span>
+            <input name="amount" type="number" min="1" max="4294967295" step="1" value="100" required>
+          </label>
+          <div class="form-actions"><button class="primary-button" type="submit">发放胜点</button></div>
+        </form>
+      </section>
+
+      <section class="view admin-only" data-view-panel="direct">
+        <div class="split-layout">
+          <form id="directPopupForm" class="surface form-layout">
+            <div class="section-heading">
+              <h2>单人弹框</h2>
+              <p>向指定在线角色发送客户端弹窗。</p>
+            </div>
+            <label class="field">
+              <span>目标角色</span>
+              <select class="character-select online-only" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>弹框内容</span>
+              <textarea name="message" maxlength="127" rows="6" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">发送弹框</button>
+            </div>
+          </form>
+
+          <form id="directMessageForm" class="surface form-layout">
+            <div class="section-heading">
+              <h2>单人消息</h2>
+              <p>向指定在线角色的消息栏发送通知。</p>
+            </div>
+            <label class="field">
+              <span>目标角色</span>
+              <select class="character-select online-only" name="characterId" required></select>
+            </label>
+            <label class="field">
+              <span>消息类型</span>
+              <select class="message-type-select" name="messageType" required></select>
+            </label>
+            <label class="field">
+              <span>消息内容</span>
+              <textarea name="message" maxlength="127" rows="4" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">发送消息</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view admin-only" data-view-panel="broadcast">
+        <div class="split-layout">
+          <form id="broadcastPopupForm" class="surface form-layout danger-surface">
+            <div class="section-heading">
+              <h2>广播弹框</h2>
+              <p>发送到当前全部在线角色。</p>
+            </div>
+            <label class="field">
+              <span>弹框内容</span>
+              <textarea name="message" maxlength="127" rows="7" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="danger-button" type="submit">广播弹框</button>
+            </div>
+          </form>
+
+          <form id="broadcastMessageForm" class="surface form-layout danger-surface">
+            <div class="section-heading">
+              <h2>广播消息</h2>
+              <p>发送到当前全部在线角色的消息栏。</p>
+            </div>
+            <label class="field">
+              <span>消息类型</span>
+              <select class="message-type-select" name="messageType" required></select>
+            </label>
+            <label class="field">
+              <span>消息内容</span>
+              <textarea name="message" maxlength="127" rows="4" required></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="danger-button" type="submit">广播消息</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="view admin-only" data-view-panel="dungeon">
+        <form id="dungeonForm" class="surface form-layout compact-form">
+          <div class="section-heading">
+            <h2>开放副本难度</h2>
+            <p>保存角色对指定 DGN 的最高可进入难度；在线角色会立即同步。</p>
+          </div>
+          <label class="field">
+            <span>角色</span>
+            <select class="character-select" name="characterId" required></select>
+          </label>
+          <label class="field">
+            <span>副本</span>
+            <select id="dungeonSelect" name="dungeonId" required></select>
+          </label>
+          <fieldset class="field difficulty-field">
+            <legend>最高开放难度</legend>
+            <div class="segmented">
+              <label><input type="radio" name="maximumDifficulty" value="0"><span>普通</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="1"><span>冒险</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="2"><span>勇士</span></label>
+              <label><input type="radio" name="maximumDifficulty" value="3" checked><span>王者</span></label>
+            </div>
+          </fieldset>
+          <div class="form-actions">
+            <button class="primary-button" type="submit">保存副本权限</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view admin-only" data-view-panel="users">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>账号管理</h2>
+            <p>管理账号权限、账号类型、角色、密码和封禁状态。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="userTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>账号</th>
+                  <th>角色</th>
+                  <th>角色数</th>
+                  <th>UID 段</th>
+                  <th>封禁状态</th>
+                  <th class="align-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+          <p id="userEmpty" class="empty-hint hidden">还没有任何账号。</p>
+        </div>
+      </section>
+
+      <section class="view player-only" data-view-panel="characters">
+        <div class="surface form-layout">
+          <div class="section-heading">
+            <h2>我的角色</h2>
+            <p>账号 <strong id="ownerName">—</strong> 名下的角色列表。</p>
+          </div>
+          <div class="table-scroll">
+            <table id="characterTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>角色名</th>
+                  <th>等级</th>
+                  <th>职业</th>
+                  <th>槽位</th>
+                </tr>
+              </thead>
+              <tbody id="characterTableBody"></tbody>
+            </table>
+          </div>
+          <p id="characterEmpty" class="empty-hint hidden">该账号还没有角色，进入游戏创建角色后会显示在这里。</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <dialog id="gmAccountDialog" class="surface account-dialog" aria-labelledby="gmAccountTitle">
+    <div class="account-dialog-header">
+      <h2 id="gmAccountTitle">管理账号 <span id="gmAccountName"></span></h2>
+      <form method="dialog">
+        <button class="secondary-button small-button" type="submit">关闭</button>
+      </form>
+    </div>
+    <p id="gmActionStatus" class="account-action-status" role="status" aria-live="polite"></p>
+    <section class="account-section">
+      <h3>角色</h3>
+      <p id="managedCharacterHint">仅可删除离线角色。</p>
+      <ul id="managedCharacterList" class="managed-character-list"></ul>
+    </section>
+    <p id="gmProtectedAccount" class="empty-hint hidden">管理员账号受保护。</p>
+    <div id="gmPlayerActions">
+      <form id="gmPasswordForm" class="account-section">
+        <h3>重置密码</h3>
+        <label class="field">
+          <span>新密码（6–128 个字符）</span>
+          <input name="newPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <label class="field">
+          <span>确认新密码</span>
+          <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+        </label>
+        <button class="secondary-button small-button" type="submit">重置密码</button>
+      </form>
+      <section class="account-section">
+        <h3>封禁与解封</h3>
+        <p id="gmBanStatus"></p>
+        <form id="gmBanForm">
+          <label class="field">
+            <span>封禁期限</span>
+            <select id="gmBanMode" name="mode">
+              <option value="timed">限时封禁</option>
+              <option value="permanent">永久封禁</option>
+            </select>
+          </label>
+          <label id="gmBanHoursField" class="field">
+            <span>封禁时长（小时）</span>
+            <input id="gmBanHours" name="durationHours" type="number" value="24" min="1" max="8760" step="1" required>
+          </label>
+          <label class="field">
+            <span>封禁原因</span>
+            <input name="reason" maxlength="200" required>
+          </label>
+          <button class="secondary-button small-button" type="submit">保存封禁</button>
+          <button id="gmUnban" class="secondary-button small-button" type="button">解除封禁</button>
+        </form>
+      </section>
+    </div>
+  </dialog>
+
+  <div id="loginOverlay" class="login-overlay hidden">
+    <form id="loginForm" class="surface login-card">
+      <div class="login-head">
+        <span class="brand-mark">DF</span>
+        <div>
+          <h2>登录 DFLegacy</h2>
+          <p>请输入账号和密码</p>
+        </div>
+      </div>
+      <label class="field">
+        <span>账号</span>
+        <input id="loginUserName" name="userName" autocomplete="username" required>
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="loginError" class="login-error hidden" role="alert"></p>
+      <div class="form-actions login-actions">
+        <button id="loginSubmit" class="primary-button" type="submit">登录</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/admin/admin.js?v=20261110-mail-grid" defer></script>
+  <script src="/admin/admin-rewards.js?v=20261110-mail-grid" defer></script>
+  <script src="/admin/admin-diagnostics.js?v=20261110-mail-grid" defer></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<Window x:Class="DFLegacy.Launcher.Views.ClassicMessageWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:DFLegacy.Launcher.Controls"
+        Title="提示信息" AutomationProperties.Name="提示信息" Width="286" Height="170"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" FontFamily="宋体" FontSize="13"
+        UseLayoutRounding="True" SnapsToDevicePixels="True" PreviewKeyDown="Window_PreviewKeyDown">
+  <Window.Resources>
+    <ResourceDictionary><ResourceDictionary.MergedDictionaries>
+      <ResourceDictionary Source="ClassicStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries></ResourceDictionary>
+  </Window.Resources>
+  <Grid>
+    <Image Source="../Assets/Skin/classic-message-panel.png" Stretch="None" IsHitTestVisible="False"/>
+    <ScrollViewer x:Name="MessageScroll" Margin="20,44,20,38" VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" PanningMode="VerticalOnly"
+                  AutomationProperties.Name="提示内容">
+      <StackPanel x:Name="MessageBlocks" VerticalAlignment="Center">
+        <c:PixelText x:Name="MessageText" TextAlignment="Center" TextWrapping="Wrap"
+                     Foreground="#F4DCAF" OutlineThickness="1"/>
+      </StackPanel>
+    </ScrollViewer>
+    <c:SkinButton x:Name="ConfirmButton" Width="80" Height="29" HorizontalAlignment="Left"
+                  VerticalAlignment="Top" Margin="98,137,0,0" Style="{StaticResource ClassicImageButton}"
+                  NormalSource="../Assets/Skin/classic-message-confirm0.png"
+                  HoverSource="../Assets/Skin/classic-message-confirm1.png"
+                  PressedSource="../Assets/Skin/classic-message-confirm2.png"
+                  AutomationProperties.Name="确认" IsDefault="True" IsCancel="True" Click="Confirm_Click"/>
+  </Grid>
+</Window>

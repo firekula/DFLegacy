@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>公会主页 · 地下城与勇士第二章</title>
+  <link rel="stylesheet" href="guild.css">
+  <script src="guild.js" defer></script>
+</head>
+<body>
+  <div class="wrapper">
+    <header class="masthead">
+      <img src="guild-hero.jpg" alt="地下城与勇士 · 第二章 死神的挑衅" width="618" height="121">
+    </header>
+    <div class="layout">
+      <aside class="sidebar">
+        <h2>公会管理</h2>
+        <nav id="guild-nav" aria-label="公会管理" hidden>
+          <a href="#announcement">公会公告</a>
+          <a href="#roster">成员名册</a>
+          <a id="settings-link" href="#settings" hidden>公会设置</a>
+        </nav>
+        <div id="character-panel" class="character-panel" hidden>
+          <label for="character">当前角色</label>
+          <select id="character"></select>
+          <button type="button" id="logout">退出登录</button>
+        </div>
+      </aside>
+      <main class="paper">
+        <div class="page-title">
+          <h1>公会主页</h1>
+          <button type="button" id="refresh" hidden>刷新资料</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite">正在读取登录状态…</p>
+        <form id="login" class="login" hidden>
+          <h2 class="title-bar">登录游戏账号</h2>
+          <label>游戏账号 <input name="userName" autocomplete="username" maxlength="32" required></label>
+          <label>游戏密码 <input name="password" type="password" autocomplete="current-password" maxlength="128" required></label>
+          <button type="submit">登录</button>
+        </form>
+        <p id="no-guild" class="empty" hidden></p>
+        <div id="guild" hidden>
+          <div class="guild-heading">
+            <canvas id="guild-icon" width="16" height="16" role="img" aria-label="公会图标" hidden></canvas>
+            <div>
+              <h2 id="guild-name"></h2>
+              <dl id="guild-details" aria-label="公会资料"></dl>
+            </div>
+          </div>
+          <section id="announcement" class="guild-section">
+            <h2 class="title-bar">公会公告</h2>
+            <p id="announcement-view" class="announcement-view"></p>
+            <form id="announcement-edit" hidden>
+              <label for="announcement-input">编辑公告</label>
+              <textarea id="announcement-input" maxlength="100" rows="3" required aria-describedby="announcement-limit"></textarea>
+              <div class="form-footer">
+                <small id="announcement-limit">最多 100 字节，约 50 个汉字</small>
+                <button type="submit">保存公告</button>
+              </div>
+            </form>
+          </section>
+          <section id="roster" class="guild-section">
+            <h2 class="title-bar">成员名册</h2>
+            <form id="invite-member" class="guild-form" hidden>
+              <label for="invite-name">添加成员</label>
+              <div class="form-controls">
+                <input id="invite-name" maxlength="30" placeholder="输入在线角色的完整名称" autocomplete="off" required>
+                <button type="submit">发送邀请</button>
+              </div>
+            </form>
+            <div class="roster-tools">
+              <span id="member-count"></span>
+              <label>查找成员 <input id="search" type="search" placeholder="输入角色名" autocomplete="off"></label>
+            </div>
+            <div class="table-wrap">
+              <table aria-label="公会成员">
+                <thead>
+                  <tr><th scope="col">角色名</th><th scope="col">等级</th><th scope="col">职业</th><th scope="col">权限</th><th scope="col">状态</th><th scope="col">管理</th></tr>
+                </thead>
+                <tbody id="members"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="settings" class="guild-section" hidden>
+            <h2 class="title-bar">公会设置</h2>
+            <p id="icon-locked" hidden>公会达到 2 级后可以设置图标。</p>
+            <form id="set-icon" class="guild-form" hidden>
+              <label for="icon-file">设置公会图标</label>
+              <small id="icon-format">图片将缩放至 16 × 16 像素，显示在公会主页。</small>
+              <div class="form-controls">
+                <input id="icon-file" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+                  aria-describedby="icon-format" required>
+                <button type="submit">保存图标</button>
+              </div>
+            </form>
+            <form id="disband-guild" class="guild-form">
+              <label for="disband-name">解散公会</label>
+              <small id="disband-help">解散后，所有成员将退出公会。输入完整的公会名称以确认。</small>
+              <div class="form-controls">
+                <input id="disband-name" maxlength="14" autocomplete="off" aria-describedby="disband-help" required>
+                <button type="submit" class="danger">解散公会</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+    <footer>地下城与勇士 · 第二章</footer>
+  </div>
+</body>
+</html>

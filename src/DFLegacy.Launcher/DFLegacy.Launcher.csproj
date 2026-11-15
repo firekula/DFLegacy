@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>DFLegacy.Launcher</AssemblyName>
+    <ApplicationIcon>DFLegacy.Launcher.ico</ApplicationIcon>
+    <Ijl15ProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\DFLegacy.Ijl15'))</Ijl15ProjectDirectory>
+    <Ijl15BuildScript>$(Ijl15ProjectDirectory)\build-native.ps1</Ijl15BuildScript>
+    <BuildNativeAssets Condition="'$(BuildNativeAssets)' == ''">true</BuildNativeAssets>
+    <ClientPatchPrebuiltPath Condition="'$(ClientPatchPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Client.dll'))</ClientPatchPrebuiltPath>
+    <ClientBootstrapPrebuiltPath Condition="'$(ClientBootstrapPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Bootstrap32.exe'))</ClientBootstrapPrebuiltPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <InternalsVisibleTo Include="DFLegacy.Launcher.Tests" />
+    <PackageReference Include="HandyControl" Version="3.5.1" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="../DFLegacy.Server/wwwroot/client/**/*"
+                      LogicalName="ClientPay/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <!-- 原版 2008 登录器皮肤素材（取自客户端 start\data\ui 与 config\layout\QQLogin.xml 的布局定义），
+       以 WPF 资源内嵌，发布后自带、不依赖机器上是否留有原版安装。
+       注意：backgd_di1.png 原图的透明区是 2008 年的色键做法（不透明品红 0xFF00FF，由原版
+       RegionSet FROMBGIMAGES 抠掉），入库前已用 tools/key-magenta.ps1 抠成真 alpha=0，
+       否则 WPF 会把品红原样画出来。 -->
+  <ItemGroup>
+    <Resource Include="Assets\Skin\*.png" />
+    <Resource Include="Assets\Skin\QQGame.ico" />
+    <!-- 原版服务条款页（config\fwtk.html）；保留为可直接编辑的文件，方便运营方替换成自己的条款。 -->
+    <Content Include="Assets\Skin\fwtk.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <!-- UseWPF 的隐式 usings 会移除 System.IO / System.Net.Http（避免与 WPF 的
+       Shapes.Path 等歧义）；本项目大量使用 Path/File 等，按 WinForms 时期语义恢复。 -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DFLegacy.UpdateCore/DFLegacy.UpdateCore.csproj" />
+    <ProjectReference Include="../DFLegacy.Diagnostics.Core/DFLegacy.Diagnostics.Core.csproj" />
+    <ProjectReference Include="../DFLegacy.AccountClient/DFLegacy.AccountClient.csproj" />
+    <ProjectReference Include="../DFLegacy.Protocol/DFLegacy.Protocol.csproj" />
+    <ProjectReference Include="../DFLegacy.Relay.Core/DFLegacy.Relay.Core.csproj" />
+    <Content Include="../../launcher.json" Link="launcher.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+    <Content Include="../DFLegacy.Ijl15/Config.ini" Link="Config.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+    <EmbeddedResource Include="$(ClientBootstrapPrebuiltPath)" LogicalName="DFLegacy.Launcher.Bootstrap32.exe" Condition="'$(ChapterTwoPayloadDir)' == ''" />
+    <EmbeddedResource Include="../DFLegacy.Ijl15/Config.ini" LogicalName="DFLegacy.Launcher.DefaultConfig.ini" />
+    <EmbeddedResource Include="../../third_party/detours/LICENSE" LogicalName="DFLegacy.Launcher.Detours.LICENSE" />
+    <EmbeddedResource Include="../../third_party/detours/PROVENANCE.md" LogicalName="DFLegacy.Launcher.Detours.PROVENANCE" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(ChapterTwoPayloadDir)' != ''">
+    <EmbeddedResource Include="ChapterTwo\Start-Client.ps1" LogicalName="ChapterTwo.Start-Client.ps1" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\DNF-rebuilt-v3-probe.exe" LogicalName="ChapterTwo.DNF-rebuilt-v3-probe.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\s1c2_fixed_loader-weight-55c1cb8-runA.exe" LogicalName="ChapterTwo.ChapterTwoHost.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPayloadDir)\Chapter2Launcher\dnf_startup_trace.exe" LogicalName="ChapterTwo.dnf_startup_trace.exe" />
+    <EmbeddedResource Include="$(ChapterTwoPresentationHost)" LogicalName="ChapterTwo.ChapterTwoPresentation.exe" Condition="'$(ChapterTwoPresentationHost)' != ''" />
+    <EmbeddedResource Include="$(ChapterTwoStartupBroker)" LogicalName="ChapterTwo.QuietStartupBroker.exe" Condition="'$(ChapterTwoStartupBroker)' != ''" />
+  </ItemGroup>
+  <Target Name="BuildStandaloneNative" BeforeTargets="PrepareForBuild"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true' and '$(ChapterTwoPayloadDir)' == ''">
+    <Exec Command="pwsh -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;$(Ijl15BuildScript)&quot; -Configuration &quot;$(Configuration)&quot;" />
+  </Target>
+  <Target Name="ValidateStandaloneAssets" BeforeTargets="PrepareForBuild" DependsOnTargets="BuildStandaloneNative"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
+    <Error Condition="!Exists('$(ClientPatchPrebuiltPath)')" Text="Required standalone x86 ClientPatchPrebuiltPath is missing: $(ClientPatchPrebuiltPath)" />
+    <Error Condition="!Exists('$(ClientBootstrapPrebuiltPath)')" Text="Required standalone x86 ClientBootstrapPrebuiltPath is missing: $(ClientBootstrapPrebuiltPath)" />
+  </Target>
+  <Target Name="CopyStandaloneToOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
+    <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(TargetDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyStandaloneToPublish" AfterTargets="Publish" Condition="'$(DesignTimeBuild)' != 'true' and '$(ChapterTwoPayloadDir)' == ''">
+    <Copy SourceFiles="$(ClientPatchPrebuiltPath)" DestinationFiles="$(PublishDir)DFLegacy.Client.dll" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

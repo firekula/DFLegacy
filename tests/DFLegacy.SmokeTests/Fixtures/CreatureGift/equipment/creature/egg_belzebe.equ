@@ -1,0 +1,27 @@
+[name] `³èÎïµ° (±´À×Ë¹ÆÕ)`
+[name2] `An Egg of Belzebe`
+[attach type] `[sealing]`
+[rarity] 1
+[usable job]
+`[all]`
+[/usable job]
+[minimum level] 1
+
+[icon] `item/creature/creature_egg.img` 27
+[field image] `item/fieldimage.img` 30
+
+[equipment type] `[creature]` 0
+
+[sub type] 1
+[creature species] 13
+[output index] 63033
+
+[cool time] 10000
+
+[MP MAX rate] 5.00
+
+[cast speed] 40
+
+[move wav] `CREATURE_EGG_TOUCH`
+
+[set item master] -1

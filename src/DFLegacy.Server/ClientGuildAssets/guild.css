@@ -1,0 +1,161 @@
+:root {
+  font: 15px/1.5 "Microsoft YaHei", "Source Sans 3", Arial, sans-serif;
+  color: #321e12;
+  background-color: #2c2821;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: url("guild-tile.jpg") repeat;
+  border-top: 4px solid #472d19;
+}
+a, button, input, select, textarea { font: inherit; }
+a { color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .65; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #95511c;
+  outline-offset: 2px;
+}
+
+.wrapper { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+.masthead {
+  min-height: 129px;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid #9d7748;
+  box-shadow: 0 2px 0 #17120e;
+}
+.masthead img { max-width: 100%; height: auto; display: block; }
+.layout { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+.sidebar {
+  align-self: start;
+  color: #e8cb97;
+  background: linear-gradient(#403527, #231e16);
+  border: 1px solid #88673e;
+  box-shadow: 0 0 0 2px #211a12, inset 0 0 0 2px #564328;
+}
+.sidebar h2 {
+  margin: 0;
+  padding: 11px 14px;
+  font-size: 17px;
+  letter-spacing: .1em;
+  color: #ffd477;
+  background: #251c14;
+  border-bottom: 1px solid #93734a;
+}
+.sidebar nav { padding: 4px 11px; }
+.sidebar nav a {
+  display: block;
+  padding: 9px 7px;
+  border-bottom: 1px solid #6c542f;
+  text-decoration: none;
+}
+.sidebar nav a:hover { color: #fff1cd; background: #4b3520; }
+.character-panel { display: grid; gap: 8px; padding: 12px; }
+.character-panel label { color: #f4d697; font-weight: bold; }
+.character-panel select { width: 100%; min-width: 0; }
+.character-panel button { justify-self: start; }
+
+.paper {
+  min-height: 470px;
+  padding: 21px 25px 28px;
+  background: linear-gradient(#f1dfb4, #e6c78d 38%, #ead6ac);
+  border: 1px solid #c69b58;
+  box-shadow: 0 0 0 2px #3b2b1b, inset 0 0 0 3px #dbc08c;
+}
+.page-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #af8650; }
+h1, .guild-heading h2 { font-family: SimSun, "STIX Two Text", Georgia, serif; }
+h1 { margin: 0; color: #5b260d; font-size: clamp(25px, 4.5vw, 34px); letter-spacing: .12em; }
+.status { margin: 12px 0; padding: 7px 10px; background: #f4e6c4; border-left: 3px solid #936136; }
+.status:empty { display: none; }
+.status[data-kind="error"] { color: #811e12; border-color: #ab3424; }
+.empty { margin: 24px 0; padding: 16px; background: #f4e6c4; border: 1px solid #b38e58; }
+.title-bar {
+  margin: 0 0 11px;
+  min-height: 35px;
+  padding: 6px 14px 6px 44px;
+  color: #ffd05c;
+  font-size: 16px;
+  background: #2c251d url("guild-banner.jpg") no-repeat left center / 100% 100%;
+  border: 1px solid #7f623a;
+}
+.login { max-width: 490px; margin-top: 24px; }
+.login label { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 5px; margin: 10px 0; }
+.login button { margin-left: 87px; }
+input, textarea, select {
+  background: #fff3d8;
+  color: #342215;
+  border: 1px solid #9c773d;
+  padding: 4px 7px;
+  min-width: 0;
+  border-radius: 0;
+}
+button {
+  border: 1px solid #84613a;
+  border-radius: 0;
+  background: linear-gradient(#f5dc94, #bd8542);
+  color: #391e0e;
+  padding: 4px 10px;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 1px #f9e2a5;
+}
+button:hover:not(:disabled) { background: linear-gradient(#fff0b5, #d39e53); }
+button.danger { background: linear-gradient(#e4bb90, #b96745); color: #381306; }
+.guild-heading { display: flex; align-items: center; gap: 12px; margin: 19px 0; }
+.guild-heading > div { min-width: 0; }
+#guild-icon {
+  box-sizing: content-box;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  border: 1px solid #8b6239;
+  background: #f8e9c7;
+}
+.guild-heading h2 { color: #502708; font-size: 30px; margin: 0 0 6px; overflow-wrap: anywhere; }
+#guild-details { display: flex; flex-wrap: wrap; gap: 6px 17px; margin: 0; font-size: 13px; }
+#guild-details div { display: flex; gap: 5px; }
+#guild-details dt { color: #764c25; }
+#guild-details dd { margin: 0; font-weight: bold; }
+.guild-section + .guild-section { margin-top: 20px; }
+.announcement-view {
+  padding: 11px 12px;
+  border: 1px solid #b38e58;
+  background: #f8e9c7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#announcement-edit { display: grid; gap: 5px; }
+#announcement-edit textarea { resize: vertical; width: 100%; }
+.form-footer, .roster-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px; }
+.guild-form { display: grid; gap: 5px; margin: 0 0 12px; }
+.guild-form > label { font-weight: bold; }
+.form-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.form-controls input { max-width: 100%; }
+#disband-guild { border-top: 1px solid #b38e58; padding-top: 12px; }
+.roster-tools { margin-bottom: 8px; }
+.roster-tools input { max-width: 142px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+th { background: #423b32; color: #fff3d9; padding: 7px 5px; }
+th, td { border: 1px solid #a78358; }
+td { background: #f1deae; padding: 6px 5px; }
+tbody tr:nth-child(even) td { background: #ead19d; }
+td:first-child { font-weight: bold; }
+.member-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.member-actions select, .member-actions button { font-size: 12px; padding: 3px 5px; }
+.online { color: #30542c; font-weight: bold; }
+.offline { color: #664d35; }
+footer { margin: 18px 0; padding: 9px; text-align: center; font-size: 12px; color: #cbb58b; border-top: 1px solid #6e5837; }
+
+@media (max-width: 660px) {
+  .wrapper { padding: 0 10px; }
+  .masthead { min-height: 80px; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .sidebar nav { display: flex; flex-wrap: wrap; gap: 12px; }
+  .character-panel { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+  .paper { min-height: 390px; padding: 16px; }
+}
