@@ -1,0 +1,7 @@
+{
+  "DFLegacy": {
+    "DataPath": "data/state.json",
+    "ScriptPvfPath": "data/Script.pvf",
+    "SeedTestAccount": false
+  }
+}
