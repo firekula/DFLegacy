@@ -89,7 +89,7 @@ public sealed partial class UpdateInstaller
         // Caller must close the launcher only after this readiness acknowledgement.
         return new(child.Id);
     }
-    private static void ValidateParent(UpdatePlan plan,int pipeServerId)
+    private static bool ValidateParent(UpdatePlan plan,int pipeServerId)
     {
         if(plan.ParentId!=pipeServerId) throw new InvalidDataException("更新父进程不匹配。");
         using var parent=Process.GetProcessById(plan.ParentId);
@@ -99,14 +99,15 @@ public sealed partial class UpdateInstaller
         UpdateSafety.NoLinks(plan.ParentPath);
         if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("原登录器文件已改变。");
         var root=Path.GetFullPath(plan.Target);
-        if(plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase)) return;
+        if(plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase)) return false;
         if(plan.V4 is { ReplaceStartupEntry:true, RecoveryJournalSha256: {} recoveryHash }
-            && StartupEntryMigration.IsRecoverySupervisor(root,plan.ParentPath,plan.ExecutableHash,recoveryHash)) return;
+            && StartupEntryMigration.IsRecoverySupervisor(root,plan.ParentPath,plan.ExecutableHash,recoveryHash)) return true;
         if(plan.V4==null || !plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.AppName),StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("更新父进程不属于目标安装。");
         var receipt=new DFLegacy.UpdateCore.InstallationStore(root).ReadInstalled();
         if(receipt==null || !receipt.Release.Manifest.Files.Any(file=>file.Path==BootstrapLayout.AppName&&file.Sha256==plan.ExecutableHash))
             throw new InvalidDataException("更新父进程与已安装启动组件不匹配。");
+        return false;
     }
     private static void ValidateInputs(UpdatePlan plan)
     {
@@ -153,7 +154,7 @@ public sealed partial class UpdateInstaller
             if(string.IsNullOrWhiteSpace(plan.Target) || string.IsNullOrWhiteSpace(plan.ParentPath) || string.IsNullOrWhiteSpace(plan.HelperPath) ||
                !UpdateSafety.IsHash(plan.ExecutableHash))
                 throw new InvalidDataException("更新交接缺少字段。");
-            ValidateParent(plan,checked((int)parentId));
+            var temporaryRecoverySupervisor=ValidateParent(plan,checked((int)parentId));
             if(!Path.GetFullPath(Environment.ProcessPath!).Equals(plan.HelperPath,StringComparison.OrdinalIgnoreCase)) return new(2);
             ValidateHelperPath(plan);
             using var targetPin=UpdateSafety.PinDirectory(plan.Target);
@@ -168,7 +169,10 @@ public sealed partial class UpdateInstaller
             await FileLockOwners.WaitForExitConfirmedAsync(parent,exitTimeout.Token).ConfigureAwait(false);
             parentExited=true;
             UpdateInstallProgress.Report(progress,.86,"登录器已退出，正在校验更新…");
-            if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("安装目标在交接后已改变。");
+            // The native entry removes the authenticated temporary updater as soon as it exits.
+            // Recovery revalidates the journal and installed state after acquiring both locks.
+            if(!temporaryRecoverySupervisor && !UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal))
+                throw new InvalidDataException("安装目标在交接后已改变。");
             var result=plan.V4!=null ? ApplyV4(plan,progress) : plan.Recovery is {} recovery ? UpdateTransaction.RecoverAndRestart(plan.Target,recovery,plan.ExecutableHash,Restart,progress) : UpdateTransaction.Apply(plan.Target,plan.Update!,Restart,progress);
             SaveResult(plan.Target,result);
             return new(result.Success && result.Restarted?0:1,result,plan.Target);
