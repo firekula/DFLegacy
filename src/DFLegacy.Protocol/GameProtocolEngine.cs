@@ -3591,6 +3591,13 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(NotificationPacketType, ChapterTwoCemeteryGateNotification, payload);
     }
 
+    public static GameServerPacket CreateChapterTwoCemeteryAbyssExit(uint runToken, byte roomX, byte roomY)
+    {
+        byte[] payload = [(byte)'C', (byte)'E', (byte)'M', (byte)'1', 0, 0, 0, 0, 3, roomX, roomY];
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4), runToken);
+        return new GameServerPacket(NotificationPacketType, ChapterTwoCemeteryGateNotification, payload);
+    }
+
     public static GameServerPacket CreateCachedStartMap(
         byte roomX,
         byte roomY,

@@ -10,20 +10,26 @@ namespace
     constexpr std::size_t ImageSize = 0xE57000;
     constexpr std::uintptr_t NativeDungeonInfo = 0x9DC9E0;
     constexpr std::uintptr_t NativeGateState = 0x5C8590;
+    constexpr std::uintptr_t NativeProtectedValue = 0xA46AB0;
     constexpr std::uintptr_t PacketCursor = 0xE23EE8;
     constexpr std::uintptr_t PacketRemaining = 0xE23EEC;
+    constexpr unsigned NoRoom = 0x10000;
 
     enum GateAuthority : unsigned { Native = 0, Locked = 1, Open = 2 };
     std::atomic<unsigned> GateMode{Native};
     // DUNGEON_INFO and the gate notification are dispatched on the same packet stream.
     unsigned CurrentDungeon = 0;
     std::uint32_t ActiveRun = 0;
+    unsigned CurrentRoom = NoRoom;
+    std::atomic<bool> AbyssExitAllowed{false};
 
     void __fastcall CommitDungeonInfo(void* info, void*, unsigned dungeon, unsigned maze, unsigned difficulty)
     {
         GateMode.store(dungeon == 35 ? Locked : Native);
         ActiveRun = 0;
         CurrentDungeon = dungeon;
+        CurrentRoom = NoRoom;
+        AbyssExitAllowed.store(false);
         using Commit = void(__thiscall*)(void*, unsigned, unsigned, unsigned);
         reinterpret_cast<Commit>(NativeDungeonInfo)(info, dungeon, maze, difficulty);
     }
@@ -32,14 +38,22 @@ namespace
     {
         auto& remaining = *reinterpret_cast<int*>(PacketRemaining);
         auto& cursor = *reinterpret_cast<const unsigned char**>(PacketCursor);
-        if (remaining != 9 || !cursor || std::memcmp(cursor, "CEM1", 4)) return;
+        if ((remaining != 9 && remaining != 11) || !cursor || std::memcmp(cursor, "CEM1", 4)) return;
 
         std::uint32_t run = 0;
         std::memcpy(&run, cursor + 4, sizeof(run));
         const auto action = cursor[8];
-        cursor += 9;
+        const auto abyssExit = remaining == 11 && action == 3;
+        const auto room = abyssExit ? (unsigned(cursor[10]) << 8) | cursor[9] : NoRoom;
+        if (!abyssExit && (remaining != 9 || action > 2)) return;
+        cursor += remaining;
         remaining = 0;
-        if (CurrentDungeon != 35 || run == 0 || action > 2) return;
+        if (CurrentDungeon != 35 || run == 0) return;
+        if (abyssExit)
+        {
+            if (ActiveRun == run && CurrentRoom == room) AbyssExitAllowed.store(true);
+            return;
+        }
         if (ActiveRun == 0)
         {
             // Live updates can reach a joining member before their entry snapshot.
@@ -48,6 +62,37 @@ namespace
         }
         if (ActiveRun != run) return;
         if (action != 0) GateMode.store(Open);
+    }
+
+    void __stdcall ObserveStartMap()
+    {
+        AbyssExitAllowed.store(false);
+        CurrentRoom = NoRoom;
+        const auto remaining = *reinterpret_cast<const int*>(PacketRemaining);
+        const auto* cursor = *reinterpret_cast<const unsigned char* const*>(PacketCursor);
+        if (CurrentDungeon == 35 && cursor && remaining >= 6)
+            CurrentRoom = (unsigned(cursor[1]) << 8) | cursor[0];
+    }
+
+    __declspec(naked) void StartMapHook()
+    {
+        __asm {
+            pushfd
+            pushad
+            call ObserveStartMap
+            popad
+            popfd
+            push 00424233h
+            ret
+        }
+    }
+
+    unsigned __fastcall ReadPathGateState(void* roomState, void*)
+    {
+        // Both CNPathGate reads must agree for this frame. Leave the underlying
+        // protected room state to the original settlement and Abyss code.
+        if (AbyssExitAllowed.load()) return 1;
+        return reinterpret_cast<unsigned(__thiscall*)(void*)>(NativeProtectedValue)(roomState);
     }
 
     __declspec(naked) void GateNotificationHook()
@@ -151,10 +196,16 @@ bool dfl::chapter_two::cemetery_guard_detail::InstallImage(
             reinterpret_cast<std::uintptr_t>(&CommitDungeonInfo)},
         Patch{0x42F564 + 186 * 4, {0x49, 0xF5, 0x42, 0}, 4,
             reinterpret_cast<std::uintptr_t>(&GateNotificationHook), PatchKind::Pointer},
+        Patch{0x42F564 + 29 * 4, {0x33, 0x42, 0x42, 0}, 4,
+            reinterpret_cast<std::uintptr_t>(&StartMapHook), PatchKind::Pointer},
         Patch{0xB3BED4 + 0x224, {0x90, 0x85, 0x5C, 0}, 4,
             reinterpret_cast<std::uintptr_t>(&ApplyPeerGateState), PatchKind::Pointer},
         Patch{0x5C88CA, {0x8B, 0x8E, 0x84, 0x08, 0, 0}, 6,
-            reinterpret_cast<std::uintptr_t>(&GatePredicateHook), PatchKind::Jump}
+            reinterpret_cast<std::uintptr_t>(&GatePredicateHook), PatchKind::Jump},
+        Patch{0x5CCCC4, {0xE8, 0xE7, 0x9D, 0x47, 0}, 5,
+            reinterpret_cast<std::uintptr_t>(&ReadPathGateState)},
+        Patch{0x5CCCEC, {0xE8, 0xBF, 0x9D, 0x47, 0}, 5,
+            reinterpret_cast<std::uintptr_t>(&ReadPathGateState)}
     };
     std::array<std::array<unsigned char, 8>, patches.size()> replacements{};
     bool installed = false;

@@ -128,6 +128,7 @@ bool Write(std::uintptr_t address,const void* value,std::size_t size) noexcept {
 
         Native<unsigned char>(0x423DD5) = 0xC3; // End after the DUNGEON_INFO commit.
         Native<unsigned char>(0x42F549) = 0xC3; // Return to the fixture at the end of notification dispatch.
+        Native<unsigned char>(0x424233) = 0xC3; // Only exercise the START_MAP extension hook.
         // Run the native gate state and collision routines. End the callback
         // before it touches the live text and animation managers.
         const unsigned char endGateCallback[]{0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x10, 0};
@@ -184,6 +185,27 @@ bool Write(std::uintptr_t address,const void* value,std::size_t size) noexcept {
             Native<int>(0xE23EEC) = sizeof(packet);
             Native<void(__cdecl*)()>(0x42F564 + 186 * sizeof(std::uint32_t))();
         };
+        const auto sendRoom = [](unsigned char x, unsigned char y)
+        {
+            const unsigned char packet[]{x, y, 0, 0, 0, 0, 2};
+            Native<const unsigned char*>(0xE23EE8) = packet;
+            Native<int>(0xE23EEC) = sizeof(packet);
+            Native<void(__cdecl*)()>(0x42F564 + 29 * sizeof(std::uint32_t))();
+        };
+        const auto sendAbyssExit = [](std::uint32_t run, unsigned char x, unsigned char y)
+        {
+            unsigned char packet[]{'C', 'E', 'M', '1', 0, 0, 0, 0, 3, x, y};
+            std::memcpy(packet + 4, &run, sizeof(run));
+            Native<const unsigned char*>(0xE23EE8) = packet;
+            Native<int>(0xE23EEC) = sizeof(packet);
+            Native<void(__cdecl*)()>(0x42F564 + 186 * sizeof(std::uint32_t))();
+        };
+        const auto readPathState = [](std::uintptr_t call)
+        {
+            std::int32_t delta{};
+            std::memcpy(&delta, reinterpret_cast<const void*>(call + 1), sizeof(delta));
+            return reinterpret_cast<unsigned(__thiscall*)(void*)>(call + 5 + delta)(nullptr);
+        };
         const auto tick = [&] {
             tickGate(gate.data());
             return Native<unsigned>(gateAddress + 0x890);
@@ -199,6 +221,18 @@ bool Write(std::uintptr_t address,const void* value,std::size_t size) noexcept {
         Check(tick() == 0, "Cemetery waits for server authority as soon as DUNGEON_INFO arrives");
         sendGateState(100, 0);
         Check(tick() == 0, "a locked server snapshot keeps four local deaths from opening the original gate");
+        sendRoom(2, 0);
+        sendAbyssExit(99, 2, 0);
+        sendAbyssExit(100, 3, 0);
+        Check(readPathState(0x5CCCC4) == 0 && readPathState(0x5CCCEC) == 0,
+            "only the current run and room can authorize an early Abyss exit");
+        sendAbyssExit(100, 2, 0);
+        Check(readPathState(0x5CCCC4) == 1 && readPathState(0x5CCCEC) == 1 && tick() == 0,
+            "both native side-door checks honor the Abyss exit while the boss door stays locked");
+        sendRoom(3, 0);
+        sendAbyssExit(100, 2, 0);
+        Check(readPathState(0x5CCCC4) == 0 && readPathState(0x5CCCEC) == 0,
+            "a new START_MAP resets permission and ignores a delayed exit notification");
         const auto peerGateState = Native<ChangeState>(0xB3BED4 + 0x224);
         peerGateState(gate.data(), 0, nullptr, 0, 0);
         Check(ReleasedCollisions == 0 && Native<unsigned>(gateAddress + 0x500) == 1,

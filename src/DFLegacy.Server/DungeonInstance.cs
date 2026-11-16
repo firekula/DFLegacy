@@ -620,6 +620,24 @@ internal sealed partial class DungeonInstance(
             ? new(_cemeteryRunToken, !_run.IsBossRoomHuntPending(layout.BossX, layout.BossY))
             : null;
 
+    internal GameServerPacket? GetCemeteryAbyssExit(long roomGeneration)
+    {
+        lock (Gate)
+            return IsCemeteryAbyssExitCurrentLocked(roomGeneration)
+                ? GameProtocolEngine.CreateChapterTwoCemeteryAbyssExit(_cemeteryRunToken, _run.RoomX, _run.RoomY)
+                : null;
+    }
+
+    internal bool CanSendCemeteryAbyssExit(long roomGeneration, DungeonInstanceMember? member = null)
+    {
+        lock (Gate)
+            return IsCemeteryAbyssExitCurrentLocked(roomGeneration)
+                && (member is null || _members.Contains(member, ReferenceEqualityComparer.Instance));
+    }
+
+    private bool IsCemeteryAbyssExitCurrentLocked(long roomGeneration) =>
+        roomGeneration == _roomGeneration && _run.CanLeaveCemeteryAbyssWithLivingGuardian;
+
     internal bool CompleteMonsterDeath(long roomGeneration)
     {
         lock (Gate)

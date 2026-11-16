@@ -3109,6 +3109,8 @@ public sealed class EntranceService(
                         await BroadcastToInstanceAsync(monsterDie, serverToken);
                         if (cemeteryUnlock is { } openedGate)
                             await dungeonPartyService.BroadcastCemeteryGateOpenAsync(deathInstance, openedGate);
+                        if (chapter2CheckConnectionAccepted)
+                            await dungeonPartyService.BroadcastCemeteryAbyssExitAsync(deathInstance, deathGeneration!.Value);
 
                         if (!tutorialDungeonActive)
                         {
@@ -17761,8 +17763,16 @@ public sealed class EntranceService(
                             await loadingReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, loadingReply);
-                            if (chapter2CheckConnectionAccepted && dungeonInstance?.GetCemeteryGate() is { } loadedGate)
+                            if (chapter2CheckConnectionAccepted && dungeonInstance is { } cemeteryInstance
+                                && cemeteryInstance.GetCemeteryGate() is { } loadedGate)
+                            {
                                 await SendTownPacketAsync(loadedGate.CreateEntryPacket(), serverToken);
+                                var loadedGeneration = cemeteryInstance.RoomGeneration;
+                                if (cemeteryInstance.GetCemeteryAbyssExit(loadedGeneration) is { } abyssExit)
+                                    await SendConditionalDungeonPacketAsync(abyssExit, () =>
+                                        ReferenceEquals(dungeonInstance, cemeteryInstance)
+                                        && cemeteryInstance.CanSendCemeteryAbyssExit(loadedGeneration));
+                            }
 
                             // Command 40 tells the server that the local town
                             // scene has finished loading. DNF 1.0.1.9 then
