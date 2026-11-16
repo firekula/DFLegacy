@@ -22,7 +22,8 @@ release version from `../DFLegacy.Launcher/LauncherVersion.txt`. Release builds 
 pass `-Version` and `-Revision` for a specific build. `-BuildManagedResources`
 compiles `app.res`, `updater.res`, and `standalone.res` in the build directory.
 Pass each file to `dotnet publish` using `-p:DFLegacyLauncherWin32Resource=<path>` for its matching
-EXE. Use separate publish and intermediate directories for each role so that the
+EXE. These resources retain the managed apphost manifest and its `asInvoker`
+execution level. Use separate publish and intermediate directories for each role so that the
 SDK bundles the apphost with the right file description and original filename.
 The build script does
 not install tools, remove existing directories, or publish artifacts. Its default
