@@ -25,7 +25,9 @@ public partial class MainWindow
     private void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         if (ChapterTwoClient.IsBundled&&!ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory)) return;
-        if (App.BootstrapVerified) { App.RecheckBootstrap(); return; }
+        // The bridge must use the detached helper for the entry it currently starts from.
+        if (App.BootstrapVerified && !StartupEntryMigration.IsInstalledBridge(AppContext.BaseDirectory))
+        { App.RecheckBootstrap(); return; }
         // Reuse confirmed runtime options. Opening updates must not reload the legacy endpoint.
         if (updateCoordinator is null) StartUpdates();
         else updateCoordinator.Check();

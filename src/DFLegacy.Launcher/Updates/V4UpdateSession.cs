@@ -21,19 +21,31 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     private IProgress<UpdateProgress>? checkProgress;
     public string StatusMessage { get; private set; } = "正在检查更新源…";
     public bool ShowStatusNotice { get; private set; }
+    public bool RequiresDetachedInstall { get; private set; }
     internal V4UpdateSession(string installation,LauncherOptions options,Core.IReleaseProvider? provider=null)
     {
         root=Path.GetFullPath(installation); this.options=options; store=new(root);
         var source=SourceFor(root,options);
-        if(provider==null) { ownedHttp=Core.ReleaseProvider.CreateHttpClient(); provider=CreateProvider(ownedHttp,source); }
+        if(provider==null)
+        {
+            ownedHttp=Core.ReleaseProvider.CreateHttpClient();
+            Core.VerifiedRelease? installed=null;
+            if(Core.ChapterTransitionSource.IsOfficialChapterTwo(source))
+                try { installed=store.ReadInstalled()?.Release; } catch(InvalidDataException) { }
+            var fixedEntry=installed?.Manifest.Files.SingleOrDefault(file=>file.Path==BootstrapLayout.EntryName);
+            provider=CreateProvider(ownedHttp,source,includeVersionedStartup:fixedEntry!=null,
+                fixedEntrySha256:fixedEntry?.Sha256,allowStartupMigration:StartupEntryMigration.IsBridge(installed));
+        }
         if(provider.Source!=source) throw new InvalidDataException("测试或更新来源与登录器配置不一致。");
         this.provider=provider; engine=new(root,provider);
         legacyActive=source.Provider=="github" && !string.IsNullOrWhiteSpace(options.UpdateServiceUrl);
     }
 
-    internal static Core.IReleaseProvider CreateProvider(HttpClient http,Core.ReleaseSource source) =>
+    internal static Core.IReleaseProvider CreateProvider(HttpClient http,Core.ReleaseSource source,
+        bool includeVersionedStartup=false,string? fixedEntrySha256=null,bool allowStartupMigration=false) =>
         source.Provider=="local" ? new Core.LoopbackReleaseProvider(source) :
-        Core.ChapterTransitionSource.IsOfficialChapterTwo(source) ? new Core.ChapterTwoReleaseProvider(http,source) :
+        Core.ChapterTransitionSource.IsOfficialChapterTwo(source) ? new Core.ChapterTwoReleaseProvider(http,source,
+            includeVersionedStartup:includeVersionedStartup,fixedEntrySha256:fixedEntrySha256,allowStartupMigration:allowStartupMigration) :
         new Core.ReleaseProvider(http,source);
 
     internal static string ConfigurationName(Core.InstalledReceipt? receipt)
@@ -108,9 +120,11 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     }
     public UpdateRecovery? ReadRecovery()
     {
+        RequiresDetachedInstall=false;
         if(File.Exists(Path.Combine(root,".dflegacy","pending.json"))) { legacyActive=true; return Legacy.ReadRecovery(); }
         var chapterPending=Core.ChapterTransition.HasPending(root);
         if(!chapterPending&&!Core.InstallTransaction.HasPending(root)) return null;
+        if(!chapterPending) RequiresDetachedInstall=StartupEntryMigration.ReadRecovery(root)!=null;
         var path=Path.Combine(root,BootstrapLayout.EntryName); Core.PathPolicy.NoLinks(path);
         var file=new UpdateFile("DFLegacy.Launcher.exe",UpdateSafety.Hash(path),new FileInfo(path).Length);
         var journal=chapterPending?UpdateInstaller.ChapterRollbackJournal(root):Path.Combine(store.StateDirectory,"pending.json");
@@ -119,6 +133,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     public UpdateApplyResult? ReadLastResult()=>new UpdateInstaller(root).ReadLastResult();
     public async Task<UpdateRelease?> CheckAsync(long installed,CancellationToken token)
     {
+        RequiresDetachedInstall=false;
         if(legacyActive)
         {
             StatusMessage="自托管更新源（V3）：已完成现有协议检查。";
@@ -162,6 +177,11 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
             return null;
         }
         var release=pending.Target!; var manifest=release.Manifest;
+        if(pending.Installed is {} baseline && StartupEntryMigration.IsAuthorized(baseline.Release,release))
+        {
+            StartupEntryMigration.RequireReady(root,release);
+            RequiresDetachedInstall=true;
+        }
         var origin=discoveryProvider switch {"gitea"=>Core.ReleaseSource.GiteaOrigin,"gitee"=>"https://gitee.com",
             "gitcode"=>"https://gitcode.com",_=>"https://github.com"};
         var uri=provider.Source.Provider=="local"?new Uri(provider.Source.Repository+"/"+provider.Source.ManifestAssetName):
@@ -187,6 +207,7 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     {
         if(legacyActive) return Legacy.Adopt(update);
         RequireStaged(update);
+        if(RequiresDetachedInstall) return false;
         var m=staged!.Release.Manifest;
         if(!Core.FileVerifier.VerifyAsync(root,m).GetAwaiter().GetResult().IsValid) return false;
         if(m.Migrations.Length>0 || m.Retired.Any(r=>r.Action=="delete")) return false;
@@ -200,11 +221,12 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
     public Task<UpdateHandoff> PrepareAsync(PreparedUpdate update,CancellationToken token)
     {
         if(legacyActive) return Legacy.PrepareAsync(update,token);
-        RequireStaged(update); return new UpdateInstaller(root).PrepareV4Async(staged,null,token);
+        RequireStaged(update); return new UpdateInstaller(root).PrepareV4Async(staged,null,token,replaceStartupEntry:RequiresDetachedInstall);
     }
     public Task<UpdateHandoff> PrepareRecoveryAsync(UpdateRecovery recovery,CancellationToken token)
         =>recovery.TransactionId=="chapter-rollback"?new UpdateInstaller(root).PrepareChapterRecoveryAsync(recovery.JournalSha256,token):
-            recovery.IsV4?new UpdateInstaller(root).PrepareV4Async(null,recovery.JournalSha256,token):Legacy.PrepareRecoveryAsync(recovery,token);
+            recovery.IsV4?new UpdateInstaller(root).PrepareV4Async(null,recovery.JournalSha256,token,replaceStartupEntry:RequiresDetachedInstall):
+                Legacy.PrepareRecoveryAsync(recovery,token);
     public Task<UpdateHelperHandle> StartAsync(UpdateHandoff handoff,CancellationToken token)=>new UpdateInstaller(root).StartHelperAsync(handoff,token);
     public Task<IReadOnlyList<FileLockOwner>> InspectLocksAsync(CancellationToken token)=>Task.Run<IReadOnlyList<FileLockOwner>>(()=>
     {
@@ -219,6 +241,8 @@ internal sealed class V4UpdateSession : IUpdateSession, IDisposable
             if(manifest.Migrations.Length>0) paths=paths.Append(Core.PathPolicy.Resolve(root,"launcher.json",true));
         }
         paths=paths.Append(Path.Combine(store.StateDirectory,"installed.json"));
+        if(RequiresDetachedInstall)
+            paths=paths.Where(path=>!path.Equals(Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase));
         return FileLockOwners.Find(paths);
     },token);
     internal static IProgress<Core.UpdateProgress> Forward(IProgress<UpdateProgress>? progress)=>new Bridge(progress);

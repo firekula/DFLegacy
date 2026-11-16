@@ -105,6 +105,76 @@ internal static class GitCodeProviderTests
         var former = source with { Provider = "github" };
         var oldReceiptProvider = new ChapterTwoReleaseProvider(http, former);
         TestRun.Check((await oldReceiptProvider.FindAsync())?.Source == former, "legacy Chapter Two receipts stay valid during mirror discovery");
+        await CheckVersionedStartupAsync(source);
+    }
+
+    private static async Task CheckVersionedStartupAsync(ReleaseSource source)
+    {
+        const string finalName = "DFLegacy-client-update-v4-chapter-two-startup-v2-test-win-x86.json";
+        var oldEntry = ManifestTests.Entry("DFLegacy.Launcher.exe", "original fixed entry");
+        var newEntry = ManifestTests.Entry("DFLegacy.Launcher.exe", "versioned fixed entry");
+        var bridge = ManifestTests.Sample() with
+        {
+            Version = "v1.0.12-bridge", Channel = source.Channel, Sequence = 17, Files = [oldEntry]
+        };
+        var final = bridge with { Version = "v1.0.12", Sequence = 18, MinimumSequence = 17, Files = [newEntry] };
+        var later = final with { Version = "v1.0.13", Sequence = 19 };
+        var laterBytes = ManifestCodec.Serialize(later);
+        var bridgeBytes = ManifestCodec.Serialize(bridge);
+        var finalBytes = ManifestCodec.Serialize(final);
+        var gitCodeHasFinal = true;
+        var includeLater = false;
+        var downloads = new List<string>();
+        object Release(ClientManifest version, string name, int size, bool gitCode)
+        {
+            var host = gitCode ? "gitcode.com" : "github.com";
+            return new { tag_name = version.Version, draft = false, assets = new[]
+            {
+                new { name, size, id = 1, browser_download_url = $"https://{host}/{source.Repository}/releases/download/{version.Version}/{name}" }
+            }};
+        }
+        using var http = new HttpClient(new FakeHttp(request =>
+        {
+            var uri = request.RequestUri!;
+            var path = uri.AbsolutePath;
+            if (path.EndsWith("/releases", StringComparison.Ordinal))
+            {
+                var gitCode = uri.Host == "api.gitcode.com";
+                var releases = new List<object> { Release(bridge, source.ManifestAssetName, bridgeBytes.Length, gitCode) };
+                if (!gitCode || gitCodeHasFinal) releases.Add(Release(final, finalName, finalBytes.Length, gitCode));
+                if (includeLater) releases.Add(Release(later, finalName, laterBytes.Length, gitCode));
+                return Json(releases);
+            }
+            var isFinal = path.EndsWith("/" + finalName, StringComparison.Ordinal)
+                || path.EndsWith("/" + finalName + "/download", StringComparison.Ordinal);
+            downloads.Add(isFinal ? final.Version : bridge.Version);
+            var bytes = path.Contains("/v1.0.13/", StringComparison.Ordinal) ? laterBytes : isFinal ? finalBytes : bridgeBytes;
+            return Bytes(bytes);
+        }));
+        var legacy = new ChapterTwoReleaseProvider(http, source);
+        TestRun.Check((await legacy.FindAsync())?.Tag == bridge.Version && !downloads.Contains(final.Version),
+            "the legacy asset name discovers the bridge without opening the incompatible final manifest");
+        var upgraded = new ChapterTwoReleaseProvider(http, source, includeVersionedStartup: true);
+        TestRun.Check((await upgraded.FindAsync())?.Tag == final.Version,
+            "the upgraded app discovers the final version without changing its recorded update source");
+        var oldSupervisor = new ChapterTwoReleaseProvider(http, source, includeVersionedStartup: true,
+            fixedEntrySha256: oldEntry.Sha256);
+        TestRun.Check((await oldSupervisor.FindAsync())?.Tag == bridge.Version,
+            "a supervisor with the old startup executable accepts only a compatible target");
+        gitCodeHasFinal = false;
+        var newSupervisor = new ChapterTwoReleaseProvider(http, source, includeVersionedStartup: true,
+            fixedEntrySha256: newEntry.Sha256);
+        TestRun.Check((await newSupervisor.FindAsync()) is { Tag: "v1.0.12", Source: var foundSource }
+            && foundSource == source && newSupervisor.DiscoveryProvider == "github",
+            "repair with the new startup executable can fall back to the compatible GitHub manifest");
+        gitCodeHasFinal = true;
+        includeLater = true;
+        var migration = new ChapterTwoReleaseProvider(http, source, includeVersionedStartup: true,
+            fixedEntrySha256: oldEntry.Sha256, allowStartupMigration: true);
+        TestRun.Check((await migration.FindAsync())?.Tag == final.Version,
+            "the bridge selects the approved migration even when a newer version is published");
+        TestRun.Check((await newSupervisor.FindAsync())?.Tag == later.Version,
+            "the new startup generation accepts subsequent updates with matching entry bytes");
     }
 
     private static HttpResponseMessage Bytes(byte[] bytes) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };

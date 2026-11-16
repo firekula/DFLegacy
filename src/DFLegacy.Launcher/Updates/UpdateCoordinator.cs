@@ -73,7 +73,7 @@ internal sealed class UpdateCoordinator : IDisposable
             }
             try
             {
-                if(confirmed && !disposed && controller.State.Phase==UpdatePhase.Ready && bootstrapVerified())
+                if(confirmed && !disposed && controller.State.Phase==UpdatePhase.Ready && bootstrapVerified() && !session.RequiresDetachedInstall)
                 {
                     // The verified App is not the legacy Launcher.exe installer.
                     // The fixed entry waits for this process (and its app lock) to

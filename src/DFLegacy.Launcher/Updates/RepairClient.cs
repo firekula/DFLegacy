@@ -119,7 +119,11 @@ internal static class RepairClient
             }
             var settings=ReadSettings(request with {Directory=root});
             using var http=provider is null?Core.ReleaseProvider.CreateHttpClient():null;
-            using var owned=provider is null?(provider=V4UpdateSession.CreateProvider(http!,settings.Source)) as IDisposable:null;
+            string? entryHash=null;
+            if(provider is null && bootstrapSupervisor && Core.ChapterTransitionSource.IsOfficialChapterTwo(settings.Source))
+                entryHash=UpdateSafety.Hash(Core.PathPolicy.Resolve(root,BootstrapLayout.EntryName));
+            using var owned=provider is null?(provider=V4UpdateSession.CreateProvider(http!,settings.Source,
+                includeVersionedStartup:entryHash!=null,fixedEntrySha256:entryHash)) as IDisposable:null;
             if(provider.Source!=settings.Source)throw new InvalidDataException("修复提供方与配置/安装记录的来源不一致。");
             var engine=new Core.UpdateEngine(root,provider);
             if(settings.NetworkDisabled)

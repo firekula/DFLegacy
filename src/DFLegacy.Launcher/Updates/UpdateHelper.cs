@@ -100,6 +100,8 @@ public sealed partial class UpdateInstaller
         if(!UpdateSafety.Hash(plan.ParentPath).Equals(plan.ExecutableHash,StringComparison.Ordinal)) throw new InvalidDataException("原登录器文件已改变。");
         var root=Path.GetFullPath(plan.Target);
         if(plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.EntryName),StringComparison.OrdinalIgnoreCase)) return;
+        if(plan.V4 is { ReplaceStartupEntry:true, RecoveryJournalSha256: {} recoveryHash }
+            && StartupEntryMigration.IsRecoverySupervisor(root,plan.ParentPath,plan.ExecutableHash,recoveryHash)) return;
         if(plan.V4==null || !plan.ParentPath.Equals(Path.Combine(root,BootstrapLayout.AppName),StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("更新父进程不属于目标安装。");
         var receipt=new DFLegacy.UpdateCore.InstallationStore(root).ReadInstalled();

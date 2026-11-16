@@ -5,6 +5,7 @@ internal interface IUpdateSession
 {
     string? StatusMessage=>null;
     bool ShowStatusNotice=>false;
+    bool RequiresDetachedInstall=>false;
     void SetProgress(IProgress<UpdateProgress> progress) { }
     Task<IReadOnlyList<FileLockOwner>> InspectLocksAsync(CancellationToken token)=>Task.FromResult<IReadOnlyList<FileLockOwner>>([]);
     UpdateRecovery? ReadRecovery()=>null;
