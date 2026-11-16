@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -35,6 +36,10 @@ public partial class MainWindow : System.Windows.Window
     internal MainWindow(LauncherAccountStore store, bool refreshStatus = true)
     {
         InitializeComponent();
+        var version = typeof(MainWindow).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrEmpty(version))
+            LauncherVersionText.Text = $"v{version.Split('+', 2)[0]}";
+
         _store = store;
         _refreshStatus = refreshStatus;
         _options = _store.Load();

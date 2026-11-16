@@ -3,10 +3,14 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$PresentationHost,
     [Parameter(Mandatory)][string]$StartupBroker,
-    [string]$D3D11Bridge
+    [string]$D3D11Bridge,
+    [string]$Version
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
+if (-not $Version) {
+    $Version = (Get-Content -LiteralPath (Join-Path $root 'src/DFLegacy.Launcher/LauncherVersion.txt') -Raw).Trim()
+}
 $native = (Resolve-Path -LiteralPath $NativeAssetsDirectory).Path
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw 'Choose a new isolated output directory.' }
@@ -44,12 +48,18 @@ if ($D3D11Bridge) {
 
 $package = Join-Path $output 'package'
 New-Item -ItemType Directory -Path $package | Out-Null
+$resourceDirectory = Join-Path $output 'native'
+& pwsh -NoProfile -File (Join-Path $root 'src/DFLegacy.Startup/build-native.ps1') `
+    -Architecture x64 -Version $Version -BuildManagedResources -BuildDirectory $resourceDirectory *> (Join-Path $output 'native-build.log')
+if ($LASTEXITCODE) { throw "Chapter Two Windows resources build failed. See $output/native-build.log" }
+$resource = Join-Path $resourceDirectory 'standalone.res'
 Push-Location -LiteralPath $root
 try {
     $build = @('publish', 'src/DFLegacy.Launcher/DFLegacy.Launcher.csproj', '-c', 'Release', '-r', 'win-x64',
         '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:EnableCompressionInSingleFile=true',
         '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:DebugType=embedded', '-p:PublishTrimmed=false',
-        '-p:ContinuousIntegrationBuild=true', "-p:ArtifactsPath=$output/obj", "-p:ChapterTwoPayloadDir=$native", '-o', $package)
+        '-p:ContinuousIntegrationBuild=true', "-p:ArtifactsPath=$output/obj", "-p:ChapterTwoPayloadDir=$native",
+        "-p:Version=$Version", "-p:DFLegacyLauncherWin32Resource=$resource", '-o', $package)
     & dotnet @build @nativeProperties *> (Join-Path $output 'build.log')
     if ($LASTEXITCODE) { throw "Chapter Two launcher build failed. See $output/build.log" }
 } finally { Pop-Location }
@@ -60,6 +70,10 @@ if ($optionalAssets.Count) {
 
 $exe = Join-Path $package 'DFLegacy.Chapter2.Launcher.exe'
 Move-Item -LiteralPath (Join-Path $package 'DFLegacy.Launcher.exe') -Destination $exe
+$metadata = (Get-Item -LiteralPath $exe).VersionInfo
+if ($metadata.FileVersion -ne "$Version.0" -or $metadata.OriginalFilename -ne (Split-Path -Leaf $exe)) {
+    throw 'The published executable has incorrect Windows version information.'
+}
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README-Launcher.md') -Destination (Join-Path $package 'README.md')
 $zip = Join-Path $output 'DFLegacy-Chapter2-Launcher-GUI-Windows-x64.zip'
 Add-Type -AssemblyName System.IO.Compression.FileSystem

@@ -3,6 +3,9 @@ param(
     [ValidateSet('x86', 'x64')][string] $Architecture = 'x86',
     [ValidateSet('Debug', 'Release')][string] $Configuration = 'Release',
     [switch] $RunTests,
+    [switch] $BuildManagedResources,
+    [string] $Version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../DFLegacy.Launcher/LauncherVersion.txt') -Raw).Trim(),
+    [string] $Revision,
     [string] $BuildDirectory
 )
 $ErrorActionPreference = 'Stop'
@@ -32,11 +35,26 @@ $generator = @('Visual Studio 18 2026', 'Visual Studio 17 2022', 'Visual Studio 
     Select-Object -First 1
 if (-not $generator) { throw 'A Visual Studio C++ CMake generator is required.' }
 $platform = if ($Architecture -eq 'x86') { 'Win32' } else { 'x64' }
-& $cmake -S $PSScriptRoot -B $buildPath -G $generator -A $platform
+& $cmake -S $PSScriptRoot -B $buildPath -G $generator -A $platform `
+    "-DDFL_LAUNCHER_VERSION=$Version" "-DDFL_SOURCE_REVISION=$Revision"
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed: $LASTEXITCODE" }
 & $cmake --build $buildPath --config $Configuration
 if ($LASTEXITCODE -ne 0) { throw "Native bootstrap build failed: $LASTEXITCODE" }
 if ($RunTests) {
     & (Join-Path (Split-Path $cmake -Parent) 'ctest.exe') --test-dir $buildPath -C $Configuration --output-on-failure
     if ($LASTEXITCODE -ne 0) { throw "Native bootstrap tests failed: $LASTEXITCODE" }
+}
+if ($BuildManagedResources) {
+    $sdkRoot = (Get-ItemProperty -LiteralPath 'HKLM:/SOFTWARE/Microsoft/Windows Kits/Installed Roots').KitsRoot10
+    $resourceCompiler = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'bin') -Directory |
+        Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+        Sort-Object { [version]$_.Name } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'x64/rc.exe' } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+        Select-Object -First 1
+    if (-not $resourceCompiler) { throw 'The installed Windows SDK resource compiler was not found.' }
+    foreach ($role in 'app', 'updater', 'standalone') {
+        & $resourceCompiler /nologo /fo (Join-Path $buildPath "$role.res") (Join-Path $buildPath "$role.rc")
+        if ($LASTEXITCODE -ne 0) { throw "Windows resource build failed for $role. Exit code $LASTEXITCODE." }
+    }
 }
