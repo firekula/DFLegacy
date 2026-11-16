@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory)][string]$NativeAssetsDirectory,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$PresentationHost,
-    [Parameter(Mandatory)][string]$StartupBroker
+    [Parameter(Mandatory)][string]$StartupBroker,
+    [string]$D3D11Bridge
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
@@ -31,6 +32,14 @@ if ($StartupBroker) {
     $broker = (Resolve-Path -LiteralPath $StartupBroker).Path
     $nativeProperties += "-p:ChapterTwoStartupBroker=$broker"
     $optionalAssets += $broker
+}
+if ($D3D11Bridge) {
+    $bridge = (Resolve-Path -LiteralPath $D3D11Bridge).Path
+    if ((Get-FileHash -LiteralPath $bridge -Algorithm SHA256).Hash -ne '25A0CEEB85FCC4675C6F964442EECC14FEDD504EFFD39C931A627249AD4685E2') {
+        throw 'Specify the unmodified dgVoodoo2 2.87.6 MS/x86/D3D8.dll.'
+    }
+    $nativeProperties += "-p:ChapterTwoD3D11Bridge=$bridge"
+    $optionalAssets += $bridge
 }
 
 $package = Join-Path $output 'package'

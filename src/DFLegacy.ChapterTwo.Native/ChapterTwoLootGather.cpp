@@ -104,7 +104,14 @@ namespace dfl::chapter_two::loot_gather_detail
         constexpr char Marker[]="@DFLegacy:loot-magnet:v1@";
         return type==16&&text&&bytes==sizeof(Marker)-1&&std::memcmp(text,Marker,sizeof(Marker)-1)==0;
     }
-    bool Capture(const Runtime& runtime,unsigned int uid,Request& result) noexcept
+    bool IsDungeonScene(const Runtime& runtime,std::uint32_t game) noexcept
+    {
+        Reads r{runtime};
+        std::uint32_t currentGame=0,scene=0;
+        return r.At(0xD564AC,0,currentGame)&&currentGame==game
+            &&r.Init()&&r.Secure(game,0x10,scene)&&scene==3;
+    }
+    bool Capture(const Runtime& runtime,unsigned int uid,Request& result,bool soloOnly) noexcept
     {
         result={}; if(!uid||uid>65535) return false;
         Reads r{runtime}; Request q{}; q.Uid=uid;
@@ -126,9 +133,12 @@ namespace dfl::chapter_two::loot_gather_detail
         {
             std::uint32_t user=0;
             if(!r.At(party,0x10+slot*4,user)) return false;
-            if(!user) continue;
-            if(ownMember||user!=q.User) return false;
-            ownMember=true;
+            if(user==q.User)
+            {
+                if(ownMember) return false;
+                ownMember=true;
+            }
+            else if(user&&soloOnly) return false;
         }
         if(!ownMember) return false;
         std::uint32_t final=0;

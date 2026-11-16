@@ -11,14 +11,22 @@ int main()
         passed &= value;
     };
     SetEnvironmentVariableA("DFL_S1C2_LOCAL_RELAY_IPV4", "127.73.10.11");
+    SetEnvironmentVariableA("DFLEGACY_CH2_RELAY_UDP", "42312:55001,47005:55002,47012:55003,47013:55004");
     char host[16]{}; in_addr address{};
     check(ReadLocalRelayIpv4(host, address), "session-local relay is accepted");
+    unsigned short localPort = 55000;
     for (const auto port : {42312, 47005, 47012, 47013}) {
         sockaddr_in endpoint{}; endpoint.sin_family = AF_INET; endpoint.sin_port = htons(static_cast<u_short>(port));
         endpoint.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        check(MapLocalRelayDatagram(endpoint, false) && ntohl(endpoint.sin_addr.s_addr) == 0x7f490a0b, "known destination routes to this session");
-        check(MapLocalRelayDatagram(endpoint, true) && ntohl(endpoint.sin_addr.s_addr) == INADDR_LOOPBACK, "reply exposes stable game address");
+        ++localPort;
+        check(MapLocalRelayDatagram(endpoint, false) && ntohl(endpoint.sin_addr.s_addr) == 0x7f490a0b
+            && ntohs(endpoint.sin_port) == localPort, "known destination routes to the assigned port");
+        check(MapLocalRelayDatagram(endpoint, true) && ntohl(endpoint.sin_addr.s_addr) == INADDR_LOOPBACK
+            && ntohs(endpoint.sin_port) == port, "reply exposes the original game address and port");
     }
+    const auto emptyMap = RelayPortMap::Read("DFLEGACY_TEST_UNSET_PORT_MAP");
+    check(emptyMap.ToLocal(42312) == 42312 && emptyMap.ToService(42312) == 42312,
+        "a legacy session keeps its original port");
     sockaddr_in unrelated{}; unrelated.sin_family = AF_INET; unrelated.sin_port = htons(9999); unrelated.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     check(!MapLocalRelayDatagram(unrelated, false), "unrelated local port stays unchanged");
     unrelated.sin_port = htons(47012); unrelated.sin_addr.s_addr = htonl(0xc0000214);

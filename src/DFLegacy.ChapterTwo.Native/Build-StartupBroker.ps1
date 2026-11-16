@@ -46,6 +46,7 @@ Replace-Verified '        const bool secondary=true;' ('        const bool secon
         char relayText[16]{};
         in_addr relayAddress{};
         const bool localRelay = dfl::chapter_two::ReadLocalRelayIpv4(relayText, relayAddress);
+        const auto tcpPorts = dfl::chapter_two::RelayPortMap::Read("DFLEGACY_CH2_RELAY_TCP");
         const auto bindAddress = localRelay ? relayAddress.s_addr : htonl(remote ? INADDR_ANY : 0x7f000002);
 '@)
 Replace-Verified 'endpoint.sin_addr.s_addr=htonl(INADDR_LOOPBACK);' 'endpoint.sin_addr.s_addr=bindAddress;'
@@ -64,6 +65,12 @@ $connectAddress = @'
 Replace-Verified ($connectAddress.Replace("`r`n", "`n")) ($isolatedFallback.Replace("`r`n", "`n"))
 Replace-Verified '(port==42311 || port==42312 || port==47001 || port==47005 ||' '(port==42311 || port==42312 || port==47001 || port==47005 || (localRelay && port==48090) || ((remote || localRelay) && dfl::chapter_two::IsPvpPort(port)) ||'
 Replace-Verified 'isolated.sin_addr.s_addr=htonl(0x7f000002);' 'if(!isolatedFallback)isolated.sin_addr.s_addr=localRelay ? relayAddress.s_addr : remote ? remoteAddress.s_addr : htonl(0x7f000002);'
+Replace-Verified 'isolated.sin_port=htons(port==42311?42312:port);' @'
+const auto servicePort=static_cast<unsigned short>(port==42311?42312:port);
+                        const auto localPort=localRelay && !isolatedFallback ? tcpPorts.ToLocal(servicePort) : servicePort;
+                        if(!localPort){reply.error=WSAEACCES;break;}
+                        isolated.sin_port=htons(localPort);
+'@
 Replace-Verified 'std::printf("LOOPBACK_BROKER_CONNECT port=%hu to=127.0.0.2:%hu\n",port,ntohs(isolated.sin_port));' 'std::printf("GAME_BROKER_CONNECT port=%hu to=%s:%hu\n",port,isolatedFallback ? "127.0.0.3" : localRelay ? relayText : remote ? remoteText : "127.0.0.2",ntohs(isolated.sin_port));'
 $connectBind = @'
                         sockaddr_in local{};
@@ -240,6 +247,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoPerformanceLogHandles
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoDiagnosticEvents.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRemoteEndpoint.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRelaySockets.h') -Destination $container
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'ChapterTwoRelayPortMap.h') -Destination $container
 Copy-Item -LiteralPath (Join-Path $source 'container/CMakeLists.txt') -Destination $container
 $build = Join-Path $out 'build'
 & $CMake -S $container -B $build -G 'Visual Studio 18 2026' -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded

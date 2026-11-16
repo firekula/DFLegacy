@@ -45,6 +45,20 @@ internal static class DomainRelayTests
                 [v6.Port], [v6.Port], v6.Port, (_, _) => { }, token, (_, _) => Task.FromResult(new[] { IPAddress.IPv6Loopback }));
             await Exchange(ipv6.BindAddress, v6.Port, 43, token);
             Console.WriteLine("PASS IPv4 game-facing TCP/UDP reaches IPv6-only server");
+            using var reservedTcp = new TcpListener(IPAddress.Any, 0) { ExclusiveAddressUse = OperatingSystem.IsWindows() };
+            reservedTcp.Start();
+            using var reservedUdp = new UdpClient(AddressFamily.InterNetwork);
+            if (OperatingSystem.IsWindows()) reservedUdp.ExclusiveAddressUse = true;
+            reservedUdp.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
+            var blockedTcp = ((IPEndPoint)reservedTcp.LocalEndpoint).Port;
+            var blockedUdp = ((IPEndPoint)reservedUdp.Client.LocalEndPoint!).Port;
+            await using var assigned = await DomainRelaySession.StartAsync("assigned.example.test", true,
+                [v6.Port, blockedTcp], [v6.Port, blockedUdp], v6.Port, (_, _) => { }, token,
+                (_, _) => Task.FromResult(new[] { IPAddress.IPv6Loopback }), useAssignedPorts: true);
+            Require(assigned.TcpPortMap[blockedTcp] != blockedTcp && assigned.UdpPortMap[blockedUdp] != blockedUdp,
+                "assigned listening ports do not reuse reserved local ports");
+            await Exchange(assigned.BindAddress, assigned.TcpPortMap[v6.Port], 43, token, assigned.UdpPortMap[v6.Port]);
+            Console.WriteLine("PASS assigned local ports avoid reserved TCP and UDP listeners");
             try
             {
                 await using var missing = await DomainRelaySession.StartAsync("missing.example.test", true,
@@ -66,7 +80,7 @@ internal static class DomainRelayTests
     private static void Require(bool condition, string message)
     { if (!condition) throw new InvalidOperationException(message); }
 
-    private static async Task Exchange(IPAddress address, int port, byte expected, CancellationToken token)
+    private static async Task Exchange(IPAddress address, int port, byte expected, CancellationToken token, int? udpPort = null)
     {
         using var tcp = new TcpClient();
         await tcp.ConnectAsync(address, port, token);
@@ -75,7 +89,7 @@ internal static class DomainRelayTests
         await tcp.GetStream().ReadExactlyAsync(reply, token);
         Require(reply[0] == expected, "TCP reached wrong server");
         using var udp = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        await udp.SendAsync(new byte[] { 8 }, new IPEndPoint(address, port), token);
+        await udp.SendAsync(new byte[] { 8 }, new IPEndPoint(address, udpPort ?? port), token);
         var received = await udp.ReceiveAsync(token);
         Require(received.Buffer.SequenceEqual(new byte[] { expected, 8 }), "UDP reply crossed sessions or changed bytes");
     }

@@ -48,6 +48,30 @@ foreach ($routing in @(
     if (!$original.Contains($routing[0])) { throw 'Missing verified game datagram routing anchor.' }
     $original = $original.Replace($routing[0], $routing[1])
 }
+$rendererImport = @'
+        HMODULE dll = nullptr;
+        if (_stricmp(library, "d3d8.dll") == 0) {
+            wchar_t bridgePath[32768]{};
+            const auto count = GetEnvironmentVariableW(L"DFLEGACY_CH2_D3D11_BRIDGE", bridgePath, _countof(bridgePath));
+            if (count) {
+                if (count >= _countof(bridgePath) || !std::filesystem::path(bridgePath).is_absolute()) {
+                    report("LOAD_IMPORT d3d8.dll invalid D3D11 bridge path\n");
+                    return 8;
+                }
+                dll = LoadLibraryExW(bridgePath, nullptr, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+                if (dll) report("D3D11_BRIDGE_LOADED dgVoodoo2 2.87.6\n");
+            } else {
+                dll = LoadLibraryExW(L"d3d8.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+            }
+        } else {
+            dll = LoadLibraryA(library);
+        }
+'@
+$rendererImportAnchor = '        HMODULE dll = LoadLibraryA(library);'
+if ([regex]::Matches($original, [regex]::Escape($rendererImportAnchor)).Count -ne 1) {
+    throw 'Missing verified renderer import anchor.'
+}
+$original = $original.Replace($rendererImportAnchor, $rendererImport.Replace("`r`n", "`n"))
 $original = $original.Replace('static char ipv4[4]{127,0,0,1};', 'static char ipv4[4]{127,0,0,2};')
 $original = $original.Replace('static char ipv4[4]{127,0,0,2};', @'
 static char ipv4[4]{127,0,0,2};
@@ -351,6 +375,9 @@ $configure = @(
     '    OutputDebugStringA(dfl::chapter_two::InstallShopLayout(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: Chinese shop tab layout installed.\n"',
     '        : "DFLegacy Chapter Two: Chinese shop tab layout signature mismatch.\n");',
+    '    OutputDebugStringA(dfl::chapter_two::InstallCountdownCoin(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: countdown coin receipt installed.\n"',
+    '        : "DFLegacy Chapter Two: countdown coin receipt signature mismatch.\n");',
     '    OutputDebugStringA(dfl::chapter_two::InstallDungeonTooltip(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: local dungeon tooltip cleanup installed.\n"',
     '        : "DFLegacy Chapter Two: local dungeon tooltip cleanup signature mismatch.\n");',
@@ -359,9 +386,13 @@ $configure = @(
     '        : "DFLegacy Chapter Two: native adult blood selection signature mismatch.\n");',
     '    if (dfl::chapter_two::InstallPerformanceOverlay(base, nt->OptionalHeader.SizeOfImage))',
     '    {',
-    '        OutputDebugStringA(dfl::chapter_two::InstallLootGather(base, nt->OptionalHeader.SizeOfImage)',
+    '        const bool lootGatherInstalled = dfl::chapter_two::InstallLootGather(base, nt->OptionalHeader.SizeOfImage);',
+    '        OutputDebugStringA(lootGatherInstalled',
     '            ? "DFLegacy Chapter Two: solo loot gather installed.\n"',
     '            : "DFLegacy Chapter Two: solo loot gather signature mismatch.\n");',
+    '        OutputDebugStringA(lootGatherInstalled && dfl::chapter_two::InstallDungeonRating(base, nt->OptionalHeader.SizeOfImage)',
+    '            ? "DFLegacy Chapter Two: dungeon rating hooks installed.\n"',
+    '            : "DFLegacy Chapter Two: dungeon rating hooks signature mismatch.\n");',
     '        const bool timingInstalled = dfl::chapter_two::InstallSlowFrameTiming(base, nt->OptionalHeader.SizeOfImage);',
     '        dfl::chapter_two::StartPerformancePanel(timingInstalled);',
     '        OutputDebugStringA(timingInstalled ? "DFLegacy Chapter Two: slow-frame timing installed.\n" :',
@@ -448,6 +479,7 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoRemoteEndpoint.h"' + $nl +
     '#include "ChapterTwoTownMap.h"' + $nl +
     '#include "ChapterTwoLootGather.h"' + $nl +
+    '#include "ChapterTwoDungeonRating.h"' + $nl +
     '#include "ChapterTwoBackgroundPolicy.h"' + $nl +
     '#include "ChapterTwoMouseWheel.h"' + $nl +
     '#include "ChapterTwoNativeLog.h"' + $nl +
@@ -456,6 +488,7 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoType16Audio.h"' + $nl +
     '#include "ChapterTwoPopupAnnouncement.h"' + $nl +
     '#include "ChapterTwoShopLayout.h"' + $nl +
+    '#include "ChapterTwoCountdownCoin.h"' + $nl +
     '#include "ChapterTwoDungeonTooltip.h"' + $nl +
     '#include "ChapterTwoAdultBlood.h"' + $nl +
     $original.Replace($anchor, $configure)
@@ -500,6 +533,8 @@ if ($LASTEXITCODE) { throw 'Chapter Two supported cash item use checks failed.' 
 if ($LASTEXITCODE) { throw 'Chapter Two mailbox refresh tests failed.' }
 & (Join-Path $build 'Release/chapter_two_mall_creature_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two native creature shop tests failed.' }
+& (Join-Path $build 'Release/chapter_two_countdown_coin_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two countdown coin receipt tests failed.' }
 & (Join-Path $build 'Release/chapter_two_cursor_auto_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two cursor auto tests failed.' }
 & (Join-Path $build 'Release/chapter_two_payment_protocol_tests.exe')

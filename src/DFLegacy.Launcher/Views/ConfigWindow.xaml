@@ -66,6 +66,13 @@
                   <StackPanel><c:PixelText Text="窗口分辨率" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="ResolutionBox" AutomationProperties.Name="窗口分辨率" SelectionChanged="DisplaySelectionChanged"/></StackPanel>
                   <StackPanel Grid.Column="2"><c:PixelText Text="画质模式" Style="{StaticResource ClassicLabel}"/><ComboBox x:Name="PresentationBox" SelectedValuePath="Tag" AutomationProperties.Name="画质模式" SelectionChanged="DisplaySelectionChanged"><ComboBoxItem Content="清晰平滑 · 推荐" Tag="sharp"/><ComboBoxItem Content="像素清晰" Tag="point"/><ComboBoxItem Content="柔和平滑" Tag="linear"/><ComboBoxItem Content="旧版兼容" Tag="legacy"/></ComboBox></StackPanel>
                 </Grid>
+                  <StackPanel x:Name="RendererPanel" Visibility="Collapsed" Margin="0,14,0,0">
+                    <c:PixelText Text="渲染器" Style="{StaticResource ClassicLabel}"/>
+                    <ComboBox x:Name="RendererBox" SelectedValuePath="Tag" AutomationProperties.Name="渲染器">
+                      <ComboBoxItem Content="Direct3D 11" Tag="d3d11"/>
+                      <ComboBoxItem Content="Direct3D 8" Tag="d3d8"/>
+                    </ComboBox>
+                  </StackPanel>
                   <StackPanel x:Name="PostProcessPanel" Visibility="Collapsed" Margin="0,14,0,0">
                     <c:PixelText Text="画面滤镜" Style="{StaticResource ClassicLabel}"/>
                     <ComboBox x:Name="PostProcessBox" SelectedValuePath="Tag" AutomationProperties.Name="画面滤镜">

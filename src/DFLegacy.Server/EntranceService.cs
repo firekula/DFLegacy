@@ -7562,9 +7562,23 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            var chatText = ClientEncoding.GetString(messageRequest.MessageBytes);
+                            if (!roomSettlement.ResultSent && await DungeonRatingCommand.TrySendAsync(
+                                    messageRequest.MessageType, chatText, dungeonInstance, activeCharacter.Id,
+                                    localUserId, dungeonCharacterAlive, isPvpChannel,
+                                    packet => SendTownPacketAsync(packet, serverToken),
+                                    chapter2CheckConnectionAccepted))
+                            {
+                                await SendTypedMessageNotificationAsync(GameMessageType.Type16Brown, 0,
+                                    ClientEncoding.GetBytes("本次副本的评分已锁定为 SSS。"));
+                                logger.LogInformation("SSS rating locked for user {UserId} in dungeon {DungeonId}.",
+                                    localUserId, currentDungeonId);
+                                continue;
+                            }
+
                             if (await DungeonLootGatherCommand.TrySendAsync(
                                     messageRequest.MessageType,
-                                    ClientEncoding.GetString(messageRequest.MessageBytes),
+                                    chatText,
                                     dungeonInstance, activeCharacter.Id, localUserId,
                                     dungeonCharacterAlive, isPvpChannel,
                                     packet => SendTownPacketAsync(packet, serverToken)))
@@ -7584,9 +7598,7 @@ public sealed class EntranceService(
                             // 这里**不按 message type 门控**：城镇里普通聊天是 type 3（已实测），
                             // 副本内默认分页会发哪个 type 还没实测；账号 + 精确文本这道门已经够窄，
                             // 宁可多种 type 都能触发，也不要"进图后命令没反应"。
-                            if (DebugChatCommands.IsDropEverythingCommand(
-                                    ClientEncoding.GetString(messageRequest.MessageBytes),
-                                    accountName))
+                            if (DebugChatCommands.IsDropEverythingCommand(chatText, accountName))
                             {
                                 await ToggleDropDebugAllAsync();
                                 continue;
@@ -7657,7 +7669,7 @@ public sealed class EntranceService(
                                 var recipients = await partyService.SendPartyChatAsync(
                                     activeCharacter.Id, messageRequest.MessageBytes, serverToken);
                                 logger.LogInformation("Party chat from {CharacterName} delivered to {Recipients}: {Message}",
-                                    activeCharacter.Name, recipients, ClientEncoding.GetString(messageRequest.MessageBytes));
+                                    activeCharacter.Name, recipients, chatText);
                                 continue;
                             }
 
@@ -7695,7 +7707,7 @@ public sealed class EntranceService(
                                 currentTownId,
                                 currentAreaId,
                                 Math.Max(chatRecipients, 1),
-                                ClientEncoding.GetString(messageRequest.MessageBytes));
+                                    chatText);
                             continue;
                         }
 
@@ -17024,16 +17036,17 @@ public sealed class EntranceService(
                                 var hasClearScore = DungeonClearScore.TryParse(
                                     request.Body,
                                     out var clearScore);
-                                var resultCode = hasClearScore
-                                    ? clearScore.CalculatedResultCode
-                                    : (byte)0;
+                                var resultCode = DungeonRatingCommand.ResolveResultCode(
+                                    dungeonInstance, activeCharacter?.Id ?? Guid.Empty,
+                                    hasClearScore ? clearScore : null, chapter2CheckConnectionAccepted,
+                                    out var sssRatingLocked);
                                 var clientResultValue = request.Body.Length >= 6
                                     ? BinaryPrimitives.ReadUInt32LittleEndian(
                                         request.Body.AsSpan(2, sizeof(uint)))
                                     : 0u;
-                                var playResult = GameProtocolEngine.CreatePlayResult(
-                                    localUserId,
-                                    clientResultValue);
+                                var playResult = sssRatingLocked
+                                    ? GameProtocolEngine.CreateChapterTwoPlayResult(resultCode)
+                                    : GameProtocolEngine.CreatePlayResult(localUserId, clientResultValue);
                                 await playResult.WriteAsync(stream, serverToken);
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, playResult);
@@ -17296,7 +17309,7 @@ public sealed class EntranceService(
                                         "Dungeon {DungeonId} settlement did not contain the 24-byte score layout; higher difficulty rank gates used result code zero.",
                                         currentDungeonId);
                                 }
-                                else if (!clearScore.IsWireResultCodeConsistent)
+                                else if (!sssRatingLocked && !clearScore.IsWireResultCodeConsistent)
                                 {
                                     logger.LogWarning(
                                         "Dungeon {DungeonId} ignored inconsistent client result code {WireResultCode}; calculated {CalculatedResultCode} from score {CalculatedScore}.",
