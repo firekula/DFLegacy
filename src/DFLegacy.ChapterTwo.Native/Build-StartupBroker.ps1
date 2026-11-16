@@ -29,6 +29,13 @@ function Replace-Verified([string]$Old, [string]$New) {
     }
     $script:code = $script:code.Remove($offset, $Old.Length).Insert($offset, $New)
 }
+function Remove-VerifiedRange([string]$First, [string]$Next) {
+    $start = $script:code.IndexOf($First, [StringComparison]::Ordinal)
+    if ($start -lt 0) { throw "Expected verified broker range start. $First" }
+    $end = $script:code.IndexOf($Next, $start + $First.Length, [StringComparison]::Ordinal)
+    if ($end -lt 0) { throw "Expected verified broker range end. $Next" }
+    Replace-Verified ($script:code.Substring($start, $end - $start)) ''
+}
 
 $code = [IO.File]::ReadAllText((Join-Path $source 'container/LoopbackBroker.h')).Replace("`r`n", "`n")
 Replace-Verified '#include <map>' ('#include "ChapterTwoRelaySockets.h"' + "`n" + '#include <map>')
@@ -145,7 +152,7 @@ Replace-Verified '  std::puts("NO_APPCONTAINER");TerminateProcess(pi.hProcess,0x
   if(token)CloseHandle(token);
   TerminateProcess(pi.hProcess,0xEC);CloseHandle(pi.hThread);CloseHandle(pi.hProcess);return 3;
 '@
-Replace-Verified 'std::puts("APPCONTAINER_NO_NETWORK_CAPABILITIES");' 'std::puts("ORDINARY_DESKTOP_PROCESS appcontainer=0");'
+Replace-Verified 'std::puts("APPCONTAINER_NO_NETWORK_CAPABILITIES");' 'std::puts("ORDINARY_DESKTOP_PROCESS appcontainer=0"); std::puts("STARTUP_BROKER system_dll_breakpoints=0");'
 Replace-Verified '#include "LoopbackBroker.h"' "#include `"LoopbackBroker.h`"`n#include `"ChapterTwoPerformanceLogHandles.h`"`n#include `"ChapterTwoDiagnosticEvents.h`""
 Replace-Verified ' PROCESS_INFORMATION pi{};' " ChapterTwoDiagnosticEvents diagnosticEvents;`n PROCESS_INFORMATION pi{};"
 Replace-Verified ' CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);' " diagnosticEvents.Started(pi.dwProcessId);`n CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);"
@@ -169,6 +176,23 @@ $performanceInheritance = @'
  }
 '@
 Replace-Verified ($originalInheritance.Replace("`r`n", "`n")) $performanceInheritance
+
+# The accepted probe used addresses from one Windows build. System DLL layout
+# varies across machines and servicing updates, independently of the game image.
+Remove-VerifiedRange '   const auto base=reinterpret_cast<uintptr_t>(ev.u.LoadDll.lpBaseOfDll);' '   if(!allowBundledModules) for('
+Remove-VerifiedRange '       if(std::strstr(bp->second.name,"MessageBox")){' '       context.Eip=denied?caller:static_cast<DWORD>(address);'
+Replace-Verified 'const bool protectWorker=GetEnvironmentVariableW(L"DFL_S1C2_PROBE_KEEP_WORKER",nullptr,0)!=0; uintptr_t ntdll32=0; ' ''
+Replace-Verified 'bool denied=false; if(!thread' 'if(!thread'
+Replace-Verified 'context.Eip=denied?caller:static_cast<DWORD>(address);' 'context.Eip=static_cast<DWORD>(address);'
+$workerRearm = @'
+    if(denied){
+       unsigned char trap=0xcc;
+       if(!WriteProcessMemory(pi.hProcess,r.ExceptionAddress,&trap,1,&count))
+           TerminateProcess(pi.hProcess,0xEA);
+       FlushInstructionCache(pi.hProcess,r.ExceptionAddress,1);
+    }else points.erase(bp);
+'@
+Replace-Verified ($workerRearm.Replace("`r`n", "`n")) '    points.erase(bp);'
 
 Replace-Verified ' const bool traceDispatch=' " const bool detailedDiagnostics=GetEnvironmentVariableW(L`"DFL_S1C2_DETAILED_DIAGNOSTICS`",nullptr,0)!=0;`n const bool traceDispatch="
 Replace-Verified 'if(s.fUnicode)std::wprintf(L"DEBUG %ls\n",(wchar_t*)b.data());else std::printf("DEBUG %s\n",b.data());' @'
@@ -197,7 +221,7 @@ Replace-Verified '   if(r.ExceptionCode==0xe06d7363 && x.dwFirstChance && r.Numb
 Replace-Verified '   if(r.ExceptionCode==0xc000071c && x.dwFirstChance && imageBase){' '   if(detailedDiagnostics && r.ExceptionCode==0xc000071c && x.dwFirstChance && imageBase){'
 Replace-Verified '       std::printf("BP %s EIP=' '       if(detailedDiagnostics){ std::printf("BP %s EIP='
 Replace-Verified '       DWORD caller=0;' "       }`n       DWORD caller=0;"
-Replace-Verified '       if(ReadProcessMemory(pi.hProcess,reinterpret_cast<void*>(static_cast<uintptr_t>(context.Esp)),&caller,4,&count) && caller>32){' '       if((detailedDiagnostics || protectWorker) && ReadProcessMemory(pi.hProcess,reinterpret_cast<void*>(static_cast<uintptr_t>(context.Esp)),&caller,4,&count) && caller>32 && detailedDiagnostics){'
+Replace-Verified '       if(ReadProcessMemory(pi.hProcess,reinterpret_cast<void*>(static_cast<uintptr_t>(context.Esp)),&caller,4,&count) && caller>32){' '       if(detailedDiagnostics && ReadProcessMemory(pi.hProcess,reinterpret_cast<void*>(static_cast<uintptr_t>(context.Esp)),&caller,4,&count) && caller>32){'
 $postRead = @'
          if(ReadProcessMemory(pi.hProcess,(void*)(uintptr_t)context.Esp,args,sizeof(args),&count)
             && args[1]>=6 && args[1]<=4096){
@@ -209,7 +233,6 @@ $postLog = @'
 '@
 Replace-Verified ($postRead.Replace("`r`n", "`n")) ($postLog.Replace("`r`n", "`n"))
 Replace-Verified '       if(std::strstr(bp->second.name,"vendor_create_") && context.Eax){' '       if(detailedDiagnostics && std::strstr(bp->second.name,"vendor_create_") && context.Eax){'
-Replace-Verified '       if(std::strstr(bp->second.name,"MessageBox")){' '       if(detailedDiagnostics && std::strstr(bp->second.name,"MessageBox")){'
 Replace-Verified '    if(++exceptions<100 || !x.dwFirstChance){' '    if(!x.dwFirstChance || (detailedDiagnostics && ++exceptions<100)){'
 
 [IO.File]::WriteAllText((Join-Path $container 'trace.cpp'), $code)

@@ -101,6 +101,9 @@ foreach ($mode in @('normal', 'nonzero', 'crash', 'without-broker')) {
     @{ Before = $before; After = $after } | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath (Join-Path $case 'desktop.json') -Encoding UTF8
     Assert-OrdinaryIdentity $text
     if ($exitCode -ne 0 -or $stderr) { throw "Broker did not preserve normal debugger exit in $mode" }
+    if ($text -notmatch '(?im)^FIXTURE_SYSTEM_ENTRY RtlExitUserThread expected=([0-9a-f]{2}) actual=\1\r?$') {
+        throw "Broker changed the system DLL entry point in $mode. See stdout.log."
+    }
     if (($before | ConvertTo-Json -Compress) -ne ($after | ConvertTo-Json -Compress)) { throw "Desktop, foreground window or real mouse position changed during $mode; inspect desktop.json." }
     if ($text -notmatch '(?m)^OWNED_PID (\d+)\r?$') { throw 'Missing owned PID.' }
     $owned = $Matches[1]
