@@ -1,9 +1,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include "ChapterTwoNtscRenderer.h"
-#include "ChapterTwoNtscShaders.h"
+#include "ChapterTwoNtscBytecode.h"
 #include <d3d11.h>
-#include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <cstring>
 #include <cwchar>
@@ -82,18 +81,6 @@ namespace
         ComPtr<ID3D11ShaderResourceView> Sample;
     };
 
-    HRESULT Compile(decltype(&D3DCompile) compile, const char* entry, const char* profile,
-        ID3DBlob** bytecode) noexcept
-    {
-        using dfl::chapter_two::NtscShaderSource;
-        ComPtr<ID3DBlob> diagnostics;
-        const auto hr = compile(NtscShaderSource, sizeof(NtscShaderSource) - 1, "ChapterTwoNtscShaders",
-            nullptr, nullptr, entry, profile, D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3,
-            0, bytecode, diagnostics.GetAddressOf());
-        if (FAILED(hr) && diagnostics)
-            OutputDebugStringA(static_cast<const char*>(diagnostics->GetBufferPointer()));
-        return hr;
-    }
 }
 
 namespace dfl::chapter_two
@@ -121,28 +108,17 @@ namespace dfl::chapter_two
 
         HRESULT CreateShaders() noexcept
         {
-            SystemLibrary compiler;
-            auto hr = compiler.Load(L"d3dcompiler_47.dll");
-            if (FAILED(hr)) return hr;
-            const auto compile = reinterpret_cast<decltype(&D3DCompile)>(GetProcAddress(compiler.Handle, "D3DCompile"));
-            if (!compile) return HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND);
-
-            ComPtr<ID3DBlob> bytecode;
-            hr = Compile(compile, "VertexMain", "vs_4_0", bytecode.GetAddressOf());
-            if (FAILED(hr)) return hr;
-            hr = Device->CreateVertexShader(bytecode->GetBufferPointer(), bytecode->GetBufferSize(),
-                nullptr, Vertex.GetAddressOf());
+            auto hr = Device->CreateVertexShader(ntsc::VertexMain, sizeof(ntsc::VertexMain), nullptr, Vertex.GetAddressOf());
             if (FAILED(hr)) return hr;
 
-            const struct { const char* Entry; ComPtr<ID3D11PixelShader>& Shader; } passes[] = {
-                {"EncodeMain", Encode}, {"DecodeMain", Decode}, {"CrtMain", Crt}
+            const struct { const unsigned char* Bytecode; std::size_t Size; ComPtr<ID3D11PixelShader>& Shader; } passes[] = {
+                {ntsc::EncodeMain, sizeof(ntsc::EncodeMain), Encode},
+                {ntsc::DecodeMain, sizeof(ntsc::DecodeMain), Decode},
+                {ntsc::CrtMain, sizeof(ntsc::CrtMain), Crt}
             };
             for (const auto& pass : passes)
             {
-                hr = Compile(compile, pass.Entry, "ps_4_0", bytecode.ReleaseAndGetAddressOf());
-                if (FAILED(hr)) return hr;
-                hr = Device->CreatePixelShader(bytecode->GetBufferPointer(), bytecode->GetBufferSize(),
-                    nullptr, pass.Shader.GetAddressOf());
+                hr = Device->CreatePixelShader(pass.Bytecode, pass.Size, nullptr, pass.Shader.GetAddressOf());
                 if (FAILED(hr)) return hr;
             }
             return S_OK;

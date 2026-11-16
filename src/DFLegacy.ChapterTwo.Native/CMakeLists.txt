@@ -37,10 +37,19 @@ set(performance_panel_skin "${CMAKE_CURRENT_BINARY_DIR}/PerformancePanelSkin.rc"
 configure_file(PerformancePanelSkin.rc.in "${performance_panel_skin}" @ONLY)
 set_source_files_properties("${performance_panel_skin}" PROPERTIES OBJECT_DEPENDS
     "${DFL_CLASSIC_SKIN}/classic-settings-panel.png;${DFL_CLASSIC_SKIN}/classic-crest.png;${DFL_CLASSIC_SKIN}/buton_close00.png;${DFL_CLASSIC_SKIN}/buton_close02.png")
+add_executable(chapter_two_compile_ntsc CompileChapterTwoNtscShaders.cpp)
+target_compile_features(chapter_two_compile_ntsc PRIVATE cxx_std_17)
+target_compile_options(chapter_two_compile_ntsc PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_libraries(chapter_two_compile_ntsc PRIVATE d3dcompiler)
+set(ntsc_bytecode "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/ChapterTwoNtscBytecode.h")
+add_custom_command(OUTPUT "${ntsc_bytecode}"
+    COMMAND "$<TARGET_FILE:chapter_two_compile_ntsc>" "${ntsc_bytecode}"
+    DEPENDS chapter_two_compile_ntsc ChapterTwoNtscShaders.h
+    VERBATIM)
 add_library(chapter_two_presentation STATIC
     ChapterTwoPresentation.cpp
     ChapterTwoNtscRenderer.cpp
-    ChapterTwoNtscShaders.h
+    "${ntsc_bytecode}"
     ChapterTwoPerformance.cpp
     ChapterTwoPerformancePanel.cpp
     ChapterTwoSlowFrameTiming.cpp
@@ -89,7 +98,7 @@ add_library(chapter_two_presentation STATIC
     "${IJL}/memory_patch.cpp"
     "${CLIENT}/client_paths.cpp")
 target_include_directories(chapter_two_presentation PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}" "${IJL}")
+target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}" "${IJL}" "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
 target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_XBRZ DFL_CHAPTER_TWO_NTSC)
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
@@ -106,6 +115,9 @@ target_link_libraries(chapter_two_presentation_tests PRIVATE chapter_two_present
 add_executable(chapter_two_crt_presenter_tests ../DFLegacy.Ijl15/tests/crt_presenter_tests.cpp)
 target_compile_options(chapter_two_crt_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_crt_presenter_tests PRIVATE chapter_two_presentation)
+add_executable(chapter_two_ntsc_renderer_tests ntsc_renderer_tests.cpp)
+target_compile_options(chapter_two_ntsc_renderer_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_libraries(chapter_two_ntsc_renderer_tests PRIVATE chapter_two_presentation)
 add_executable(chapter_two_xbrz_presenter_tests ../DFLegacy.Ijl15/tests/xbrz_presenter_tests.cpp)
 target_compile_options(chapter_two_xbrz_presenter_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_xbrz_presenter_tests PRIVATE chapter_two_presentation)
