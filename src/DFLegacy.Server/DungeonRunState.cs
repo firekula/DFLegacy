@@ -44,6 +44,20 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
     public bool IsCurrentHellRoomCleared =>
         IsCurrentHellRoom && _current?.HellEncounterCleared == true;
 
+    internal bool CanLeaveCemeteryAbyssWithLivingGuardian
+    {
+        get
+        {
+            if (DungeonId != ChapterTwoCemeteryGateState.DungeonId || !IsCurrentHellRoom
+                || _current is not { HellEncounterCleared: false } state)
+                return false;
+
+            var livingHostiles = state.EncounterRoom.Monsters.Where(monster =>
+                monster.IsHostile && !monster.IsHellHidden && !state.DefeatedMonsterIds.Contains(monster.UniqueId));
+            return livingHostiles.Any() && livingHostiles.All(IsBossRoomHuntMonster);
+        }
+    }
+
     public DungeonRoomDefinition? CurrentRoom => _current is null
         ? null
         : ProjectRoom(_current);

@@ -182,6 +182,18 @@ internal static class ChapterTwoCemeterySmokeTests
                 check(prepared, $"{runName}: leaves one guardian and the other hell enemies alive");
                 if (!prepared) return;
 
+                var abyssGeneration = instance.RoomGeneration;
+                check(instance.GetCemeteryAbyssExit(abyssGeneration) is null,
+                    $"{runName}: regular survivors retain the native side-door lock");
+                foreach (var monster in current.Monsters.Where(monster =>
+                    monster.IsHostile && !IsGuardian(monster) && !monster.IsHellHidden))
+                    instance.TryTakeMonsterDeath(monster.UniqueId, out _);
+                var earlyExit = instance.GetCemeteryAbyssExit(abyssGeneration);
+                check(earlyExit is { ProtocolId: 186, Payload: { Length: 11 } exitBody }
+                    && exitBody.AsSpan(0, 4).SequenceEqual("CEM1"u8)
+                    && exitBody[8] == 3 && exitBody[9] == x && exitBody[10] == y
+                    && instance.GetCemeteryGate() is { IsOpen: false },
+                    $"{runName}: cleared ordinary enemies allow a side-door exit without opening the boss door");
                 for (var visit = 0; visit < 2; visit++)
                 {
                     var returned = instance.TryMoveRoom(3, 0, out var departed, random)
@@ -194,6 +206,9 @@ internal static class ChapterTwoCemeterySmokeTests
                     }
 
                     var snapshot = instance.CaptureRoomSnapshot(x, y, entered, 1);
+                    check(instance.GetCemeteryAbyssExit(abyssGeneration) is null
+                        && instance.GetCemeteryAbyssExit(instance.RoomGeneration) is null,
+                        $"{runName}: neither a delayed grant nor a revisit can reopen the first encounter");
                     var wire = DungeonEntryPackets.PlanStartMap(snapshot).Payload;
                     var keptGuardian = entered.Room.MapId == 60016
                         && entered.Room.Monsters.SequenceEqual(guardians[1..])

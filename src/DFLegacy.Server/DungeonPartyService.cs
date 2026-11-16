@@ -349,9 +349,19 @@ public sealed class DungeonPartyService : BackgroundService
         }
     }
 
-    internal async Task BroadcastCemeteryGateOpenAsync(DungeonInstance instance, ChapterTwoCemeteryGateState gate)
+    internal Task BroadcastCemeteryGateOpenAsync(DungeonInstance instance, ChapterTwoCemeteryGateState gate) =>
+        BroadcastCemeteryStateAsync(instance, gate.CreateUnlockPacket(),
+            member => instance.CanSendCemeteryUnlock(member, gate.RunToken));
+
+    internal Task BroadcastCemeteryAbyssExitAsync(DungeonInstance instance, long roomGeneration) =>
+        instance.GetCemeteryAbyssExit(roomGeneration) is { } packet
+            ? BroadcastCemeteryStateAsync(instance, packet,
+                member => instance.CanSendCemeteryAbyssExit(roomGeneration, member))
+            : Task.CompletedTask;
+
+    private async Task BroadcastCemeteryStateAsync(DungeonInstance instance, GameServerPacket packet,
+        Func<DungeonInstanceMember, bool> canSend)
     {
-        var packet = gate.CreateUnlockPacket();
         foreach (var member in instance.Members)
         {
             if (!member.IsChapterTwo || member.SendConditional is not { } sendConditional) continue;
@@ -359,7 +369,7 @@ public sealed class DungeonPartyService : BackgroundService
                 _logger,
                 packet,
                 CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
-                value => sendConditional(value, () => instance.CanSendCemeteryUnlock(member, gate.RunToken)));
+                value => sendConditional(value, () => canSend(member)));
         }
     }
 
