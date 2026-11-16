@@ -25,7 +25,8 @@ public sealed record GameInventoryEntry(
     byte State = 0,
     ushort Durability = 0,
     byte SealState = 0,
-    ushort EnchantmentCardId = 0);
+    ushort EnchantmentCardId = 0,
+    ushort AvatarAppearanceItemId = 0);
 public sealed record GameCreatureInfoEntry(
     uint Uid,
     byte Stomach,
@@ -4557,8 +4558,9 @@ public static partial class GameProtocolEngine
         writer.Write(item.State);
         if (chapterTwo)
         {
-            // Modes 0 and 2 share the reader. Zero skips the optional slot value at 0x41ec96.
-            writer.Write(0u);
+            // Modes 0 and 2 read the cloned style as the first extra ushort (Ver_OB_216 0x41ec96).
+            writer.Write(item.AvatarAppearanceItemId);
+            writer.Write((ushort)0);
         }
     }
 
@@ -4628,7 +4630,11 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             UserInfoNotification,
-            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment) };
+            payload.ToArray())
+        {
+            ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment),
+            ChapterTwoAvatarAppearances = AvatarAppearances(equipment)
+        };
     }
 
     /// <summary>
@@ -4759,8 +4765,17 @@ public static partial class GameProtocolEngine
         return new GameServerPacket(
             NotificationPacketType,
             UserInfoNotification,
-            payload.ToArray()) { ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment) };
+            payload.ToArray())
+        {
+            ChapterTwoInventoryEnchantments = InventoryEnchantments(equipment),
+            ChapterTwoAvatarAppearances = AvatarAppearances(equipment)
+        };
     }
+
+    private static ushort[]? AvatarAppearances(GameInventoryEntry[] equipment) =>
+        equipment.Any(item => item.AvatarAppearanceItemId != 0)
+            ? equipment.Select(item => item.AvatarAppearanceItemId).ToArray()
+            : null;
 
     private static readonly GameCharacterCombatStats DefaultCombatStats = new(
         MaximumHp: 11_600,

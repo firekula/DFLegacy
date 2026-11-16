@@ -106,8 +106,9 @@ internal static class ChapterTwoPacketProjection
             var count = payload[countOffset];
             if (payload.Length >= countOffset + 1 + count * 10)
             {
-                // Native detail handling skips the optional item link for FFFF.
-                return ExpandRecords(packet, countOffset + 1, count, 10, [0xff, 0xff, 0, 0], packet.ChapterTwoInventoryEnchantments);
+                // Ver_OB_216 0x41e649 reads the clone's style before the enchantment ID.
+                return ExpandRecords(packet, countOffset + 1, count, 10, [0xff, 0xff, 0, 0],
+                    packet.ChapterTwoInventoryEnchantments, packet.ChapterTwoAvatarAppearances);
             }
         }
 
@@ -116,7 +117,7 @@ internal static class ChapterTwoPacketProjection
 
     private static GameServerPacket ExpandRecords(
         GameServerPacket packet, int offset, int count, int stride, ReadOnlySpan<byte> extra,
-        ushort[]? enchantments = null)
+        ushort[]? enchantments = null, ushort[]? avatarAppearances = null)
     {
         if (count == 0)
         {
@@ -131,6 +132,8 @@ internal static class ChapterTwoPacketProjection
         {
             source.Slice(offset, stride).CopyTo(payload.AsSpan(destination));
             extra.CopyTo(payload.AsSpan(destination + stride));
+            if (avatarAppearances?.Length == count && avatarAppearances[index] != 0)
+                BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(destination + stride), avatarAppearances[index]);
             if (enchantments?.Length == count)
                 BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(destination + stride + extra.Length - sizeof(ushort)), enchantments[index]);
             offset += stride;

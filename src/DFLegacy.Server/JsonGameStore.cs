@@ -39,7 +39,9 @@ public sealed record CharacterItemRecord(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     long? AvatarExpiresAtUnixSeconds = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    ushort EnchantmentCardId = 0);
+    ushort EnchantmentCardId = 0,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    ushort AvatarAppearanceItemId = 0);
 
 public sealed record CharacterSkillRecord(
     byte Slot,
