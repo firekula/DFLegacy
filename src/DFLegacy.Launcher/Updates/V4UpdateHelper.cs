@@ -4,12 +4,14 @@ using Core = DFLegacy.UpdateCore;
 namespace DFLegacy.Launcher.Updates;
 
 internal sealed record V4InstallPlan(Core.StagedUpdate? Staged,string? RecoveryJournalSha256,
-    Core.ReleaseSource? ChapterUpgradeSource=null,Core.ReleaseSource? ChapterRollbackSource=null,bool ChapterRecovery=false);
+    Core.ReleaseSource? ChapterUpgradeSource=null,Core.ReleaseSource? ChapterRollbackSource=null,bool ChapterRecovery=false,
+    bool ReplaceStartupEntry=false,string[]? RestartArguments=null);
 
 public sealed partial class UpdateInstaller
 {
-    internal Task<UpdateHandoff> PrepareV4Async(Core.StagedUpdate? update,string? recoveryHash,CancellationToken token)
-        =>PrepareV4PlanAsync(new(update,recoveryHash),token);
+    internal Task<UpdateHandoff> PrepareV4Async(Core.StagedUpdate? update,string? recoveryHash,CancellationToken token,
+        bool replaceStartupEntry=false,string[]? restartArguments=null)
+        =>PrepareV4PlanAsync(new(update,recoveryHash,ReplaceStartupEntry:replaceStartupEntry,RestartArguments:restartArguments),token);
 
     internal Task<UpdateHandoff> PrepareChapterUpgradeAsync(Core.StagedUpdate staged,Core.ReleaseSource authorizedSource,CancellationToken token)
         =>PrepareV4PlanAsync(new(staged,null,ChapterUpgradeSource:authorizedSource),token);
@@ -43,7 +45,10 @@ public sealed partial class UpdateInstaller
         if(plan.Update!=null || plan.Recovery!=null || install==null
             || new[]{install.Staged!=null,install.RecoveryJournalSha256!=null,install.ChapterRollbackSource!=null}.Count(value=>value)!=1
             || install.ChapterUpgradeSource!=null && install.Staged==null
-            || install.ChapterRecovery && install.RecoveryJournalSha256==null)
+            || install.ChapterRecovery && install.RecoveryJournalSha256==null
+            || install.ReplaceStartupEntry && (install.ChapterUpgradeSource!=null || install.ChapterRollbackSource!=null || install.ChapterRecovery)
+            || install.RestartArguments!=null && (!install.ReplaceStartupEntry || install.RecoveryJournalSha256==null
+                || install.RestartArguments.Any(arg=>arg==null || arg.StartsWith("--bootstrap-",StringComparison.Ordinal))))
             throw new InvalidDataException("V4 安装交接模式无效。");
         Core.PathPolicy.NoLinks(plan.Target);
         var pending=Core.InstallTransaction.HasPending(plan.Target);
@@ -56,7 +61,13 @@ public sealed partial class UpdateInstaller
                 throw new InvalidDataException("更新缓存不属于安装目录。");
             Core.PathPolicy.NoLinks(staged.CacheDirectory);
             if(pending||chapterPending) throw new InvalidDataException("存在未完成安装，必须先恢复。");
-            if(install.ChapterUpgradeSource!=null)
+            if(install.ReplaceStartupEntry)
+            {
+                if(!plan.ParentPath.Equals(Path.Combine(plan.Target,BootstrapLayout.AppName),StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("启动入口迁移必须由已验证的登录器发起。");
+                StartupEntryMigration.RequireReady(plan.Target,staged.Release);
+            }
+            else if(install.ChapterUpgradeSource!=null)
             {
                 var installed=new Core.InstallationStore(plan.Target).ReadInstalled()??throw new InvalidDataException("缺少第一章桥接安装记录。");
                 Core.ChapterTransitionSource.RequireUpgrade(installed.Release.Source,install.ChapterUpgradeSource);
@@ -84,6 +95,9 @@ public sealed partial class UpdateInstaller
             if(!UpdateSafety.IsHash(install.RecoveryJournalSha256) || (install.ChapterRecovery?!chapterPending||pending:!pending||chapterPending)
                 || UpdateSafety.Hash(journal)!=install.RecoveryJournalSha256)
                 throw new InvalidDataException("恢复记录已改变，请重新检查更新。");
+            if(install.ReplaceStartupEntry
+                && StartupEntryMigration.ReadRecovery(plan.Target)?.JournalSha256!=install.RecoveryJournalSha256)
+                throw new InvalidDataException("启动入口恢复记录未经授权。");
         }
     }
 
@@ -98,7 +112,15 @@ public sealed partial class UpdateInstaller
         try
         {
             using var maintenance=Core.ClientGameLease.EnterMaintenance(plan.Target);
+            using var deadline=install.ReplaceStartupEntry?new CancellationTokenSource(TimeSpan.FromSeconds(60)):null;
+            using var entryLock=install.ReplaceStartupEntry?
+                StartupEntryMigration.WaitForBootstrapLockAsync(plan.Target,"entry.lock",deadline!.Token).GetAwaiter().GetResult():null;
+            using var appLock=install.ReplaceStartupEntry?
+                StartupEntryMigration.WaitForBootstrapLockAsync(plan.Target,"app.lock",deadline!.Token).GetAwaiter().GetResult():null;
+            if(install.ReplaceStartupEntry)
+                StartupEntryMigration.WaitForEntryAsync(plan.Target,deadline!.Token).GetAwaiter().GetResult();
             ValidateV4Inputs(plan);
+            Core.VerifiedRelease? startupRelease=null;
             if(install.ChapterUpgradeSource is {} upgrade)
                 Core.InstallTransaction.ApplyChapterUpgrade(plan.Target,install.Staged!,upgrade,true,bridge,
                     ChapterDisplayMigration.Read(plan.Target),deferReadiness:true);
@@ -107,7 +129,17 @@ public sealed partial class UpdateInstaller
             else if(install.ChapterRecovery)
                 Core.ChapterTransition.Recover(plan.Target,bridge);
             else if(install.Staged is {} staged)
-                Core.InstallTransaction.Apply(plan.Target,staged,bridge);
+            {
+                if(install.ReplaceStartupEntry)
+                {
+                    var baseline=StartupEntryMigration.RequireReady(plan.Target,staged.Release);
+                    Core.InstallTransaction.ApplyStartupEntryMigration(plan.Target,staged,baseline.Release.ManifestSha256,bridge);
+                    startupRelease=staged.Release;
+                }
+                else Core.InstallTransaction.Apply(plan.Target,staged,bridge);
+            }
+            else if(install.ReplaceStartupEntry)
+                startupRelease=Core.InstallTransaction.RecoverStartupEntryMigration(plan.Target,install.RecoveryJournalSha256!,bridge);
             else Core.InstallTransaction.Recover(plan.Target,bridge);
 
             string version;
@@ -131,6 +163,21 @@ public sealed partial class UpdateInstaller
                     report.Complete("chapter-ready-failed-rolled-back",ex);
                     return new(false,restarted,"第二章未通过本地启动检查，已恢复第一章。\n"+ex.Message);
                 }
+            }
+            else if(startupRelease!=null)
+            {
+                var receipt=new Core.InstallationStore(plan.Target).ReadInstalled()??throw new InvalidDataException("缺少已提交的启动记录。");
+                if(receipt.Release.Source!=startupRelease.Source || receipt.Release.ManifestSha256!=startupRelease.ManifestSha256)
+                    throw new InvalidDataException("已提交的启动记录与应启动的版本不符。");
+                BootstrapLayout.RequireReceiptLayout(plan.Target,BootstrapLayout.Architecture,receipt);
+                var entryPath=Core.PathPolicy.Resolve(plan.Target,BootstrapLayout.EntryName);
+                using var entryImage=new FileStream(entryPath,FileMode.Open,FileAccess.Read,FileShare.Read);
+                BootstrapLayout.RequireStableEntry(plan.Target,receipt.Release.Manifest);
+                version=receipt.Release.Manifest.Version;
+                appLock!.Dispose();
+                maintenance.Dispose();
+                entryLock!.Dispose();
+                restarted=RestartWithArguments(entryPath,install.RestartArguments??[]);
             }
             else
             {

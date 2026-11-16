@@ -35,7 +35,10 @@ public sealed class ReleaseProvider : IReleaseProvider
             || h.Key.Contains("cookie", StringComparison.OrdinalIgnoreCase) || h.Key.Contains("token", StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("公开更新请求不得携带登录凭据。");
     }
-    public async Task<VerifiedRelease?> FindAsync(CancellationToken token = default)
+    public Task<VerifiedRelease?> FindAsync(CancellationToken token = default) => FindAsync(null, null, token);
+
+    internal async Task<VerifiedRelease?> FindAsync(string? alternateManifestName,
+        Func<ClientManifest, bool>? includeManifest, CancellationToken token)
     {
         var candidates = new List<VerifiedRelease>();
         for (var page = 1; page <= 3; page++)
@@ -49,7 +52,7 @@ public sealed class ReleaseProvider : IReleaseProvider
                 var tag = release.GetProperty("tag_name").GetString();
                 if (!ManifestCodec.IsName(tag)) continue;
                 var assets = await AttachmentsAsync(release, token).ConfigureAwait(false);
-                var manifests = assets.Where(a => a.Name == Source.ManifestAssetName).ToArray();
+                var manifests = assets.Where(a => a.Name == Source.ManifestAssetName || a.Name == alternateManifestName).ToArray();
                 if (manifests.Length == 0) continue; // Gitee makes a release visible before the last manifest upload.
                 if (manifests.Length != 1) throw new InvalidDataException("发行版中有重复更新清单。");
                 var asset = manifests[0]; ValidateAttachment(asset, tag!);
@@ -60,7 +63,9 @@ public sealed class ReleaseProvider : IReleaseProvider
                 var hash = Convert.ToHexStringLower(SHA256.HashData(bytes));
                 if (asset.Size is long size && bytes.LongLength != size || asset.Digest != null && asset.Digest != "sha256:" + hash)
                     throw new InvalidDataException("更新清单附件摘要或长度不符。");
-                var found = new VerifiedRelease(Source, tag!, hash, bytes); found.Validate(Source); candidates.Add(found);
+                var found = new VerifiedRelease(Source, tag!, hash, bytes);
+                found.Validate(Source);
+                if (includeManifest is null || includeManifest(found.Manifest)) candidates.Add(found);
             }
             if (releases.RootElement.GetArrayLength() < PageSize) break;
             if (page == 3) throw new IOException("尚未查完发行版，无法确认线上最新版本。");

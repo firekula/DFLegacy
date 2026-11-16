@@ -138,6 +138,22 @@ internal static class BootstrapUpdateClient
             var request=ParseArguments(args);
             var quiet=App.IsHeadless(request.LauncherArguments);
             Program.LogClientPath=Path.Combine(request.Directory,"DNF.exe");
+            if(Core.InstallTransaction.HasPending(request.Directory)
+                && StartupEntryMigration.ReadRecovery(request.Directory) is {} entryRecovery)
+            {
+                await WaitForParentAsync(request,cancel.Token);
+                var installer=new UpdateInstaller(request.Directory);
+                using var artifacts=UpdateArtifacts.Create(request.Directory);
+                var handoff=await installer.PrepareV4Async(null,entryRecovery.JournalSha256,cancel.Token,
+                    replaceStartupEntry:true,restartArguments:request.LauncherArguments);
+                artifacts.TrackHelper(handoff);
+                var helper=await installer.StartHelperAsync(handoff,cancel.Token);
+                artifacts.MarkStarted(helper);
+                artifacts.Release();
+                // Exit the supervised worker and fixed entry. The detached
+                // helper now owns recovery and waits for both files to unlock.
+                return 2;
+            }
             async Task BeginRepair()
             {
                 if(quiet)return;

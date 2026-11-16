@@ -22,7 +22,8 @@ release version from `../DFLegacy.Launcher/LauncherVersion.txt`. Release builds 
 pass `-Version` and `-Revision` for a specific build. `-BuildManagedResources`
 compiles `app.res`, `updater.res`, and `standalone.res` in the build directory.
 Pass each file to `dotnet publish` using `-p:DFLegacyLauncherWin32Resource=<path>` for its matching
-EXE. Use separate publish and intermediate directories for each role so that the
+EXE. These resources retain the managed apphost manifest and its `asInvoker`
+execution level. Use separate publish and intermediate directories for each role so that the
 SDK bundles the apphost with the right file description and original filename.
 The build script does
 not install tools, remove existing directories, or publish artifacts. Its default
@@ -72,6 +73,24 @@ Those versions cannot receive it through ordinary V4 updates: the existing
 publisher and runtime stable-entry guards remain enforced. Deliver a new full
 starter or an explicit entry migration before claiming this native fast path is
 deployed to those installations.
+
+## Chapter Two v1.0.12 startup update
+
+The public `v1.0.12-bridge` release at sequence 17 retains the native executable
+from v1.0.11. Its managed launcher can discover the new startup generation under
+`DFLegacy-client-update-v4-chapter-two-startup-v2-<flavor>-win-<architecture>.json`.
+The manifest still binds to the `chapter-two` channel. The final `v1.0.12`
+manifest has sequence 18 and minimum sequence 17. Its only file identity change
+from the bridge is `DFLegacy.Launcher.exe`. `chapter_package.build` accepts the
+verified bridge manifest through `startup_bridge` for this migration. Later
+updates on the new generation retain the sequence floor and pin their startup
+entry to the preceding versioned manifest.
+
+Publish and verify the final manifest and its resources on both mirrors before
+publishing the bridge manifest under the original asset name. Both steps reuse
+existing game files. The migration runs in a detached updater after the previous
+launcher and startup entry have released their files. Validate a successful
+upgrade and recovery from a break during installation before publication.
 
 All installation and temporary paths must be absolute local drive paths.
 Directory components and files reject reparse points; executable, descriptor,

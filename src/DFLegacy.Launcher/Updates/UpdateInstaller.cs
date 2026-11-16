@@ -60,9 +60,17 @@ public sealed partial class UpdateInstaller
         var path=Path.Combine(target,".dflegacy","last-result.json"); UpdateSafety.NoLinks(path);
         return File.Exists(path) && new FileInfo(path).Length<=65536 ? UpdateSafety.ReadJson<UpdateApplyResult>(File.ReadAllBytes(path)) : null;
     }
-    internal static bool Restart(string executable)
+    internal static bool Restart(string executable)=>RestartWithArguments(executable,[]);
+
+    private static bool RestartWithArguments(string executable,IEnumerable<string> arguments)
     {
-        try { using var child=Process.Start(new ProcessStartInfo(executable) { UseShellExecute=false, WorkingDirectory=Path.GetDirectoryName(executable)! }); return child!=null; }
+        try
+        {
+            var start=new ProcessStartInfo(executable) { UseShellExecute=false, WorkingDirectory=Path.GetDirectoryName(executable)! };
+            foreach(var argument in arguments) start.ArgumentList.Add(argument);
+            using var child=Process.Start(start);
+            return child!=null;
+        }
         catch { return false; }
     }
 }

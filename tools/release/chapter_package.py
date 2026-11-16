@@ -37,7 +37,7 @@ def _manifest(value):
 
 
 def build(root, output, *, chapter, architecture, flavor, version, commit, sequence, baseline=None,
-          previous=None, provider='github', seed_provider=False):
+          previous=None, provider='github', seed_provider=False, startup_bridge=None):
     root, output = Path(root).absolute(), Path(output).absolute()
     v4.require(chapter in ('chapter1', 'chapter2'), 'invalid chapter')
     v4.require(provider == 'github' or (provider == 'gitcode' and chapter == 'chapter2'),
@@ -47,6 +47,14 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
     required = inventory.required_files(root, chapter) | inventory.FIXED_COMPONENTS
     old = _manifest(baseline) if baseline is not None else None
     prior = _manifest(previous) if previous is not None else None
+    bridge = _manifest(startup_bridge) if startup_bridge is not None else None
+    if bridge is not None:
+        v4.require(chapter == 'chapter2' and not seed_provider and prior is not None
+                   and (prior['version'], prior['sequence']) == ('v1.0.11', 16)
+                   and (bridge['version'], bridge['sequence']) == ('v1.0.12-bridge', 17)
+                   and (version, sequence) == ('v1.0.12', 18)
+                   and (bridge['architecture'], bridge['flavor'], bridge['channel'], bridge['commit']) ==
+                       (architecture, flavor, CHANNEL, commit), 'invalid startup migration bridge')
     v4.require(prior is None or chapter=='chapter2' and
                (prior['architecture'], prior['flavor'], prior['channel']) ==
                (architecture, flavor, CHANNEL), 'incompatible previous Chapter Two release')
@@ -61,16 +69,35 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
         v4.require(not any((root/name).exists() for name in ('DFLegacy.Client.dll','DFLegacy.Debug.dll','debug.dll')),
                    'Second Chapter contains a First Chapter module')
         v4.require('DFLegacy.Chapter.json' in {f['path'] for f in old['files']}, 'baseline has no chapter descriptor')
-    if old is not None:
-        entry = next((f for f in old['files'] if f['path']=='DFLegacy.Launcher.exe'), None)
-        v4.require(entry is not None and v4.file_hash(root/'DFLegacy.Launcher.exe') == (entry['sha256'], entry['size']),
-                   'fixed entry changed')
+    versioned_startup = chapter == 'chapter2' and prior is not None and prior['minimumSequence'] >= 17
+    entry_baseline = prior if versioned_startup else old
+    entry_path = bootstrap_package.ENTRY
+    if entry_baseline is not None:
+        entry = next((f for f in entry_baseline['files'] if f['path'] == entry_path), None)
+        v4.require(entry is not None, 'fixed entry missing from baseline')
+        unchanged = v4.file_hash(root/entry_path) == (entry['sha256'], entry['size'])
+        if bridge is None:
+            v4.require(unchanged, 'fixed entry changed')
+        else:
+            bridge_entry = next((f for f in bridge['files'] if f['path'] == entry_path), None)
+            v4.require(bridge_entry is not None and not unchanged
+                       and (bridge_entry['sha256'], bridge_entry['size']) == (entry['sha256'], entry['size']),
+                       'startup migration must replace the approved fixed entry')
     includes = inventory.COMMON + (inventory.FIRST if chapter=='chapter1' else inventory.SECOND)
     excludes = ['debug.dll','DFLegacy.Debug.dll'] if chapter=='chapter1' and flavor=='normal' else []
+    if bridge is not None:
+        minimum_sequence = 17
+    elif versioned_startup:
+        minimum_sequence = prior['minimumSequence']
+    elif chapter == 'chapter2':
+        minimum_sequence = old['sequence']
+    else:
+        minimum_sequence = old['minimumSequence'] if old is not None else 0
     # Preview provides an exact file set for retirement decisions, before output is created.
     options = dict(root=str(root),version=version,commit=commit,architecture=architecture,flavor=flavor,
         channel='stable' if chapter=='chapter1' else CHANNEL,sequence=sequence,
-        minimum_sequence=old['sequence'] if chapter=='chapter2' else (old['minimumSequence'] if old else 0),includes=includes,excludes=excludes)
+        minimum_sequence=minimum_sequence,
+        includes=includes,excludes=excludes)
     if prior is not None:
         v4.require(sequence > prior['sequence'] and version != prior['version']
                    and options['minimum_sequence'] >= prior['minimumSequence'], 'previous chapter version does not advance')
@@ -89,6 +116,13 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
             if file['path'].casefold() not in folded:
                 retired.setdefault(file['path'].casefold(),dict(path=file['path'],action='delete',sequence=sequence))
     options['retired'] = list(retired.values())
+    if bridge is not None:
+        def other_files(manifest):
+            return {file['path']: (file['sha256'], file['size']) for file in manifest['files'] if file['path'] != entry_path}
+        v4.require(other_files(planned['manifest']) == other_files(bridge)
+                   and options['retired'] == bridge['retired']
+                   and planned['manifest']['migrations'] == bridge['migrations'],
+                   'startup migration may only replace the fixed entry')
     if old and chapter=='chapter1': options['previous'] = [old]
     return v4.build(output, provider, REPOSITORY, **options)
 

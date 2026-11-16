@@ -184,7 +184,11 @@ def validate_manifest(m):
 
 
 def manifest_name(m):
-    return f"DFLegacy-client-update-v4-{m['channel']}-{m['flavor']}-win-{m['architecture']}.json"
+    channel = m['channel']
+    if channel == 'chapter-two' and m['minimumSequence'] >= 17:
+        # Older launchers discover the compatible bridge under the original name.
+        channel = 'chapter-two-startup-v2'
+    return f"DFLegacy-client-update-v4-{channel}-{m['flavor']}-win-{m['architecture']}.json"
 
 
 def release_references(tag, manifests):

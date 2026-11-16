@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 namespace DFLegacy.UpdateCore;
 
 public sealed record StagedUpdate(VerifiedRelease Release, string CacheDirectory);
+public sealed record PendingStartupEntryMigration(VerifiedRelease Previous, VerifiedRelease Target, string JournalSha256);
 
 /// <summary>Write-ahead, rollback-only recovery. The receipt is committed after all content postconditions pass.</summary>
 public static class InstallTransaction
@@ -15,6 +16,7 @@ public static class InstallTransaction
         [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ChapterJournal? Chapter = null);
     private sealed record PendingWrite(string Path, string? Source, byte[]? Bytes);
     private const string ReceiptName = ".dflegacy/v4/installed.json";
+    private const string StartupEntry = "DFLegacy.Launcher.exe";
     private const string FirstConfiguration = "launcher.json";
     private const string SecondConfiguration = "launcher.chapter2.json";
     private const int JournalLimit = 64 * 1024 * 1024;
@@ -32,6 +34,70 @@ public static class InstallTransaction
     }
     public static void Apply(string root, StagedUpdate staged, IProgress<UpdateProgress>? progress = null) =>
         ApplyCore(root, staged, null, false, progress);
+
+    public static void ApplyStartupEntryMigration(string root, StagedUpdate staged, string baselineManifestSha256,
+        IProgress<UpdateProgress>? progress = null)
+    {
+        if (!ManifestCodec.IsHash(baselineManifestSha256)) throw new InvalidDataException("启动入口迁移缺少基线校验值。");
+        ApplyCore(root, staged, null, false, progress, startupBaseline: baselineManifestSha256);
+    }
+
+    public static PendingStartupEntryMigration? ReadPendingStartupEntryMigration(string root)
+    {
+        using var lease = InstallationLease.Acquire(root);
+        return ReadPendingStartupEntryMigration(new InstallationStore(root));
+    }
+
+    public static VerifiedRelease RecoverStartupEntryMigration(string root, string journalSha256,
+        IProgress<UpdateProgress>? progress = null)
+    {
+        using var lease = InstallationLease.Acquire(root);
+        RequireNoChapterRollback(root);
+        var store = new InstallationStore(root);
+        var pending = ReadPendingStartupEntryMigration(store);
+        if (!ManifestCodec.IsHash(journalSha256) || pending is null || pending.JournalSha256 != journalSha256)
+            throw new InvalidDataException("启动入口恢复记录已改变。");
+        RecoverLocked(store, progress);
+        return pending.Previous;
+    }
+
+    private static PendingStartupEntryMigration? ReadPendingStartupEntryMigration(InstallationStore store)
+    {
+        if (!HasPending(store.Root)) return null;
+        var bytes = InstallationStore.ReadBounded(store.JournalPath, JournalLimit);
+        Journal journal;
+        try
+        {
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 32 });
+            ManifestCodec.RejectDuplicateKeys(document.RootElement);
+            journal = document.RootElement.Deserialize<Journal>(ManifestCodec.Json)
+                ?? throw new InvalidDataException("未决事务记录为空。");
+        }
+        catch (JsonException error) { throw new InvalidDataException("未决事务记录格式无效。", error); }
+        ValidateJournal(store, journal);
+        if (journal.Chapter != null || journal.Changes is not [{ Path: StartupEntry, Existed: true, NewHash: not null }, { Path: ReceiptName, Existed: true }])
+            return null;
+        var workspace = Path.Combine(store.StateDirectory, "transactions", journal.Id);
+        using var evidence = OpenEvidence(workspace, journal);
+        var previous = InstallationStore.ReadJson<InstalledReceipt>(Path.Combine(workspace, "1.old"), InstallationStore.MaximumReceiptBytes);
+        var next = InstallationStore.ReadJson<InstalledReceipt>(Path.Combine(workspace, "1.new"), InstallationStore.MaximumReceiptBytes);
+        InstallationStore.Validate(previous);
+        InstallationStore.Validate(next);
+        var oldEntry = previous.Release.Manifest.Files.SingleOrDefault(file => file.Path == StartupEntry);
+        var entry = journal.Changes[0];
+        if (oldEntry is null || oldEntry.Sha256 != entry.OldHash || oldEntry.Size != entry.OldSize
+            || next.Release.ManifestSha256 != journal.Target.ManifestSha256
+            || next.Release.Source != journal.Target.Source || previous.Release.Source != journal.Target.Source
+            || !previous.ManagedHistory.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(next.ManagedHistory))
+            throw new InvalidDataException("启动入口恢复记录与原安装不符。");
+        foreach (var change in journal.Changes)
+        {
+            var path = Destination(store, change.Path);
+            if (!MatchesState(path, change.OldSize, change.OldHash) && !MatchesState(path, change.NewSize, change.NewHash))
+                throw new InvalidDataException("启动入口恢复目标发生外部改变：" + change.Path);
+        }
+        return new(previous.Release, journal.Target, Hash(bytes));
+    }
 
     public static void ApplyChapterUpgrade(string root, StagedUpdate staged, ReleaseSource authorizedSource,
         bool explicitSelection, IProgress<UpdateProgress>? progress = null, ChapterDisplayPreference? firstDisplay = null,
@@ -86,13 +152,15 @@ public static class InstallTransaction
     }
 
     private static void ApplyCore(string root, StagedUpdate staged, ReleaseSource? authorizedSource,
-        bool explicitSelection, IProgress<UpdateProgress>? progress, ChapterDisplayPreference? firstDisplay = null, bool deferReadiness = false)
+        bool explicitSelection, IProgress<UpdateProgress>? progress, ChapterDisplayPreference? firstDisplay = null, bool deferReadiness = false,
+        string? startupBaseline = null)
     {
         if (staged?.Release?.Source == null) throw new InvalidDataException("更新目标来源缺失。");
         staged.Release.Validate(staged.Release.Source);
         using var lease = InstallationLease.Acquire(root);
         var store = new InstallationStore(root);
         RequireNoChapterRollback(root);
+        if (startupBaseline != null && HasPending(root)) throw new InvalidDataException("存在未完成安装，必须先恢复。");
         RecoverLocked(store, progress);
         InstalledReceipt? installed;
         try { installed = store.ReadInstalled(); }
@@ -100,6 +168,13 @@ public static class InstallTransaction
             && !File.Exists(PathPolicy.Resolve(store.Root, ClientChapterIdentity.FileName))) { installed = null; }
         var chapter = authorizedSource == null ? null : ChapterTransition.PrepareUpgradeLocked(store, staged, authorizedSource, explicitSelection, firstDisplay, progress);
         var target = staged.Release.Manifest;
+        ManagedFile? originalEntry = null;
+        if (startupBaseline != null)
+        {
+            if (installed?.Release.ManifestSha256 != startupBaseline) throw new InvalidDataException("启动入口迁移基线已改变。");
+            originalEntry = installed.Release.Manifest.Files.SingleOrDefault(file => file.Path == StartupEntry)
+                ?? throw new InvalidDataException("当前安装缺少已验证的启动入口。");
+        }
         if (installed != null && chapter == null)
         {
             staged.Release.Validate(installed.Release.Source);
@@ -162,6 +237,9 @@ public static class InstallTransaction
         }
         if (chapter != null) writes.Add(new(SecondConfiguration, null, chapter.ChapterTwoConfiguration));
         history.UnionWith(current);
+        if (originalEntry != null && (writes is not [{ Path: StartupEntry, Source: not null }]
+            || !history.SetEquals(installed!.ManagedHistory)))
+            throw new InvalidDataException("启动入口迁移只能替换当前安装的固定入口。");
         var receipt = new InstalledReceipt(staged.Release, history.Order(StringComparer.OrdinalIgnoreCase).ToArray()); InstallationStore.Validate(receipt);
         writes.Add(new(ReceiptName, null, JsonSerializer.SerializeToUtf8Bytes(receipt, ManifestCodec.Json)));
         PreflightSpace(store.Root, writes);
@@ -201,6 +279,9 @@ public static class InstallTransaction
                 throw new InvalidDataException("第二章退役文件在提交前发生改变：" + write.Path);
             if (chapterTwoPriorFiles != null && existed && write.Source != null && !chapterTwoPriorFiles.ContainsKey(write.Path))
                 throw new InvalidDataException("第二章资源与非受管理文件冲突：" + write.Path);
+            if (originalEntry != null && write.Path == StartupEntry
+                && (!existed || oldSize != originalEntry.Size || oldHash != originalEntry.Sha256))
+                throw new InvalidDataException("原启动入口与已验证的桥接版本不符。");
             var newSize = 0L; string? newHash = null;
             if (write.Source != null || write.Bytes != null)
             {

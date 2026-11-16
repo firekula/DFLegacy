@@ -58,6 +58,30 @@ class ChapterPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
             self.build(second, 'chapter2', 'b', baseline=self.base/'a'/a['manifestAsset'])
 
+    def test_versioned_startup_update_preserves_legacy_discovery(self):
+        baseline = self.build(self.stage('chapter1', 'c1'), 'chapter1', 'c1-bundle')['manifest']
+        client = self.stage('chapter2', 'c2')
+        common = dict(chapter='chapter2', architecture='x64', flavor='normal', baseline=baseline)
+        previous = package.build(client, self.base/'stable', **common,
+                                 version='v1.0.11', commit='a'*40, sequence=16)['manifest']
+        (client/'DFLegacy.Launcher.App.exe').write_bytes(b'new managed launcher')
+        bridge = package.build(client, self.base/'bridge', **common,
+                               version='v1.0.12-bridge', commit='b'*40, sequence=17, previous=previous)
+        self.assertEqual(bridge['manifestAsset'], 'DFLegacy-client-update-v4-chapter-two-normal-win-x64.json')
+        (client/'DFLegacy.Launcher.exe').write_bytes(b'new startup executable')
+        final_args = dict(version='v1.0.12', commit='b'*40, sequence=18,
+                          previous=previous, startup_bridge=bridge['manifest'])
+        final = package.build(client, self.base/'final', **common, **final_args)
+        self.assertEqual(final['manifestAsset'], 'DFLegacy-client-update-v4-chapter-two-startup-v2-normal-win-x64.json')
+        self.assertEqual(v4.verify_local(self.base/'final')['manifest']['minimumSequence'], 17)
+        self.assertNotIn('v1.0.12-bridge', {part['release'] for row in final['manifest']['files'] for part in row['parts']})
+        following = package.build(client, self.base/'following', **common, version='v1.0.13',
+                                  commit='c'*40, sequence=19, previous=final['manifest'])
+        self.assertEqual(following['manifestAsset'], final['manifestAsset'])
+        (client/'Script.pvf').write_bytes(b'changed alongside startup')
+        with self.assertRaisesRegex(v4.ReleaseError, 'startup migration'):
+            package.build(client, self.base/'invalid', **common, **final_args)
+
     def test_first_gitcode_starter_seeds_all_resources_and_pins_gitcode(self):
         bridge = self.build(self.stage('chapter1', 'c1'), 'chapter1', 'bridge')
         baseline = self.base / 'bridge' / bridge['manifestAsset']
