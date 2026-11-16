@@ -21,7 +21,7 @@ internal static class ChapterTwoConfigTests
             File.WriteAllText(Path.Combine(templates.FullName, "server.json"), """
                 {"DFLegacy":{"Entrance":{"Host":"127.0.0.2"},"Admin":{"Host":"127.0.0.2","Port":48091},
                 "GameplayDatagram":{"AdvertisedHost":"127.0.0.2"},"FallbackRelay":{"AdvertisedHost":"127.0.0.2"},
-                "WebPanels":{"Gm":{"Enabled":false},"Player":{"Enabled":false}}}}
+                "WebPanels":{"Gm":{"Enabled":false,"Host":"127.0.0.2"},"Player":{"Enabled":false}}}}
                 """);
             var store = new ConfigurationStore(paths, new Dictionary<string, string?> { ["DFLegacy__Entrance__Host"] = "0.0.0.0" });
             var initial = store.Read();
@@ -136,6 +136,26 @@ internal static class ChapterTwoConfigTests
                     "actual managed child honors explicit test payment, region and fatigue choices");
             }
             finally { supervisor.DisposeAsync().AsTask().GetAwaiter().GetResult(); }
+
+            var withGm = domain.Read().Saved with { GmPanelEnabled = true, GmPanelPort = 48093 };
+            var savedGm = domain.Save(withGm);
+            Check(savedGm.Effective is { GmPanelEnabled: true, GmPanelHost: "127.0.0.2", GmPanelPort: 48093, PlayerPanelEnabled: false },
+                "Chapter Two can enable its private GM panel and save a custom port with the stock template");
+            var persistedGm = new ConfigurationStore(paths, new Dictionary<string, string?>
+                { ["DFLEGACY_CHAPTER_TWO_SERVER_HOST"] = "game.example.test" });
+            Check(persistedGm.Read().Effective.GmPanelEnabled, "a reopened Chapter Two deployment retains the GM switch");
+            try
+            {
+                domain.Save(withGm with { GmPanelHost = "0.0.0.0" });
+                Check(false, "Chapter Two rejects a public GM listener");
+            }
+            catch (ArgumentException) { Check(true, "Chapter Two rejects a public GM listener"); }
+            try
+            {
+                domain.Save(withGm with { GmPanelPort = withGm.AdminPort });
+                Check(false, "Chapter Two rejects a GM port conflict");
+            }
+            catch (ArgumentException) { Check(true, "Chapter Two rejects a GM port conflict"); }
             return failures == 0 ? 0 : 1;
         }
         finally { Directory.Delete(root, recursive: true); }

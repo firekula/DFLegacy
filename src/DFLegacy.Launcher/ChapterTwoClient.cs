@@ -24,6 +24,8 @@ internal static class ChapterTwoClient
     private const string ImageHash = "9BC32EFADD05A2FBF407C85C73AC66D221C5577E7A2234C981C3BBA0CB9A8BDB";
     private const string HostHash = "B72C2C7DFF350BCE0F8E5A178740CB5BE703BC9559956951BDBBF8E573A71139";
     private const string BrokerHash = "751AA409EC440FE987AB4462EEA057BD9BB3F650BA93FC6C1498D541F55F5079";
+    private const string MergedInterfaceHash = "580B7E03261D041F8EEAC5D1FF0C66C477CDE4A5A6198BA3420F29999603AD3D";
+    private const string OldInterfaceRepairHash = "72074A99D04211D383238671FEB7A2A2E3CC280ACA17206388034001124CE344";
     private const string ResourcePrefix = "ChapterTwo.";
     private static readonly (string Name, string Hash)[] Binaries =
     [
@@ -110,10 +112,32 @@ internal static class ChapterTwoClient
             "C20741D48A641A525F7C214FBEDE555783FB737B344D14EEADA47AECA8337669",
             "639489430820E62F50D5D239B1C16AB8B65AFCE97C528BEBB03E3B723CE55D85",
             "06734F9C5B23CF3BCE364890403AE1661311447CA8ADEBD1B79FCFD8E00FAB9B",
-            "D0B4AC799896398BFD97A5CFCF12E8BE0A603A44A965FD5478AB8C43A99B8C9B");
+            "D0B4AC799896398BFD97A5CFCF12E8BE0A603A44A965FD5478AB8C43A99B8C9B",
+            "1818F80E8DA4DC4BEF919121BBE429C5F3F7067062EDA9CB230B8A6CD2282C00");
         var images = Path.Combine(root, "ImagePacks2");
         if (!Directory.Exists(images) || ClientLogPaths.HasLink(images))
             throw new InvalidDataException("请将第二章启动器放在原版 DNFS1C2 客户端目录，与 DNF.exe 和 ImagePacks2 同层。");
+    }
+
+    internal static bool MigrateInterfaceRepair(string root)
+    {
+        var images = Path.Combine(root, "ImagePacks2");
+        var old = Path.Combine(images, "%sprite_interface.edited.npk");
+        if (!MatchesFile(old, OldInterfaceRepairHash)
+            || !MatchesFile(Path.Combine(images, "sprite_interface.NPK"), MergedInterfaceHash)) return false;
+
+        // Keep the exact legacy repair recoverable outside the engine's *.npk search.
+        var backup = old + ".disabled";
+        if (File.Exists(backup) || Directory.Exists(backup)) backup += "." + Guid.NewGuid().ToString("N");
+        File.Move(old, backup);
+        return true;
+    }
+
+    private static bool MatchesFile(string path, string expected)
+    {
+        if (ClientLogPaths.HasLink(path) || !File.Exists(path)) return false;
+        using var file = File.OpenRead(path);
+        return Hash(file) == expected;
     }
 
     internal static void VerifyEmbeddedPayload()
@@ -150,6 +174,8 @@ internal static class ChapterTwoClient
         cancellationToken.ThrowIfCancellationRequested();
 
         var root = Path.GetDirectoryName(clientPath)!;
+        if (MigrateInterfaceRepair(root))
+            Program.WriteLauncherLog("Chapter Two moved its superseded UI repair out of the NPK search.");
         var display = DisplayOptions(options);
         var dialogue = ChapterTwoDialogueOptions.Normalize(options.ChapterTwoDialogue);
         var hostName = PreviewName;

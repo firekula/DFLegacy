@@ -75,9 +75,11 @@ async function loadConfig() {
   $("#environmentNotice").hidden = !snapshot.environmentOverrides.length;
   $("#environmentNotice").textContent = "部分设置由环境变量控制，已锁定对应输入；有效值以环境变量为准：" + snapshot.environmentOverrides.join("、");
   $("#networkPreset").value = "custom";
+  $("#chapterTwoGmPanel").hidden = !snapshot.chapterTwoLocal;
+  fields.namedItem("gmPanelEnabled").disabled = !snapshot.chapterTwoLocal;
   $("#chapterTwoTestTopUp").hidden = !snapshot.chapterTwoLocal || snapshot.chapterTwoRemote;
   if (snapshot.chapterTwoLocal) {
-    const adjustable = new Set(["channelName", "maximumUsers", "monsterExperienceMultiplier", "clearExperienceMultiplier", "dropRatePercent", "dropEconomicRate", "autostart", "chapterTwoTestTopUpEnabled"]);
+    const adjustable = new Set(["channelName", "maximumUsers", "monsterExperienceMultiplier", "clearExperienceMultiplier", "dropRatePercent", "dropEconomicRate", "autostart", "chapterTwoTestTopUpEnabled", "gmPanelEnabled", "gmPanelPort"]);
     for (const input of fields) if (input.name && !adjustable.has(input.name)) input.disabled = true;
     $("#networkPreset").disabled = true;
     $("#deriveApi").disabled = true;
@@ -131,6 +133,8 @@ async function refreshStatusCore() {
     if (url) $(selector).href = url; else $(selector).removeAttribute("href");
   }
   $("#gameLinksNote").textContent = running ? "使用游戏管理员账号登录 GM 后台。" : "游戏服务当前已停止，这些页面将在启动后可用。";
+  if (running && status.chapterTwoRemote && status.gmPanelUrl)
+    $("#gameLinksNote").textContent = "先用 SSH 转发 GM HTTP 端口，再用游戏管理员账号登录。";
   $("#chapterTwoTopUpLinks").hidden = !(status.chapterTwoLocal && running && !server.restartRequired && savedConfig?.chapterTwoTestTopUpEnabled);
 }
 

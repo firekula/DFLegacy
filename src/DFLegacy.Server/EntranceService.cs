@@ -14688,9 +14688,9 @@ public sealed class EntranceService(
                                 LogPacket("TX", runtimeSession, inventoryRefresh);
                             }
 
-                            // ACT1 reads the updated bag first. The Chapter Two CMD83
-                            // receiver still needs the original material and equipment
-                            // objects to process the acknowledgement.
+                            // ACT1 reads the updated bag first. Chapter Two updates the
+                            // material and target in CMD83 and retains the target object
+                            // in the result dialog. A full bag rebuild invalidates it.
                             if (!chapter2CheckConnectionAccepted && reinforcementPlan.TargetListType == 0)
                             {
                                 await SendReinforcedBagAsync();
@@ -14708,7 +14708,8 @@ public sealed class EntranceService(
                             LogPacket("TX", runtimeSession, reinforcementReply);
                             if (chapter2CheckConnectionAccepted)
                             {
-                                await SendReinforcedBagAsync();
+                                await SendTownPacketAsync(GameProtocolEngine.CreateUpdateItemList(0,
+                                    [new GameInventoryEntry(Slot: 0, ItemId: 0, CountOrValue: checked((uint)currentGold))]), serverToken);
                             }
 
                             logger.LogInformation(

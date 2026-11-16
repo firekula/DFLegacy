@@ -102,13 +102,10 @@ internal static class ChapterTwoItemUseSmokeTests
                         && packet.Payload[0] == 0);
                 var reinforcedOk = reinforced.Payload.SequenceEqual(Convert.FromHexString("0149000000000000010900"));
                 check(reinforcedOk, $"native encrypted CMD83 reinforces the target using its final coal (reply {Convert.ToHexString(reinforced.Payload)})");
-                check(!earlyInventory, "CMD83 acknowledges material consumption before replacing the client bag");
+                check(!earlyInventory, "CMD83 acknowledges material consumption before any inventory notifications");
                 if (reinforcedOk)
                 {
-                    var bag = await ReadBag();
-                    check(FindItem(bag, 0, 0) == startingGold - pantsGoldQuote
-                        && FindItem(bag, coalSlot, 3171) is null,
-                        $"the pants cost uses the native 40,000-gold quote (remaining {FindItem(bag, 0, 0)}) and removes the final coal");
+                    await CheckReinforcementWalletAsync(startingGold - pantsGoldQuote);
                 }
 
                 // The negotiated session can also decode compatibility frames.
@@ -127,10 +124,7 @@ internal static class ChapterTwoItemUseSmokeTests
                 check(earlyBraceletBag is null, "CMD83 uses C2 reply ordering after the C2 handshake even for a compatibility frame");
                 if (braceletOk)
                 {
-                    var bag = earlyBraceletBag ?? await ReadBag();
-                    check(FindItem(bag, 0, 0) == startingGold - pantsGoldQuote - braceletGoldQuote
-                        && FindItem(bag, braceletCoalSlot, 3171) is null,
-                        $"Kelly charges exactly the 252,000-gold bracelet quote (remaining {FindItem(bag, 0, 0)}) and one coal");
+                    await CheckReinforcementWalletAsync(startingGold - pantsGoldQuote - braceletGoldQuote);
                 }
 
                 var adjusted = await SendAndRead(GameProtocolEngine.ResetItemAttributeCommand, "16000900502f2c0000000000000000000000");
@@ -229,6 +223,25 @@ internal static class ChapterTwoItemUseSmokeTests
                     do { packet = await connection.ReadAsync(0, GameProtocolEngine.ItemListNotification); }
                     while (packet.Payload[0] != 0);
                     return packet;
+                }
+
+                async Task CheckReinforcementWalletAsync(uint expectedGold)
+                {
+                    var rebuilt = false;
+                    try
+                    {
+                        var update = await connection.ReadAsync(0, GameProtocolEngine.UpdateItemListNotification,
+                            TimeSpan.FromSeconds(2), packet => rebuilt |= packet is
+                                { Type: 0, ProtocolId: GameProtocolEngine.ItemListNotification } && packet.Payload[0] == 0);
+                        check(!rebuilt && update.Payload[0] == 0
+                            && BinaryPrimitives.ReadUInt16LittleEndian(update.Payload.AsSpan(1)) == 1
+                            && FindItem(update, 0, 0) == expectedGold,
+                            "CMD83 syncs only the gold balance and keeps the equipment object referenced by the result dialog");
+                    }
+                    catch (TimeoutException)
+                    {
+                        check(false, $"CMD83 sent no gold-only inventory delta (bag rebuilt: {rebuilt}, expected gold: {expectedGold})");
+                    }
                 }
             }
 

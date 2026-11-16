@@ -59,6 +59,22 @@ Directory.CreateDirectory(root);
 DFLegacy.Launcher.Program.UserDiagnosticSettings = new DFLegacy.Diagnostics.DiagnosticSettings(Path.Combine(root,"diagnostic-user"));
 try
 {
+    if (args is ["--chapter-two-interface-repair", var legacyRepair, var mergedInterface])
+    {
+        var directory = Path.Combine(root, "ImagePacks2");
+        Directory.CreateDirectory(directory);
+        var old = Path.Combine(directory, "%sprite_interface.edited.npk");
+        var backup = old + ".disabled";
+        File.Copy(legacyRepair, old);
+        Check(!ChapterTwoClient.MigrateInterfaceRepair(root) && File.Exists(old), "Legacy repair stays active without the merged resource");
+        File.Copy(mergedInterface, Path.Combine(directory, "sprite_interface.NPK"));
+        Check(ChapterTwoClient.MigrateInterfaceRepair(root) && !File.Exists(old) && File.Exists(backup), "Exact legacy repair is backed up outside the NPK search");
+        Check(!ChapterTwoClient.MigrateInterfaceRepair(root), "Restart after migration is a no-op");
+        File.WriteAllText(old, "custom overlay");
+        Check(!ChapterTwoClient.MigrateInterfaceRepair(root) && File.ReadAllText(old) == "custom overlay", "Other local customizations are preserved");
+        Console.WriteLine($"Chapter Two interface repair: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
     if(args.Contains("--chapter-two-settings-tests"))
     {
         ChapterTwoGameSettingsTests.Run(root,Check);
