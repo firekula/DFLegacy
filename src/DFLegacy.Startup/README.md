@@ -17,7 +17,14 @@ Build with Visual Studio C++ tools and CMake 3.24 or newer:
 ```
 
 Set `CMAKE_EXE` if CMake is neither in PATH nor included in Visual Studio. The
-output is `<BuildDirectory>/Release/DFLegacy.Launcher.exe`. The build script does
+output is `<BuildDirectory>/Release/DFLegacy.Launcher.exe`. It reads the default
+release version from `../DFLegacy.Launcher/LauncherVersion.txt`. Release builds can
+pass `-Version` and `-Revision` for a specific build. `-BuildManagedResources`
+compiles `app.res`, `updater.res`, and `standalone.res` in the build directory.
+Pass each file to `dotnet publish` using `-p:DFLegacyLauncherWin32Resource=<path>` for its matching
+EXE. Use separate publish and intermediate directories for each role so that the
+SDK bundles the apphost with the right file description and original filename.
+The build script does
 not install tools, remove existing directories, or publish artifacts. Its default
 build directory is under `%TEMP%`; MSBuild may emit MSB8029 for that location.
 
