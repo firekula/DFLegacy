@@ -21,6 +21,9 @@ internal static class ChapterTwoClient
     private const string PreviewName = "ChapterTwoPresentation.exe";
     private const string BrokerName = "dnf_startup_trace.exe";
     private const string QuietBrokerName = "QuietStartupBroker.exe";
+    private const string BridgeName = "D3D11.D3D8.dll";
+    private const string BridgeConfigName = "D3D11.dgVoodoo.conf";
+    private const string BridgeHash = "25A0CEEB85FCC4675C6F964442EECC14FEDD504EFFD39C931A627249AD4685E2";
     private const string ImageHash = "9BC32EFADD05A2FBF407C85C73AC66D221C5577E7A2234C981C3BBA0CB9A8BDB";
     private const string HostHash = "B72C2C7DFF350BCE0F8E5A178740CB5BE703BC9559956951BDBBF8E573A71139";
     private const string BrokerHash = "751AA409EC440FE987AB4462EEA057BD9BB3F650BA93FC6C1498D541F55F5079";
@@ -36,8 +39,14 @@ internal static class ChapterTwoClient
         .GetManifestResourceInfo(ResourcePrefix + ScriptName) is not null;
     internal static bool HasPresentationPreview { get; } = typeof(ChapterTwoClient).Assembly
         .GetManifestResourceInfo(ResourcePrefix + PreviewName) is not null;
+    internal static bool HasD3D11Bridge { get; } = typeof(ChapterTwoClient).Assembly
+        .GetManifestResourceInfo(ResourcePrefix + BridgeName) is not null;
     private static bool HasQuietBroker { get; } = typeof(ChapterTwoClient).Assembly
         .GetManifestResourceInfo(ResourcePrefix + QuietBrokerName) is not null;
+
+    internal static string RendererOptions(LauncherOptions options) =>
+        HasD3D11Bridge && !string.Equals(options.ChapterTwoRenderer, "d3d8", StringComparison.OrdinalIgnoreCase)
+            ? "d3d11" : "d3d8";
 
     internal static ChapterTwoDisplayOptions DisplayOptions(LauncherOptions options) =>
         HasPresentationPreview && options.ChapterTwoDisplay is { Filter: "sharp" or "point" or "linear" } display
@@ -147,6 +156,12 @@ internal static class ChapterTwoClient
             VerifyResource(name, hash);
         VerifyMachine(PreviewName, Machine.I386);
         VerifyMachine(QuietBrokerName, Machine.Amd64);
+        if (HasD3D11Bridge)
+        {
+            VerifyResource(BridgeName, BridgeHash);
+            VerifyMachine(BridgeName, Machine.I386);
+            using var config = OpenResource(BridgeConfigName);
+        }
     }
 
     private static void RequireOrdinaryProcessComponents()
@@ -168,9 +183,11 @@ internal static class ChapterTwoClient
         var connection = ChapterTwoConnection.Parse(options.ChapterTwoServerHost, options.ChapterTwoServerIpv4);
         await using var relay = connection.UseRelay ? await DomainRelaySession.StartAsync(connection.Host,
             options.Relay.Preference != "ipv4", ChapterTwoConnection.TcpPorts, ChapterTwoConnection.UdpPorts,
-            EntrancePort, (level, message) => Program.WriteLauncherLog($"[chapter-two-relay] {level}: {message}"), cancellationToken) : null;
+            EntrancePort, (level, message) => Program.WriteLauncherLog($"[chapter-two-relay] {level}: {message}"), cancellationToken,
+            useAssignedPorts: true) : null;
         if (relay is null) await Program.EnsureServerReadyAsync(options);
-        await Program.EnsureD3D9AvailableAsync(options);
+        var renderer = RendererOptions(options);
+        if (renderer == "d3d8") await Program.EnsureD3D9AvailableAsync(options);
         cancellationToken.ThrowIfCancellationRequested();
 
         var root = Path.GetDirectoryName(clientPath)!;
@@ -192,6 +209,16 @@ internal static class ChapterTwoClient
         EnsureExtracted(ScriptName, Path.Combine(runtime, ScriptName), scriptHash);
         var host = Path.Combine(runtime, hostName);
         EnsureExtracted(hostName, host, hostHash);
+        string? bridge = null;
+        if (renderer == "d3d11")
+        {
+            var configHash = HashResource(BridgeConfigName);
+            var rendererDirectory = Path.Combine(runtime, "d3d11-" + configHash[..16]);
+            ClientLogPaths.EnsureDirectory(rendererDirectory);
+            bridge = Path.Combine(rendererDirectory, "d3d8.dll");
+            EnsureExtracted(BridgeName, bridge, BridgeHash);
+            EnsureExtracted(BridgeConfigName, Path.Combine(rendererDirectory, "dgVoodoo.conf"), configHash);
+        }
         await using var payment = await ChapterTwoPaymentRelay.StartAsync(runtime, options.ResolveAccountServiceUrl(), cancellationToken);
         await using var guild = await ChapterTwoGuildSite.StartAsync(options.ResolveAccountServiceUrl(), cancellationToken);
 
@@ -213,6 +240,8 @@ internal static class ChapterTwoClient
             "-DialogueFontSize", dialogue.FontSize.ToString(CultureInfo.InvariantCulture),
             "-DialogueLineGap", dialogue.LineGap.ToString(CultureInfo.InvariantCulture) })
             info.ArgumentList.Add(argument);
+        info.Environment.Remove("DFLEGACY_CH2_D3D11_BRIDGE");
+        if (bridge is not null) info.Environment["DFLEGACY_CH2_D3D11_BRIDGE"] = bridge;
         if (payment is not null)
         {
             info.Environment["DFLEGACY_CH2_PAYMENT_URL"] = payment.BaseUrl;
@@ -224,10 +253,14 @@ internal static class ChapterTwoClient
             info.ArgumentList.Add("-RemoteIpv4");
             info.ArgumentList.Add(ipv4);
         }
+        info.Environment.Remove("DFLEGACY_CH2_RELAY_TCP");
+        info.Environment.Remove("DFLEGACY_CH2_RELAY_UDP");
         if (relay is not null)
         {
             info.ArgumentList.Add("-RelayIpv4");
             info.ArgumentList.Add(relay.BindAddress.ToString());
+            info.Environment["DFLEGACY_CH2_RELAY_TCP"] = FormatRelayPortMap(relay.TcpPortMap);
+            info.Environment["DFLEGACY_CH2_RELAY_UDP"] = FormatRelayPortMap(relay.UdpPortMap);
         }
         info.Environment["DFLEGACY_CH2_SETTINGS_PATH"] = ChapterTwoGameSettings.Prepare(root);
         info.Environment.Remove("DFLEGACY_CH2_DEBUG_ITEMS");
@@ -243,6 +276,7 @@ internal static class ChapterTwoClient
             debug = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => new ChapterTwoDebugSession(root, account.Account, options.ResolveAccountServiceUrl()));
         }
 
+        Program.WriteLauncherLog($"Chapter Two renderer={renderer}.");
         Program.WriteLauncherLog(!connection.UseRelay && connection.LegacyIpv4 is null
             ? "Starting Chapter Two ordinary desktop process with the local profile."
             : "Starting Chapter Two ordinary desktop process with the remote profile.");
@@ -317,6 +351,9 @@ internal static class ChapterTwoClient
 
     private static bool ReadProcessId(string value, out int id) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out id) && id > 0;
+
+    private static string FormatRelayPortMap(IReadOnlyDictionary<int, int> map) =>
+        string.Join(',', map.Select(entry => FormattableString.Invariant($"{entry.Key}:{entry.Value}")));
 
     private static Stream OpenResource(string name) => typeof(ChapterTwoClient).Assembly
         .GetManifestResourceStream(ResourcePrefix + name)

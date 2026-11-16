@@ -4003,6 +4003,10 @@ public static partial class GameProtocolEngine
     public static GameServerPacket CreateEnableClearDungeon() =>
         new(NotificationPacketType, EnableClearDungeonNotification, []);
 
+    // Ver_OB_216 reads its own rank code before the four score flags.
+    public static GameServerPacket CreateChapterTwoPlayResult(byte resultCode) =>
+        new(NotificationPacketType, PlayResultNotification, [resultCode, 0, 0, 0, 0]);
+
     public static GameServerPacket CreatePlayResult(
         ushort userId,
         uint resultValue,

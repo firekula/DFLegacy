@@ -1,6 +1,7 @@
 // Execute the real x86 naked shim against fixed-address synthetic client memory.
 // Only the original continuation is replaced; parser, capture and queue are real.
 #include "ChapterTwoLootGatherHooks.cpp"
+#include "ChapterTwoDungeonRating.cpp"
 #include "loot_gather_fixture.h"
 
 // Reserve the complete synthetic address range as part of the fixed-base test
@@ -35,6 +36,30 @@ namespace
             pop ebp
             ret 18h
         }
+    }
+    __declspec(naked) void OriginalRank()
+    {
+        __asm
+        {
+            mov ReceivedThis,ecx
+            mov eax,35
+            ret
+        }
+    }
+    void OriginalDungeonInfo() { ++OriginalCalls; }
+
+    void RedirectContinuation(void (*shim)(), std::uint32_t address, void (*replacement)())
+    {
+        auto* code=reinterpret_cast<unsigned char*>(shim);
+        for(std::size_t i=0;i<64;++i)
+        {
+            if(code[i]!=0x68||code[i+5]!=0xC3||std::memcmp(code+i+1,&address,4)) continue;
+            const auto target=reinterpret_cast<std::uintptr_t>(replacement);
+            Check(dfl::memory_patch::WriteBytes(reinterpret_cast<std::uintptr_t>(code+i+1),&target,4),
+                "redirect the native shim's original continuation");
+            return;
+        }
+        Check(false,"shim contains its expected native continuation");
     }
     struct FixedMemory
     {
@@ -92,6 +117,31 @@ namespace
         dfl::chapter_two::OnLootGatherFrame(); Check(!HavePending,"idle frames do not replay requests");
         call(nullptr,marker,16,7,nullptr,0,-1); Check(HavePending,"repeat command queues again");
         PendingAt=GetTickCount64()-2000; dfl::chapter_two::OnLootGatherFrame(); Check(!HavePending,"expired command discarded");
+
+        namespace rating=dfl::chapter_two::dungeon_rating_detail;
+        RedirectContinuation(&rating::RankHook,0x4FD0B0,&OriginalRank);
+        RedirectContinuation(&rating::DungeonInfoHook,0x423B5F,&OriginalDungeonInfo);
+        rating::Installed=true;
+        using GetRank=int(__thiscall*)(void*);
+        const auto rank=reinterpret_cast<GetRank>(&rating::RankHook);
+        auto* score=reinterpret_cast<void*>(0x11223344);
+        constexpr char ratingMarker[]="@DFLegacy:dungeon-rating:sss:v1@";
+        Check(rank(score)==35&&ReceivedThis==0x11223344,"rank fallback preserves native thiscall");
+        call(nullptr,ratingMarker,3,7,nullptr,0,-1);
+        call(nullptr,ratingMarker,16,8,nullptr,0,-1);
+        Check(rank(score)==35&&OriginalCalls==5,"ordinary chat and another user's marker do not change rating");
+        call(nullptr,ratingMarker,16,0xFFFF0007,nullptr,0,-1);
+        Check(rank(score)==105&&OriginalCalls==5,"only a valid own marker changes the original rank call");
+        f.Put(Fixture::Stage+0xB0,Fixture::Map+0x10000);
+        memory.Copy(f);
+        Check(rank(score)==105,"the same dungeon retains SSS when the room changes");
+        f.Secure(Fixture::Game+0x10,2);
+        memory.Copy(f);
+        Check(rank(score)==35,"leaving the dungeon disables SSS immediately");
+        f.Secure(Fixture::Game+0x10,3);
+        memory.Copy(f);
+        rating::DungeonInfoHook();
+        Check(rank(score)==35&&OriginalCalls==6,"NOTI 28 resets rating before its original handler runs");
     }
 }
 int main()

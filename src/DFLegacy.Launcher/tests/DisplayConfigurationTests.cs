@@ -46,6 +46,23 @@ internal static class DisplayConfigurationTests
                 var save = (Button)window.FindName("DisplaySaveButton");
                 var reload = (Button)window.FindName("DisplayReloadButton");
                 var effect = window.FindName("PostProcessBox") as ComboBox;
+                var renderer = window.FindName("RendererBox") as ComboBox;
+                check(renderer is not null, "Chapter Two exposes a renderer choice");
+                if (renderer is not null)
+                {
+                    check(renderer.Items.OfType<ComboBoxItem>().Select(item => item.Tag as string).ToHashSet()
+                        .SetEquals(new[] { "d3d11", "d3d8" }), "renderer choice contains D3D11 and D3D8");
+                    if (renderer.IsVisible || ((FrameworkElement)window.FindName("RendererPanel")).Visibility == Visibility.Visible)
+                    {
+                        check(Equals(renderer.SelectedValue, "d3d11"), "upgrades default to D3D11");
+                        renderer.SelectedValue = "d3d8";
+                        save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        reload.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        check(Equals(renderer.SelectedValue, "d3d8"), "D3D8 survives saving and reopening settings");
+                        renderer.SelectedValue = "d3d11";
+                        save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    }
+                }
                 check(effect is not null, "game settings expose an independent post-process choice");
                 if (effect is null) { window.Close(); return; }
                 check(((FrameworkElement)window.FindName("PostProcessPanel")).Visibility == Visibility.Visible,

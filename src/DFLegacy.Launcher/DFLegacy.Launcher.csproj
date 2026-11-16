@@ -66,6 +66,8 @@
     <EmbeddedResource Include="$(ChapterTwoPayloadDir)\Chapter2Launcher\dnf_startup_trace.exe" LogicalName="ChapterTwo.dnf_startup_trace.exe" />
     <EmbeddedResource Include="$(ChapterTwoPresentationHost)" LogicalName="ChapterTwo.ChapterTwoPresentation.exe" Condition="'$(ChapterTwoPresentationHost)' != ''" />
     <EmbeddedResource Include="$(ChapterTwoStartupBroker)" LogicalName="ChapterTwo.QuietStartupBroker.exe" Condition="'$(ChapterTwoStartupBroker)' != ''" />
+    <EmbeddedResource Include="$(ChapterTwoD3D11Bridge)" LogicalName="ChapterTwo.D3D11.D3D8.dll" Condition="'$(ChapterTwoD3D11Bridge)' != ''" />
+    <EmbeddedResource Include="ChapterTwo\dgVoodoo.conf" LogicalName="ChapterTwo.D3D11.dgVoodoo.conf" Condition="'$(ChapterTwoD3D11Bridge)' != ''" />
   </ItemGroup>
   <Target Name="BuildStandaloneNative" BeforeTargets="PrepareForBuild"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(BuildNativeAssets)' == 'true' and '$(ChapterTwoPayloadDir)' == ''">

@@ -172,6 +172,8 @@ public partial class ConfigWindow : System.Windows.Window
             var displayOptions = ChapterTwoClient.DisplayOptions(_options);
             if (chapterTwo && ChapterTwoClient.HasPresentationPreview)
             {
+                RendererPanel.Visibility = ChapterTwoClient.HasD3D11Bridge ? Visibility.Visible : Visibility.Collapsed;
+                RendererBox.SelectedValue = ChapterTwoClient.RendererOptions(_options);
                 var dialogue = ChapterTwoDialogueOptions.Normalize(_options.ChapterTwoDialogue);
                 DialogueSettingsPanel.Visibility = Visibility.Visible;
                 PostProcessPanel.Visibility = Visibility.Visible;
@@ -275,6 +277,8 @@ public partial class ConfigWindow : System.Windows.Window
                 _store.Update(options =>
                 {
                     options.ChapterTwoDisplay = filter == "legacy" ? null : new(preview.Width, preview.Height, filter);
+                    if (ChapterTwoClient.HasD3D11Bridge)
+                        options.ChapterTwoRenderer = RendererBox.SelectedValue as string == "d3d8" ? "d3d8" : null;
                     var effect = ChapterTwoClient.NormalizePostProcess(PostProcessBox.SelectedValue as string);
                     options.ChapterTwoPostProcess = effect == "none" ? null : effect;
                     options.ChapterTwoDebugEnabled = ChapterTwoDebugBox.IsChecked == true;

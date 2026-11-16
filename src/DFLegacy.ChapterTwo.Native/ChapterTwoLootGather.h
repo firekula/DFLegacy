@@ -13,7 +13,8 @@ namespace dfl::chapter_two::loot_gather_detail {
     };
     struct Request { std::uint32_t Game=0, Stage=0, Map=0, Actor=0, User=0, Uid=0; };
     bool IsMarker(unsigned int, const char*, std::size_t) noexcept;
-    bool Capture(const Runtime&, unsigned int, Request&) noexcept;
+    bool Capture(const Runtime&, unsigned int, Request&, bool soloOnly=true) noexcept;
+    bool IsDungeonScene(const Runtime&, std::uint32_t game) noexcept;
     const char* Gather(const Runtime&, const Request&, std::size_t&) noexcept;
     using PatchWriter = bool(*)(std::uintptr_t, const void*, std::size_t) noexcept;
     bool InstallImage(unsigned char*,std::size_t,PatchWriter) noexcept;

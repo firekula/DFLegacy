@@ -79,6 +79,7 @@ internal sealed partial class DungeonInstance(
     TimeSpan? partyCardAgentTimeout = null)
 {
     private readonly List<DungeonInstanceMember> _members = [];
+    private readonly HashSet<Guid> _sssRatingMembers = [];
     private readonly DungeonRunState _run = new(catalog);
     private long _debugRunId;
 
@@ -790,6 +791,7 @@ internal sealed partial class DungeonInstance(
 
             _loadedMembers.Remove(characterId);
             _deadMembers.Remove(characterId);
+            _sssRatingMembers.Remove(characterId);
             _goldIneligibleMembers.Remove(characterId);
             _cancelledLoot.Remove(characterId);
             foreach (var pair in _pendingLoot.Where(pair => pair.Value.Winner == characterId).ToArray())
@@ -808,6 +810,29 @@ internal sealed partial class DungeonInstance(
             _announcedSettlementCountdowns.Remove(characterId);
             Version++;
             return true;
+        }
+    }
+
+    internal bool TryLockSssRating(Guid characterId)
+    {
+        lock (Gate)
+        {
+            if (!_run.IsActive || _partyWipeReturnStarted || _deadMembers.Contains(characterId)
+                || !_members.Any(member => member.CharacterId == characterId))
+            {
+                return false;
+            }
+
+            _sssRatingMembers.Add(characterId);
+            return true;
+        }
+    }
+
+    internal bool HasLockedSssRating(Guid characterId)
+    {
+        lock (Gate)
+        {
+            return _run.IsActive && _sssRatingMembers.Contains(characterId);
         }
     }
 
@@ -1266,6 +1291,7 @@ internal sealed partial class DungeonInstance(
         DungeonOption = dungeonOption;
         Layout = layout;
         _debugRunId = DateTime.UtcNow.Ticks;
+        _sssRatingMembers.Clear();
         _dropDebugAll = false;
         _debugDropReplies.Clear();
         _debugDropApplied.Clear();
@@ -1285,6 +1311,7 @@ internal sealed partial class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            _sssRatingMembers.Clear();
             _dropDebugAll = false;
             _debugDropReplies.Clear();
             _debugDropApplied.Clear();
@@ -1653,6 +1680,7 @@ internal sealed partial class DungeonInstance(
         lock (Gate)
         {
             _run.Stop();
+            _sssRatingMembers.Clear();
             InvalidatePartyCardSettlementLocked();
             ResetPartyMemberLivesLocked();
             _detachedRoom = null;

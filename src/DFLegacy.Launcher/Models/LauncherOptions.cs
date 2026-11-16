@@ -50,6 +50,7 @@ internal sealed class LauncherOptions
     public string? ChapterTwoServerHost { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ChapterTwoDisplayOptions? ChapterTwoDisplay { get; set; }
+    public string? ChapterTwoRenderer { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ChapterTwoPostProcess { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

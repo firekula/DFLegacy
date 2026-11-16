@@ -11,10 +11,14 @@ public sealed class DomainRelaySession : IAsyncDisposable
     private int _disposed;
     public IPAddress BindAddress => _relay.BindAddress;
     public IPAddress TargetAddress => _relay.TargetAddress;
+    public IReadOnlyDictionary<int, int> TcpPortMap { get; }
+    public IReadOnlyDictionary<int, int> UdpPortMap { get; }
 
     private DomainRelaySession(RelayHost relay, CancellationToken token)
     {
         _relay = relay;
+        TcpPortMap = relay.TcpPortMap();
+        UdpPortMap = relay.UdpPortMap();
         _stop = CancellationTokenSource.CreateLinkedTokenSource(token);
         _run = relay.RunAsync(_stop.Token);
     }
@@ -22,7 +26,7 @@ public sealed class DomainRelaySession : IAsyncDisposable
     public static async Task<DomainRelaySession> StartAsync(string host, bool preferIPv6,
         IReadOnlyCollection<int> tcpPorts, IReadOnlyCollection<int> udpPorts, int probePort,
         RelayLog log, CancellationToken token,
-        Func<string, CancellationToken, Task<IPAddress[]>>? resolve = null)
+        Func<string, CancellationToken, Task<IPAddress[]>>? resolve = null, bool useAssignedPorts = false)
     {
         token.ThrowIfCancellationRequested();
         if (!tcpPorts.Contains(probePort) || tcpPorts.Concat(udpPorts).Any(port => port is < 1 or > 65535))
@@ -62,7 +66,8 @@ public sealed class DomainRelaySession : IAsyncDisposable
             token.ThrowIfCancellationRequested();
             var bind = IPAddress.Parse($"127.73.{Random.Shared.Next(1, 255)}.{Random.Shared.Next(1, 255)}");
             if (bind.Equals(target)) continue;
-            var relay = new RelayHost(bind, target, tcpPorts.Distinct().ToArray(), udpPorts.Distinct().ToArray(), Log);
+            var relay = new RelayHost(bind, target, tcpPorts.Distinct().ToArray(), udpPorts.Distinct().ToArray(), Log,
+                useAssignedPorts: useAssignedPorts);
             try
             {
                 relay.Start();

@@ -601,6 +601,7 @@ if (args.Contains("--pickup-removal"))
 if (args.Contains("--loot-gather"))
 {
     await DungeonLootGatherSmokeTests.RunAsync(Check);
+    await DungeonRatingSmokeTests.RunAsync(Check);
     foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
     Console.WriteLine($"Loot gather smoke: {failures.Count} failures");
     return failures.Count > 0 ? 1 : 0;
@@ -740,6 +741,7 @@ await PartyMemberDetailSmokeTests.RunAsync(Check);
 await DungeonPartySmokeTests.RunAsync(Check);
 DungeonBossDeathSmokeTests.Run(Check);
 await DungeonLootGatherSmokeTests.RunAsync(Check);
+await DungeonRatingSmokeTests.RunAsync(Check);
 DungeonDebugOverlaySmokeTests.Run(Check);
     await TestControlSmokeTests.RunAsync(Check);
 await GameplayDatagramSmokeTests.RunAsync(Check);

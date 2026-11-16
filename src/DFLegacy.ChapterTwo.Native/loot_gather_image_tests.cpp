@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include "ChapterTwoLootGather.h"
+#include "ChapterTwoDungeonRating.h"
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -10,13 +11,13 @@
 namespace {
 constexpr std::uintptr_t Base=0x400000;
 constexpr std::size_t ImageSize=0xe57000;
-unsigned Failures=0,Writes=0,FailureMode=0;
+unsigned Failures=0,Writes=0,FailureMode=0,FailAt=1;
 void Check(bool ok,const char* text) {if(!ok){++Failures;std::fprintf(stderr,"FAIL: %s\n",text);}}
 bool Write(std::uintptr_t address,const void* value,std::size_t size) noexcept {
  ++Writes;
- if(FailureMode==1&&Writes==1)return false;
+ if(FailureMode==1&&Writes==FailAt)return false;
  std::memcpy(reinterpret_cast<void*>(address),value,size);
- return !(FailureMode==2&&Writes==1);
+ return !(FailureMode==2&&Writes==FailAt);
 }
     std::vector<unsigned char> ReadImage(const wchar_t* path)
     {
@@ -71,6 +72,23 @@ int wmain(int argc,wchar_t** argv) {
  Check(InstallImage(image.data(),image.size(),Write)&&Writes==1&&image==patched,"install is idempotent");
  image[0x527381]^=1;const auto bad=image;
  Check(!InstallImage(image.data(),image.size(),Write)&&Writes==1&&image==bad,"reinstall rechecks remaining signatures");
+
+ for(const std::size_t offset:{0x23B5F,0x2F5D4,0x2F5D8,0xFD0B0,0x24F9E,0x24FB6,0x2594C,0x25962,
+        0x11B2DB,0x555FD6,0x5560C6,0x5579F7}) {
+  image=original;image[offset]^=1;const auto before=image;Writes=0;
+  Check(!dfl::chapter_two::dungeon_rating_detail::InstallImage(image.data(),image.size(),Write)
+      &&Writes==0&&image==before,"mutated native rank or lifecycle signature fails closed");
+ }
+ for(unsigned fail:{1U,4U,8U,9U}) {
+  image=original;Writes=0;FailureMode=2;FailAt=fail;
+  Check(!dfl::chapter_two::dungeon_rating_detail::InstallImage(image.data(),image.size(),Write)
+      &&image==original,"partial rank install restores all original calls and dungeon dispatch");
+ }
+ image=original;Writes=FailureMode=0;
+ Check(dfl::chapter_two::dungeon_rating_detail::InstallImage(image.data(),image.size(),Write)
+     &&Writes==9,"verified C2 image installs eight local rank calls and the dungeon reset");
+ Check(dfl::chapter_two::dungeon_rating_detail::InstallImage(image.data(),image.size(),Write)
+     &&Writes==9,"the same rating patch is idempotent");
  std::printf("loot_gather_image_tests: %u failures\n",Failures);
  return Failures?1:0;
 }

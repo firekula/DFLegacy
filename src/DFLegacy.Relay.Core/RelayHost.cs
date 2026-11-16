@@ -24,10 +24,13 @@ internal sealed class TcpForwarder(
     int port,
     IPAddress targetAddress,
     RelayLog log,
-    Action<RelayTermination>? terminated = null)
+    Action<RelayTermination>? terminated = null,
+    bool useAssignedPorts = false)
 {
     private static long _nextConnectionId;
-    private readonly TcpListener _listener = new(bindAddress, port);
+    private readonly TcpListener _listener = new(bindAddress, useAssignedPorts ? 0 : port);
+    internal int TargetPort => port;
+    internal int LocalPort => ((IPEndPoint)_listener.LocalEndpoint).Port;
 
     public void Start() => _listener.Start();
 
@@ -37,7 +40,7 @@ internal sealed class TcpForwarder(
     {
         log(
             RelayLogLevel.Info,
-            $"TCP  {RelayHost.FormatEndpoint(bindAddress, port)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
+            $"TCP  {RelayHost.FormatEndpoint(bindAddress, LocalPort)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
         var connections = new List<Task>();
         try
         {
@@ -233,20 +236,23 @@ internal sealed class UdpForwarder(
     int port,
     IPAddress targetAddress,
     RelayLog log,
-    Action<RelayTermination>? terminated = null)
+    Action<RelayTermination>? terminated = null,
+    bool useAssignedPorts = false)
 {
     private const int MaxConsecutiveReceiveFailures = 10;
 
     private UdpClient? _clientSide;
     private UdpClient? _serverSide;
     private volatile IPEndPoint? _client;
+    internal int TargetPort => port;
+    internal int LocalPort => ((IPEndPoint)_clientSide!.Client.LocalEndPoint!).Port;
 
     public void Start()
     {
         // Binding happens here, so a port clash surfaces at startup. The
         // server-facing socket needs an explicit ephemeral bind: ReceiveAsync
         // fails on an unbound UdpClient.
-        _clientSide = new UdpClient(new IPEndPoint(bindAddress, port));
+        _clientSide = new UdpClient(new IPEndPoint(bindAddress, useAssignedPorts ? 0 : port));
         _serverSide = new UdpClient(0, targetAddress.AddressFamily);
     }
 
@@ -263,7 +269,7 @@ internal sealed class UdpForwarder(
         var target = new IPEndPoint(targetAddress, port);
         log(
             RelayLogLevel.Info,
-            $"UDP  {RelayHost.FormatEndpoint(bindAddress, port)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
+            $"UDP  {RelayHost.FormatEndpoint(bindAddress, LocalPort)} -> {RelayHost.FormatEndpoint(targetAddress, port)}");
 
         await Task.WhenAll(
             PumpAsync(clientSide, serverSide, target, fromClient: true, cancellationToken),
@@ -367,7 +373,8 @@ public sealed class RelayHost(
     IReadOnlyCollection<int> tcpPorts,
     IReadOnlyCollection<int> udpPorts,
     RelayLog log,
-    Action<RelayTermination>? terminated = null)
+    Action<RelayTermination>? terminated = null,
+    bool useAssignedPorts = false)
 {
     private readonly List<TcpForwarder> _tcp = [];
     private readonly List<UdpForwarder> _udp = [];
@@ -375,6 +382,8 @@ public sealed class RelayHost(
     public IPAddress BindAddress { get; } = bindAddress;
 
     public IPAddress TargetAddress { get; } = targetAddress;
+    internal Dictionary<int, int> TcpPortMap() => _tcp.ToDictionary(x => x.TargetPort, x => x.LocalPort);
+    internal Dictionary<int, int> UdpPortMap() => _udp.ToDictionary(x => x.TargetPort, x => x.LocalPort);
 
     /// <summary>
     /// Binds every port. Throws <see cref="SocketException"/> when a port is
@@ -384,17 +393,29 @@ public sealed class RelayHost(
     {
         foreach (var port in tcpPorts)
         {
-            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            var forwarder = new TcpForwarder(BindAddress, port, TargetAddress, log,terminated,useAssignedPorts);
             try { forwarder.Start(); }
-            catch(SocketException ex) { RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"TCP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
+            catch (SocketException error)
+            {
+                forwarder.Stop();
+                Stop();
+                ReportBindFailure("TCP", port, error);
+                throw;
+            }
             _tcp.Add(forwarder);
         }
 
         foreach (var port in udpPorts)
         {
-            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log,terminated);
+            var forwarder = new UdpForwarder(BindAddress, port, TargetAddress, log,terminated,useAssignedPorts);
             try { forwarder.Start(); }
-            catch(SocketException ex) { forwarder.Stop(); RelayTermination.Deliver(terminated,new(RelayTerminationReason.BindFailure,"UDP","bind",port,0,"listen",0,0,0,ex.SocketErrorCode,ex.NativeErrorCode)); Stop(); throw; }
+            catch (SocketException error)
+            {
+                forwarder.Stop();
+                Stop();
+                ReportBindFailure("UDP", port, error);
+                throw;
+            }
             _udp.Add(forwarder);
         }
 
@@ -417,6 +438,14 @@ public sealed class RelayHost(
         }
 
         _udp.Clear();
+    }
+
+    private void ReportBindFailure(string protocol, int port, SocketException error)
+    {
+        RelayTermination.Deliver(terminated, new(RelayTerminationReason.BindFailure, protocol, "bind", port, 0,
+            "listen", 0, 0, 0, error.SocketErrorCode, error.NativeErrorCode));
+        log(RelayLogLevel.Error,
+            $"{protocol} bind failed on {BindAddress}, servicePort={port}, assigned={useAssignedPorts}, error={error.NativeErrorCode}.");
     }
 
     /// <summary>Pumps traffic until the token is cancelled, then stops.</summary>

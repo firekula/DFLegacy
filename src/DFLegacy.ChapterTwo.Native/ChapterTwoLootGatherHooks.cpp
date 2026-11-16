@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include "ChapterTwoLootGather.h"
+#include "ChapterTwoDungeonRating.h"
 #include "../DFLegacy.Ijl15/src/memory_patch.h"
 
 namespace
@@ -53,6 +54,7 @@ namespace
     int __stdcall ReceiveChat(const char* body,unsigned int type,unsigned int userId) noexcept
     {
         if(type!=16||body==nullptr) return 0;
+        if(dfl::chapter_two::dungeon_rating_detail::TryActivate(Native,body,userId&0xFFFF)) return 1;
         // Never use strlen on caller memory, and require the terminating NUL.
         constexpr char marker[]="@DFLegacy:loot-magnet:v1@";
         std::array<char,sizeof(marker)> copy{};
