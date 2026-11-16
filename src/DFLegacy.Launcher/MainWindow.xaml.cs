@@ -188,6 +188,7 @@ public partial class MainWindow : System.Windows.Window
             Program.WriteLauncherLog($"Launcher failed: {ex.GetType().Name}");
             Show();
             ClassicMessage.Show(this, $"启动失败：{ex.Message}");
+            if (ChapterTwoClient.IsBundled) await Diagnostics.AutomaticDiagnostics.FinishChapterTwoAsync();
         }
     }
 

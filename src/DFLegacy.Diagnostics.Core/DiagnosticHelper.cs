@@ -3,7 +3,8 @@ namespace DFLegacy.Diagnostics;
 public static class DiagnosticHelper
 {
     // This process only observes registered ownership. It never attaches a debugger, owns a game job, or terminates a process.
-    public static async Task RunAsync(DiagnosticSession session,CancellationToken cancellationToken=default,TimeSpan? finalDrainBudget=null)
+    public static async Task RunAsync(DiagnosticSession session,CancellationToken cancellationToken=default,TimeSpan? finalDrainBudget=null,
+        bool waitForLateNativeCapture=true,DiagnosticUploadOptions? uploadOptions=null)
     {
         // A verified live game may legitimately run longer than a day. The
         // retained PID+creation identity controls lifetime, not registration age.
@@ -16,13 +17,14 @@ public static class DiagnosticHelper
             {
                 try {
                     session.CollectConfirmed();
-                    await queue.UploadPendingAsync(cancellationToken:cancellationToken).ConfigureAwait(false);
+                    await queue.UploadPendingAsync(uploadOptions,cancellationToken).ConfigureAwait(false);
                     if(session.IsClosed||!session.OwnerAlive())
                     {
                         // Native helper allows a late bind for 5 seconds; the
                         // collector delays unlinked game-exit summaries 6 seconds.
-                        await Task.Delay(6500,cancellationToken).ConfigureAwait(false);session.CollectConfirmed();
-                        await queue.UploadPendingAsync(cancellationToken:cancellationToken).ConfigureAwait(false);
+                        if(waitForLateNativeCapture)await Task.Delay(6500,cancellationToken).ConfigureAwait(false);
+                        session.CollectConfirmed();
+                        await queue.UploadPendingAsync(uploadOptions,cancellationToken).ConfigureAwait(false);
                         session.CleanupManagedFiles();return;
                     }
                     await Task.Delay(500,cancellationToken).ConfigureAwait(false);

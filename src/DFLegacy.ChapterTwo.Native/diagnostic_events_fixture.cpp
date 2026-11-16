@@ -39,7 +39,7 @@ int wmain(int argc, wchar_t** argv)
     PROCESS_INFORMATION child{};
     if (!CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, FALSE,
         DEBUG_ONLY_THIS_PROCESS | CREATE_NO_WINDOW, nullptr, root.c_str(), &startup, &child)) return 3;
-    events.Started(child.dwProcessId);
+    events.Started(child.dwProcessId, child.hProcess);
     std::printf("OWNED_PID %lu\n", child.dwProcessId);
     std::fflush(stdout);
     bool initialBreakpoint = true;

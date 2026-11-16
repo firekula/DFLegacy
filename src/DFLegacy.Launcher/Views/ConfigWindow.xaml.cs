@@ -317,7 +317,8 @@ public partial class ConfigWindow : System.Windows.Window
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
     private void LoadDiagnostics()
     {
-        if (ChapterTwoClient.IsBundled)
+        if (ChapterTwoClient.IsBundled) DiagnosticSmallDumpsBox.Visibility = Visibility.Collapsed;
+        if (ChapterTwoClient.IsBundled && !ChapterTwoClient.IsLocalTest && !ChapterTwoClient.HasRemoteServer(_options))
         {
             DiagnosticEnabledBox.IsChecked = DiagnosticSmallDumpsBox.IsChecked = false;
             DiagnosticEnabledBox.IsEnabled = DiagnosticSmallDumpsBox.IsEnabled = false;
@@ -335,11 +336,11 @@ public partial class ConfigWindow : System.Windows.Window
     }
     private void DiagnosticSave_Click(object sender,RoutedEventArgs e)
     {
-        if (ChapterTwoClient.IsBundled) return;
+        if (ChapterTwoClient.IsBundled && !ChapterTwoClient.IsLocalTest && !ChapterTwoClient.HasRemoteServer(_options)) return;
         try
         {
             Program.UserDiagnosticSettings.SetEnabled(DiagnosticEnabledBox.IsChecked==true);
-            Program.UserDiagnosticSettings.SetLocalSmallDumps(DiagnosticSmallDumpsBox.IsChecked==true);
+            if (!ChapterTwoClient.IsBundled) Program.UserDiagnosticSettings.SetLocalSmallDumps(DiagnosticSmallDumpsBox.IsChecked==true);
             Diagnostics.AutomaticDiagnostics.Configure(_options);LoadDiagnostics();
         }
         catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or System.Text.Json.JsonException or ArgumentException)

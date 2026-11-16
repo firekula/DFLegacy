@@ -3008,7 +3008,8 @@ public sealed class EntranceService(
                     var deathInstance = dungeonInstance;
                     var deathGeneration = expectedRoomGeneration ?? deathInstance?.RoomGeneration;
                     if (deathInstance is null || !deathInstance.TryBeginMonsterDeath(
-                        monsterUniqueId, deathGeneration, out var defeatedMonster, out var championRewardOrdinal))
+                        monsterUniqueId, deathGeneration, out var defeatedMonster, out var championRewardOrdinal,
+                        out var cemeteryUnlock))
                     {
                         return false;
                     }
@@ -3106,6 +3107,8 @@ public sealed class EntranceService(
                         // 击杀判定只有一次（TryTakeMonsterDeath 的返回值），但成立的那一次
                         // 要发给同实例的**每个人**（设计稿 §3.3）；单人仍走本会话路径。
                         await BroadcastToInstanceAsync(monsterDie, serverToken);
+                        if (cemeteryUnlock is { } openedGate)
+                            await dungeonPartyService.BroadcastCemeteryGateOpenAsync(deathInstance, openedGate);
 
                         if (!tutorialDungeonActive)
                         {
@@ -4910,7 +4913,8 @@ public sealed class EntranceService(
                     var entryHostSlot = partyService.TryGetLeaderSlot(activeCharacter.Id)
                         ?? checked((byte)slotIndex);
                     foreach (var packet in DungeonEntryPackets.PlanMemberEntry(
-                                 instance, room, roster, peerTable, checked((byte)entryHostSlot)))
+                                 instance, room, roster, peerTable, checked((byte)entryHostSlot),
+                                 chapterTwo: chapter2CheckConnectionAccepted))
                     {
                         await packet.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -6960,6 +6964,19 @@ public sealed class EntranceService(
                             mainInventory = normalizedWarehouseUpgrades.Inventory
                                 .ToDictionary(item => item.Slot);
                             avatarInventory = normalizedAvatarInventory.Inventory;
+                            if (chapter2CheckConnectionAccepted)
+                            {
+                                var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                                foreach (var (wornSlot, item) in equippedInventory)
+                                {
+                                    var restored = RestoreAvatarAppearance(item, avatarInventory.Values, now);
+                                    if (restored != item)
+                                    {
+                                        equippedInventory[wornSlot] = restored;
+                                        repairedAvatarEquipment = true;
+                                    }
+                                }
+                            }
                             warehouseInventory = normalizedWarehouseUpgrades.Warehouse
                                 .ToDictionary(item => item.Slot);
                             warehouseCapacity = normalizedWarehouseUpgrades.Capacity;
@@ -7666,8 +7683,15 @@ public sealed class EntranceService(
 
                             if (messageRequest.MessageType == (byte)GameMessageType.Type02LightCyan)
                             {
+                                // The Chapter Two dungeon tab sends party chat even in solo and tutorial runs.
+                                Func<ValueTask>? echoToSoloSender = null;
+                                if (chapter2Decoded && currentDungeonId != 0 && localUserId != 0 &&
+                                    !isPvpChannel && dungeonInstance?.IsParty != true)
+                                    echoToSoloSender = () => SendTownPacketAsync(
+                                        GameProtocolEngine.CreateMessageNotification(GameMessageType.Type02LightCyan,
+                                            localUserId, messageRequest.MessageBytes), serverToken);
                                 var recipients = await partyService.SendPartyChatAsync(
-                                    activeCharacter.Id, messageRequest.MessageBytes, serverToken);
+                                    activeCharacter.Id, messageRequest.MessageBytes, serverToken, echoToSoloSender);
                                 logger.LogInformation("Party chat from {CharacterName} delivered to {Recipients}: {Message}",
                                     activeCharacter.Name, recipients, chatText);
                                 continue;
@@ -11511,7 +11535,8 @@ public sealed class EntranceService(
                                     avatarInventory[sourceSlot] = unsealedAvatar with
                                     {
                                         Slot = sourceSlot,
-                                        State = 0
+                                        State = 0,
+                                        AvatarAppearanceItemId = 0
                                     };
                                     activeCharacter = await store.SaveCharacterItemSpacesAsync(
                                         accountName,
@@ -12166,6 +12191,20 @@ public sealed class EntranceService(
                                         displacedItem,
                                         itemCatalog);
                                 }
+                            }
+
+                            if (chapter2CheckConnectionAccepted && sourceListType == 1 && destinationListType == 3)
+                            {
+                                sourceItem = CopyWornAvatarAppearance(sourceItem, displacedItem, destinationSlot);
+                                if (displacedItem is { AvatarAppearanceItemId: not 0 })
+                                    displacedItem = displacedItem with { AvatarAppearanceItemId = 0 };
+                            }
+                            else if (chapter2CheckConnectionAccepted && sourceListType == 3 && destinationListType == 1)
+                            {
+                                if (displacedItem is not null)
+                                    displacedItem = CopyWornAvatarAppearance(displacedItem, sourceItem, sourceSlot);
+                                if (sourceItem.AvatarAppearanceItemId != 0)
+                                    sourceItem = sourceItem with { AvatarAppearanceItemId = 0 };
                             }
 
                             var requestedCount = moveCount <= 0
@@ -15889,7 +15928,8 @@ public sealed class EntranceService(
                                              liveRoom,
                                              partyService.GetRosterPacketFor(activeCharacter.Id),
                                              BuildPartyPeerTable(entrySlots, activeCharacter.Id),
-                                             checked((byte)leaderSlotIndex)))
+                                             checked((byte)leaderSlotIndex),
+                                             chapterTwo: chapter2CheckConnectionAccepted))
                                 {
                                     await packet.WriteAsync(stream, serverToken);
                                     Interlocked.Increment(ref runtimeSession.SentPackets);
@@ -16127,6 +16167,8 @@ public sealed class EntranceService(
                             await dungeonInfo.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, dungeonInfo);
+                            if (chapter2CheckConnectionAccepted && dungeonInstance.GetCemeteryGate() is { } startingGate)
+                                await SendTownPacketAsync(startingGate.CreateEntryPacket(), serverToken);
                             if (pendingHellTicketUpdate is not null)
                             {
                                 await pendingHellTicketUpdate.WriteAsync(stream, serverToken);
@@ -17719,6 +17761,8 @@ public sealed class EntranceService(
                             await loadingReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, loadingReply);
+                            if (chapter2CheckConnectionAccepted && dungeonInstance?.GetCemeteryGate() is { } loadedGate)
+                                await SendTownPacketAsync(loadedGate.CreateEntryPacket(), serverToken);
 
                             // Command 40 tells the server that the local town
                             // scene has finished loading. DNF 1.0.1.9 then
@@ -18261,6 +18305,7 @@ public sealed class EntranceService(
         bool includeUseLockDays)
     {
         var characters = await store.GetCharactersAsync(accountUid, cancellationToken);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var summaries = characters
             .Take(MaximumTransferRoster.MaximumVisibleCharacters)
             .Select(character => new GameCharacterSummary(
@@ -18278,6 +18323,9 @@ public sealed class EntranceService(
                             && CharacterAvatarInventoryLayout.IsCompatibleWornSlot(
                                 definition,
                                 item.Slot)))
+                    .Select(item => includeUseLockDays
+                        ? RestoreAvatarAppearance(item, character.AvatarInventory ?? [], now)
+                        : item)
                     .Select(ToGameInventoryEntry)
                     .ToArray(),
                 character.CharacterNo,
@@ -18598,7 +18646,8 @@ public sealed class EntranceService(
             wire.ItemAttr,
             wire.Durability,
             wire.SealState,
-            item.EnchantmentCardId);
+            item.EnchantmentCardId,
+            item.AvatarAppearanceItemId);
     }
 
     private GameMailEntry ToGameMailEntry(CharacterMailRecord mail)
@@ -18637,6 +18686,39 @@ public sealed class EntranceService(
             AvatarRemainingSeconds = item.AvatarRemainingSeconds ?? 0,
             AvatarAbilityIndex = item.AvatarAbilityIndex ?? 0
         };
+
+    private CharacterItemRecord CopyWornAvatarAppearance(
+        CharacterItemRecord incoming, CharacterItemRecord? worn, ushort wornSlot)
+    {
+        if (!itemCatalog.TryGetDefinition(incoming.ItemId, out var definition) || !definition.IsCloneAvatar)
+            return incoming;
+
+        // The native equip path copies only a regular avatar in the same worn slot.
+        var appearance = worn is not null && IsAvatarAppearanceSource(worn.ItemId, wornSlot)
+            ? worn.ItemId
+            : (ushort)0;
+        return incoming with { AvatarAppearanceItemId = appearance };
+    }
+
+    private CharacterItemRecord RestoreAvatarAppearance(
+        CharacterItemRecord worn, IEnumerable<CharacterItemRecord> bag, long nowUnixSeconds)
+    {
+        if (worn.AvatarAppearanceItemId == 0)
+            return worn;
+
+        // A copied style survives a session. At selection it needs a matching avatar in the bag.
+        return IsAvatarAppearanceSource(worn.AvatarAppearanceItemId, worn.Slot)
+            && bag.Any(item => item.ItemId == worn.AvatarAppearanceItemId
+                && CharacterAvatarInventoryLayout.IsBagSlot(item.Slot)
+                && !AvatarLifetimePolicy.IsExpired(item, nowUnixSeconds))
+            ? worn
+            : worn with { AvatarAppearanceItemId = 0 };
+    }
+
+    private bool IsAvatarAppearanceSource(ushort itemId, ushort wornSlot) =>
+        itemCatalog.TryGetDefinition(itemId, out var definition)
+        && !definition.IsCloneAvatar
+        && CharacterAvatarInventoryLayout.IsCompatibleWornSlot(definition, wornSlot);
 
     private static byte[] EncodeMailField(
         string value,

@@ -162,7 +162,7 @@ Replace-Verified '  std::puts("NO_APPCONTAINER");TerminateProcess(pi.hProcess,0x
 Replace-Verified 'std::puts("APPCONTAINER_NO_NETWORK_CAPABILITIES");' 'std::puts("ORDINARY_DESKTOP_PROCESS appcontainer=0"); std::puts("STARTUP_BROKER system_dll_breakpoints=0");'
 Replace-Verified '#include "LoopbackBroker.h"' "#include `"LoopbackBroker.h`"`n#include `"ChapterTwoPerformanceLogHandles.h`"`n#include `"ChapterTwoDiagnosticEvents.h`""
 Replace-Verified ' PROCESS_INFORMATION pi{};' " ChapterTwoDiagnosticEvents diagnosticEvents;`n PROCESS_INFORMATION pi{};"
-Replace-Verified ' CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);' " diagnosticEvents.Started(pi.dwProcessId);`n CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);"
+Replace-Verified ' CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);' " diagnosticEvents.Started(pi.dwProcessId, pi.hProcess);`n CloseHandle(token); if(useBroker)broker.start(pi.dwProcessId);"
 Replace-Verified '  if(ev.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT && ev.dwProcessId==pi.dwProcessId)' "  diagnosticEvents.Observe(ev);`n  if(ev.dwDebugEventCode==CREATE_PROCESS_DEBUG_EVENT && ev.dwProcessId==pi.dwProcessId)"
 $originalInheritance = @'
  HANDLE childPipes[2]{};

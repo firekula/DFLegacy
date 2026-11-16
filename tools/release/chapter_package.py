@@ -37,7 +37,7 @@ def _manifest(value):
 
 
 def build(root, output, *, chapter, architecture, flavor, version, commit, sequence, baseline=None,
-          previous=None, provider='github', seed_provider=False, startup_bridge=None):
+          previous=None, provider='github', seed_provider=False, startup_bridge=None, fresh_startup=False):
     root, output = Path(root).absolute(), Path(output).absolute()
     v4.require(chapter in ('chapter1', 'chapter2'), 'invalid chapter')
     v4.require(provider == 'github' or (provider == 'gitcode' and chapter == 'chapter2'),
@@ -70,13 +70,18 @@ def build(root, output, *, chapter, architecture, flavor, version, commit, seque
                    'Second Chapter contains a First Chapter module')
         v4.require('DFLegacy.Chapter.json' in {f['path'] for f in old['files']}, 'baseline has no chapter descriptor')
     versioned_startup = chapter == 'chapter2' and prior is not None and prior['minimumSequence'] >= 17
+    v4.require(not fresh_startup or (versioned_startup and bridge is None and not seed_provider),
+               'a fresh startup package requires an established Chapter Two startup baseline')
     entry_baseline = prior if versioned_startup else old
     entry_path = bootstrap_package.ENTRY
     if entry_baseline is not None:
         entry = next((f for f in entry_baseline['files'] if f['path'] == entry_path), None)
         v4.require(entry is not None, 'fixed entry missing from baseline')
         unchanged = v4.file_hash(root/entry_path) == (entry['sha256'], entry['size'])
-        if bridge is None:
+        if fresh_startup:
+            # A new full starter owns the new entry. The client still rejects it as an in-place update.
+            v4.require(not unchanged, 'fresh startup package must contain a new fixed entry')
+        elif bridge is None:
             v4.require(unchanged, 'fixed entry changed')
         else:
             bridge_entry = next((f for f in bridge['files'] if f['path'] == entry_path), None)

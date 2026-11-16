@@ -19,6 +19,9 @@
     <ClientPatchPrebuiltPath Condition="'$(ClientPatchPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Client.dll'))</ClientPatchPrebuiltPath>
     <ClientBootstrapPrebuiltPath Condition="'$(ClientBootstrapPrebuiltPath)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\artifacts\native\ijl15\$(Configuration)\DFLegacy.Bootstrap32.exe'))</ClientBootstrapPrebuiltPath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(ChapterTwoPayloadDir)' != '' and '$(ChapterTwoLocalTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);CHAPTER_TWO_LOCAL_TEST</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <InternalsVisibleTo Include="DFLegacy.Launcher.Tests" />

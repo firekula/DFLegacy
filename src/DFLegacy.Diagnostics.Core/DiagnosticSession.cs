@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 namespace DFLegacy.Diagnostics;
 
 public sealed record DiagnosticRegistration(string SessionId,string Capability,string UserRoot,string ClientRoot,string Site,string Installation,string Queue,
-    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown",bool LocalOnly=false,bool LocalSmallDumps=true,string? ClientPvfSha256=null);
+    DateTimeOffset StartedAt,int LauncherPid,long LauncherCreatedUtcTicks,int GamePid=0,long GameCreatedUtcTicks=0,string ClientVersion="unknown",bool LocalOnly=false,bool LocalSmallDumps=true,string? ClientPvfSha256=null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] bool RecoverUncollected=false);
 internal sealed record DiagnosticCollection(string SessionId,int LauncherPid,long LauncherCreatedUtcTicks,string[] Ids);
 internal sealed record DiagnosticLocalEvent(string SessionId,string Capability,string State,DiagnosticIncident Incident,int ProducerPid,long ProducerCreatedUtcTicks);
 
@@ -20,7 +22,7 @@ public sealed class DiagnosticSession
         if(!Uri.TryCreate(serviceUrl,UriKind.Absolute,out var uri)||uri.Scheme is not ("http" or "https")||!string.IsNullOrEmpty(uri.UserInfo)||!string.IsNullOrEmpty(uri.Query)||!string.IsNullOrEmpty(uri.Fragment)||uri.AbsolutePath!="/")throw new ArgumentException("Diagnostic service requires an HTTP(S) account API origin.");
         return uri.GetLeftPart(UriPartial.Authority);
     }
-    public static DiagnosticSession Start(string clientRoot,string serviceUrl,string sessionId,string? userRoot=null,string clientVersion="unknown")
+    public static DiagnosticSession Start(string clientRoot,string serviceUrl,string sessionId,string? userRoot=null,string clientVersion="unknown",bool recoverUncollected=false)
     {
         if(!DiagnosticProjection.Id(sessionId))throw new ArgumentException("Invalid session identity.");
         var settings=new DiagnosticSettings(userRoot);var localOnly=string.IsNullOrWhiteSpace(serviceUrl);var site=localOnly?"local-only":NormalizeSite(serviceUrl);var scope=settings.SelectScope(clientRoot,site);
@@ -30,7 +32,12 @@ public sealed class DiagnosticSession
         {
             try {
                 var old=DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(previous,"session.json"),16384);
-                if(old is not null&&!Alive(old.GamePid,old.GameCreatedUtcTicks)&&(!Alive(old.LauncherPid,old.LauncherCreatedUtcTicks)||DiagnosticFiles.Read<string>(Path.Combine(previous,"closed.json"),128)==old.Capability))new DiagnosticSession(previous,old).CleanupManagedFiles();
+                if(old is not null&&!Alive(old.GamePid,old.GameCreatedUtcTicks)&&(!Alive(old.LauncherPid,old.LauncherCreatedUtcTicks)||DiagnosticFiles.Read<string>(Path.Combine(previous,"closed.json"),128)==old.Capability))
+                {
+                    var session=new DiagnosticSession(previous,old);
+                    if(session.CanRecoverUncollected())session.CollectConfirmed();
+                    session.CleanupManagedFiles();
+                }
             }catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
         }
         // Logical producer receipts survive registration replacement and helper
@@ -38,15 +45,15 @@ public sealed class DiagnosticSession
         try {
             using var queueLease=DiagnosticFiles.Lease(settings.Root,"queue.lock");
             var receipts=Path.Combine(settings.Root,"collections");DiagnosticFiles.NoLinks(receipts);
-            var liveGames=Directory.EnumerateDirectories(sessions).Take(101).Select(p=>DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(p,"session.json"),16384)).Where(r=>r is not null&&Alive(r.GamePid,r.GameCreatedUtcTicks)).Select(r=>r!.SessionId).ToHashSet(StringComparer.Ordinal);
+            var retainedSessions=Directory.EnumerateDirectories(sessions).Take(101).Select(p=>DiagnosticFiles.Read<DiagnosticRegistration>(Path.Combine(p,"session.json"),16384)).Where(r=>r is not null&&(r.RecoverUncollected||Alive(r.GamePid,r.GameCreatedUtcTicks))).Select(r=>r!.SessionId).ToHashSet(StringComparer.Ordinal);
             if(Directory.Exists(receipts))foreach(var path in Directory.EnumerateFiles(receipts,"*.json").Take(101)) {
                 var receipt=DiagnosticFiles.Read<DiagnosticCollection>(path,16384);
-                if(receipt is not null&&DiagnosticProjection.Id(receipt.SessionId)&&Path.GetFileNameWithoutExtension(path)==receipt.SessionId&&!Alive(receipt.LauncherPid,receipt.LauncherCreatedUtcTicks)&&!liveGames.Contains(receipt.SessionId))File.Delete(path);
+                if(receipt is not null&&DiagnosticProjection.Id(receipt.SessionId)&&Path.GetFileNameWithoutExtension(path)==receipt.SessionId&&!Alive(receipt.LauncherPid,receipt.LauncherCreatedUtcTicks)&&!retainedSessions.Contains(receipt.SessionId))File.Delete(path);
             }
         }catch(Exception error) when(DiagnosticFiles.Recoverable(error)){ }
         if(Directory.EnumerateDirectories(sessions).Take(101).Count()>=100){settings.RecordDrop();throw new IOException("Diagnostic session budget exhausted.");}
         var directory=Path.Combine(settings.Root,"sessions",Guid.NewGuid().ToString("N"));DiagnosticFiles.Ensure(Path.Combine(directory,"events"));
-        using var launcher=Process.GetCurrentProcess();var registration=new DiagnosticRegistration(sessionId,Guid.NewGuid().ToString("N"),settings.Root,Path.GetFullPath(clientRoot),site,scope.Installation,scope.Queue,DateTimeOffset.UtcNow,launcher.Id,launcher.StartTime.ToUniversalTime().Ticks,ClientVersion:clientVersion,LocalOnly:localOnly,LocalSmallDumps:settings.Read().LocalSmallDumps);
+        using var launcher=Process.GetCurrentProcess();var registration=new DiagnosticRegistration(sessionId,Guid.NewGuid().ToString("N"),settings.Root,Path.GetFullPath(clientRoot),site,scope.Installation,scope.Queue,DateTimeOffset.UtcNow,launcher.Id,launcher.StartTime.ToUniversalTime().Ticks,ClientVersion:clientVersion,LocalOnly:localOnly,LocalSmallDumps:settings.Read().LocalSmallDumps,RecoverUncollected:recoverUncollected);
         DiagnosticFiles.Write(Path.Combine(directory,"session.json"),registration,false);return new(directory,registration);
     }
     public static DiagnosticSession Open(string directory,string capability,string? userRoot=null)
@@ -192,6 +199,9 @@ public sealed class DiagnosticSession
         return count;
         }
     }
+    private bool CanRecoverUncollected() => Registration.RecoverUncollected &&
+        Registration.StartedAt>=DateTimeOffset.UtcNow.AddDays(-14) && new DiagnosticQueue(this).IsEligible;
+
     internal void CleanupManagedFiles()
     {
         // Closing/revoking upload does not revoke a running game's local capture.
@@ -199,6 +209,11 @@ public sealed class DiagnosticSession
         // Remove only our bounded structured metadata. Unknown files and Task3 local captures are preserved.
         var events=Path.Combine(DirectoryPath,"events");DiagnosticFiles.NoLinks(events);
         if(Directory.Exists(events)) {
+            if(CanRecoverUncollected())
+            {
+                var queue=new DiagnosticQueue(this);
+                if(ConfirmedEvents().Any(value=>!queue.ContainsEvent(value.Incident.EventId)))return;
+            }
             foreach(var path in Directory.EnumerateFiles(events,"*.json").Take(300)){DiagnosticFiles.NoLinks(path);File.Delete(path);}
             var eventsLock=Path.Combine(events,"events.lock");DiagnosticFiles.NoLinks(eventsLock);if(File.Exists(eventsLock))File.Delete(eventsLock);
             if(!Directory.EnumerateFileSystemEntries(events).Any())Directory.Delete(events);

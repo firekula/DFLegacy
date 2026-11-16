@@ -205,10 +205,22 @@ try {
                     $env:DFLEGACY_CH2_DIAGNOSTIC_EVENTS = $events
                     [Console]::WriteLine(('CHAPTER_TWO_ATTEMPT {0} {1} {2}' -f [IO.Path]::GetFileName($candidate), [IO.Path]::GetFileName($log), [IO.Path]::GetFileName($events)))
                     [Console]::Out.Flush()
-                    & $trace $candidate $arguments 2>&1 | ForEach-Object {
+                    & {
+                        # Windows PowerShell wraps native stderr in ErrorRecords.
+                        # Keep the broker running so its exit status can be checked.
+                        $ErrorActionPreference = 'Continue'
+                        & $trace $candidate $arguments 2>&1
+                    } | ForEach-Object {
+                        $nativeStderr = $_ -is [Management.Automation.ErrorRecord]
+                        if ($nativeStderr -and $_.FullyQualifiedErrorId -notin 'NativeCommandError','NativeCommandErrorMessage') {
+                            throw $_
+                        }
                         $line = [string]$_
-                        if (!$line.StartsWith('LOCAL_PAY_REQUEST ', [StringComparison]::Ordinal)) { $writer.WriteLine($line) }
-                        if ($line -cmatch '\A(?:(?:OWNED_PID|LOCAL_GUILD_OPEN) [1-9][0-9]{0,9}|LOCAL_PAY_REQUEST [1-9][0-9]{0,9} [1-9][0-9]{0,9} [a-z-]{1,32} (?:[0-9a-fA-F]{2,2048}|-))\z') {
+                        if (!$line.StartsWith('LOCAL_PAY_REQUEST ', [StringComparison]::Ordinal)) {
+                            if ($nativeStderr) { $writer.WriteLine("[stderr] $line") }
+                            else { $writer.WriteLine($line) }
+                        }
+                        if (!$nativeStderr -and $line -cmatch '\A(?:(?:OWNED_PID|LOCAL_GUILD_OPEN) [1-9][0-9]{0,9}|LOCAL_PAY_REQUEST [1-9][0-9]{0,9} [1-9][0-9]{0,9} [a-z-]{1,32} (?:[0-9a-fA-F]{2,2048}|-))\z') {
                             [Console]::WriteLine($line)
                             [Console]::Out.Flush()
                         }
@@ -221,7 +233,7 @@ try {
                 if (!$traceExit -and @((Select-String -LiteralPath $log -Pattern '^ORDINARY_DESKTOP_PROCESS appcontainer=0$')).Count -ne 1) {
                     throw "The Chapter Two startup component did not confirm an ordinary desktop process. See $log"
                 }
-                $retry = !$traceExit -and (Select-String -LiteralPath $log -SimpleMatch 'PREFERRED_BASE_UNAVAILABLE' -Quiet)
+                $retry = !$traceExit -and (Select-String -LiteralPath $log -Pattern '^(?!\[stderr\] ).*PREFERRED_BASE_UNAVAILABLE' -Quiet)
                 [Console]::WriteLine(('CHAPTER_TWO_FINISH {0}' -f $(if ($retry) { 'retry' } else { 'final' })))
                 [Console]::Out.Flush()
                 if ($traceExit) { throw "Could not start Chapter Two. See $log" }

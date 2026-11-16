@@ -117,6 +117,12 @@ try
         Console.WriteLine($"Chapter Two isolation: {checks} assertions, {failures} failures");
         return failures == 0 ? 0 : 1;
     }
+    if (args is ["--chapter-two-remote-diagnostic-tests"])
+    {
+        await ChapterTwoDiagnosticTests.RunUploadsAsync(root, Check);
+        Console.WriteLine($"Chapter Two remote diagnostics: {checks} assertions, {failures} failures");
+        return failures == 0 ? 0 : 1;
+    }
     if (args.Contains("--chapter-two-dialogue-tests"))
     {
         DisplayConfigurationTests.RunChapterTwoDialogue(root, Check);

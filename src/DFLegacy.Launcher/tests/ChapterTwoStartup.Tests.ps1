@@ -118,6 +118,124 @@ function Invoke-Case($Case, [object[]]$Attempts, [int]$BrokerExit = 0, [switch]$
     return [pscustomobject]@{ Error=$errorText; Output=$output; State=$state }
 }
 
+$nativeSource = Join-Path $testRoot 'NativeBrokerFixture.cs'
+$nativeFixture = Join-Path $testRoot 'NativeBrokerFixture.exe'
+[IO.File]::WriteAllText($nativeSource, @'
+using System;
+using System.IO;
+using System.Threading;
+
+static class NativeBrokerFixture
+{
+    static int Main(string[] args)
+    {
+        if (args.Length != 2 || !File.Exists(args[0]) ||
+            args[1] != "99?127.0.0.2?42311?startup-fixture?synthetic-test-only?0?0?0?0?0?0?0?0")
+            return 31;
+
+        Console.Error.WriteLine("libpng warning: iCCP: known incorrect sRGB profile");
+        Console.Error.Flush();
+        if (Environment.GetEnvironmentVariable("DFLEGACY_STARTUP_TEST_FAILURE") == "1")
+            return 17;
+
+        Console.Error.WriteLine("OWNED_PID 20");
+        Console.Error.WriteLine("LOCAL_PAY_REQUEST 20 1 register dead");
+        Console.Error.WriteLine("ORDINARY_DESKTOP_PROCESS appcontainer=0");
+        Console.Error.WriteLine("PREFERRED_BASE_UNAVAILABLE error=487");
+        Console.Error.WriteLine("EXIT c0000005");
+        Console.Error.Flush();
+        Console.Out.WriteLine("ORDINARY_DESKTOP_PROCESS appcontainer=0");
+        Console.Out.WriteLine("OWNED_PID 47568");
+        Console.Out.Flush();
+        var release = Path.Combine(Path.GetDirectoryName(args[0]), "release-broker");
+        for (int i = 0; i < 500 && !File.Exists(release); i++)
+            Thread.Sleep(10);
+        if (!File.Exists(release))
+            return 32;
+
+        Console.Out.WriteLine("LOCAL_GUILD_OPEN 47568");
+        Console.Out.WriteLine("LOCAL_PAY_REQUEST 47568 1 register beef");
+        Console.Out.WriteLine("EXIT 00000000");
+        return 0;
+    }
+}
+'@)
+$compiler = Join-Path $env:SystemRoot 'Microsoft.NET/Framework/v4.0.30319/csc.exe'
+& $compiler /nologo /target:exe "/out:$nativeFixture" $nativeSource
+if ($LASTEXITCODE) { throw 'Could not build the native command fixture.' }
+
+function Invoke-NativeCase($Case, [switch]$BrokerFailure, [switch]$MissingBroker) {
+    if (!$MissingBroker) {
+        Copy-Item -LiteralPath $nativeFixture -Destination (Join-Path $Case.Root 'dnf_startup_trace.exe')
+    }
+    $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'))
+    $start.Arguments = "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$($Case.Helper)`" -Game `"$($Case.Game)`" -HostFile `"$($Case.Host)`""
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardInput = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.EnvironmentVariables['DFLEGACY_STARTUP_TEST_FAILURE'] = [string][int][bool]$BrokerFailure
+    $process = [Diagnostics.Process]::Start($start)
+    try {
+        $process.StandardInput.WriteLine('{"Account":"startup-fixture","Password":"synthetic-test-only"}')
+        $process.StandardInput.Close()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        $handshake = @()
+        if (!$BrokerFailure -and !$MissingBroker) {
+            foreach ($i in 1..2) {
+                $pending = $process.StandardOutput.ReadLineAsync()
+                if (!$pending.Wait(10000)) { throw 'Timed out waiting for the startup handshake.' }
+                $handshake += $pending.Result
+            }
+            [IO.File]::WriteAllText((Join-Path $Case.Game 'release-broker'), '')
+        }
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        if (!$process.WaitForExit(10000) -or !$stdout.Wait(10000) -or !$stderr.Wait(10000)) {
+            throw 'Timed out waiting for the startup fixture to finish.'
+        }
+        $logs = @(Get-ChildItem -LiteralPath (Join-Path $Case.Game 'Logs/DFLegacy') -Filter 'chapter-two-client-*.log')
+        Check ($logs.Count -eq 1) 'startup creates one attempt log'
+        Check (@(Get-ChildItem -LiteralPath $Case.Game -Filter 's1c2_chapter2_host-*.exe').Count -eq 0) 'startup removes the candidate'
+        return [pscustomobject]@{
+            Exit = $process.ExitCode
+            Handshake = $handshake
+            Output = $stdout.Result -split '\r?\n'
+            Error = $stderr.Result
+            Log = if ($logs.Count) { [IO.File]::ReadAllText($logs[0].FullName) }
+        }
+    } finally {
+        if (!$process.HasExited) { $process.Kill() }
+        $process.Dispose()
+    }
+}
+
+Run-Case 'native-stderr-with-live-handshake' {
+    $case = New-Case 'native stderr with live handshake'
+    $r = Invoke-NativeCase $case
+    Check ($r.Exit -eq 0) 'native stderr warning does not abort a successful launch'
+    Check ($r.Handshake[0] -like 'CHAPTER_TWO_ATTEMPT *' -and $r.Handshake[1] -ceq 'OWNED_PID 47568') 'launcher receives the real PID while the broker is still running'
+    Check ($r.Output -ccontains 'LOCAL_GUILD_OPEN 47568' -and $r.Output -ccontains 'LOCAL_PAY_REQUEST 47568 1 register beef') 'stdout retains guild and payment delivery'
+    Check ($r.Output -cnotcontains 'OWNED_PID 20' -and $r.Output -cnotcontains 'LOCAL_PAY_REQUEST 20 1 register dead') 'stderr cannot send PID or payment control records'
+    Check ($r.Output -ccontains 'CHAPTER_TWO_FINISH final' -and $r.Output -cnotcontains 'CHAPTER_TWO_FINISH retry') 'stderr records cannot change the result or request a retry'
+    Check ($r.Log -match 'libpng warning: iCCP: known incorrect sRGB profile') 'native stderr warning reaches the startup log'
+    Check ($r.Log -notmatch 'LOCAL_PAY_REQUEST|beef|dead') 'payment payload stays outside the startup log'
+}
+
+Run-Case 'native-stderr-with-broker-failure' {
+    $case = New-Case 'native stderr with broker failure'
+    $r = Invoke-NativeCase $case -BrokerFailure
+    Check ($r.Exit -ne 0 -and $r.Error -match 'Could not start Chapter Two\.') 'real nonzero broker exit still reports a startup failure'
+    Check ($r.Output -ccontains 'CHAPTER_TWO_FINISH final') 'broker failure finalizes the attempt'
+    Check ($r.Log -match 'libpng warning: iCCP: known incorrect sRGB profile') 'broker failure preserves its stderr warning'
+}
+
+Run-Case 'missing-native-broker' {
+    $case = New-Case 'missing native broker'
+    $r = Invoke-NativeCase $case -MissingBroker
+    Check ($r.Exit -ne 0 -and $r.Error -match 'dnf_startup_trace\.exe') 'missing broker still reports an invocation failure'
+}
+
 Run-Case 'post-process-default' {
     $case = New-Case 'post-process-default'
     $r = Invoke-Case $case @(,$normal)

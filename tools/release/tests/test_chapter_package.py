@@ -78,6 +78,20 @@ class ChapterPackageTests(unittest.TestCase):
         following = package.build(client, self.base/'following', **common, version='v1.0.13',
                                   commit='c'*40, sequence=19, previous=final['manifest'])
         self.assertEqual(following['manifestAsset'], final['manifestAsset'])
+        (client/'DFLegacy.Launcher.exe').write_bytes(b'fresh startup executable')
+        with self.assertRaisesRegex(v4.ReleaseError, 'fixed entry'):
+            package.build(client, self.base/'unapproved', **common, version='v1.0.13',
+                          commit='c'*40, sequence=19, previous=final['manifest'])
+        fresh_path = self.base/'fresh'
+        fresh = package.build(client, fresh_path, **common, version='v1.0.13',
+                              commit='c'*40, sequence=19, previous=final['manifest'], fresh_startup=True)
+        self.assertEqual(fresh['manifestAsset'], final['manifestAsset'])
+        self.assertEqual(fresh['manifest']['minimumSequence'], 17)
+        starter_path = self.base/'fresh.zip'
+        package.create_starter(starter_path, client, fresh_path)
+        with zipfile.ZipFile(starter_path) as starter:
+            self.assertEqual(starter.read('DFLegacy.Launcher.exe'), b'fresh startup executable')
+        (client/'DFLegacy.Launcher.exe').write_bytes(b'new startup executable')
         (client/'Script.pvf').write_bytes(b'changed alongside startup')
         with self.assertRaisesRegex(v4.ReleaseError, 'startup migration'):
             package.build(client, self.base/'invalid', **common, **final_args)

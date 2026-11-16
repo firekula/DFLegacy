@@ -77,6 +77,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoTownMap.cpp
     ChapterTwoLootGather.cpp
     ChapterTwoLootGatherHooks.cpp
+    ChapterTwoCemeteryGuard.cpp
     ChapterTwoDungeonRating.cpp
     ChapterTwoBackgroundPolicy.cpp
     ChapterTwoMouseWheel.cpp
@@ -87,6 +88,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoPopupAnnouncement.cpp
     ChapterTwoShopLayout.cpp
     ChapterTwoCountdownCoin.cpp
+    ChapterTwoImeComposition.cpp
     ChapterTwoDungeonTooltip.cpp
     ChapterTwoAdultBlood.cpp
     "${DEBUG_NATIVE}/map_click_feedback.cpp"
@@ -150,6 +152,7 @@ target_link_libraries(chapter_two_loot_gather_tests PRIVATE chapter_two_presenta
 add_executable(chapter_two_loot_gather_image_tests loot_gather_image_tests.cpp)
 target_compile_options(chapter_two_loot_gather_image_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_loot_gather_image_tests PRIVATE chapter_two_presentation)
+target_link_options(chapter_two_loot_gather_image_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 
 add_executable(chapter_two_loot_gather_hook_tests
     loot_gather_hook_tests.cpp ChapterTwoLootGather.cpp
@@ -207,6 +210,11 @@ add_executable(chapter_two_countdown_coin_tests countdown_coin_tests.cpp)
 target_compile_options(chapter_two_countdown_coin_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_options(chapter_two_countdown_coin_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 target_link_libraries(chapter_two_countdown_coin_tests PRIVATE chapter_two_presentation)
+
+add_executable(chapter_two_ime_composition_tests ime_composition_tests.cpp)
+target_compile_options(chapter_two_ime_composition_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+target_link_options(chapter_two_ime_composition_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
+target_link_libraries(chapter_two_ime_composition_tests PRIVATE chapter_two_presentation)
 
 add_executable(chapter_two_cash_item_use_tests cash_item_use_tests.cpp)
 target_compile_options(chapter_two_cash_item_use_tests PRIVATE /W4 /WX /utf-8 /EHsc)

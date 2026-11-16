@@ -37,6 +37,15 @@ internal static class ChapterTwoClient
 
     internal static bool IsBundled { get; } = typeof(ChapterTwoClient).Assembly
         .GetManifestResourceInfo(ResourcePrefix + ScriptName) is not null;
+
+#if CHAPTER_TWO_LOCAL_TEST
+    internal static bool IsLocalTest { get; } = true;
+#else
+    internal static bool IsLocalTest { get; } = false;
+#endif
+
+    internal static bool HasRemoteServer(LauncherOptions options) =>
+        options.ChapterTwoServerHost is not null || options.ChapterTwoServerIpv4 is not null;
     internal static bool HasPresentationPreview { get; } = typeof(ChapterTwoClient).Assembly
         .GetManifestResourceInfo(ResourcePrefix + PreviewName) is not null;
     internal static bool HasD3D11Bridge { get; } = typeof(ChapterTwoClient).Assembly
@@ -70,6 +79,11 @@ internal static class ChapterTwoClient
     internal static void ApplyLocalProfile(LauncherOptions options)
     {
         if (!IsBundled) return;
+        if (IsLocalTest)
+        {
+            options.ChapterTwoServerHost = null;
+            options.ChapterTwoServerIpv4 = null;
+        }
         var connection = ChapterTwoConnection.Parse(options.ChapterTwoServerHost, options.ChapterTwoServerIpv4);
         var host = connection.Host;
         var remote = connection.UseRelay || connection.LegacyIpv4 is not null;
@@ -85,13 +99,13 @@ internal static class ChapterTwoClient
         options.StartServer = false;
         options.Relay = connection.UseRelay ? new() { Enabled = true, Preference = options.Relay.Preference,
             TcpPorts = string.Join(',', ChapterTwoConnection.TcpPorts), UdpPorts = string.Join(',', ChapterTwoConnection.UdpPorts) } : new();
-        if (!Updates.ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory))
+        if (IsLocalTest || !Updates.ChapterUpdatePolicy.IsManaged(AppContext.BaseDirectory))
         {
             options.DisableGitHubUpdates = true;
             options.UpdateServiceUrl = "";
             options.UpdateRepository = "";
         }
-        options.Diagnostics.Enabled = false;
+        options.Diagnostics.Enabled = remote || IsLocalTest;
         options.Diagnostics.ServiceUrl = "";
     }
 
@@ -292,10 +306,14 @@ internal static class ChapterTwoClient
                 await process.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new { account.Account, account.Password }));
                 process.StandardInput.Close();
                 await process.WaitForExitAsync(token);
-                await stdout;
+                var reportedGameExit = await stdout;
                 var error = (await stderr).Trim();
                 if (process.ExitCode != 0)
-                    throw new InvalidOperationException(error.Length > 0 ? error : "请检查 Logs/DFLegacy 下的第二章启动日志。");
+                {
+                    var message = error.Length > 0 ? error : "请检查 Logs/DFLegacy 下的第二章启动日志。";
+                    if (reportedGameExit) throw new Diagnostics.ChapterTwoGameExitException(message);
+                    throw new InvalidOperationException(message);
+                }
                 Program.WriteLauncherLog("Chapter Two client exited.");
             }, handoffOnSuccess: false, cancellationToken);
         }
@@ -305,7 +323,7 @@ internal static class ChapterTwoClient
         }
     }
 
-    private static async Task ObserveClientOutputAsync(Process bootstrap, string gameDirectory,
+    private static async Task<bool> ObserveClientOutputAsync(Process bootstrap, string gameDirectory,
         ChapterTwoPaymentRelay? payment, ChapterTwoGuildSite? guild, ChapterTwoDebugSession? debug, CancellationToken token)
     {
         using var owned = new Diagnostics.ChapterTwoLaunchDiagnostics(bootstrap.StartTime, gameDirectory);
@@ -348,6 +366,7 @@ internal static class ChapterTwoClient
         }
         }
         finally { owned.Finish(false, token.IsCancellationRequested); }
+        return owned.HasAbnormalExit;
     }
 
     private static bool ReadProcessId(string value, out int id) =>

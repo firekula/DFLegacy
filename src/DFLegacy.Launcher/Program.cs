@@ -13,7 +13,8 @@ internal static class Program
     private static IncidentReporter? incidentReporter;
     private static string? incidentDirectory;
     internal static bool DetailedCaptureEnabled { get; set; }
-    internal static DFLegacy.Diagnostics.DiagnosticSettings UserDiagnosticSettings { get; set; } = new();
+    internal static DFLegacy.Diagnostics.DiagnosticSettings UserDiagnosticSettings { get; set; } = new(
+        ChapterTwoClient.IsLocalTest ? Path.Combine(AppContext.BaseDirectory, ".dflegacy", "local-test-diagnostics") : null);
     internal static string? LogClientPath { get; set; }
     internal static IncidentReporter Incidents
     {
@@ -29,7 +30,7 @@ internal static class Program
     }
     internal static void ReportError(string stage,Exception error,string? updateId=null)
     {
-        if(Incidents.Report(IncidentKind.Error,stage,error,updateId:updateId) is null && error is not OperationCanceledException)
+        if(Incidents.Report(IncidentKind.Error,stage,error,updateId:updateId,reportAutomatically:error is not ChapterTwoGameExitException) is null && error is not OperationCanceledException)
             LogWarning="客户端 Logs/DFLegacy 无法写入，诊断报告不可用。";
     }
     internal static void RegisterDiagnosticSecrets(LauncherOptions options)
@@ -115,6 +116,7 @@ internal static class Program
         catch (Exception exception)
         {
             ReportError("headless-startup",exception);
+            if (ChapterTwoClient.IsBundled) await AutomaticDiagnostics.FinishChapterTwoAsync();
             WriteLauncherLog($"Launcher failed: {exception.GetType().Name}");
             Console.Error.WriteLine(exception.Message);
             if (!noDialog)

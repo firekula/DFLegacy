@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$PresentationHost,
     [Parameter(Mandatory)][string]$StartupBroker,
     [string]$D3D11Bridge,
-    [string]$Version
+    [string]$Version,
+    [switch]$LocalTest
 )
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
@@ -26,6 +27,7 @@ foreach ($entry in $files.GetEnumerator()) {
     }
 }
 $nativeProperties = @()
+if ($LocalTest) { $nativeProperties += '-p:ChapterTwoLocalTest=true' }
 $optionalAssets = @()
 if ($PresentationHost) {
     $preview = (Resolve-Path -LiteralPath $PresentationHost).Path
@@ -75,7 +77,8 @@ if ($metadata.FileVersion -ne "$Version.0" -or $metadata.OriginalFilename -ne (S
     throw 'The published executable has incorrect Windows version information.'
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README-Launcher.md') -Destination (Join-Path $package 'README.md')
-$zip = Join-Path $output 'DFLegacy-Chapter2-Launcher-GUI-Windows-x64.zip'
+$packageName = if ($LocalTest) { 'DFLegacy-Chapter2-LocalTest-Windows-x64.zip' } else { 'DFLegacy-Chapter2-Launcher-GUI-Windows-x64.zip' }
+$zip = Join-Path $output $packageName
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($package, $zip, [IO.Compression.CompressionLevel]::Fastest, $false)
 Get-FileHash -LiteralPath $zip, $exe -Algorithm SHA256 | ForEach-Object {
