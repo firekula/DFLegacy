@@ -107,9 +107,35 @@ static void HandledFault()
     __try { RaiseException(0xE0424242, 0, 0, nullptr); }
     __except(EXCEPTION_EXECUTE_HANDLER) { }
 }
+static bool SystemEntryMatchesFile(const wchar_t* dll, const char* symbol)
+{
+    const auto module = GetModuleHandleW(dll);
+    const auto entry = module ? GetProcAddress(module, symbol) : nullptr;
+    wchar_t path[MAX_PATH]{};
+    if (!entry || !GetModuleFileNameW(module, path, _countof(path))) return false;
+    const auto file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr,
+                                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    const auto mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0, 0, nullptr);
+    CloseHandle(file);
+    if (!mapping) return false;
+    const auto view = static_cast<const unsigned char*>(MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0));
+    CloseHandle(mapping);
+    if (!view) return false;
+    const auto offset = reinterpret_cast<uintptr_t>(entry) - reinterpret_cast<uintptr_t>(module);
+    const auto expected = view[offset];
+    UnmapViewOfFile(view);
+    const auto actual = *reinterpret_cast<const unsigned char*>(entry);
+    std::printf("FIXTURE_SYSTEM_ENTRY %s expected=%02x actual=%02x\n", symbol,
+                static_cast<unsigned>(expected), static_cast<unsigned>(actual));
+    std::fflush(stdout);
+    return expected == actual;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
     if (argc != 2) return 41;
+    if (!SystemEntryMatchesFile(L"ntdll.dll", "RtlExitUserThread")) return 51;
     HANDLE token = nullptr; DWORD appContainer = 1, bytes = 0;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return 42;
     const auto tokenRead = GetTokenInformation(token, TokenIsAppContainer, &appContainer, sizeof(appContainer), &bytes);
