@@ -214,9 +214,14 @@ public sealed class ConfigurationStore
     {
         Validate(config);
         if (_chapterTwoProfile is not { } profile) return;
+        if (config.GmPanelEnabled && (!IPAddress.TryParse(config.GmPanelHost, out var gmAddress) || !IPAddress.IsLoopback(gmAddress)))
+            throw new ArgumentException("第二章 GM 面板须监听本机回环地址，例如 127.0.0.2。");
         var allowed = profile with
         {
             ScriptPvfPath = config.ScriptPvfPath,
+            GmPanelEnabled = config.GmPanelEnabled,
+            GmPanelHost = config.GmPanelHost,
+            GmPanelPort = config.GmPanelPort,
             ChannelName = config.ChannelName,
             MaximumUsers = config.MaximumUsers,
             MonsterExperienceMultiplier = config.MonsterExperienceMultiplier,

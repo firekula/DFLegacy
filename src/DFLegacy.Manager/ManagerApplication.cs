@@ -147,9 +147,17 @@ public static class ManagerApplication
             api.MapGet("/status", () =>
             {
                 var configuration = config.Read();
-                return new { server = supervisor.Snapshot, configuration.Configured, configuration.ChapterTwoLocal, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = !configuration.ChapterTwoLocal && File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
+                string? gmPanelUrl = null;
+                if (configuration.Effective.GmPanelEnabled)
+                {
+                    gmPanelUrl = configuration.ChapterTwoLocal
+                        ? new UriBuilder("http", configuration.ChapterTwoRemote ? "127.0.0.1" : configuration.Effective.GmPanelHost,
+                            configuration.Effective.GmPanelPort).Uri.AbsoluteUri
+                        : ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.GmPanelPort);
+                }
+                return new { server = supervisor.Snapshot, configuration.Configured, configuration.ChapterTwoLocal, configuration.ChapterTwoRemote, dataDirectory = paths.Data, version = ReadVersion(paths), assetsAvailable = !configuration.ChapterTwoLocal && File.Exists(Path.Combine(paths.AssetsDirectory, "manifest.json")),
                     accountServiceUrl = configuration.Effective.AccountServiceUrl, entranceHost = configuration.Effective.AdvertisedHost,
-                    gmPanelUrl = configuration.Effective.GmPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.GmPanelPort) : null,
+                    gmPanelUrl,
                     playerPanelUrl = configuration.Effective.PlayerPanelEnabled ? ConfigurationStore.PanelUrl(configuration.Effective.AccountServiceUrl, configuration.Effective.PlayerPanelPort) : null,
                     entrancePort = configuration.Effective.EntrancePort, gameplayAdvertisedHost = configuration.Effective.GameplayAdvertisedHost };
             });

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DFLegacy · 部署管理</title>
   <link rel="stylesheet" href="/manager.css">
-  <script src="/manager.js" defer></script>
+  <script src="/manager.js?v=20261116-gm-panel" defer></script>
 </head>
 <body>
   <section id="authPanel" class="auth-wrap">
@@ -58,6 +58,11 @@
           <article class="surface"><div class="section-heading"><h2>端口与频道</h2></div><div class="form-grid thirds"><label>登录 TCP<input name="entrancePort" type="number" min="1" max="65535" required></label><label>频道 TCP<input name="channelPort" type="number" min="1" max="65535" required></label><label>附加入口 TCP<input name="additionalEntrancePort" type="number" min="1" max="65535" required></label><label>账号 API HTTP<input name="adminPort" type="number" min="1" max="65535" required></label><label>GM HTTP<input name="gmPanelPort" type="number" min="1" max="65535" required></label><label>玩家中心 HTTP<input name="playerPanelPort" type="number" min="1" max="65535" required></label><label>角色 UDP<input name="characterPort" type="number" min="1" max="65535" required></label><label>玩法主 UDP<input name="gameplayPrimaryPort" type="number" min="1" max="65535" required></label><label>玩法次 UDP<input name="gameplaySecondaryPort" type="number" min="1" max="65535" required></label><label>频道名称<input name="channelName" maxlength="64" required></label><label>最大人数<input name="maximumUsers" type="number" min="1" max="65535" required></label></div></article>
           <article class="surface"><div class="section-heading"><h2>玩法倍率与启动选项</h2></div><div class="form-grid thirds"><label>怪物经验倍率（倍）<input name="monsterExperienceMultiplier" type="number" min="0" max="1000" step="any" required></label><label>通关经验倍率（倍）<input name="clearExperienceMultiplier" type="number" min="0" max="1000" step="any" required></label><label>怪物 / 深渊额外掉落倍率（倍）<input name="dropEconomicRate" type="number" min="0" max="1000" step="any" required></label><label>掉落概率倍率（倍）<input name="dropRatePercent" type="number" min="0" max="100" step="any" required></label><p class="small muted span-two">1 倍 = PVF 基础概率，2 倍 = 基础概率乘 2，最高仍为 100%；不会让所有物品必掉，也不会增加掉落表中的种类。额外倍率作用于普通怪物与深渊的相应判定，重叠时相乘，不代表金币数量倍率。经验倍率同样以 1 为原始值，保存后重启生效。</p><label>中继地址族<select name="relayPreference"><option value="ipv6">优先 IPv6</option><option value="ipv4">优先 IPv4</option></select></label></div><div class="check-row"><label class="checkbox"><input name="relayEnabled" type="checkbox">玩家登录器启用本机中继</label><label class="checkbox"><input name="autostart" type="checkbox">下次启动管理器时自动启动游戏服务</label></div><p class="small muted">中继模式下，游戏协议地址自动设为玩家本机回环地址；登录器仍连接上方的真实服务器地址。</p></article>
           <article class="surface"><div class="section-heading"><h2>ACT1 回退中继与 PvP</h2></div><div class="check-row"><label class="checkbox"><input name="fallbackRelayEnabled" type="checkbox">启用游戏内 TCP / UDP 回退中继</label><label class="checkbox"><input name="pvpEnabled" type="checkbox">启用 PvP 频道</label></div><div class="form-grid thirds"><label>回退 TCP<input name="fallbackRelayTcpPort" type="number" min="1" max="65535" required></label><label>回退 UDP<input name="fallbackRelayUdpPort" type="number" min="1" max="65535" required></label><label>PvP TCP<input name="pvpPort" type="number" min="1" max="65535" required></label><label class="span-two">回退中继通告 IPv4<input name="fallbackRelayAdvertisedHost" placeholder="留空跟随游戏协议地址"><small>域名直连时填写玩家可达的 IPv4；玩家登录器使用本机中继时请留空。更改端口后也须调整防火墙和 Docker 映射。</small></label></div></article>
+          <article id="chapterTwoGmPanel" class="surface" hidden>
+            <div class="section-heading"><h2>GM 面板</h2></div>
+            <label class="checkbox"><input name="gmPanelEnabled" type="checkbox">启用 GM 面板</label>
+            <p class="small muted">面板监听本机回环地址。远程管理时请先用 SSH 转发上方的 GM HTTP 端口。</p>
+          </article>
           <article id="chapterTwoTestTopUp" class="surface" hidden>
             <div class="section-heading"><h2>本机测试充值</h2><span class="subtle">第二章</span></div>
             <label class="checkbox"><input name="chapterTwoTestTopUpEnabled" type="checkbox">允许本机测试点券和黑钻</label>
