@@ -24,19 +24,30 @@ class ChapterTwoResourcesTest(unittest.TestCase):
         second = b'[maze info]\r\n1\r\n[maze info]\r\n2\r\n[other]\r\nkeep\r\n'
         self.assertEqual(resources.add_third_maze(first, second), second + b'\r\n[maze info]\r\n3\r\n')
 
-    def test_tn_selection_leaves_skill_and_portrait_intact(self):
+    def test_tn_selection_allows_only_ui_and_titles(self):
         cases = [
             ('sprite/interface/monstercard/', 'cards.img', True),
-            ('sprite/character/common/effect/title/', 'title.img', True),
+            ('sprite/interface/cashshop/', 'monsteravatar.img', True),
+            ('sprite/character/common/effect/title/', 'ef_title.img', True),
+            ('sprite/item/title/', 'badge.img', True),
             ('sprite/character/swordman/effect/frenzy/', 'sword.img', False),
             ('sprite/interface/', 'npc_dialog_face.img', False),
             ('sprite/interface/tutorial02/', 'comiccutswordman.img', False),
+            ('sprite/character/priest/', 'body.img', False),
+            ('sprite/character/gunner/equipment/avatar/', 'hat.img', False),
+            ('sprite/character/swordman/equipment/weapon/', 'sword.img', False),
+            ('sprite/monster/darkelf/', 'idle.img', False),
+            ('sprite/monster/title/', 'arbitrary.img', False),
+            ('sprite/creature/rabbit/', 'move.img', False),
+            ('sprite/map/cutscene/', 'intro.img', False),
+            ('sprite/map/title/', 'region.img', False),
+            ('sprite/object/', 'item.img', False),
         ]
         entries = [(path + prefix + name, image(marker))
                    for path, name, _ in cases for prefix, marker in [('', 1), ('(tn)', 2)]]
         result, selected, _ = resources.rewrite_npk(pack(entries))
         index = resources.image_index(result)
-        self.assertEqual(len(selected), 2)
+        self.assertEqual(len(selected), sum(enabled for _, _, enabled in cases))
         for path, name, enabled in cases:
             self.assertEqual(index[path + name][1][-1], 2 if enabled else 1)
             self.assertEqual(index[path + '(tn)' + name][1][-1], 2)

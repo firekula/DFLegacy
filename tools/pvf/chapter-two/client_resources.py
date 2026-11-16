@@ -13,7 +13,9 @@ DUNGEON = 'dungeon/act1/lorien.dgn'
 FIXED_IMAGE = 'sprite/interface/selectdungeonevent.img'
 EXPECTED_OVERLAY = '72074a99d04211d383238671feb7a2a2e3cc280aca17206388034001124ce344'
 PORTRAITS = {'characterillust.img', 'npc_dialog_face.img', 'comiccutswordman.img'}
-TITLE_DIRECTORIES = {'title', 'titleeffect', 'title_effect'}
+TITLE_PATHS = tuple(f'{parent}/{directory}/'
+                    for parent in ('sprite', 'sprite/item', 'sprite/character/common/effect')
+                    for directory in ('title', 'titleeffect', 'title_effect'))
 
 
 def add_third_maze(first, second):
@@ -58,11 +60,11 @@ def use_variant(name):
     *folders, filename = name.split('/')
     if filename in PORTRAITS or 'illust' in filename:
         return False
-    if TITLE_DIRECTORIES.intersection(folders):
+    if name.startswith(TITLE_PATHS):
         return True
     if 'effect' in folders or 'skill' in folders or filename.startswith('ef_'):
         return False
-    return folders[0] == 'sprite'
+    return folders[:2] == ['sprite', 'interface']
 
 
 def image_header(data):
