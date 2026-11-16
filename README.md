@@ -1,6 +1,6 @@
 # DFLegacy
 
-第二章客户端和服务端源码公开快照。当前发行版本为 v1.0.7。
+第二章客户端和服务端源码公开快照。当前发行版本为 v1.0.8。
 
 完整客户端及对应源码见 [GitCode Release](https://gitcode.com/firekula/DFLegacy/releases)。
 Windows 客户端解压到独立目录后运行 `DFLegacy.Launcher.exe`。客户端在线更新默认查询 GitCode，
