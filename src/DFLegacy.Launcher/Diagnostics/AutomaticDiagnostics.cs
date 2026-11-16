@@ -16,18 +16,32 @@ internal static class AutomaticDiagnostics
     private static bool suspended;
     private static string? configuredHelperDirectory;
     private static Func<ProcessStartInfo,Process?>? configuredStarter;
+    private static Task? chapterTwoUploader;
 
     internal static void Configure(LauncherOptions options,DiagnosticSettings? settings=null,Func<DiagnosticSession,Process?>? startHelper=null,string? helperDirectory=null,Func<ProcessStartInfo,Process?>? startProcess=null)
     {
-        // Keep this isolated flavor outside the ACT1 helper and per-user upload
-        // lifecycle, including when copied options or user preferences opt in.
-        if (ChapterTwoClient.IsBundled) return;
+        var chapterTwo = ChapterTwoClient.IsBundled;
         var registered=false;
         try
         {
+            if (chapterTwo && !ChapterTwoClient.IsLocalTest && !ChapterTwoClient.HasRemoteServer(options))
+            {
+                lock (Gate)
+                {
+                    Session?.Complete();
+                    Session = null;
+                    identity = null;
+                    configuredOptions = options;
+                    options.Diagnostics.Enabled = false;
+                    Program.Incidents.AutomaticReport = null;
+                }
+                return;
+            }
             settings??=Program.UserDiagnosticSettings;
             var clientRoot=Path.GetDirectoryName(Program.ResolveClientPath(options.ClientPath))!;
-            var site=string.IsNullOrWhiteSpace(options.Diagnostics.ServiceUrl)?options.ResolveAccountServiceUrl():options.Diagnostics.ServiceUrl;
+            var site=chapterTwo ? (ChapterTwoClient.IsLocalTest ? ChapterTwoConnection.Parse(null,null)
+                : ChapterTwoConnection.Parse(options.ChapterTwoServerHost,options.ChapterTwoServerIpv4)).AccountServiceUrl
+                : string.IsNullOrWhiteSpace(options.Diagnostics.ServiceUrl)?options.ResolveAccountServiceUrl():options.Diagnostics.ServiceUrl;
             var preference=settings.Read();
             helperDirectory=Path.GetFullPath(helperDirectory??AppContext.BaseDirectory);
             var key=settings.Root+"|"+clientRoot+"|"+site+"|"+Program.Incidents.SessionId+"|"+preference.Enabled+"|"+helperDirectory;
@@ -40,14 +54,26 @@ internal static class AutomaticDiagnostics
                 options.Diagnostics.Enabled=preference.Enabled;
                 // Dump preferences apply to the next game. Keep the live game's
                 // immutable registration and capture helper until it exits.
-                if(identity==key&&Session is not null&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible)&&
+                if(identity==key&&Session is not null&&(!chapterTwo||chapterTwoUploader?.IsCompleted!=true)&&(Session.Registration.LocalOnly||new DiagnosticQueue(Session).IsEligible)&&
                     (Session.Registration.LocalSmallDumps==preference.LocalSmallDumps||Session.GameAlive()))return;
                 Session?.Complete();
-                try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,ResolveInstalledIdentity(helperDirectory));}
+                try {Session=DiagnosticSession.Start(clientRoot,options.Diagnostics.Enabled?site:"",Program.Incidents.SessionId,settings.Root,ResolveInstalledIdentity(helperDirectory),recoverUncollected:chapterTwo);}
                 catch(ArgumentException) {Session=DiagnosticSession.Start(clientRoot,"",Program.Incidents.SessionId,settings.Root,ResolveInstalledIdentity(helperDirectory));}
                 identity=key;
                 Program.Incidents.AutomaticReport=Record;
                 registered=true;
+                if (chapterTwo)
+                {
+                    var session = Session;
+                    chapterTwoUploader = session.Registration.LocalOnly ? null : Task.Run(() =>
+                        DiagnosticHelper.RunAsync(session, finalDrainBudget: TimeSpan.FromSeconds(3), waitForLateNativeCapture: false,
+                            uploadOptions: new DiagnosticUploadOptions
+                            {
+                                ConnectCallback = (context, token) => DFLegacy.Relay.DomainHttpConnection.ConnectAsync(
+                                    context.DnsEndPoint.Host, context.DnsEndPoint.Port, token)
+                            }));
+                    return;
+                }
                 var helper=Path.Combine(helperDirectory,"DFLegacy.Diagnostics.exe");
                 if(!Session.Registration.LocalOnly&&(startHelper is not null||File.Exists(helper)))
                 {
@@ -84,17 +110,46 @@ internal static class AutomaticDiagnostics
     internal static async Task SuspendForUpdateAsync(CancellationToken token)
     {
         (DiagnosticSession Session,Process Process)[] owned;
+        Task? uploader;
         lock(Gate)
         {
             if(Session?.GameAlive()==true)throw new IOException("请先退出游戏再更新；本地现场助手仍在使用客户端文件。");
             suspended=true;identity=null;
             Session?.Complete();owned=helpers.ToArray();
+            uploader=chapterTwoUploader;
             foreach(var child in owned)child.Session.Complete();
         }
         using var bound=CancellationTokenSource.CreateLinkedTokenSource(token);bound.CancelAfter(TimeSpan.FromSeconds(12));
-        try {foreach(var child in owned)await child.Process.WaitForExitAsync(bound.Token).ConfigureAwait(false);}
+        try {
+            if(uploader is not null)await uploader.WaitAsync(bound.Token).ConfigureAwait(false);
+            foreach(var child in owned)await child.Process.WaitForExitAsync(bound.Token).ConfigureAwait(false);
+        }
         catch(OperationCanceledException) when(!token.IsCancellationRequested){throw new IOException("自动诊断助手尚未退出，请稍后重试更新。");}
         lock(Gate)foreach(var child in owned){if(helpers.Remove(child))child.Process.Dispose();}
+    }
+
+    internal static async Task FinishChapterTwoAsync()
+    {
+        try
+        {
+            Task? uploader;
+            lock (Gate)
+            {
+                uploader = chapterTwoUploader;
+                if (uploader is null) return;
+                Session?.CollectConfirmed();
+                Session?.Complete();
+                Session = null;
+                chapterTwoUploader = null;
+                identity = null;
+                Program.Incidents.AutomaticReport = null;
+            }
+            await uploader.WaitAsync(TimeSpan.FromSeconds(4)).ConfigureAwait(false);
+        }
+        catch (Exception error) when (error is TimeoutException or IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or System.Text.Json.JsonException)
+        {
+            Program.WriteLauncherLog("Chapter Two diagnostics could not finish before the launcher closed.");
+        }
     }
     internal static void ResumeAfterUpdate(bool handedOff=false)
     {
@@ -149,7 +204,8 @@ internal static class AutomaticDiagnostics
             var session=Session;if(session is null||!new DiagnosticQueue(session).IsEligible)return;
             if(incident.Stage=="game-exit"&&session.FindConfirmedNativeCause() is { } cause)incident=incident with {RelatedEventId=cause};
             session.WriteIncident(incident,"confirmed");
+            if (ChapterTwoClient.IsBundled) session.CollectConfirmed();
         }
-        catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException or System.Text.Json.JsonException) { }
+        catch(Exception error) when(error is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or System.Text.Json.JsonException) { }
     }
 }

@@ -29,6 +29,7 @@ internal static class LaunchFlow
         if (ChapterTwoClient.IsBundled)
         {
             await ChapterTwoClient.RunAsync(clientPath, options, account, cancellationToken);
+            await Diagnostics.AutomaticDiagnostics.FinishChapterTwoAsync();
             return;
         }
         ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);

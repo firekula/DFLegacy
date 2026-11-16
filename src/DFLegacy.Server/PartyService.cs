@@ -1319,11 +1319,18 @@ public sealed class PartyService : BackgroundService
     internal async Task<int> SendPartyChatAsync(
         Guid characterId,
         byte[] messageBytes,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<ValueTask>? echoToSoloSender = null)
     {
         var slots = GetPartySlots(characterId);
         var sender = slots?.FirstOrDefault(slot => slot.CharacterId == characterId);
-        if (sender is null) return 0;
+        if (sender is null)
+        {
+            if (echoToSoloSender is null) return 0;
+            cancellationToken.ThrowIfCancellationRequested();
+            await echoToSoloSender();
+            return 1;
+        }
         var packet = GameProtocolEngine.CreateMessageNotification(
             GameMessageType.Type02LightCyan, sender.AreaUserId, messageBytes);
         var sent = 0;

@@ -61,7 +61,8 @@ internal sealed record DungeonInstanceRoomSnapshot(
     GameDungeonMonster[] Monsters,
     GamePassiveObjectDrop[] PassiveObjectDrops,
     bool FirstVisit,
-    bool ReuseClientRoomState);
+    bool ReuseClientRoomState,
+    ChapterTwoCemeteryGateState? CemeteryGate = null);
 
 /// <summary>
 /// 一个副本实例（设计稿 §3.1）：每队一份；单人 = 以角色 id 为键的实例（设计稿 §7 决策 1）。
@@ -555,6 +556,8 @@ internal sealed partial class DungeonInstance(
     private bool _bossDeathCascadeStarted;
     private bool _bossDeathCascadeAnnounced;
     private int _monsterDeathSettlementsPending;
+    private static int _nextCemeteryRun;
+    private uint _cemeteryRunToken;
 
     internal long RoomGeneration { get { lock (Gate) { return _roomGeneration; } } }
 
@@ -574,10 +577,18 @@ internal sealed partial class DungeonInstance(
 
     internal bool TryBeginMonsterDeath(
         ushort uniqueId, long? expectedRoomGeneration,
-        out GameDungeonMonster defeatedMonster, out sbyte championRewardOrdinal)
+        out GameDungeonMonster defeatedMonster, out sbyte championRewardOrdinal) =>
+        TryBeginMonsterDeath(uniqueId, expectedRoomGeneration, out defeatedMonster, out championRewardOrdinal, out _);
+
+    internal bool TryBeginMonsterDeath(
+        ushort uniqueId, long? expectedRoomGeneration,
+        out GameDungeonMonster defeatedMonster, out sbyte championRewardOrdinal,
+        out ChapterTwoCemeteryGateState? cemeteryUnlock)
     {
         lock (Gate)
         {
+            cemeteryUnlock = null;
+            var wasLocked = GetCemeteryGateLocked() is { IsOpen: false };
             defeatedMonster = _roomMonsters.FirstOrDefault(monster => monster.UniqueId == uniqueId)!;
             championRewardOrdinal = GameProtocolEngine.NoChampionRewardOrdinal;
             if (defeatedMonster is null || !TryTakeMonsterDeath(uniqueId, out _, expectedRoomGeneration))
@@ -586,9 +597,28 @@ internal sealed partial class DungeonInstance(
             }
             championRewardOrdinal = RegisterMonsterKill(defeatedMonster.Type);
             _monsterDeathSettlementsPending++;
+            if (wasLocked && GetCemeteryGateLocked() is { IsOpen: true } opened)
+                cemeteryUnlock = opened;
             return true;
         }
     }
+
+    internal ChapterTwoCemeteryGateState? GetCemeteryGate()
+    {
+        lock (Gate) return GetCemeteryGateLocked();
+    }
+
+    internal bool CanSendCemeteryUnlock(DungeonInstanceMember member, uint runToken)
+    {
+        lock (Gate)
+            return GetCemeteryGateLocked() is { IsOpen: true } gate && gate.RunToken == runToken
+                && _members.Any(candidate => ReferenceEquals(candidate, member));
+    }
+
+    private ChapterTwoCemeteryGateState? GetCemeteryGateLocked() =>
+        _run.IsActive && Layout is { DungeonId: ChapterTwoCemeteryGateState.DungeonId } layout
+            ? new(_cemeteryRunToken, !_run.IsBossRoomHuntPending(layout.BossX, layout.BossY))
+            : null;
 
     internal bool CompleteMonsterDeath(long roomGeneration)
     {
@@ -1290,6 +1320,12 @@ internal sealed partial class DungeonInstance(
         ResetPartyMemberLivesLocked();
         DungeonOption = dungeonOption;
         Layout = layout;
+        if (layout.DungeonId == ChapterTwoCemeteryGateState.DungeonId)
+        {
+            _cemeteryRunToken = unchecked((uint)Interlocked.Increment(ref _nextCemeteryRun));
+            if (_cemeteryRunToken == 0)
+                _cemeteryRunToken = unchecked((uint)Interlocked.Increment(ref _nextCemeteryRun));
+        }
         _debugRunId = DateTime.UtcNow.Ticks;
         _sssRatingMembers.Clear();
         _dropDebugAll = false;
@@ -1416,7 +1452,7 @@ internal sealed partial class DungeonInstance(
             LastRoomEntryWasFirstVisit = transition.FirstVisit;
             ResetRoomCollections(transition.Room.Monsters);
             // 地狱房的被动掉落 detach（终审 I3，从单人的 CMD 48 分支集中到这里）：
-            // ①退出**未清**的地狱房（`CompletedHellRoomOnExit`，客户端场景要重建为空的地图房）
+            // ①退出**未清**的地狱房（`CompletedHellRoomOnExit`，可跳过的遭遇结束）
             //    → 离开的那间房的被动掉落永远不可达；
             // ②进入**已清**的地狱房（客户端重建空场景）→ 目标房间那次遭遇留下的被动掉落不该存在。
             // 单人的调用点原来在会话里（报文之前/之后各一处），搬进来后三条换房路径
@@ -1755,7 +1791,8 @@ internal sealed partial class DungeonInstance(
                 transition.Room.Monsters,
                 drops,
                 transition.FirstVisit,
-                transition.ReuseClientRoomState);
+                transition.ReuseClientRoomState,
+                GetCemeteryGateLocked());
         }
     }
 
@@ -1810,7 +1847,8 @@ internal sealed partial class DungeonInstance(
                 current.Monsters,
                 drops,
                 FirstVisit: true,
-                ReuseClientRoomState: false);
+                ReuseClientRoomState: false,
+                CemeteryGate: GetCemeteryGateLocked());
             return true;
         }
     }

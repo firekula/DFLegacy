@@ -18,11 +18,25 @@ internal static class PartyChatSmokeTests
         check(await Say("阿尔法", text) == 0 && harness.Of("阿尔法").Count == 0,
             "a party-chat request without a party stays silent");
 
+        var echoed = new List<GameServerPacket>();
+        ValueTask EchoSolo()
+        {
+            echoed.Add(GameProtocolEngine.CreateMessageNotification(
+                GameMessageType.Type02LightCyan, harness.UidOf("阿尔法"), text));
+            return ValueTask.CompletedTask;
+        }
+        check(await harness.Service.SendPartyChatAsync(harness.IdOf("阿尔法"), text,
+                CancellationToken.None, EchoSolo) == 1 && echoed is [var echo] && echo.ProtocolId == 12 &&
+                echo.Payload[0] == (byte)GameMessageType.Type02LightCyan && echo.Payload.AsSpan(7).SequenceEqual(text) &&
+                harness.Of("布拉沃").Count == 0 && harness.Of("查理").Count == 0,
+            "Chapter Two solo dungeon chat echoes the original message only to its sender");
+
         await harness.InviteAndAcceptAsync("阿尔法", "布拉沃");
         await harness.LeaveTownAsync("阿尔法");
         await harness.LeaveTownAsync("布拉沃");
         harness.ClearAll();
-        check(await Say("阿尔法", text) == 2,
+        check(await harness.Service.SendPartyChatAsync(harness.IdOf("阿尔法"), text,
+                CancellationToken.None, EchoSolo) == 2 && echoed.Count == 1,
             "party chat reaches self and teammate while both are outside the town directory");
         var expected = new byte[7 + text.Length];
         expected[0] = 2;

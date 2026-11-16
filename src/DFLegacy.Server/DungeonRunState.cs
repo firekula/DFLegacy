@@ -111,7 +111,7 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
             return false;
         }
 
-        if (_layout is { } layout && layout.BossRoomHunts.Any(hunt => hunt.MonsterId == defeated.MonsterIndex))
+        if (IsBossRoomHuntMonster(defeated))
         {
             _bossRoomHuntKills[defeated.MonsterIndex] = _bossRoomHuntKills.GetValueOrDefault(defeated.MonsterIndex) + 1;
         }
@@ -119,6 +119,9 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         TryCompleteCurrentHellRoom();
         return true;
     }
+
+    private bool IsBossRoomHuntMonster(GameDungeonMonster monster) =>
+        _layout?.BossRoomHunts.Any(hunt => hunt.MonsterId == monster.MonsterIndex) == true;
 
     public bool HasClearedMap(ushort mapId) => mapId != 0
         && _rooms.Values.Any(room => room.EncounterRoom.MapId == mapId
@@ -202,8 +205,10 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
             return false;
         }
 
-        _current.DefeatedMonsterIds.UnionWith(
-            _current.EncounterRoom.Monsters.Select(monster => monster.UniqueId));
+        // Leaving abandons the optional encounter. Required hunt targets still need a real kill.
+        _current.DefeatedMonsterIds.UnionWith(_current.EncounterRoom.Monsters
+            .Where(monster => !IsBossRoomHuntMonster(monster))
+            .Select(monster => monster.UniqueId));
         _current.DestroyedPassiveObjectIds.UnionWith(
             _current.EncounterRoom.PassiveObjects.Select(passiveObject =>
                 passiveObject.ObjectIndex));
@@ -338,8 +343,8 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
             Revisit: revisit,
             completedHellRoomOnExit,
             // Ordinary revisits reuse the room snapshot that NOTI 29 built
-            // on first entry. A cleared hell encounter is the exception: its
-            // client scene must be rebuilt as the empty base-map room.
+            // on first entry. An ended hell encounter rebuilds the client scene
+            // with only the unfinished hunts or with the empty base map.
             ReuseClientRoomState: revisit
                 && !(enteredState.HellEncounterCleared
                     && enteredState.EncounterRoom.IsHellRoom));
@@ -370,13 +375,18 @@ public sealed class DungeonRunState(DungeonCatalog catalog)
         }
     }
 
-    private static DungeonRoomDefinition ProjectRoom(RoomState state)
+    private DungeonRoomDefinition ProjectRoom(RoomState state)
     {
         if (state.HellEncounterCleared && state.EncounterRoom.IsHellRoom)
         {
-            return state.BaseRoom with
+            var remainingHunts = state.EncounterRoom.Monsters
+                .Where(monster => !state.DefeatedMonsterIds.Contains(monster.UniqueId) && IsBossRoomHuntMonster(monster))
+                .ToArray();
+            // Keep the encounter map while a survivor refers to one of its original MAP rows.
+            var room = remainingHunts.Length == 0 ? state.BaseRoom : state.EncounterRoom;
+            return room with
             {
-                Monsters = [],
+                Monsters = remainingHunts,
                 PassiveObjects = [],
                 PassiveItemSpawns = []
             };

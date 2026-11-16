@@ -19,15 +19,37 @@ internal static class ChapterTwoCemeterySmokeTests
                 new GoldDropCatalog(scripts, NullLogger<GoldDropCatalog>.Instance)),
             NullLogger<DungeonCatalog>.Instance);
         var items = new ItemCatalog(scripts, NullLogger<ItemCatalog>.Instance);
+        var directory = new TownSessionDirectory(options, TimeProvider.System, NullLogger<TownSessionDirectory>.Instance);
+        using var parties = new PartyService(new JsonGameStore(options, NullLogger<JsonGameStore>.Instance),
+            directory, TimeProvider.System, NullLogger<PartyService>.Instance);
+        using var dungeonParties = new DungeonPartyService(parties, directory, new DungeonInstanceRegistry(),
+            TimeProvider.System, NullLogger<DungeonPartyService>.Instance);
 
         VerifyRun(partyId: 0, coLocateGuardians: true);
         VerifyRun(partyId: 42, coLocateGuardians: false);
+        for (byte difficulty = 0; difficulty <= DungeonDifficultyProgression.HighestDifficulty; difficulty++)
+        {
+            VerifyGuardiansAfterLeavingHell(difficulty, 1);
+            VerifyGuardiansAfterLeavingHell(difficulty, 2);
+        }
         VerifyShadowMazePlacements(catalog, check);
 
         void VerifyRun(ushort partyId, bool coLocateGuardians)
         {
             var runName = coLocateGuardians ? "solo" : "party";
             var instance = new DungeonInstance(partyId, Guid.NewGuid(), catalog, items);
+            var received = new List<GameServerPacket>[partyId == 0 ? 1 : 3];
+            for (var slot = 0; slot < received.Length; slot++)
+            {
+                var inbox = received[slot] = [];
+                check(instance.TryRegisterMemberForEntry(new DungeonInstanceMember(Guid.NewGuid(),
+                    (ushort)(slot + 1), (byte)slot, $"member-{slot}", _ => ValueTask.CompletedTask,
+                    SendConditional: (packet, canWrite) =>
+                    {
+                        if (canWrite()) inbox.Add(packet);
+                        return ValueTask.CompletedTask;
+                    }, IsChapterTwo: true)), $"{runName}: member {slot} is registered");
+            }
             var random = new EncounterRandom();
             var hasLayout = catalog.TryCreateLayout(35, out var layout, random: new RoomRandom(coLocateGuardians));
             check(hasLayout && (layout.StartX, layout.StartY, layout.BossX, layout.BossY) == (2, 2, 2, 1),
@@ -38,6 +60,19 @@ internal static class ChapterTwoCemeterySmokeTests
             check(started && start.Room.MapId == 5401 && !start.Room.Monsters.Any(IsGuardian),
                 $"{runName}: the start room keeps its scripted actors");
             if (!started) return;
+            var initialRoom = instance.CaptureCurrentRoomSnapshot(1);
+            var entry = DungeonEntryPackets.PlanMemberEntry(instance, initialRoom, null, null, 0, chapterTwo: true);
+            check(entry.TakeLast(3).Select(packet => packet.ProtocolId)
+                .SequenceEqual(new byte[] { GameProtocolEngine.DungeonInfoNotification, 186, GameProtocolEngine.StartMapNotification }),
+                $"{runName}: the server projects its authoritative gate state before the first map");
+            check(DungeonEntryPackets.PlanMemberEntry(instance, initialRoom, null, null, 0)
+                    .All(packet => packet.ProtocolId != 186),
+                $"{runName}: the new gate packet is scoped to Chapter Two");
+            var locked = entry.SingleOrDefault(packet => packet.ProtocolId == 186);
+            var token = locked?.Payload.Length == 9
+                ? BinaryPrimitives.ReadUInt32LittleEndian(locked.Payload.AsSpan(4)) : 0;
+            check(token != 0 && locked!.Payload.AsSpan(0, 4).SequenceEqual("CEM1"u8) && locked.Payload[8] == 0,
+                $"{runName}: first entry binds a locked state to the new run token");
 
             foreach (var monster in start.Room.Monsters)
                 instance.TryTakeMonsterDeath(monster.UniqueId, out _);
@@ -70,9 +105,16 @@ internal static class ChapterTwoCemeterySmokeTests
                         $"{runName}: guardian {guardian.MonsterIndex} preserves the client MAP row in START_MAP for map {room.MapId}");
                     check(guardian.Type == GameDungeonMonsterTypes.Normal && packet.Payload[slot + 6] == 0,
                         $"{runName}: guardian {guardian.MonsterIndex} keeps its original grade during champion selection");
-                    check(instance.TryTakeMonsterDeath(guardian.UniqueId, out _)
-                        && !instance.TryTakeMonsterDeath(guardian.UniqueId, out _),
+                    var generation = instance.RoomGeneration;
+                    check(instance.TryBeginMonsterDeath(guardian.UniqueId, generation, out _, out _, out var unlocked)
+                        && instance.CompleteMonsterDeath(generation)
+                        && !instance.TryBeginMonsterDeath(guardian.UniqueId, generation, out _, out _, out var duplicate)
+                        && duplicate is null,
                         $"{runName}: guardian {guardian.MonsterIndex} settles once");
+                    check((unlocked is { IsOpen: true } opened && opened.RunToken == token) == (seen.Count == 4),
+                        $"{runName}: the fourth accepted kill alone produces an unlock for the current run");
+                    if (unlocked is { } gate)
+                        dungeonParties.BroadcastCemeteryGateOpenAsync(instance, gate).GetAwaiter().GetResult();
                 }
 
                 foreach (var monster in room.Monsters.Where(monster => !IsGuardian(monster)))
@@ -81,12 +123,101 @@ internal static class ChapterTwoCemeterySmokeTests
 
             check(seen.Order().SequenceEqual(Guardians) && guardianRooms.Count == (coLocateGuardians ? 1 : 4),
                 $"{runName}: the run assigns every guardian exactly once and preserves independent room draws");
+            check(received.All(inbox => inbox is [{ ProtocolId: 186, Payload: { Length: 9 } body }]
+                && BinaryPrimitives.ReadUInt32LittleEndian(body.AsSpan(4)) == token && body[8] == 2),
+                $"{runName}: all Chapter Two members receive the same single authoritative unlock");
+            var reopenedEntry = DungeonEntryPackets.PlanMemberEntry(instance,
+                instance.CaptureCurrentRoomSnapshot(1), null, null, 0, chapterTwo: true);
+            check(reopenedEntry.SingleOrDefault(packet => packet.ProtocolId == 186)?.Payload is { Length: 9 } replay
+                && BinaryPrimitives.ReadUInt32LittleEndian(replay.AsSpan(4)) == token && replay[8] == 1,
+                $"{runName}: a live entrant receives the already-open state");
             check(instance.TryAdvanceRoom(2, 1, out var boss, out error) && error == 0
                 && boss!.Room.MapId == 5424 && boss.Room.Monsters.Any(monster => monster.MonsterIndex == 1010),
                 $"{runName}: defeating the four guardians admits the existing boss room");
             check(instance.TryStartRun(layout, 0, 0, out _, random)
                 && !instance.TryAdvanceRoom(2, 1, out _, out error) && error == 7,
                 $"{runName}: a new run clears guardian kill progress");
+            dungeonParties.BroadcastCemeteryGateOpenAsync(instance, new(token, IsOpen: true)).GetAwaiter().GetResult();
+            check(instance.GetCemeteryGate() is { IsOpen: false } nextGate && nextGate.RunToken != token
+                && received.All(inbox => inbox.Count == 1),
+                $"{runName}: the next run rejects a delayed unlock from the previous instance");
+            var noHunts = new DungeonLayout(layout.DungeonId, layout.Maze,
+                new(layout.StartX, layout.StartY), new(layout.BossX, layout.BossY));
+            var startedWithoutHunts = instance.TryStartRun(noHunts, 0, 0, out _, random);
+            var gateWithoutHunts = instance.GetCemeteryGate();
+            check(startedWithoutHunts && gateWithoutHunts is { IsOpen: true },
+                $"{runName}: the server can project a Cemetery layout without any required hunts (started={startedWithoutHunts}, gate={gateWithoutHunts})");
+        }
+
+        void VerifyGuardiansAfterLeavingHell(byte difficulty, byte option)
+        {
+            var runName = $"Cemetery hell exit (difficulty {difficulty}, option {option})";
+            var instance = new DungeonInstance(42, Guid.NewGuid(), catalog, items);
+            // The third eligible hunt cell is the seal-door coordinate (2,0).
+            var hasLayout = catalog.TryCreateLayout(35, out var layout, 4, new HellGuardianLayoutRandom());
+            var random = new EncounterRandom();
+            var started = hasLayout && instance.TryStartRun(layout, difficulty, option, out _, random);
+            check(started, $"{runName}: starts a real Cemetery layout");
+            if (!started) return;
+
+            var current = instance.CaptureCurrentRoomSnapshot(1).Room;
+            foreach (var (x, y) in Ring)
+            {
+                foreach (var monster in current.Monsters)
+                    instance.TryTakeMonsterDeath(monster.UniqueId, out _);
+
+                if (!instance.TryMoveRoom(x, y, out var entered, random))
+                {
+                    check(false, $"{runName}: visits ({x},{y})");
+                    return;
+                }
+
+                current = entered.Room;
+                if (current is not { IsHellRoom: true }) continue;
+
+                var guardians = current.Monsters.Where(IsGuardian).ToArray();
+                var prepared = guardians.Select(monster => monster.MonsterIndex).SequenceEqual(Guardians[..2])
+                    && current.Monsters.Any(monster => monster.IsHostile && !IsGuardian(monster))
+                    && instance.TryTakeMonsterDeath(guardians[0].UniqueId, out _);
+                check(prepared, $"{runName}: leaves one guardian and the other hell enemies alive");
+                if (!prepared) return;
+
+                for (var visit = 0; visit < 2; visit++)
+                {
+                    var returned = instance.TryMoveRoom(3, 0, out var departed, random)
+                        && departed.CompletedHellRoomOnExit == (visit == 0)
+                        && instance.TryMoveRoom(x, y, out entered, random);
+                    if (!returned)
+                    {
+                        check(false, $"{runName}: leaving and returning to the hell room succeeds");
+                        return;
+                    }
+
+                    var snapshot = instance.CaptureRoomSnapshot(x, y, entered, 1);
+                    var wire = DungeonEntryPackets.PlanStartMap(snapshot).Payload;
+                    var keptGuardian = entered.Room.MapId == 60016
+                        && entered.Room.Monsters.SequenceEqual(guardians[1..])
+                        && !entered.ReuseClientRoomState
+                        && snapshot.HellPartyMode == 0
+                        && snapshot.PassiveObjectDrops.Length == 0
+                        && wire.Length >= 20 && wire[6] == 2 && wire[9] == 1 && wire[^1] == 0
+                        && wire[10] == guardians[1].MapListIndex
+                        && BinaryPrimitives.ReadUInt16LittleEndian(wire.AsSpan(11)) == guardians[1].UniqueId
+                        && BinaryPrimitives.ReadUInt16LittleEndian(wire.AsSpan(13)) == guardians[1].MonsterIndex;
+                    check(keptGuardian, $"{runName}: revisit {visit + 1} restores only the surviving guardian with its original START_MAP row");
+                    if (!keptGuardian) return;
+                }
+
+                check(instance.TryTakeMonsterDeath(guardians[1].UniqueId, out _)
+                    && !instance.TryTakeMonsterDeath(guardians[1].UniqueId, out _),
+                    $"{runName}: the restored guardian is counted exactly once");
+                current = instance.CaptureCurrentRoomSnapshot(1).Room;
+                check(!current.IsHellRoom && current.Monsters.Length == 0,
+                    $"{runName}: the room is empty after its last guardian dies");
+            }
+
+            check(instance.TryAdvanceRoom(2, 1, out var boss, out var code) && code == 0 && boss?.Room.MapId == 5424,
+                $"{runName}: all four real guardian kills open the boss door with the hell enemies skipped");
         }
     }
 
@@ -137,6 +268,13 @@ internal static class ChapterTwoCemeterySmokeTests
     private sealed class LayoutRandom(int maze, int draw) : IDropRandomSource
     {
         private readonly Queue<int> _rolls = new([maze, 0, 0, draw]);
+
+        public int Next(int exclusiveMaximum) => _rolls.TryDequeue(out var roll) ? roll : 0;
+    }
+
+    private sealed class HellGuardianLayoutRandom : IDropRandomSource
+    {
+        private readonly Queue<int> _rolls = new([0, 0, 0, 2, 2, 0, 1]);
 
         public int Next(int exclusiveMaximum) => _rolls.TryDequeue(out var roll) ? roll : 0;
     }

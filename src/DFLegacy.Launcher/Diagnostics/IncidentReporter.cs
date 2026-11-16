@@ -49,7 +49,7 @@ internal sealed class IncidentReporter
     {
         lock(gate) { context.Enqueue($"{DateTimeOffset.Now:O} {Limit(Redact(message),1024)}"); while(context.Count>64) context.Dequeue(); }
     }
-    internal string? Report(IncidentKind kind,string stage,Exception? error=null,string? details=null,string? updateId=null,string? repetitionKey=null,DFLegacy.Diagnostics.DiagnosticIncident? structured=null)
+    internal string? Report(IncidentKind kind,string stage,Exception? error=null,string? details=null,string? updateId=null,string? repetitionKey=null,DFLegacy.Diagnostics.DiagnosticIncident? structured=null,bool reportAutomatically=true)
     {
         if(error is OperationCanceledException) return null;
         lock(gate)
@@ -66,7 +66,7 @@ internal sealed class IncidentReporter
                 var eventId=grouped ? previous.EventId : Guid.NewGuid().ToString("N");
                 var count=grouped ? previous.Count+1 : 1;
                 var first=grouped ? previous.First : now;
-                if(kind!=IncidentKind.Update)
+                if(kind!=IncidentKind.Update && reportAutomatically)
                 {
                     var evidence=structured??new DFLegacy.Diagnostics.DiagnosticIncident {
                         Kind=kind==IncidentKind.NetworkError?"networkerror":kind==IncidentKind.Crash&&stage!="game-exit"?"crash":"error",
@@ -100,7 +100,7 @@ internal sealed class IncidentReporter
         long total=0;
         for(var i=0;i<files.Length;i++) { total+=files[i].Length; if(i>=maxFiles || total>maxBytes || files[i].LastWriteTimeUtc<DateTime.UtcNow.AddDays(-14)) try { files[i].Delete(); } catch(IOException) { } }
     }
-    internal string? ReportExit(int processId,int exitCode,bool cancelled,string? nativeReport=null)
+    internal string? ReportExit(int processId,int exitCode,bool cancelled,string? nativeReport=null,DFLegacy.Diagnostics.DiagnosticIncident? structured=null,bool reportAutomatically=true)
     {
         if(exitCode==0||cancelled)return null;
         string? native=nativeReport;
@@ -115,7 +115,8 @@ internal sealed class IncidentReporter
                 }
         }
         catch(Exception ex) when(ex is IOException or UnauthorizedAccessException) { }
-        return Report(IncidentKind.Crash,"game-exit",details:$"evidence=abnormal-process-exit\ngamePid={processId}\nexitCode=0x{exitCode:X8}\nnativeCause={(native is null ? "unknown" : "see-linked-native-record")}\nnativeReport={native ?? "missing"}\nnativeScene={(native is null ? "missing; a nonzero exit does not establish an unhandled exception" : "available")}");
+        return Report(IncidentKind.Crash,"game-exit",details:$"evidence=abnormal-process-exit\ngamePid={processId}\nexitCode=0x{exitCode:X8}\nnativeCause={(native is null ? "unknown" : "see-linked-native-record")}\nnativeReport={native ?? "missing"}\nnativeScene={(native is null ? "missing; a nonzero exit does not establish an unhandled exception" : "available")}",
+            structured:structured,reportAutomatically:reportAutomatically);
     }
     internal string? ReportNetwork(DFLegacy.Relay.RelayTermination value) => !value.IsIncident ? null : Report(IncidentKind.NetworkError,"relay-"+value.Phase,
         details:$"evidence=relay-termination\nreason={value.Reason}\nprotocol={value.Protocol}\ndirection={value.Direction}\nport={value.Port}\nconnectionId={value.ConnectionId}\nelapsedMs={value.ElapsedMilliseconds:F0}\nclientToServerBytes={value.ClientToServerBytes}\nserverToClientBytes={value.ServerToClientBytes}\nsocketError={value.SocketError}\nsocketCode={(int?)value.SocketError}\nnativeError={value.NativeError}\nattempts={value.Attempts}",repetitionKey:$"{value.Reason}|{value.Protocol}|{value.Phase}|{value.Port}|{value.Direction}|{value.SocketError}",

@@ -354,6 +354,9 @@ $configure = @(
     '    OutputDebugStringA(dfl::chapter_two::InstallKeyboardMessageTiming(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: keyboard message hooks installed.\n"',
     '        : "DFLegacy Chapter Two: keyboard message hook signature mismatch.\n");',
+    '    OutputDebugStringA(dfl::chapter_two::InstallImeComposition(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: IME composition guards installed.\n"',
+    '        : "DFLegacy Chapter Two: IME composition signature mismatch.\n");',
     '    OutputDebugStringA(dfl::chapter_two::InstallBackgroundPolicy(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: background policy installed.\n"',
     '        : "DFLegacy Chapter Two: background policy signature mismatch.\n");',
@@ -381,6 +384,9 @@ $configure = @(
     '    OutputDebugStringA(dfl::chapter_two::InstallDungeonTooltip(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: local dungeon tooltip cleanup installed.\n"',
     '        : "DFLegacy Chapter Two: local dungeon tooltip cleanup signature mismatch.\n");',
+    '    OutputDebugStringA(dfl::chapter_two::InstallCemeteryGuard(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: Cemetery gate synchronization installed.\n"',
+    '        : "DFLegacy Chapter Two: Cemetery gate synchronization signature mismatch.\n");',
     '    OutputDebugStringA(dfl::chapter_two::InstallAdultBlood(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: native adult blood selection installed.\n"',
     '        : "DFLegacy Chapter Two: native adult blood selection signature mismatch.\n");',
@@ -489,7 +495,9 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoPopupAnnouncement.h"' + $nl +
     '#include "ChapterTwoShopLayout.h"' + $nl +
     '#include "ChapterTwoCountdownCoin.h"' + $nl +
+    '#include "ChapterTwoImeComposition.h"' + $nl +
     '#include "ChapterTwoDungeonTooltip.h"' + $nl +
+    '#include "ChapterTwoCemeteryGuard.h"' + $nl +
     '#include "ChapterTwoAdultBlood.h"' + $nl +
     $original.Replace($anchor, $configure)
 $main = Join-Path $loader 'main.cpp'
@@ -535,6 +543,8 @@ if ($LASTEXITCODE) { throw 'Chapter Two mailbox refresh tests failed.' }
 if ($LASTEXITCODE) { throw 'Chapter Two native creature shop tests failed.' }
 & (Join-Path $build 'Release/chapter_two_countdown_coin_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two countdown coin receipt tests failed.' }
+& (Join-Path $build 'Release/chapter_two_ime_composition_tests.exe') $image
+if ($LASTEXITCODE) { throw 'Chapter Two IME composition tests failed.' }
 & (Join-Path $build 'Release/chapter_two_cursor_auto_tests.exe') $image
 if ($LASTEXITCODE) { throw 'Chapter Two cursor auto tests failed.' }
 & (Join-Path $build 'Release/chapter_two_payment_protocol_tests.exe')

@@ -3580,6 +3580,17 @@ public static partial class GameProtocolEngine
             payload.ToArray());
     }
 
+    // Ver_OB_216's notification table leaves 186 at its default (ignored) entry.
+    public const byte ChapterTwoCemeteryGateNotification = 186;
+
+    public static GameServerPacket CreateChapterTwoCemeteryGate(uint runToken, bool entry, bool open)
+    {
+        byte[] payload = [(byte)'C', (byte)'E', (byte)'M', (byte)'1', 0, 0, 0, 0,
+            entry ? (open ? (byte)1 : (byte)0) : (byte)2];
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(4), runToken);
+        return new GameServerPacket(NotificationPacketType, ChapterTwoCemeteryGateNotification, payload);
+    }
+
     public static GameServerPacket CreateCachedStartMap(
         byte roomX,
         byte roomY,

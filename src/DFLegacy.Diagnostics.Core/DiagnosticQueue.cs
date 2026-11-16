@@ -9,6 +9,7 @@ public sealed record PendingDiagnostic(string EventId,byte[] Body);
 public sealed record DiagnosticUploadResult(string Status,string? ReceiptId=null);
 public sealed class DiagnosticUploadOptions
 {
+    public Func<SocketsHttpConnectionContext,CancellationToken,ValueTask<Stream>>? ConnectCallback { get; init; }
     public TimeSpan RetryDelay { get; init; } = TimeSpan.FromSeconds(1);
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(15);
     public TimeSpan ExhaustedRetryDelay { get; init; } = TimeSpan.FromMinutes(1);
@@ -132,6 +133,7 @@ public sealed class DiagnosticQueue(DiagnosticSession session)
                 var backoff=DiagnosticFiles.Read<DiagnosticSiteBackoff>(BackoffPath,4096);
                 if(backoff is not null&&backoff.Site==Registration.Site&&backoff.Until>DateTimeOffset.UtcNow)return new("retry");
                 using var handler=new SocketsHttpHandler {AllowAutoRedirect=false,UseCookies=false,UseProxy=false,ConnectTimeout=TimeSpan.FromSeconds(5),MaxConnectionsPerServer=1};
+                if(options.ConnectCallback is not null)handler.ConnectCallback=options.ConnectCallback;
                 using var client=new HttpClient(handler){Timeout=Timeout.InfiniteTimeSpan};
                 var result=new DiagnosticUploadResult("idle");
                 foreach(var pending in ReadPending()) {

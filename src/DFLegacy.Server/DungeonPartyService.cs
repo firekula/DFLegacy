@@ -16,7 +16,8 @@ internal static class DungeonEntryPackets
         DungeonInstanceRoomSnapshot room,
         GameServerPacket? roster,
         GameServerPacket? peerTable,
-        byte hostSlot)
+        byte hostSlot,
+        bool chapterTwo = false)
     {
         var packets = new List<GameServerPacket>(5);
         if (roster is not null)
@@ -38,6 +39,8 @@ internal static class DungeonEntryPackets
             instance.Layout?.BossY ?? byte.MaxValue,
             flagA: room.HellRoomX,
             flagB: room.HellRoomY));
+        if (chapterTwo && room.CemeteryGate is { } gate)
+            packets.Add(gate.CreateEntryPacket());
         packets.Add(PlanStartMap(room));
         return packets;
     }
@@ -343,6 +346,20 @@ public sealed class DungeonPartyService : BackgroundService
                 CrossSessionDelivery.Describe(
                     member.CharacterId, member.CharacterName, member.AreaUserId),
                 member.Send);
+        }
+    }
+
+    internal async Task BroadcastCemeteryGateOpenAsync(DungeonInstance instance, ChapterTwoCemeteryGateState gate)
+    {
+        var packet = gate.CreateUnlockPacket();
+        foreach (var member in instance.Members)
+        {
+            if (!member.IsChapterTwo || member.SendConditional is not { } sendConditional) continue;
+            await CrossSessionDelivery.SendSafelyAsync(
+                _logger,
+                packet,
+                CrossSessionDelivery.Describe(member.CharacterId, member.CharacterName, member.AreaUserId),
+                value => sendConditional(value, () => instance.CanSendCemeteryUnlock(member, gate.RunToken)));
         }
     }
 
