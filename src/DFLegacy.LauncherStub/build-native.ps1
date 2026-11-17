@@ -27,6 +27,11 @@ $buildPath = [IO.Path]::GetFullPath($BuildDirectory)
 if ($buildPath -eq [IO.Path]::GetPathRoot($buildPath) -or $buildPath -eq $repositoryRoot) {
     throw 'BuildDirectory must be a dedicated build subdirectory.'
 }
+# MSBuild/CMake need a writable temp; the harness AppData temp can be ACL-restricted.
+$buildTemp = Join-Path $buildPath 'tmp'
+New-Item -ItemType Directory -Force -Path $buildTemp | Out-Null
+$env:TEMP = $buildTemp
+$env:TMP = $buildTemp
 $help = & $cmake --help
 $generator = @('Visual Studio 18 2026', 'Visual Studio 17 2022', 'Visual Studio 16 2019') |
     Where-Object { $help -match [regex]::Escape($_) } |
