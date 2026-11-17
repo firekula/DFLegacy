@@ -87,7 +87,7 @@ internal static class BootstrapLayout
         var legacy=Path.Combine(root,".dflegacy","pending.json");Core.PathPolicy.NoLinks(legacy);
         return File.Exists(legacy)||Directory.Exists(legacy)||Core.InstallTransaction.HasPending(root)||Core.ChapterTransition.HasPending(root);
     }
-    internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
+    internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default,IProgress<Core.UpdateProgress>? progress=null)
     {
         var settings=RepairClient.ReadSettings(new(root));
         // The v0.1.8 updater can install this UI before it knows how to write
@@ -97,7 +97,7 @@ internal static class BootstrapLayout
         var provider=V4UpdateSession.CreateProvider(http,settings.Source);
         using var owned=provider as IDisposable;
         var engine=new Core.UpdateEngine(root,provider);
-        var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
+        var validation=await engine.ValidateInstalledAsync(progress,token).ConfigureAwait(false);
         if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
         using var lease=Core.InstallationLease.Acquire(root);
         if(HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");

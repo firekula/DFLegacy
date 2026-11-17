@@ -13,10 +13,11 @@ internal sealed class UpdateCoordinator : IDisposable
     private readonly Func<bool> bootstrapVerified;
     private readonly Action recheckBootstrap;
     private readonly Func<Window,IReadOnlyList<FileLockOwner>,bool> confirmLocks;
-    private readonly bool backgroundCheck;
     private UpdateWindow? window;
+    private LoadingWindow? loading;
     private Task operation=Task.CompletedTask;
     private bool disposed,bootstrapHandedOff;
+    private bool backgroundCheck;
     internal UpdateCoordinator(Window owner,LauncherOptions options,string installation)
         : this(owner,installation,new V4UpdateSession(installation,options),()=>owner.Dispatcher.BeginInvoke(new Action(()=>Application.Current.Shutdown()))) { }
     internal UpdateCoordinator(Window owner,string installation,IUpdateSession session,Action shutdown,Action<string>? notify=null,Func<Window,bool>? confirmRecovery=null,
@@ -29,6 +30,7 @@ internal sealed class UpdateCoordinator : IDisposable
         this.recheckBootstrap=recheckBootstrap??App.RecheckBootstrap;
         this.confirmLocks=confirmLocks??ConfirmLocks;
         controller=new(session,installation,shutdown); controller.Changed+=Changed;
+        // A validated receipt starts a background check whose failure must stay non-modal.
         try
         {
             var store=new DFLegacy.UpdateCore.InstallationStore(installation);var receipt=store.ReadInstalled();
@@ -43,7 +45,10 @@ internal sealed class UpdateCoordinator : IDisposable
     private Task Run(Func<Task> check)
     {
         if(disposed || bootstrapHandedOff || !operation.IsCompleted) return operation;
-        if(backgroundCheck)owner.Show();else owner.Hide();
+        // The login stays hidden behind the native "载入中" panel until the check finishes.
+        owner.Hide();
+        loading=new LoadingWindow();
+        loading.Show();
         operation=RunCore(check); return operation;
     }
     private async Task RunCore(Func<Task> check)
@@ -93,9 +98,7 @@ internal sealed class UpdateCoordinator : IDisposable
         }
         if(disposed || controller.State.Phase==UpdatePhase.Installing) return;
         ShowLogin();
-        if(backgroundCheck) owner.ToolTip=controller.State.Message;
-        else if(controller.State.Phase==UpdatePhase.Error) notify(controller.State.Message);
-        else if(session.ShowStatusNotice) owner.ToolTip=controller.State.Message;
+        if(controller.State.Phase==UpdatePhase.Error && !backgroundCheck) notify(controller.State.Message);
         await ShowPreviousWarning();
     }
     private static bool ConfirmLocks(Window parent,IReadOnlyList<FileLockOwner> owners)
@@ -110,7 +113,7 @@ internal sealed class UpdateCoordinator : IDisposable
         {
             if(!disposed && ReferenceEquals(controller.State,state))
             {
-                if(backgroundCheck&&state.Phase==UpdatePhase.Checking)owner.ToolTip=state.Message;
+                if(state.Phase==UpdatePhase.Checking) { if(state.Progress is { } progress) loading?.Report(progress); }
                 else if(state.Phase is UpdatePhase.Checking or UpdatePhase.Downloading or UpdatePhase.Ready or UpdatePhase.Installing)ShowProgress(state);
             }
         }));
@@ -119,6 +122,7 @@ internal sealed class UpdateCoordinator : IDisposable
     {
         if(disposed) return;
         owner.Hide();
+        loading?.Close(); loading=null;
         if(window==null)
         {
             window=new UpdateWindow("客户端更新",controller.InstalledVersion,"返回登录");
@@ -131,7 +135,8 @@ internal sealed class UpdateCoordinator : IDisposable
     {
         if(disposed) return;
         // Keep an interactive window alive while the update page closes.
-        owner.Show(); window?.Finish(); window=null;
+        loading?.Close(); loading=null;
+        owner.Show(); owner.Visibility=Visibility.Visible; window?.Finish(); window=null;
     }
     private async Task ShowPreviousWarning()
     {
@@ -155,6 +160,6 @@ internal sealed class UpdateCoordinator : IDisposable
     public void Dispose()
     {
         if(disposed) return; disposed=true; owner.Closed-=OwnerClosed;
-        controller.Changed-=Changed; controller.Dispose(); window?.Finish(); window=null; (session as IDisposable)?.Dispose();
+        controller.Changed-=Changed; controller.Dispose(); loading?.Close(); loading=null; window?.Finish(); window=null; (session as IDisposable)?.Dispose();
     }
 }

@@ -100,7 +100,20 @@ public partial class App : Application
                         ??throw new InvalidDataException("跨章检查缺少已提交的安装记录。");
                     Updates.BootstrapLayout.RequireReceiptLayout(root,Updates.BootstrapLayout.Architecture,receipt);
                 }
-                else await Updates.BootstrapLayout.ValidateInstalledAsync(AppContext.BaseDirectory,Updates.BootstrapLayout.Architecture);
+                else
+                {
+                    // 原版 CProgressDlg 载入窗：记录校验快时延迟 400ms 再显示，避免闪窗。
+                    var loading = new Views.LoadingWindow();
+                    try
+                    {
+                        var progress = new Progress<DFLegacy.UpdateCore.UpdateProgress>(loading.Report);
+                        var validation = Updates.BootstrapLayout.ValidateInstalledAsync(
+                            AppContext.BaseDirectory, Updates.BootstrapLayout.Architecture, progress: progress);
+                        if (await Task.WhenAny(validation, Task.Delay(400)) != validation) loading.Show();
+                        await validation;
+                    }
+                    finally { loading.Close(); }
+                }
                 BootstrapVerified=true;
                 if(managed && ChapterTwoClient.IsBundled!=Updates.BootstrapLayout.IsSecondChapter(root))
                     throw new InvalidDataException("启动器与已安装游戏的章节不匹配。");
