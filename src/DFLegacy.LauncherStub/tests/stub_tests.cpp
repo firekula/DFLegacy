@@ -175,6 +175,57 @@ int main(int argc, char** argv) {
     fs::remove_all(migrationRoot, ignored);
     fs::remove_all(failureRoot, ignored);
 
+    auto recoveryRoot = fs::temp_directory_path() / ("dfo-recovery-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(recoveryRoot, ignored);
+    fs::create_directories(recoveryRoot / "client");
+    for (const auto* name : {"DFLegacy.Launcher.exe", "DFLegacy.Launcher.App.exe", "DFLegacy.Updater.exe",
+                             "DFLegacy.Bootstrap.ini", "DFLegacy.Chapter.json", "DNF.exe", "Script.pvf"}) {
+        std::ofstream(recoveryRoot / "client" / name) << "x";
+    }
+    const dfo::Journal recoveryJournal{1, {L"DFLegacy.Launcher.exe", L"DFLegacy.Launcher.App.exe",
+                                          L"DFLegacy.Updater.exe", L"DFLegacy.Bootstrap.ini",
+                                          L"DFLegacy.Chapter.json", L"DNF.exe", L"Script.pvf"}};
+    std::wstring recoveryError;
+    Check(dfo::WriteJournal(recoveryRoot, recoveryJournal, recoveryError), "recovery journal writes");
+    Check(dfo::RecoverIfInterrupted(recoveryRoot, recoveryError) == dfo::Recovery::Completed,
+          "complete interrupted migration is completed");
+    Check(!fs::exists(recoveryRoot / "DFOLauncher.migrate"), "completed journal is removed");
+    Check(dfo::ClientComplete(recoveryRoot / "client"), "completed client stays");
+    fs::remove_all(recoveryRoot, ignored);
+
+    auto partialRoot = fs::temp_directory_path() / ("dfo-recovery-partial-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(partialRoot, ignored);
+    fs::create_directories(partialRoot / "ImagePacks2");
+    std::ofstream(partialRoot / "ImagePacks2" / "a.npk") << "x";
+    for (const auto* name : {"DFLegacy.Launcher.exe", "DFLegacy.Updater.exe", "DNF.exe"}) {
+        std::ofstream(partialRoot / name) << "x";
+    }
+    const dfo::Journal partialJournal{1, {L"DFLegacy.Launcher.exe", L"DFLegacy.Updater.exe", L"ImagePacks2", L"DNF.exe"}};
+    Check(dfo::WriteJournal(partialRoot, partialJournal, recoveryError), "partial journal writes");
+    fs::create_directories(partialRoot / "client");
+    fs::rename(partialRoot / "DFLegacy.Launcher.exe", partialRoot / "client" / "DFLegacy.Launcher.exe");
+    fs::rename(partialRoot / "ImagePacks2", partialRoot / "client" / "ImagePacks2");
+    Check(dfo::RecoverIfInterrupted(partialRoot, recoveryError) == dfo::Recovery::RolledBack,
+          "partial interrupted migration is rolled back");
+    Check(fs::exists(partialRoot / "DFLegacy.Launcher.exe") && fs::exists(partialRoot / "ImagePacks2" / "a.npk"),
+          "partial entries are back at the root");
+    Check(!fs::exists(partialRoot / "client"), "partial client directory is removed");
+    Check(!fs::exists(partialRoot / "DFOLauncher.migrate"), "partial journal is removed");
+    fs::remove_all(partialRoot, ignored);
+
+    auto corruptRoot = fs::temp_directory_path() / ("dfo-recovery-corrupt-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(corruptRoot, ignored);
+    fs::create_directories(corruptRoot);
+    {
+        std::ofstream corrupt(corruptRoot / "DFOLauncher.migrate", std::ios::binary | std::ios::trunc);
+        corrupt.write("xxxx", 4);
+    }
+    Check(dfo::RecoverIfInterrupted(corruptRoot, recoveryError) == dfo::Recovery::Failed,
+          "corrupt journal recovery fails");
+    Check(!recoveryError.empty(), "corrupt journal reports an error");
+    Check(fs::exists(corruptRoot / "DFOLauncher.migrate"), "corrupt journal is kept for inspection");
+    fs::remove_all(corruptRoot, ignored);
+
     fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
     return 0;

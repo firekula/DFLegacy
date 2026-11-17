@@ -15,5 +15,8 @@ struct MigrationResult {
     std::wstring error;
 };
 
+enum class Recovery { None, Completed, RolledBack, Failed };
+
 MigrationResult Migrate(const std::filesystem::path& root, MigrationObserver& observer);
+Recovery RecoverIfInterrupted(const std::filesystem::path& root, std::wstring& error);
 }

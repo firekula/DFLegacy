@@ -100,4 +100,35 @@ MigrationResult Migrate(const fs::path& root, MigrationObserver& observer) {
     DeleteJournal(root);
     return {true, false, L""};
 }
+
+Recovery RecoverIfInterrupted(const fs::path& root, std::wstring& error) {
+    error.clear();
+    const auto journal = ReadJournal(root, error);
+    if (!journal) return error.empty() ? Recovery::None : Recovery::Failed;
+
+    const auto client = root / L"client";
+    if (ClientComplete(client)) {
+        DeleteJournal(root);
+        return Recovery::Completed;
+    }
+
+    bool ok = true;
+    DWORD firstError = 0;
+    for (auto entry = journal->entries.rbegin(); entry != journal->entries.rend(); ++entry) {
+        const auto source = client / *entry;
+        if (GetFileAttributesW(source.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        if (!MoveFileW(source.c_str(), (root / *entry).c_str())) {
+            ok = false;
+            if (firstError == 0) firstError = GetLastError();
+            break;
+        }
+    }
+    if (!ok) {
+        error = L"恢复旧布局失败（错误 " + std::to_wstring(firstError) + L"），下次启动会重试。";
+        return Recovery::Failed;
+    }
+    RemoveDirectoryW(client.c_str());
+    DeleteJournal(root);
+    return Recovery::RolledBack;
+}
 }
