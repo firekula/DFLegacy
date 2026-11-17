@@ -67,6 +67,36 @@ internal static class StartupEntryMigrationTests
                 "V4 keeps the stable-entry guard for other releases");
         }
 
+        var r2Root = Path.Combine(scratch, "entry-policy-r2");
+        var (bridgeR2, stagedR2) = Fixture(r2Root, "v1.0.13-bridge-r2", 20, 17, "v1.0.13-r2", 21, 17);
+        check(Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(staged.Release.Manifest)
+            && Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(stagedR2.Release.Manifest),
+            "both approved bridge/final pairs are startup migration targets");
+        check(StartupEntryMigration.IsAuthorized(bridgeR2, stagedR2.Release),
+            "the v1.0.13 bridge and v1.0.13-r2 release permit one entry replacement");
+        check(!StartupEntryMigration.IsAuthorized(baseline, stagedR2.Release)
+            && !StartupEntryMigration.IsAuthorized(bridgeR2, staged.Release),
+            "a bridge cannot migrate to another generation's final release");
+        check(!StartupEntryMigration.IsAuthorized(bridgeR2, Modify(stagedR2.Release, m => m with { Sequence = 20 })),
+            "a resequenced final release is not the paired migration target");
+        check(!StartupEntryMigration.IsAuthorized(bridgeR2, Modify(stagedR2.Release, m => m with
+        {
+            Files = m.Files.Select(f => f.Path == BootstrapLayout.UpdaterName ? Change(f) : f).ToArray()
+        })), "a changed updater is not an entry-only migration");
+        using (var session = new V4UpdateSession(r2Root, new LauncherOptions(), new FixtureProvider(stagedR2.Release)))
+        {
+            var update = await session.CheckAsync(20, CancellationToken.None);
+            check(update?.Version == "v1.0.13-r2" && session.RequiresDetachedInstall,
+                "V4 gives the paired v1.0.13-r2 update to the detached helper");
+        }
+        var completedR2 = Path.Combine(scratch, "entry-success-r2");
+        var (beforeR2, finalR2) = Fixture(completedR2, "v1.0.13-bridge-r2", 20, 17, "v1.0.13-r2", 21, 17);
+        Core.InstallTransaction.ApplyStartupEntryMigration(completedR2, finalR2, beforeR2.ManifestSha256);
+        var storeR2 = new Core.InstallationStore(completedR2);
+        var receiptR2 = storeR2.ReadInstalled()!;
+        check(receiptR2.Release.ManifestSha256 == finalR2.Release.ManifestSha256 && storeR2.HasValidatedReceipt(receiptR2)
+            && !Core.InstallTransaction.HasPending(completedR2), "the v1.0.13-r2 entry and receipt commit atomically");
+
         var originalEntry = File.ReadAllBytes(Path.Combine(root, BootstrapLayout.EntryName));
         File.WriteAllText(Path.Combine(root, "Script.pvf"), "edited PVF");
         try
@@ -133,7 +163,9 @@ internal static class StartupEntryMigrationTests
         check(true, "existing handle closes before the helper proceeds");
     }
 
-    private static (Core.VerifiedRelease Baseline, Core.StagedUpdate Target) Fixture(string root)
+    private static (Core.VerifiedRelease Baseline, Core.StagedUpdate Target) Fixture(string root,
+        string bridgeVersion = "v1.0.12-bridge", long bridgeSequence = 17, long bridgeMinimum = 16,
+        string targetVersion = "v1.0.12", long targetSequence = 18, long targetMinimum = 17)
     {
         Directory.CreateDirectory(root);
         var files = new Dictionary<string, byte[]>
@@ -149,13 +181,13 @@ internal static class StartupEntryMigrationTests
             new Core.ClientChapterIdentity(1, Core.ClientChapterIdentity.ChapterTwo, BootstrapLayout.EntryName,
                 [BootstrapLayout.EntryName, "DNF.exe", "Script.pvf"]), Core.ManifestCodec.Json);
         foreach (var (path, bytes) in files) File.WriteAllBytes(Path.Combine(root, path), bytes);
-        var bridge = Release(files, "v1.0.12-bridge", 17, 16);
+        var bridge = Release(files, bridgeVersion, bridgeSequence, bridgeMinimum);
         var store = new Core.InstallationStore(root);
         Directory.CreateDirectory(store.StateDirectory);
         File.WriteAllBytes(Path.Combine(store.StateDirectory, "installed.json"), JsonSerializer.SerializeToUtf8Bytes(
             new Core.InstalledReceipt(bridge, files.Keys.ToArray()), Core.ManifestCodec.Json));
-        files[BootstrapLayout.EntryName] = "verified v1.0.12 entry"u8.ToArray();
-        var final = Release(files, "v1.0.12", 18, 17);
+        files[BootstrapLayout.EntryName] = "verified final entry"u8.ToArray();
+        var final = Release(files, targetVersion, targetSequence, targetMinimum);
         File.WriteAllBytes(Path.Combine(root, "fixture-target.json"), final.ManifestBytes);
         var staged = ReadTarget(root);
         var cache = new Core.ContentCache(staged.CacheDirectory);
@@ -171,7 +203,9 @@ internal static class StartupEntryMigrationTests
     private static Core.StagedUpdate ReadTarget(string root)
     {
         var raw = File.ReadAllBytes(Path.Combine(root, "fixture-target.json"));
-        return new(new(Source, "v1.0.12", Hash(raw), raw), Path.Combine(new Core.InstallationStore(root).StateDirectory, "cache"));
+        var manifest = Core.ManifestCodec.Parse(raw);
+        return new(new(Source, manifest.Version, Hash(raw), raw),
+            Path.Combine(new Core.InstallationStore(root).StateDirectory, "cache"));
     }
 
     private static Core.VerifiedRelease Release(Dictionary<string, byte[]> content, string version, long sequence, long minimum)

@@ -32,8 +32,11 @@ public sealed class ChapterTwoReleaseProvider : IReleaseProvider
         fallback = new ReleaseProvider(http, source with { Provider = "github" });
     }
 
+    // The bridge release and the final release are pinned as one approved pair:
+    // only the fixed entry may differ, and only for these exact versions.
     public static bool IsStartupMigrationTarget(ClientManifest manifest) =>
-        manifest is { Channel: "chapter-two", Version: "v1.0.12", Sequence: 18, MinimumSequence: 17 };
+        manifest is { Channel: "chapter-two", Version: "v1.0.12", Sequence: 18, MinimumSequence: 17 }
+            or { Channel: "chapter-two", Version: "v1.0.13-r2", Sequence: 21, MinimumSequence: 17 };
 
     public async Task<VerifiedRelease?> FindAsync(CancellationToken token = default)
     {

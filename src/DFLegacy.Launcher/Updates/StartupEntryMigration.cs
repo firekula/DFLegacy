@@ -4,10 +4,19 @@ namespace DFLegacy.Launcher.Updates;
 
 internal static class StartupEntryMigration
 {
+    // Each entry generation ships one approved bridge/final pair. A bridge can
+    // only migrate to its own final release, and every non-entry file must be
+    // byte-identical, so the transaction replaces exactly one running image.
+    private static readonly (string Bridge, long BridgeSequence, string Target)[] BridgeTargets =
+    [
+        ("v1.0.12-bridge", 17, "v1.0.12"),
+        ("v1.0.13-bridge-r2", 20, "v1.0.13-r2")
+    ];
+
     internal static bool IsBridge(Core.VerifiedRelease? release) =>
-        release is { Tag: "v1.0.12-bridge" }
+        release is not null
         && Core.ChapterTransitionSource.IsOfficialChapterTwo(release.Source)
-        && release.Manifest.Sequence == 17;
+        && Array.Exists(BridgeTargets, pair => pair.Bridge == release.Tag && pair.BridgeSequence == release.Manifest.Sequence);
 
     internal static bool IsInstalledBridge(string root)
     {
@@ -17,7 +26,10 @@ internal static class StartupEntryMigration
 
     internal static bool IsAuthorized(Core.VerifiedRelease previous, Core.VerifiedRelease target)
     {
-        if (!IsBridge(previous) || target.Tag != "v1.0.12" || previous.Source != target.Source) return false;
+        if (!IsBridge(previous) || previous.Source != target.Source) return false;
+        // A bridge may only migrate to the final release paired with it.
+        if (Array.FindIndex(BridgeTargets, pair => pair.Bridge == previous.Tag
+                && pair.BridgeSequence == previous.Manifest.Sequence && pair.Target == target.Tag) < 0) return false;
         previous.Validate(target.Source);
         target.Validate(previous.Source);
         var old = previous.Manifest;
