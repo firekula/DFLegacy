@@ -62,6 +62,9 @@ public partial class App : Application
             var entry=string.Equals(Path.GetFileName(Environment.ProcessPath),Updates.BootstrapLayout.EntryName,StringComparison.OrdinalIgnoreCase);
             var chapterRollback=DFLegacy.UpdateCore.ChapterTransition.HasPending(root);
             var v4Pending=DFLegacy.UpdateCore.InstallTransaction.HasPending(root);
+            // Migrate a flat installation into the single-launcher layout before any
+            // repair/update handling so the entry never repairs the old layout first.
+            if (chapterProbe is null && entry && await TryMigrateLayoutAsync(args)) { Shutdown(0); return; }
             if(chapterProbe!=null)
             {
                 if(!ChapterTwoClient.IsBundled || !managed || !v4Pending || chapterRollback
@@ -147,6 +150,12 @@ public partial class App : Application
         try
         {
             if (chapterProbe is null && BootstrapVerified && ChapterTwoClient.IsBundled
+                && await TryMigrateLayoutAsync(args))
+            {
+                Shutdown(0);
+                return;
+            }
+            if (chapterProbe is null && BootstrapVerified && ChapterTwoClient.IsBundled
                 && await TryStartFullStarterAsync(args))
             {
                 Shutdown(0);
@@ -186,6 +195,24 @@ public partial class App : Application
             if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT") is null)
                 ClassicMessage.Show(null,"启动失败\n"+exception.Message);
             Shutdown(1);
+        }
+    }
+
+    private static async Task<bool> TryMigrateLayoutAsync(string[] args)
+    {
+        var root = AppContext.BaseDirectory;
+        if (!Updates.LauncherLayoutMigration.IsFlat(root)) return false;
+        var launcher = Path.Combine(root, "DFOLauncher.exe");
+        if (!File.Exists(launcher)) return false;
+        try
+        {
+            return await Updates.LauncherLayoutMigration.TryMigrateAsync(root, launcher, args);
+        }
+        catch (Exception error)
+        {
+            Program.ReportError("launcher-layout-migration", error);
+            ClassicMessage.Show(null, "切换单启动器目录失败，将继续使用原目录。\n" + error.Message);
+            return false;
         }
     }
 
