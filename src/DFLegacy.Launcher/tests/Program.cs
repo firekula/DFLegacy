@@ -146,6 +146,7 @@ try
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--bootstrap-transport-tests")) { await BootstrapUpdateTests.RunTransportFallbackAsync(root,Check); Console.WriteLine($"Bootstrap transport tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if(args.Contains("--bootstrap-entry-deferral-tests")) { await BootstrapUpdateTests.RunEntryDeferralAsync(root,Check); Console.WriteLine($"Bootstrap entry deferral tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-occupancy-tests")) { await BootstrapUpdateTests.RunOccupancyAsync(root,Check); Console.WriteLine($"Bootstrap occupancy tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if (args is ["--full-starter-migration-tests"])
     {
         await FullStarterMigrationTests.Run(root, Check);

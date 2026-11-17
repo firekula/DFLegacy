@@ -202,6 +202,14 @@ internal static class BootstrapUpdateClient
         {
             Program.ReportError("bootstrap-terminal-child",ex);return 3;
         }
+        catch(ClientFilesOccupiedException ex)
+        {
+            // Another verified updater cannot help while the files are still held, so this
+            // actionable message must reach the player instead of only the incident log.
+            Program.ReportError("bootstrap-files-occupied",ex);
+            if(!App.IsHeadless(args))ClassicMessage.Show(window?.VisibleWindow,ex.Message);
+            return 1;
+        }
         catch(Exception ex)
         {
             Program.ReportError("bootstrap-auto-repair",ex);

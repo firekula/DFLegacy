@@ -267,6 +267,20 @@ internal static class BootstrapUpdateTests
         catch(Exception ex) when(ex is InvalidDataException or IOException){}
         check(hidden==0,"deferred update never blesses a damaged local installation");
     }
+    // Restart Manager is best effort. When it cannot name the holders, the player must be told to
+    // exit fully instead of the updater guessing which process to close.
+    internal static async Task RunOccupancyAsync(string scratch,Action<bool,string> check)
+    {
+        var root=Path.Combine(scratch,"bootstrap-occupancy");Directory.CreateDirectory(root);
+        var file=Path.Combine(root,"locked.dll");File.WriteAllText(file,"fixture");
+        var scans=0;
+        await RepairClient.ReleaseLocksAsync([file],null,default,paths=>{scans++;return [];});
+        check(scans==1,"an unoccupied installation releases without asking for process closure");
+        var thrown=0;
+        try{await RepairClient.ReleaseLocksAsync([file],null,default,_=>throw new System.ComponentModel.Win32Exception(29));}
+        catch(ClientFilesOccupiedException ex){thrown++;check(ex.Message.Contains("请完全退出游戏"),"an unavailable process lookup asks the player to exit fully");}
+        check(thrown==1,"unidentified holders never fall through to a silent close");
+    }
     internal static async Task RunWindowPolicyAsync(string scratch,Action<bool,string> check)
     {        var root=Path.Combine(scratch,"bootstrap-window-policy");Directory.CreateDirectory(root);
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
