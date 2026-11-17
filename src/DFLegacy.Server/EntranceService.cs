@@ -2751,14 +2751,18 @@ public sealed class EntranceService(
                     var warehouseCapacityChanged =
                         AdoptSavedWarehouseUpgradeState(saved);
                     currentQuests = plannedQuests;
+                    // 发放已落库：会话态必须换成刚保存的背包，否则下一条请求会用陈旧
+                    // 背包覆盖掉这次任务道具（与交易/金币"待安装"同一红线），并且新槽位
+                    // 不在旧 mainInventory 里会让下面的更新包投影直接抛 KeyNotFoundException。
+                    mainInventory = plannedInventory;
                     if (changedSlots.Count > 0)
                     {
                         var itemUpdate = GameProtocolEngine.CreateUpdateItemList(
                             0,
-                            changedSlots
-                                .OrderBy(slot => slot)
-                                .Select(slot => ToGameInventoryEntry(mainInventory[slot]))
-                                .ToArray());
+                            BuildQuestItemUpdates(
+                                plannedInventory,
+                                changedSlots,
+                                itemCatalog));
                         await itemUpdate.WriteAsync(stream, serverToken);
                         Interlocked.Increment(ref runtimeSession.SentPackets);
                         LogPacket("TX", runtimeSession, itemUpdate);
@@ -5064,6 +5068,18 @@ public sealed class EntranceService(
                                activeCharacter.Id,
                                out var credit))
                     {
+                        // 同一次击杀的信用里也包含任务道具：队友击杀时击杀者会话只给
+                        // 自己发（下面 HandleMonsterDeathAsync 的发放），其余成员必须
+                        // 在自己的会话里按自己的任务/背包各掷一次，否则组队时任务道具
+                        // 只有"抢先判定死亡"的那个人能拿到（本轮定位的线上缺陷）。
+                        if (ShouldGrantPartyQuestItems(
+                                credit.IsBossCascadeDeath,
+                                currentDungeonId,
+                                tutorialDungeonActive))
+                        {
+                            await GrantMonsterQuestItemsAsync(credit.MonsterIndex);
+                        }
+
                         if (credit.IsBossCascadeDeath
                             || currentDungeonId == 0
                             || !dungeonCatalog.TryGetDefinition(currentDungeonId, out var creditDungeon))
@@ -18640,6 +18656,34 @@ public sealed class EntranceService(
     {
         yield return CreateMainInventoryPacket(gold, victoryPoints, inventory);
     }
+
+    /// <summary>
+    /// 任务道具发放后的 `UPDATE_ITEM_LIST` 投影（纯函数，便于回归）。
+    /// **必须**用发放计划里的背包：新任务道具通常落进一个空槽，发放前的 `mainInventory`
+    /// 没有这个槽；用它投影会抛 <see cref="KeyNotFoundException"/>，而发放此时已经落库，
+    /// 会话却以 "ended with an error" 结束（本轮定位的线上缺陷）。
+    /// </summary>
+    internal static GameInventoryEntry[] BuildQuestItemUpdates(
+        IReadOnlyDictionary<ushort, CharacterItemRecord> plannedInventory,
+        IEnumerable<ushort> changedSlots,
+        ItemCatalog itemCatalog) =>
+        changedSlots
+            .OrderBy(slot => slot)
+            .Select(slot => plannedInventory.TryGetValue(slot, out var item)
+                ? ProjectInventoryEntry(item, itemCatalog)
+                : throw new KeyNotFoundException(
+                    $"Quest grant slot {slot} is missing from the planned inventory."))
+            .ToArray();
+
+    /// <summary>
+    /// 队友击杀信用里是否还要按本会话补发任务道具。与击杀者那条路径同口径：
+    /// 教学副本不发、已回城不发、Boss 级联死亡由各自的死亡处理负责。
+    /// </summary>
+    internal static bool ShouldGrantPartyQuestItems(
+        bool isBossCascadeDeath,
+        int currentDungeonId,
+        bool tutorialDungeonActive) =>
+        !isBossCascadeDeath && currentDungeonId != 0 && !tutorialDungeonActive;
 
     private GameInventoryEntry ToGameInventoryEntry(CharacterItemRecord item) =>
         ProjectInventoryEntry(item, itemCatalog);

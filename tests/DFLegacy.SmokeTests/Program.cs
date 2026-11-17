@@ -57,6 +57,19 @@ if (args is ["--chapter-two-recipe", var recipePvf])
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args is ["--quest-item-grant"])
+{
+    var checks = 0;
+    QuestItemGrantSmokeTests.Run((condition, message) =>
+    {
+        checks++;
+        Check(condition, message);
+    });
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Quest item grant smoke: {checks} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--chapter-two-item-use", var itemUsePvf])
 {
     EquipmentReinforcementSmokeTests.Run(Check);
@@ -760,6 +773,7 @@ LootRoutingSmokeTests.Run(Check);
 await PickupRemovalSmokeTests.RunAsync(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
+QuestItemGrantSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 ChapterTwoQuestVisibilitySmokeTests.Run(Check);
 await ChapterTwoRetiredQuestSmokeTests.RunAsync(Check);
