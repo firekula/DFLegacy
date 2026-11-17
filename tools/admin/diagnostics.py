@@ -123,6 +123,18 @@ def print_groups(groups, as_json):
 
 
 def command_export(gm, args):
+    query = urllib.parse.urlencode({key: value for key, value in filters(args).items() if value})
+    try:
+        body = gm.call("GET", "/api/admin/diagnostics/export" + ("?" + query if query else ""), raw=True)
+        output = Path(args.out)
+        output.write_bytes(body)
+        print(json.dumps({"zip": str(output), "serverSide": True, "bytes": len(body)}, ensure_ascii=False))
+        return
+    except GmError as error:
+        if "HTTP 413" in str(error):
+            raise GmError("too many reports for one export; narrow the filters") from None
+        if "HTTP 404" not in str(error):
+            raise
     groups = gm.all_groups(filters(args))
     output = Path(args.out)
     index = {"format": "DFLegacy-client-diagnostics-export-1", "filters": filters(args), "groups": []}
