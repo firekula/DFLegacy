@@ -1,0 +1,86 @@
+{
+  "commit": "b0e7c292d0dcc34324ad9ef8f4d6c8a0b605ca07",
+  "manifestSha256": "c476cad17585970743475e3d3868df9dd70f42a7b543aa639cc0b3c91ccf6cce",
+  "mirrors": [
+    "github",
+    "gitcode"
+  ],
+  "rollback": true,
+  "bridgeManifest": {
+    "version": "v1.0.13-bridge",
+    "sequence": 19,
+    "minimumSequence": 17,
+    "files": 787
+  },
+  "releaseAppSha256": "c2a12ed98356aa6d068bc14423c6d99d204a4ecbec47fe21815f6659366d28df",
+  "unitTests": {
+    "test-migration-r3.log": {
+      "sha256": "f4e8add6add6c13b598a3b977f99159d99e1b0aa1922617b378f9aef39e7fd58",
+      "text": [
+        "Full starter migration: 11 assertions, 0 failures",
+        "exit=0"
+      ]
+    },
+    "test-settings-r3.log": {
+      "sha256": "5ba0372713772131669053b340d5aa6bef75b8799e7fff5c3ea5c631b626b05c",
+      "text": [
+        "Chapter Two game settings: 16 assertions, 0 failures",
+        "exit=0"
+      ]
+    }
+  },
+  "windowsAcceptance": {
+    "github": {
+      "installation": "G:\\tmp\\c2fu-github",
+      "activatedClient": "G:\\tmp\\c2fu-github\\.dflegacy\\c2-upgrade\\668483f5ec03468e94a8b43d1e9c80a7\\client",
+      "activationId": "668483f5ec03468e94a8b43d1e9c80a7",
+      "bridgeReceiptTag": "v1.0.13-bridge",
+      "bridgeManifestSha256": "c476cad17585970743475e3d3868df9dd70f42a7b543aa639cc0b3c91ccf6cce",
+      "bridgeAppSha256": "c2a12ed98356aa6d068bc14423c6d99d204a4ecbec47fe21815f6659366d28df",
+      "originalEntrySha256": "ebe2fbc158df3a70db7ffdc67de49f204fadfcfa6a1100b9d19f14ee149d7804",
+      "installedTag": "v1.0.13",
+      "installedManifestSha256": "a1574a2daf4ca896a5c48250008bdc8e4479828edd3bc915d5c1b86cfa334ccd",
+      "candidateLauncherSha256": "cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc",
+      "launcherLog": "G:\\tmp\\c2fu-github\\Logs\\DFLegacy\\launcher.log",
+      "launcherLogSha256": "c078a27abba70939cf7a39312aa933e8f21d3b6271c8cfef4c3a39a1d813683f"
+    },
+    "gitcode": {
+      "installation": "G:\\tmp\\c2fu-gitcode",
+      "activatedClient": "G:\\tmp\\c2fu-gitcode\\.dflegacy\\c2-upgrade\\fb7d388dca234a3fbd5ed30f0e8cb611\\client",
+      "activationId": "fb7d388dca234a3fbd5ed30f0e8cb611",
+      "bridgeReceiptTag": "v1.0.13-bridge",
+      "bridgeManifestSha256": "c476cad17585970743475e3d3868df9dd70f42a7b543aa639cc0b3c91ccf6cce",
+      "bridgeAppSha256": "c2a12ed98356aa6d068bc14423c6d99d204a4ecbec47fe21815f6659366d28df",
+      "originalEntrySha256": "ebe2fbc158df3a70db7ffdc67de49f204fadfcfa6a1100b9d19f14ee149d7804",
+      "installedTag": "v1.0.13",
+      "installedManifestSha256": "a1574a2daf4ca896a5c48250008bdc8e4479828edd3bc915d5c1b86cfa334ccd",
+      "candidateLauncherSha256": "cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc",
+      "launcherLog": "G:\\tmp\\c2fu-gitcode\\Logs\\DFLegacy\\launcher.log",
+      "launcherLogSha256": "e96c052ea854f01837441420a1ffe6521ed4a36ea520e8311e8d6513703f5b66"
+    }
+  },
+  "rollbackEvidence": {
+    "provider": "gitcode",
+    "incident": "G:\\tmp\\c2fu-gitcode\\Logs\\DFLegacy\\Incidents\\error-20261117-091153-054-79428-14340cd4b38b4a809a2c410eab845277.log",
+    "incidentSha256": "adbb085245dde67776a815c2fcd4b0665f4ee96aad06122357ec79a8b2a25cfb",
+    "interruption": "truncated full starter response; old installation kept and later retried",
+    "screenshots": {
+      "github-v1.0.13-login.png": {
+        "sha256": "44aa56fa788cb17f3869a766f12e51e82e0b072a61069cebe3ebd4d2429aee76",
+        "size": 513127
+      },
+      "gitcode-v1.0.13-login.png": {
+        "sha256": "5e54b0a55dcbe7e7dcfd406d285ddde424ea57868b99931e7ff7eba0c0bd7106",
+        "size": 513189
+      },
+      "gitcode-failed-state.png": {
+        "sha256": "6b021718dc8ae2fb2445c69e105c6d2ee39eecd8f918e1a69c5e66258ffe1eed",
+        "size": 447756
+      },
+      "gitcode-rollback-old-login.png": {
+        "sha256": "b600d04b5743c9a86554eb36cc7a02e44fe47ef0874cbc793885dad37615f314",
+        "size": 513782
+      }
+    }
+  }
+}

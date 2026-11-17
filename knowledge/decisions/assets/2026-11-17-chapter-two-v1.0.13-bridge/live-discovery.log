@@ -1,0 +1,398 @@
+[2026-11-17T09:49:20.2288255+08:00] retry loop start
+--- attempt 1 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 2 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 3 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 4 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 5 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 6 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 7 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 8 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 9 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 10 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 11 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 12 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 13 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 14 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 15 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 16 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 17 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 18 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 19 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 20 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 21 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 22 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 23 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 24 exit=-532462766 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 52
+   at Program.<Main>(String[] args)
+--- attempt 25 exit=0 ---
+ok: a real v1.0.12 client finds a startup-v2 manifest
+ok: discovered release is v1.0.13-bridge (got v1.0.13-bridge)
+ok: discovered manifest matches the recorded bridge manifest
+ok: bridge sequencing is 19/17
+ok: manifest commit is the published source commit
+discovery provider: gitcode
+ok: bridge manifest retains the v1.0.12 fixed entry
+ok: the real provider downloads the bridge descriptor from the discovered release
+ok: GitHub mirror discovery method is present
+ok: the GitHub mirror exposes the same bridge manifest to a v1.0.12 client
+live discovery verified
+[2026-11-17T10:15:28.4203680+08:00] live discovery passed
