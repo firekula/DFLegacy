@@ -1,5 +1,7 @@
 #include "../layout.hpp"
 #include "../launch.hpp"
+#include "../process.hpp"
+#include "../single_instance.hpp"
 #include <windows.h>
 #include <cstdio>
 #include <cstdlib>
@@ -60,7 +62,35 @@ int main(int argc, char** argv) {
 
     const auto running = dfo::LaunchClient(launchRoot, L"--sleep-ms 1000", 250);
     Check(running.started && !running.earlyFailure, "timeout means the client is still starting");
+    Sleep(700);
 
+    auto processRoot = fs::temp_directory_path() / ("dfo-process-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(processRoot, ignored);
+    fs::create_directories(processRoot);
+    const fs::path probe = processRoot / "DFLegacy.Probe.exe";
+    fs::copy_file(fixture, probe, fs::copy_options::overwrite_existing);
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    PROCESS_INFORMATION probeProcess{};
+    std::wstring probeCommand = L"\"" + probe.wstring() + L"\" --sleep-ms 30000";
+    Check(CreateProcessW(probe.c_str(), probeCommand.data(), nullptr, nullptr, FALSE, 0, nullptr,
+                         processRoot.c_str(), &startup, &probeProcess) != FALSE, "probe starts");
+    Sleep(300);
+    Check(dfo::HasRunningClient(processRoot, GetCurrentProcessId()), "running client is detected");
+    TerminateProcess(probeProcess.hProcess, 1);
+    WaitForSingleObject(probeProcess.hProcess, 5000);
+    CloseHandle(probeProcess.hThread);
+    CloseHandle(probeProcess.hProcess);
+    Sleep(200);
+    Check(!dfo::HasRunningClient(processRoot, GetCurrentProcessId()), "stopped client is not detected");
+
+    Check(dfo::AcquireSingleInstance(processRoot), "first instance acquires the mutex");
+    Check(!dfo::AcquireSingleInstance(processRoot), "second instance is rejected");
+    dfo::ReleaseSingleInstance();
+    Check(dfo::AcquireSingleInstance(processRoot), "mutex is reusable after release");
+    dfo::ReleaseSingleInstance();
+
+    fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
     return 0;
 }
