@@ -28,6 +28,9 @@ internal static class StartupEntryMigrationTests
     internal static int ProbeV1014(string bridgePath, string targetPath) =>
         ProbeCore(bridgePath, targetPath, "v1.0.14-bridge", 22, "v1.0.14", 23);
 
+    internal static int ProbeV1015(string bridgePath, string targetPath) =>
+        ProbeCore(bridgePath, targetPath, "v1.0.15-bridge", 24, "v1.0.15", 25);
+
     private static int ProbeCore(string bridgePath, string targetPath, string bridgeTag, long bridgeSequence,
         string targetTag, long targetSequence)
     {
