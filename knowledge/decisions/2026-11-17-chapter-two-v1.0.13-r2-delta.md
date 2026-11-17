@@ -55,6 +55,7 @@ v1.0.13 完整包是 1,135,865,180 字节；Script.pvf、ImagePacks 等 782 个�
 - GitHub 侧的过渡安装/下载传输没有做真实端到端；发布时全部附件匿名回读通过，匿名发现探针本轮因 GitHub 连接中断未完成，GitCode 侧完成了真实发现、下载、安装和迁移。
 - 已装 v1.0.13 的玩家若继续更新，会收到一次约 85 MiB 的 App 刷新；没有游戏资源下载。
 - 仍在旧 `v1.0.13-bridge` 上的客户端会先执行它内置的完整包流程（1.08 GiB），失败才回落到新过渡包；撤回旧 release 不会改变这一已安装行为。
+- **独立测试登录器不能走这条过渡**：`DFLegacy.Chapter2.Launcher.exe` 单 EXE 的更新父进程不是 `<安装目录>\DFLegacy.Launcher.exe` 或 `<安装目录>\DFLegacy.Launcher.App.exe`，安装助手会以“更新父进程不属于目标安装”拒绝（[UpdateHelper.cs](../../src/DFLegacy.Launcher/Updates/UpdateHelper.cs)）；这种情况只能手工换用固定入口完整启动包，v1.0.12 自身的更新代码无法把自己迁到固定布局。
 - 没有在真实宽带/代理/限速/断网条件下重复 170 MiB 下载；中断恢复由单元测试的中断点和回滚用例覆盖。
 
 ## 证据
