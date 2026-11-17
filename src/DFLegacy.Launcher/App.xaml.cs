@@ -196,14 +196,31 @@ public partial class App : Application
         if (package is null) return false;
         var options = new LauncherAccountStore(Program.LauncherConfigPath).LoadCurrent();
         using var cancel = new CancellationTokenSource();
-        using var window = new Views.UpdateOperationWindow("升级客户端", "正在准备 v1.0.13 完整启动包…", cancel.Cancel);
+        // 校验阶段走小载入窗；只有开始下载/替换时才打开大窗口。
+        var loading = new Views.LoadingWindow(); loading.Show();
+        Views.UpdateOperationWindow? window = null;
         // The fixed entry may exit after the progress window opens. The full
         // download and the new login window have independent readiness checks.
         Updates.BootstrapUpdateClient.SignalReady();
+        var progress = new Progress<DFLegacy.UpdateCore.UpdateProgress>(p =>
+        {
+            if (p is { Phase: "stage" })
+            {
+                if (window is null) loading.Report(p);
+                return;
+            }
+            if (window is null)
+            {
+                loading.Close();
+                window = new Views.UpdateOperationWindow("升级客户端", "正在下载完整启动包…", cancel.Cancel);
+                window.VisibleWindow.Show();
+            }
+            window.Report(p);
+        });
         try
         {
             return await Updates.FullStarterMigration.RunAsync(root, package, options.DisableGitHubUpdates, args,
-                new Progress<DFLegacy.UpdateCore.UpdateProgress>(window.Report), cancel.Token);
+                progress, cancel.Token);
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested)
         {
@@ -212,9 +229,10 @@ public partial class App : Application
         catch (Exception error) when (Updates.FullStarterMigration.CanRestoreOldLauncher(error))
         {
             Program.ReportError("chapter-two-full-starter-migration", error);
-            ClassicMessage.Show(window.VisibleWindow, "v1.0.13 升级未完成，将继续打开原来的客户端。\n" + error.Message);
+            ClassicMessage.Show(window?.VisibleWindow, "完整启动包升级未完成，将继续打开原来的客户端。\n" + error.Message);
             return false;
         }
+        finally { loading.Close(); window?.VisibleWindow.Close(); }
     }
 
     private static bool CanMaintainChapter(string path)
