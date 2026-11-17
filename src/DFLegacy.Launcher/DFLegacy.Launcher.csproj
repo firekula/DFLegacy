@@ -9,8 +9,8 @@
     <VersionPrefix Condition="'$(ChapterTwoPayloadDir)' != ''">$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)LauncherVersion.txt').Trim())</VersionPrefix>
     <AssemblyTitle>DFLegacy Launcher</AssemblyTitle>
     <Product>DFLegacy</Product>
-    <Company>DFLegacy</Company>
-    <Copyright>Copyright (C) 2026 by shizuku30</Copyright>
+    <Company>FireKula</Company>
+    <Copyright>Copyright (C) 2026 FireKula</Copyright>
     <ApplicationIcon Condition="'$(DFLegacyLauncherWin32Resource)' == ''">DFLegacy.Launcher.ico</ApplicationIcon>
     <Win32Resource Condition="'$(DFLegacyLauncherWin32Resource)' != ''">$(DFLegacyLauncherWin32Resource)</Win32Resource>
     <Ijl15ProjectDirectory>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\DFLegacy.Ijl15'))</Ijl15ProjectDirectory>
