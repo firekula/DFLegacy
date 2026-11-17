@@ -133,6 +133,12 @@ public partial class App : Application
         }
         try
         {
+            if (chapterProbe is null && BootstrapVerified && ChapterTwoClient.IsBundled
+                && await TryStartFullStarterAsync(args))
+            {
+                Shutdown(0);
+                return;
+            }
             if(chapterProbe!=null && await Program.RunHeadlessAsync(["--self-test"])!=0)
                 throw new InvalidDataException("第二章客户端及启动组件未通过本地自检。");
             ApplyTheme(Program.LoadOptions().Theme);
@@ -167,6 +173,34 @@ public partial class App : Application
             if(Environment.GetEnvironmentVariable("DFLEGACY_BOOTSTRAP_READY_EVENT") is null)
                 ClassicMessage.Show(null,"启动失败\n"+exception.Message);
             Shutdown(1);
+        }
+    }
+
+    private static async Task<bool> TryStartFullStarterAsync(string[] args)
+    {
+        var root = AppContext.BaseDirectory;
+        var package = Updates.FullStarterMigration.FindPackage(root);
+        if (package is null) return false;
+        var options = new LauncherAccountStore(Program.LauncherConfigPath).LoadCurrent();
+        using var cancel = new CancellationTokenSource();
+        using var window = new Views.UpdateOperationWindow("升级客户端", "正在准备 v1.0.13 完整启动包…", cancel.Cancel);
+        // The fixed entry may exit after the progress window opens. The full
+        // download and the new login window have independent readiness checks.
+        Updates.BootstrapUpdateClient.SignalReady();
+        try
+        {
+            return await Updates.FullStarterMigration.RunAsync(root, package, options.DisableGitHubUpdates, args,
+                new Progress<DFLegacy.UpdateCore.UpdateProgress>(window.Report), cancel.Token);
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+        {
+            return false;
+        }
+        catch (Exception error) when (Updates.FullStarterMigration.CanRestoreOldLauncher(error))
+        {
+            Program.ReportError("chapter-two-full-starter-migration", error);
+            ClassicMessage.Show(window.VisibleWindow, "v1.0.13 升级未完成，将继续打开原来的客户端。\n" + error.Message);
+            return false;
         }
     }
 
