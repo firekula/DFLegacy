@@ -1,3 +1,4 @@
+#include "../journal.hpp"
 #include "../layout.hpp"
 #include "../launch.hpp"
 #include "../process.hpp"
@@ -89,6 +90,30 @@ int main(int argc, char** argv) {
     dfo::ReleaseSingleInstance();
     Check(dfo::AcquireSingleInstance(processRoot), "mutex is reusable after release");
     dfo::ReleaseSingleInstance();
+
+    auto journalRoot = fs::temp_directory_path() / ("dfo-journal-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(journalRoot, ignored);
+    fs::create_directories(journalRoot);
+    const dfo::Journal journal{1, {L"DFLegacy.Launcher.exe", L"ImagePacks2", L".dflegacy"}};
+    std::wstring journalError;
+    Check(dfo::WriteJournal(journalRoot, journal, journalError) && journalError.empty(), "journal writes");
+    const auto readJournal = dfo::ReadJournal(journalRoot, journalError);
+    Check(readJournal.has_value() && journalError.empty(), "journal reads back");
+    Check(readJournal->version == 1, "journal version round-trips");
+    Check(readJournal->entries == journal.entries, "journal entries round-trip");
+
+    {
+        std::ofstream corrupt(journalRoot / "DFOLauncher.migrate", std::ios::binary | std::ios::trunc);
+        corrupt.write("xxxx", 4);
+    }
+    const auto corruptJournal = dfo::ReadJournal(journalRoot, journalError);
+    Check(!corruptJournal.has_value() && !journalError.empty(), "corrupt journal is rejected");
+
+    dfo::DeleteJournal(journalRoot);
+    Check(!fs::exists(journalRoot / "DFOLauncher.migrate"), "journal is deleted");
+    const auto missingJournal = dfo::ReadJournal(journalRoot, journalError);
+    Check(!missingJournal.has_value() && journalError.empty(), "missing journal is not an error");
+    fs::remove_all(journalRoot, ignored);
 
     fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
