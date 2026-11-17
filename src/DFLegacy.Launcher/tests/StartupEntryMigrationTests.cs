@@ -22,6 +22,40 @@ internal static class StartupEntryMigrationTests
         throw new InvalidOperationException("Managed migration did not reach its interruption checkpoint.");
     }
 
+    internal static int Probe(string bridgePath, string targetPath)
+    {
+        var failures = 0;
+        void Check(bool condition, string message)
+        {
+            if (!condition) { Console.Error.WriteLine("FAIL: " + message); failures++; }
+            else Console.WriteLine("ok: " + message);
+        }
+        var bridge = Load(bridgePath);
+        var target = Load(targetPath);
+        Check(bridge.Tag == "v1.0.13-bridge-r2" && bridge.Manifest.Sequence == 20, "bridge identity is v1.0.13-bridge-r2/20");
+        Check(target.Tag == "v1.0.13-r2" && target.Manifest.Sequence == 21, "target identity is v1.0.13-r2/21");
+        Check(Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(target.Manifest),
+            "the target is the approved startup migration shape");
+        Check(StartupEntryMigration.IsAuthorized(bridge, target),
+            "the real bridge and target manifests authorize one entry replacement");
+        Check(bridge.Manifest.Files.Length == target.Manifest.Files.Length,
+            "both manifests carry the same file count");
+        var previous = bridge.Manifest.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
+        Check(target.Manifest.Files.All(file => previous.TryGetValue(file.Path, out var old)
+            && (file.Path == BootstrapLayout.EntryName
+                ? file.Sha256 != old.Sha256
+                : file.Sha256 == old.Sha256 && file.Size == old.Size)),
+            "only the fixed entry differs between the bridge and the target");
+        return failures == 0 ? 0 : 1;
+    }
+
+    private static Core.VerifiedRelease Load(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var manifest = Core.ManifestCodec.Parse(bytes);
+        return new(Source, manifest.Version, Hash(bytes), bytes);
+    }
+
     internal static async Task Run(string scratch, Action<bool, string> check)
     {
         var root = Path.Combine(scratch, "entry-policy");

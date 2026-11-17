@@ -1,0 +1,22 @@
+format=DFLegacy-incident-1
+kind=Update
+sessionId=5769967aae214025aa2ca4ec6d5f10ae
+eventId=de3f22cd0fd04eef846cb480365b2100
+version=1.0.13+18bfc9d3f798e4978243d168402d0f65fcd7a038
+architecture=X64
+installation=G:\tmp\c2r2-github
+pid=64260
+time=2026-11-17T11:00:11.6420028+08:00
+lastSeen=2026-11-17T11:00:11.6420028+08:00
+timezone=China Standard Time
+occurrences=1
+clientPvfSha256=unknown
+serverVersion=unknown
+updateId=0e3dcc6e79dc4daab41a4c9d07b56dc2
+stage=v4-download
+errorCode=none
+result=download-verified
+omittedResults=0
+target=v1.0.13-r2; cache=G:\tmp\c2r2-github\.dflegacy\v4\cache
+
+--- recent context ---

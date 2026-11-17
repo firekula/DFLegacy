@@ -1,0 +1,32 @@
+{
+  "revision": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+  "app": {
+    "sha256": "0c111884d0b07fed5bb6c098f59f2842c05265654d273b9fc8fef24a7939a1e9",
+    "size": 89100868,
+    "path": "G:\\Game\\DNF_ACT1\\DFLegacy\\.tmp\\full-starter-upgrade\\r2-app\\publish-app\\DFLegacy.Launcher.exe"
+  },
+  "bridge": {
+    "tag": "v1.0.13-bridge-r2",
+    "sequence": 20,
+    "manifestSha256": "6984583f6892decd680a9359b67755eb51e242d85ecc87be2d0b151eb465cf12"
+  },
+  "target": {
+    "tag": "v1.0.13-r2",
+    "sequence": 21,
+    "manifestSha256": "3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086"
+  },
+  "downloads": {
+    "bridgeBytes": 178193083,
+    "targetBytes": 411648,
+    "totalBytes": 178604731
+  },
+  "chunks": [
+    "dflegacy-v4-2590477cdecf0ca784f3904633e167161c6a63afac583f2987c50c6e1243efe0.bin",
+    "dflegacy-v4-2bd53039b0812567b7d8ce417a66472091d99bb04a5e7fb6d68d2cd06ff47554.bin",
+    "dflegacy-v4-40aa7343337e88ea64e7300d0c98c44a22c7475ca4e7ab1b66ea3874a8faf2e9.bin",
+    "dflegacy-v4-7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc.bin",
+    "dflegacy-v4-b3891e9ec48af0e79214be64c69767cd42cd65127d3da66e26d71ab673d32e38.bin",
+    "dflegacy-v4-b6519289db3186822e9c2fa384cd19f5b6cde6e405f09706957d17ae61a9b232.bin",
+    "dflegacy-v4-cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc.bin"
+  ]
+}

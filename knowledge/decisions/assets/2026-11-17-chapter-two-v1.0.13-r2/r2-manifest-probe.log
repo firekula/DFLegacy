@@ -1,0 +1,7 @@
+ok: bridge identity is v1.0.13-bridge-r2/20
+ok: target identity is v1.0.13-r2/21
+ok: the target is the approved startup migration shape
+ok: the real bridge and target manifests authorize one entry replacement
+ok: both manifests carry the same file count
+ok: only the fixed entry differs between the bridge and the target
+exit=0

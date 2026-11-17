@@ -43,6 +43,7 @@ if (await RepairClientTests.Dispatch(args) is int repairExit) return repairExit;
 if (await BootstrapUpdateTests.Dispatch(args) is int bootstrapUpdateExit) return bootstrapUpdateExit;
 if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recoveryExit;
 if (StartupEntryMigrationTests.Dispatch(args)) return 0;
+if (args is ["--r2-manifest-probe", var bridgeManifest, var targetManifest]) return StartupEntryMigrationTests.Probe(bridgeManifest, targetManifest);
 if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
 var checks = 0;

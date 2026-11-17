@@ -1,0 +1,565 @@
+[2026-11-17T11:03:00.5148677+08:00] retry loop start
+--- attempt 1 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 2 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 3 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 4 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 5 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 6 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 7 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 8 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: Response status code does not indicate success: 403 (rate limit exceeded).
+   at System.Net.Http.HttpResponseMessage.EnsureSuccessStatusCode()
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 237
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 9 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 10 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 11 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 12 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 13 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 14 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 15 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 16 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 17 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 18 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 19 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)
+--- attempt 20 exit=-532462766 ---
+ok: a v1.0.12 client discovers v1.0.13-bridge-r2
+ok: bridge sequencing is 20/17
+ok: bridge manifest names the published commit
+ok: the bridge keeps the original v1.0.12 fixed entry
+discovery provider: gitcode
+ok: the real provider downloads the bridge descriptor from the r2 release
+ok: a bridge client discovers v1.0.13-r2
+ok: the r2 manifest is the approved migration shape
+ok: the r2 manifest carries the v1.0.13 fixed entry
+ok: the real provider downloads the 411,648 byte entry used by the migration
+ok: a v1.0.13 client sees the r2 manifest as a normal in-place update
+ok: GitHub mirror discovery method is present
+Unhandled exception. System.Net.Http.HttpRequestException: The SSL connection could not be established, see inner exception.
+ ---> System.IO.IOException: Received an unexpected EOF or 0 bytes from the transport stream.
+   at System.Net.Security.SslStream.ReceiveHandshakeFrameAsync[TIOAdapter](CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.ForceAuthenticationAsync[TIOAdapter](Boolean receiveFirst, Byte[] reAuthenticationData, CancellationToken cancellationToken)
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.ConnectHelper.EstablishSslConnectionAsync(SslClientAuthenticationOptions sslOptions, HttpRequestMessage request, Boolean async, Stream stream, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.InjectNewHttp11ConnectionAsync(QueueItem queueItem)
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at DFLegacy.UpdateCore.ReleaseProvider.SendAsync(Uri uri, Int64 offset, String etag, Boolean json, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 254
+   at DFLegacy.UpdateCore.ReleaseProvider.JsonAsync(String relative, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 231
+   at DFLegacy.UpdateCore.ReleaseProvider.FindAsync(String alternateManifestName, Func`2 includeManifest, CancellationToken token) in G:\Game\DNF_ACT1\DFLegacy\.tmp\upgrade-wt\src\DFLegacy.UpdateCore\ReleaseProvider.cs:line 47
+   at Program.<>c__DisplayClass0_0.<<<Main>$>g__FindAsync|8>d.MoveNext() in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 83
+--- End of stack trace from previous location ---
+   at Program.<Main>$(String[] args) in G:\Game\DNF_ACT1\DFLegacy\.tmp\full-starter-upgrade\LiveDiscoveryProbe\Program.cs:line 84
+   at Program.<Main>(String[] args)

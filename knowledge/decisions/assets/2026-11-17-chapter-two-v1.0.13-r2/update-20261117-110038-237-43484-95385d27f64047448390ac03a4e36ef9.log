@@ -1,0 +1,22 @@
+format=DFLegacy-incident-1
+kind=Update
+sessionId=56bdd7e14ae2404799435287fb11e2a2
+eventId=95385d27f64047448390ac03a4e36ef9
+version=1.0.13+18bfc9d3f798e4978243d168402d0f65fcd7a038
+architecture=X64
+installation=G:\tmp\c2r2-github
+pid=43484
+time=2026-11-17T11:00:38.2374157+08:00
+lastSeen=2026-11-17T11:00:38.2374157+08:00
+timezone=China Standard Time
+occurrences=1
+clientPvfSha256=unknown
+serverVersion=unknown
+updateId=a41f44a59f9543b58f46e0dd5300bce5
+stage=v4-install
+errorCode=none
+result=installed-verified
+omittedResults=0
+verified=v1.0.13-r2; restarted=True
+
+--- recent context ---

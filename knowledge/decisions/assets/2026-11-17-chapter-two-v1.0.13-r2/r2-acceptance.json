@@ -1,0 +1,214 @@
+{
+  "revision": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+  "bridge": {
+    "tag": "v1.0.13-bridge-r2",
+    "sequence": 20,
+    "manifestSha256": "6984583f6892decd680a9359b67755eb51e242d85ecc87be2d0b151eb465cf12"
+  },
+  "target": {
+    "tag": "v1.0.13-r2",
+    "sequence": 21,
+    "manifestSha256": "3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086"
+  },
+  "downloads": {
+    "bridgeBytes": 178193083,
+    "targetBytes": 411648,
+    "totalBytes": 178604731
+  },
+  "installation": {
+    "root": "G:\\tmp\\c2r2-github",
+    "receipt": {
+      "tag": "v1.0.13-r2",
+      "manifestSha256": "3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086",
+      "source": {
+        "provider": "github",
+        "repository": "firekula/DFLegacy",
+        "channel": "chapter-two",
+        "architecture": "x64",
+        "flavor": "normal"
+      }
+    },
+    "files": {
+      "DFLegacy.Launcher.exe": "cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc",
+      "DFLegacy.Launcher.App.exe": "0c111884d0b07fed5bb6c098f59f2842c05265654d273b9fc8fef24a7939a1e9",
+      "DFLegacy.Updater.exe": "fcd8e89592051f6e156bc759d9d5701d60d4ce5c00078aa63b4f286dff3f56ca",
+      "DFLegacy.Bootstrap.ini": "7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc"
+    },
+    "settings": {
+      "launcher": "equal",
+      "configIniSha256": "b6416e57d3e1fd8ec296beb2f81b8cbe785efb325f78eb094a3ec556e47429fa",
+      "nativeSettingsSha256": "76918f2961953722ce69d59a1fedf84ad8a3bcda4f7a03952716d19e219975bb"
+    },
+    "pending": false,
+    "launcherLog": {
+      "sha256": "241134a1c077db86502ccb0f3d2efec703001378b3fe0e638fdcc8f886104d3a",
+      "lines": [
+        "[2026-11-17T10:59:49.1110781+08:00] Bootstrap verified UI handoff; offline=False.",
+        "[2026-11-17T11:00:44.2985734+08:00] Bootstrap verified UI handoff; offline=True."
+      ]
+    },
+    "incidents": {
+      "update-20261117-105944-355-53596-fd555bd7310242a8ad75be984bdfdaef.log": {
+        "stage": "independent-repair",
+        "result": "repaired-and-verified",
+        "sha256": "f311dc9cdd946ef8b0ac7b202416dcf945d88d627270ce324168bef021c79568",
+        "mtime": 1794884384.371675
+      },
+      "update-20261117-110000-040-64260-161a42eb4d124bbab857901be1c70c24.log": {
+        "stage": "v4-check",
+        "result": "repair-required",
+        "sha256": "2fbf4f1411f5ac39230b9dd2123fd99eaa4405a94abce90cc71e1f7bd68dd139",
+        "mtime": 1794884400.0588522
+      },
+      "update-20261117-110011-642-64260-de3f22cd0fd04eef846cb480365b2100.log": {
+        "stage": "v4-download",
+        "result": "download-verified",
+        "sha256": "ad4c4902b748e333a8fd447ee71eeb0ced6ef4c35a7284f0ae35aca3efdca637",
+        "mtime": 1794884411.6421397
+      },
+      "update-20261117-110038-237-43484-95385d27f64047448390ac03a4e36ef9.log": {
+        "stage": "v4-install",
+        "result": "installed-verified",
+        "sha256": "e0b0a3e0efb0741593de32e326c75213ca3bc48e1a89fe90bbc2fcd6b5707f0c",
+        "mtime": 1794884438.245339
+      },
+      "update-20261117-110047-115-69452-8f5c1327364844d38bb15a91fb02a855.log": {
+        "stage": "v4-check",
+        "result": "verified",
+        "sha256": "0354924d68d4bde0e2b5e37d1c5c16e3c644d919a68fcf72774be26c8aad75d4",
+        "mtime": 1794884447.1236475
+      }
+    }
+  },
+  "releases": {
+    "github": {
+      "v1.0.13-r2": {
+        "target": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+        "prerelease": false,
+        "draft": false,
+        "assets": {
+          "DFLegacy-client-update-v4-chapter-two-startup-v2-normal-win-x64.json": [
+            "sha256:3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086",
+            296556
+          ],
+          "dflegacy-v4-2590477cdecf0ca784f3904633e167161c6a63afac583f2987c50c6e1243efe0.bin": [
+            "sha256:2590477cdecf0ca784f3904633e167161c6a63afac583f2987c50c6e1243efe0",
+            645
+          ],
+          "dflegacy-v4-2bd53039b0812567b7d8ce417a66472091d99bb04a5e7fb6d68d2cd06ff47554.bin": [
+            "sha256:2bd53039b0812567b7d8ce417a66472091d99bb04a5e7fb6d68d2cd06ff47554",
+            38759718
+          ],
+          "dflegacy-v4-40aa7343337e88ea64e7300d0c98c44a22c7475ca4e7ab1b66ea3874a8faf2e9.bin": [
+            "sha256:40aa7343337e88ea64e7300d0c98c44a22c7475ca4e7ab1b66ea3874a8faf2e9",
+            50331648
+          ],
+          "dflegacy-v4-7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc.bin": [
+            "sha256:7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc",
+            204
+          ],
+          "dflegacy-v4-b3891e9ec48af0e79214be64c69767cd42cd65127d3da66e26d71ab673d32e38.bin": [
+            "sha256:b3891e9ec48af0e79214be64c69767cd42cd65127d3da66e26d71ab673d32e38",
+            38769220
+          ],
+          "dflegacy-v4-b6519289db3186822e9c2fa384cd19f5b6cde6e405f09706957d17ae61a9b232.bin": [
+            "sha256:b6519289db3186822e9c2fa384cd19f5b6cde6e405f09706957d17ae61a9b232",
+            50331648
+          ],
+          "dflegacy-v4-cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc.bin": [
+            "sha256:cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc",
+            411648
+          ]
+        }
+      },
+      "v1.0.13-bridge-r2": {
+        "target": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+        "prerelease": true,
+        "draft": false,
+        "assets": {
+          "DFLegacy-client-update-v4-chapter-two-normal-win-x64.json": [
+            "sha256:6984583f6892decd680a9359b67755eb51e242d85ecc87be2d0b151eb465cf12",
+            296560
+          ]
+        }
+      }
+    },
+    "gitcode": {
+      "v1.0.13-r2": {
+        "target": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+        "status": "latest",
+        "assets": {
+          "DFLegacy-client-update-v4-chapter-two-startup-v2-normal-win-x64.json": [
+            "sha256:3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086",
+            296556
+          ],
+          "dflegacy-v4-2590477cdecf0ca784f3904633e167161c6a63afac583f2987c50c6e1243efe0.bin": [
+            "sha256:2590477cdecf0ca784f3904633e167161c6a63afac583f2987c50c6e1243efe0",
+            645
+          ],
+          "dflegacy-v4-2bd53039b0812567b7d8ce417a66472091d99bb04a5e7fb6d68d2cd06ff47554.bin": [
+            "sha256:2bd53039b0812567b7d8ce417a66472091d99bb04a5e7fb6d68d2cd06ff47554",
+            38759718
+          ],
+          "dflegacy-v4-40aa7343337e88ea64e7300d0c98c44a22c7475ca4e7ab1b66ea3874a8faf2e9.bin": [
+            "sha256:40aa7343337e88ea64e7300d0c98c44a22c7475ca4e7ab1b66ea3874a8faf2e9",
+            50331648
+          ],
+          "dflegacy-v4-7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc.bin": [
+            "sha256:7222ae68d1a6c5759173311599b7cf9625f32fbf27b83891a8b7974a53cc02bc",
+            204
+          ],
+          "dflegacy-v4-b3891e9ec48af0e79214be64c69767cd42cd65127d3da66e26d71ab673d32e38.bin": [
+            "sha256:b3891e9ec48af0e79214be64c69767cd42cd65127d3da66e26d71ab673d32e38",
+            38769220
+          ],
+          "dflegacy-v4-b6519289db3186822e9c2fa384cd19f5b6cde6e405f09706957d17ae61a9b232.bin": [
+            "sha256:b6519289db3186822e9c2fa384cd19f5b6cde6e405f09706957d17ae61a9b232",
+            50331648
+          ],
+          "dflegacy-v4-cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc.bin": [
+            "sha256:cf16fedc2b310214398caad1be8a5d60f3dce2a7be5f749b70a06e177bc345dc",
+            411648
+          ]
+        }
+      },
+      "v1.0.13-bridge-r2": {
+        "target": "18bfc9d3f798e4978243d168402d0f65fcd7a038",
+        "status": "pre",
+        "assets": {
+          "DFLegacy-client-update-v4-chapter-two-normal-win-x64.json": [
+            "sha256:6984583f6892decd680a9359b67755eb51e242d85ecc87be2d0b151eb465cf12",
+            296560
+          ]
+        }
+      }
+    }
+  },
+  "tests": {
+    "test-migration-r4.log": {
+      "sha256": "1e494e99b75e325cf2f467a8442d3c1b21c3c4af293b57018732b569191a5907",
+      "lines": [
+        "Startup entry migration: 40 assertions, 0 failures",
+        "exit=0"
+      ]
+    },
+    "r2-manifest-probe.log": {
+      "sha256": "a0b1c6d2c5920518e63826b9442a538728982c556a68fa642eeee3babc66348a",
+      "lines": [
+        "ok: bridge identity is v1.0.13-bridge-r2/20",
+        "ok: target identity is v1.0.13-r2/21",
+        "ok: the target is the approved startup migration shape",
+        "ok: the real bridge and target manifests authorize one entry replacement",
+        "ok: both manifests carry the same file count",
+        "ok: only the fixed entry differs between the bridge and the target",
+        "exit=0"
+      ]
+    }
+  },
+  "screenshots": {
+    "r2-login.png": {
+      "sha256": "9270b9a4f3d5727f46e8f29e0d78acc25c6e4447857ca8708bfab4087083d6e4",
+      "size": 512353
+    }
+  }
+}
