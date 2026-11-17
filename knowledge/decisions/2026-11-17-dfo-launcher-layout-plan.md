@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 新增原生 `DFOLauncher.exe` 作为外层唯一启动器，首次运行把现有 v1.0.13-r2 客户端整体迁移进 `client\`，并打包/发行 `v1.0.13-r3`。
+**Goal:** 实现并发行第二章 v1.0.14 签名客户端与 DFOLauncher 单启动器布局：原生 `DFOLauncher.exe` 首次运行把旧安装整理进 `client\`；重建并签名所有自有 EXE（作者 FireKula，受信任 OV/EV 证书），新清单/序列与签名后的入口迁移对；先做不依赖证书的 stub/布局（Phase A），再完成签名客户端与发行（Phase B）。
 
-**Architecture:** 原生 Win32 C++ 启动器只做两件事：启动 `client\DFLegacy.Launcher.exe`，或在旧布局上做一次性同盘改名迁移（迁移日志 + 失败回滚）。客户端目录、清单、收据和更新链保持 v1.0.13-r2 原样，启动器不参与更新。
+**Architecture:** Phase A：原生 Win32 C++ 启动器只做两件事：启动 `client\DFLegacy.Launcher.exe`，或在旧布局上做一次性同盘改名迁移（迁移日志 + 失败回滚）；客户端、清单、收据保持 v1.0.13-r2 原样，可在不影响现有更新的前提下先验收。Phase B：用同一 1.0.14 源码重建入口/App/Updater/诊断/崩溃捕获，填 FireKula 元数据并代码签名，生成新清单/序列和 v1.0.13-r2 → v1.0.14 的入口迁移/桥接，再连带布局与签名后的 stub 发行。
 
-**Tech Stack:** C++20 / MSVC / CMake（/W4 /WX、静态 CRT、UNICODE）、Win32 API（Toolhelp32、MoveFileW、CreateMutexW、IShellLinkW）、CTest；Python 打包脚本；PowerShell 构建/发行。
+**Tech Stack:** C++20 / MSVC / CMake（/W4 /WX、静态 CRT、UNICODE）、Win32 API（Toolhelp32、MoveFileW、CreateMutexW、IShellLinkW）、CTest；signtool + 受信任证书（环境提供）；Python 打包脚本；PowerShell 构建/发行。
 
-**Spec:** `knowledge/decisions/2026-11-17-dfo-launcher-layout-design.md`
+**Spec:** `knowledge/decisions/2026-11-17-dfo-launcher-layout-design.md`（已含 2026-11-17 签名与 v1.0.14 追加）
 
 ## Global Constraints
 
@@ -19,7 +19,10 @@
 - 外层最终只有 `DFOLauncher.exe` 和 `client\`；`client` 默认可见、不隐藏；`DFOLauncher.migrate` 只在迁移期间短暂存在。
 - 启动器版本：FileVersion `1.0.13.0`，ProductVersion `1.0.13+<40位提交>`；FileDescription `DFLegacy Launcher`，OriginalFilename `DFOLauncher.exe`，ProductName/CompanyName `DFLegacy`，版权沿用现有 EXE（`Copyright (C) 2026 by shizuku30`）。
 - 所有新窗口/提示使用原版 DNF 风格；迁移进度与确认/错误沿用 `src/DFLegacy.Startup/startup_prompt.cpp` 的皮肤资源（`classic-message-panel.png`、确认按钮图）。
-- 发行：`v1.0.13-r3`；客户端不变；GitHub 只放 stub + 说明，新的 1.1 GB 启动包只上 GitCode；所有附件匿名回读校验。
+- 发行：`v1.0.14`（签名客户端 + DFOLauncher 布局 + 签名后的 stub）；客户端 EXE 全部用受信任 OV/EV 证书签名并带 FireKula 元数据；GitHub 只放小附件，大启动包只上 GitCode；所有附件匿名回读校验。
+- 代码签名：`signtool` 在清单/摘要/打包之前执行，`/tr` 时间戳、`/fd sha256`、`signtool verify /pa /all`；PFX/令牌只从构建环境读取，不入仓库、日志或 URL；没有受信任证书时不得声称已解决误报。
+- 作者字段：`CompanyName`/`LegalCopyright` 用 FireKula，`ProductName` 保持 DFLegacy；签名证书 subject 与 FireKula 一致。
+- Phase A（Task 1–12）不签名、不发行；Phase B（Task B1–B4）完成签名客户端、清单/迁移与发行。
 - 每个任务结束前 commit；提交信息用英文、现在时。
 
 ---
@@ -102,7 +105,7 @@ endif()
 
 > 后续任务把 `layout.cpp`、`launch.cpp`、`process.cpp`、`journal.cpp`、`migration.cpp`、`shortcut.cpp` 按任务加入 `DFOLauncher` 和 `stub_tests` 的源列表；`stub_tests` 通过 CTest 参数接收 fixture 路径（`add_test(... COMMAND stub_tests "$<TARGET_FILE:fixture>")`）。
 
-`DFOLauncher.rc.in`：复制 `src/DFLegacy.Startup/launcher.rc.in`，去掉 `DFL_MANAGED_MANIFEST_RESOURCE`，`FileDescription`/`OriginalFilename`/`InternalName` 用上面变量。
+`DFOLauncher.rc.in`：复制 `src/DFLegacy.Startup/launcher.rc.in`，去掉 `DFL_MANAGED_MANIFEST_RESOURCE`，`FileDescription`/`OriginalFilename`/`InternalName` 用上面变量；`CompanyName` 和 `LegalCopyright` 改为 FireKula（`Copyright (C) 2026 FireKula`），`ProductName` 保持 DFLegacy。
 
 `main.cpp` 最小实现：
 ```cpp
@@ -469,23 +472,53 @@ git commit -m "Launch the migrated client and detect early failures"
 
 ---
 
-### Task 13: 发行 `v1.0.13-r3`
+### Task B1: FireKula 元数据与 v1.0.14 重建（不签名）
 
 **Files:**
-- Create: `docs/releases/v1.0.13-r3.md`
-- Modify: publish tooling (reuse `update_v4`/`gh` pattern)
+- Modify: `src/DFLegacy.Startup/launcher.rc.in`（CompanyName/LegalCopyright 改 FireKula）
+- Modify: `src/DFLegacy.Launcher/LauncherVersion.txt`（1.0.14）
+- Modify: `src/DFLegacy.Launcher/DFLegacy.Launcher.ico` 保持现有
+- Create: `docs/releases/v1.0.14.md`
 
-- [ ] **Step 1: 发行说明**：迁移/全新安装步骤、布局说明、未签名与 SHA-256、已知边界、内部改名推迟到 v1.0.14。
-- [ ] **Step 2: 源码提交**：stub 项目、构建/打包脚本、发行说明、设计/验收文档提交到公共仓库；`main` 推进。
-- [ ] **Step 3: 附件**：`DFOLauncher.exe`（GitHub + GitCode，匿名回读）；新布局启动包只上 GitCode（GitHub 限流期）；SHA256SUMS。
-- [ ] **Step 4: release 标签** `v1.0.13-r3` 指向源码提交；预发布/正式按发行说明；验证 tag 目标、附件身份、匿名下载。
-- [ ] **Step 5: 通知/交接**：更新 `knowledge/decisions/` 验收、设计状态；把公司电脑迁移步骤写给用户。
+- [ ] 把三个客户端角色和诊断/崩溃捕获的资源作者字段改为 FireKula；版本 1.0.14；按 `Build-LauncherRoles.ps1` 从同一提交重建，记录文件说明/原始文件名/产品名/发布者/版权/文件版本/产品版本与未签名哈希。
+- [ ] 重建会改变入口哈希：记录新入口/App/Updater 的哈希，供 B3 的清单和迁移对使用；旧 v1.0.13-r2 文件保留作对照。
+- [ ] Commit：`git commit -m "Rebuild the Chapter Two launcher roles as 1.0.14 with FireKula metadata"`
+
+### Task B2: 代码签名管线
+
+**Files:**
+- Create: `tools/release/sign_launcher.ps1`
+- Modify: build/release scripts, docs
+
+- [ ] 签名脚本从环境读取 `DFLEGACY_SIGN_PFX` + `DFLEGACY_SIGN_PFX_PASSWORD`（或 `DFLEGACY_SIGN_THUMBPRINT` 硬件/云签名）和时间戳 URL；对 `DFOLauncher.exe`、固定入口、托管登录器、更新器、诊断、崩溃捕获逐个执行 `signtool sign /fd sha256 /tr <ts> /td sha256`，随后 `signtool verify /pa /all`；任一失败整体失败。
+- [ ] 证书缺失时脚本明确失败并提示“需要受信任 OV/EV 证书”；不得用自签名证书冒充已解决误报；PFX/密码不写入仓库、日志或 URL。
+- [ ] 对所有签名产物重新计算 SHA-256，写入构建证据；Commit：`git commit -m "Sign the launcher executables"`。
+
+### Task B3: 新清单、序列与签名入口迁移对
+
+**Files:**
+- Modify: `src/DFLegacy.Launcher/Updates/StartupEntryMigration.cs`、`src/DFLegacy.UpdateCore/ChapterTwoReleaseProvider.cs`、tests
+- Create/modify: bridge/target manifest generation (reuse `Build-Starters.py`/`chapter_package.py`)
+
+- [ ] 用 B1/B2 的签名角色生成 v1.0.14 客户端清单（新序列，紧接 v1.0.13-r2=21）和一个过渡桥接清单：桥接保持 v1.0.13-r2 固定入口 `cf16fedc…`，安装签名后的 App/Updater/描述符/许可等非入口文件；目标 v1.0.14 只把入口换成签名后的入口，桥接与目标其余文件逐字节一致。
+- [ ] 扩展 `StartupEntryMigration` 白名单与 `ChapterTwoReleaseProvider.IsStartupMigrationTarget` 到新的一对；测试覆盖合法对、跨代拒绝、非入口变化拒绝、中断恢复。
+- [ ] 记录 bridge/target 的 tag、sequence、manifest 哈希和签名后文件哈希；Commit：`git commit -m "Add the signed v1.0.14 starter migration"`。
+
+### Task B4: 发行 v1.0.14 与验收
+
+**Files:**
+- Create: `docs/releases/v1.0.14.md`、`knowledge/decisions/2026-11-17-dfo-launcher-layout-acceptance.md`
+- Modify: publish scripts
+
+- [ ] 新布局启动包（`DFOLauncher.exe` + `client\`，客户端为签名 v1.0.14）只上 GitCode；GitHub 只放 stub、bridge/target 小附件和说明（1 GB+ 附件不传 GitHub）。
+- [ ] 验收：全新安装、v1.0.13-r2 → 布局迁移 → bridge → 签名 v1.0.14 入口迁移、账号/设置、游戏、更新检查、AV/签名验证；公司电脑实机；记录签名 subject/时间戳/哈希。
+- [ ] 发行 `v1.0.14`（tag 指向源码提交），匿名回读所有附件；更新设计/验收/发行说明；Commit。
 
 ---
 
 ## Self-Review
 
-- Spec coverage：布局（Task 1/2/6）、启动/迁移/回滚/恢复/restore（Task 3/4/6/7/8）、UI（Task 9）、快捷方式（Task 10）、打包（Task 11）、发行（Task 13）、验收（Task 12）、文档（Task 13）；内部改名延后（记录于 spec，不在本计划）。
-- 占位符：无 TBD/TODO；每个任务给出具体文件、接口、测试和关键代码；UI 绘制参考 `startup_prompt.cpp`，需要实现时复制其皮肤资源。
-- 类型一致性：`Layout`/`ClientComplete`/`LaunchResult`/`Journal`/`MigrationResult`/`Recovery`/`RetargetShortcuts` 在后续任务中名称一致。
-- 未覆盖但 spec 要求：`client` 目录可见（Task 13 发行说明写明）；未签名（Task 13）；GitHub 限流（Task 13）。
+- Spec coverage：Phase A 覆盖布局、启动、迁移/回滚/恢复/restore、UI、快捷方式、打包、验收；Phase B 覆盖 FireKula 元数据、全量签名、新清单/序列、签名入口迁移、发行与验收；内部 2009 风格改名作为 Phase B 显式可选任务（需固定命名方案后并入 B1/B3）。
+- 占位符：无 TBD/TODO；Phase A 任务给出具体文件、接口、测试和关键代码；Phase B 给出文件、步骤、签名命令要点和验收判据，序列号按 v1.0.13-r2=21 顺延在执行时记录。
+- 类型一致性：`Layout`/`ClientComplete`/`LaunchResult`/`Journal`/`MigrationResult`/`Recovery`/`RetargetShortcuts` 在各任务中名称一致。
+- 依赖与边界：Phase B 的签名和发行依赖受信任证书；没有证书时停在 B2，不能声称已解决误报；`client` 目录可见、未签名边界改为“签名后发行”的说明。
