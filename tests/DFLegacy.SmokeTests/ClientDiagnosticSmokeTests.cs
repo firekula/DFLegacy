@@ -113,6 +113,19 @@ internal static class ClientDiagnosticSmokeTests
             using var detail = await Call(gm, HttpMethod.Get, $"/api/admin/diagnostics/reports/{receipt}", token: admin); check(detail.IsSuccessStatusCode, "GM reads structured detail");
             using var download = await Call(gm, HttpMethod.Get, $"/api/admin/diagnostics/reports/{receipt}/download", token: admin);
             check(download.IsSuccessStatusCode && download.Content.Headers.ContentDisposition?.DispositionType == "attachment" && download.Headers.CacheControl?.NoStore == true && (await download.Content.ReadAsByteArrayAsync()).SequenceEqual(original), "GM downloads original sanitized JSON with attachment/no-store headers");
+            using var export = await Call(gm, HttpMethod.Get, "/api/admin/diagnostics/export?kind=crash&version=test-1", token: admin);
+            check(export.IsSuccessStatusCode && export.Content.Headers.ContentType?.MediaType == "application/zip", "GM exports the filtered reports as one ZIP");
+            using (var zipStream = await export.Content.ReadAsStreamAsync())
+            using (var zip = new ZipArchive(zipStream, ZipArchiveMode.Read)) {
+                var index = zip.GetEntry("index.json");
+                var indexText = index is null ? "" : await new StreamReader(index.Open()).ReadToEndAsync();
+                check(index is not null && zip.Entries.Any(entry => entry.FullName.EndsWith(receipt + ".json", StringComparison.Ordinal))
+                    && indexText.Contains("\"groups\"", StringComparison.Ordinal), "export carries the group index and every raw report body");
+            }
+            using var exportForbidden = await Call(gm, HttpMethod.Get, "/api/admin/diagnostics/export", token: ordinary);
+            check(exportForbidden.StatusCode == HttpStatusCode.Forbidden, "the ZIP export requires an Admin token");
+            using var exportWrongListener = await Call(api, HttpMethod.Get, "/api/admin/diagnostics/export", token: admin);
+            check(exportWrongListener.StatusCode == HttpStatusCode.NotFound, "the ZIP export is served only on the GM listener");
             host!.Dispose(); host = null; await Start(); admin = await Login("diagadmin");
             using var restarted = await Call(api, HttpMethod.Post, Receive, original); check(restarted.StatusCode == HttpStatusCode.OK && JsonNode.Parse(await restarted.Content.ReadAsStringAsync())!["receiptId"]!.GetValue<string>() == receipt, "durable receipt survives restart");
             using var persistedStatus = await Call(gm, HttpMethod.Get, Groups + "?status=resolved", token: admin); check(JsonNode.Parse(await persistedStatus.Content.ReadAsStringAsync())!["total"]!.GetValue<int>() == 1, "group handling status survives restart");

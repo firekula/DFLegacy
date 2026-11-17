@@ -173,7 +173,31 @@ test("diagnostics query keeps working when its feature script loads", async () =
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(prevented, true);
   assert.deepEqual(page.requests.map(request => request.url), ["/api/admin/diagnostics/groups?page=1&pageSize=25"]);
-  assert.equal(page.get("#diagnosticSummary").textContent, "0 个故障组，第 1 页");
+  assert.equal(page.get("#diagnosticSummary").textContent, "0 个故障组，第 1 页；共 0 份报告");
+});
+
+test("diagnostics groups render as a table with a labeled status select", async () => {
+  const group = {
+    id: "a".repeat(64), kind: "crash", clientVersion: "v1.0.15+abcdef",
+    evidence: "second-chance-debug-event", module: "ChapterTwoPresentation.exe",
+    status: "new", occurrences: 1, reportCount: 1, lastSeen: "2026-11-17T12:00:00+00:00",
+    reportIds: ["b".repeat(32)], updatedBy: null, updatedAt: null
+  };
+  const page = mailPage(undefined, () => ({ total: 1, page: 1, pageSize: 25, items: [group] }), true);
+  await page.get("#diagnosticFilters").fire("submit", { preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  const row = page.get("#diagnosticGroups").querySelectorAll("tr")[0];
+  assert.equal(row.querySelectorAll("td").length, 8);
+  const select = row.querySelector("select");
+  assert.equal(select.getAttribute("aria-label"), "处理状态");
+  assert.equal(select.options.find(option => option.selected)?.value, "new");
+  assert.ok(page.get("#diagnosticExport"), "the toolbar offers the filtered ZIP export");
+  select.value = "resolved";
+  await select.fire("change");
+  await new Promise(resolve => setImmediate(resolve));
+  const patch = page.requests.find(request => request.method === "PATCH");
+  assert.equal(patch.url, "/api/admin/diagnostics/groups/" + group.id);
+  assert.deepEqual(patch.body, { status: "resolved" });
 });
 
 test("diagnostics query reports a disabled GM listener without inventing an endpoint", async () => {

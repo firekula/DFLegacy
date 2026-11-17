@@ -93,4 +93,5 @@ public sealed record ClientDiagnosticQuery(int Page = 1, int PageSize = 25, stri
 public sealed record ClientDiagnosticGroup(string Id, string Kind, string ClientVersion, string Evidence, string Module, string Status, long Occurrences, int ReportCount, DateTimeOffset LastSeen, string[] ReportIds, string? UpdatedBy, DateTimeOffset? UpdatedAt);
 public sealed record ClientDiagnosticPage(int Total, int Page, int PageSize, ClientDiagnosticGroup[] Items);
 public sealed record ClientDiagnosticDetail(string ReceiptId, string Fingerprint, string Status, DateTimeOffset ReceivedAt, ClientDiagnosticReport Report);
+public sealed record ClientDiagnosticExport(ClientDiagnosticGroup[] Groups, Dictionary<string, byte[]> Reports);
 public sealed record ClientDiagnosticStatusRequest(string Status);

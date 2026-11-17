@@ -64,14 +64,24 @@
             <label class="field"><span>开始时间</span><input name="from" type="datetime-local"></label>
             <label class="field"><span>结束时间</span><input name="to" type="datetime-local"></label>
           </div>
-          <button class="primary-button" type="submit">查询故障</button>
+          <div class="form-actions">
+            <button class="primary-button" type="submit">查询故障</button>
+            <button id="diagnosticExport" class="secondary-button" type="button">下载当前筛选（ZIP）</button>
+          </div>
         </form>
         <section class="surface form-layout">
           <p id="diagnosticSummary" role="status">点击查询故障以加载报告。</p>
-          <div id="diagnosticGroups"></div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr><th>类型</th><th>模块</th><th>版本</th><th>合并事故</th><th>报告</th><th>处理状态</th><th>最近发生</th><th>操作</th></tr>
+              </thead>
+              <tbody id="diagnosticGroups"></tbody>
+            </table>
+          </div>
           <div class="form-actions"><button id="diagnosticPrevious" class="secondary-button" type="button">上一页</button><button id="diagnosticNext" class="secondary-button" type="button">下一页</button></div>
         </section>
-        <section class="surface form-layout"><h2>报告详情</h2><pre id="diagnosticDetail"></pre><div id="diagnosticActions" class="form-actions"></div></section>
+        <section class="surface form-layout"><h2>报告详情</h2><div id="diagnosticDetail"></div><div id="diagnosticActions" class="form-actions"></div></section>
       </section>
 
       <section class="view active admin-only" data-view-panel="mail">
@@ -408,6 +418,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/admin/admin.js?v=20261110-mail-grid" defer></script>
   <script src="/admin/admin-rewards.js?v=20261110-mail-grid" defer></script>
-  <script src="/admin/admin-diagnostics.js?v=20261110-mail-grid" defer></script>
+  <script src="/admin/admin-diagnostics.js?v=20261117-diagnostics" defer></script>
 </body>
 </html>

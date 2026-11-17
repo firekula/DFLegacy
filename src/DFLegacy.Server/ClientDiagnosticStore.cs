@@ -210,25 +210,59 @@ public sealed class ClientDiagnosticStore : BackgroundService
         await _gate.WaitAsync(cancellationToken);
         try {
             if (!await MaintainAsync(cancellationToken)) throw new IOException("Diagnostic storage unavailable.");
-            var active = _records.Values.Where(value => value.Report is not null);
-            if (query.Kind is not null) active = active.Where(value => value.Report!.Kind == query.Kind);
-            if (query.Version is not null) active = active.Where(value => value.Report!.ClientVersion == query.Version);
-            if (query.System is not null) active = active.Where(value => value.Report!.System.GetValueOrDefault("osVersion", "unknown").Contains(query.System, StringComparison.OrdinalIgnoreCase));
-            if (query.Gpu is not null) active = active.Where(value => value.Report!.System.GetValueOrDefault("gpuModel", "unknown").Contains(query.Gpu, StringComparison.OrdinalIgnoreCase));
-            if (query.From is not null) active = active.Where(value => value.Report!.OccurredAt >= query.From);
-            if (query.To is not null) active = active.Where(value => value.Report!.OccurredAt <= query.To);
-            var groups = active.GroupBy(value => value.Fingerprint).Select(group => {
-                var newest = group.OrderByDescending(value => value.UpdatedAt ?? DateTimeOffset.MinValue).First(); var report = newest.Report!;
-                return new ClientDiagnosticGroup(group.Key, report.Kind, report.ClientVersion, report.Evidence, report.Module, newest.Status,
-                    group.Sum(value => (long)value.Report!.Occurrences), group.Count(), group.Max(value => value.Report!.OccurredAt),
-                    group.OrderByDescending(value => value.ReceivedAt).Select(value => value.ReceiptId).ToArray(), newest.UpdatedBy, newest.UpdatedAt);
-            });
-            if (query.Status is not null) groups = groups.Where(value => value.Status == query.Status);
-            var ordered = groups.OrderByDescending(value => value.LastSeen).ThenBy(value => value.Id, StringComparer.Ordinal).ToArray();
+            var ordered = SnapshotGroups(query);
             var page = Math.Clamp(query.Page, 1, 1000000); var size = Math.Clamp(query.PageSize, 1, 100);
             return new(ordered.Length, page, size, ordered.Skip((page - 1) * size).Take(size).ToArray());
         }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>
+    /// One consistent snapshot for the GM ZIP export: the groups and the raw body of every
+    /// report in them, all taken under the storage gate. Returns null when the bounded
+    /// export limits would be exceeded (the endpoint answers 413).
+    /// </summary>
+    public async Task<ClientDiagnosticExport?> ExportAsync(ClientDiagnosticQuery query, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try {
+            if (!await MaintainAsync(cancellationToken)) throw new IOException("Diagnostic storage unavailable.");
+            var groups = SnapshotGroups(query);
+            var reports = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+            long bytes = 0;
+            foreach (var receipt in groups.SelectMany(group => group.ReportIds)) {
+                if (reports.Count >= MaxExportReports || bytes > MaxExportBytes) return null;
+                var body = _records.Values.FirstOrDefault(value => value.ReceiptId == receipt && value.Body is not null)?.Body;
+                if (body is null) continue;
+                bytes += body.Length;
+                if (bytes > MaxExportBytes) return null;
+                reports[receipt] = body.ToArray();
+            }
+            return new ClientDiagnosticExport(groups, reports);
+        }
+        finally { _gate.Release(); }
+    }
+
+    private const int MaxExportReports = 5000;
+    private const long MaxExportBytes = 128L * 1024 * 1024;
+
+    private ClientDiagnosticGroup[] SnapshotGroups(ClientDiagnosticQuery query)
+    {
+        var active = _records.Values.Where(value => value.Report is not null);
+        if (query.Kind is not null) active = active.Where(value => value.Report!.Kind == query.Kind);
+        if (query.Version is not null) active = active.Where(value => value.Report!.ClientVersion == query.Version);
+        if (query.System is not null) active = active.Where(value => value.Report!.System.GetValueOrDefault("osVersion", "unknown").Contains(query.System, StringComparison.OrdinalIgnoreCase));
+        if (query.Gpu is not null) active = active.Where(value => value.Report!.System.GetValueOrDefault("gpuModel", "unknown").Contains(query.Gpu, StringComparison.OrdinalIgnoreCase));
+        if (query.From is not null) active = active.Where(value => value.Report!.OccurredAt >= query.From);
+        if (query.To is not null) active = active.Where(value => value.Report!.OccurredAt <= query.To);
+        var groups = active.GroupBy(value => value.Fingerprint).Select(group => {
+            var newest = group.OrderByDescending(value => value.UpdatedAt ?? DateTimeOffset.MinValue).First(); var report = newest.Report!;
+            return new ClientDiagnosticGroup(group.Key, report.Kind, report.ClientVersion, report.Evidence, report.Module, newest.Status,
+                group.Sum(value => (long)value.Report!.Occurrences), group.Count(), group.Max(value => value.Report!.OccurredAt),
+                group.OrderByDescending(value => value.ReceivedAt).Select(value => value.ReceiptId).ToArray(), newest.UpdatedBy, newest.UpdatedAt);
+        });
+        if (query.Status is not null) groups = groups.Where(value => value.Status == query.Status);
+        return groups.OrderByDescending(value => value.LastSeen).ThenBy(value => value.Id, StringComparer.Ordinal).ToArray();
     }
 
     public async Task<ClientDiagnosticDetail?> GetAsync(string receipt, CancellationToken cancellationToken = default)

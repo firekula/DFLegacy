@@ -199,7 +199,7 @@ Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试�
 
 ## 客户端基本故障报告（Unreleased）
 
-无需新端口。`POST /api/client-diagnostics/reports` 只在账号 API `Admin.Port`（本地默认 8081）接收，GM 管理仅在独立 GM 口（本地默认 18081）且需 Admin 身份；玩家 HTTP 口不提供接收／查看。GM 后台新增故障报告页，支持类型、版本、状态、系统、GPU、时间筛选、分页、状态维护、基本 JSON 下载及删除。交互式页面操作本轮尚未完成，自动 HTTP 权限／筛选／下载／删除回归见[验收报告](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)。
+无需新端口。`POST /api/client-diagnostics/reports` 只在账号 API `Admin.Port`（本地默认 8081）接收，GM 管理仅在独立 GM 口（本地默认 18081）且需 Admin 身份；玩家 HTTP 口不提供接收／查看。GM 后台故障页按表格展示类型/模块/版本/合并事故/报告数/状态/最近发生，状态下拉直接维护，工具栏「下载当前筛选（ZIP）」调用 `GET /api/admin/diagnostics/export`（同筛选条件，ZIP 内含 `index.json` 与 `reports/<组>/<回执>.json`，上限 5,000 份 / 128 MiB）。需要自动化取数时用 `tools/admin/diagnostics.py`（`groups`/`export`/`report`/`status`/`delete`，凭据只从环境变量读），它对现有 API 逐份下载并在本地打 ZIP，不必先升级服务端。自动 HTTP 权限／筛选／下载／删除回归见[验收报告](docs/acceptance/2026-11-09-client-diagnostic-reporting.md)，本轮页面与 ZIP 的本地验证见[记录](knowledge/decisions/2026-11-17-gm-diagnostics-redesign.md)。
 
 在 `server.json` 的 `ClientDiagnostics` 中可设置 `Enabled`（默认 true）、`StoragePath`（空则存档同级 diagnostics 独立目录）、`RetentionDays`（最多 14）、`MaxStorageBytes`（最多 268435456）、`MaxReportCount`（最多 2000）、`MaxDeduplicationEntries`（最多 50000）、`SourcePerMinute`（5）、`SourcePerHour`（30）、`GlobalPerMinute`（10）、`GlobalPerHour`（120）。两个并发接收，上行压缩 256 KiB／展开 1 MiB、15 秒请求界限；容量不足返回 503，不通过提前删除幂等摘要腾空间。删除正文后保留 30 天去重摘要，重试返回 410，防止报告复活。诊断存储不持有游戏存档锁。
 

@@ -46,6 +46,34 @@ public static class ClientDiagnosticEndpoints
             try { return Results.Ok(await store.ListAsync(new(page ?? 1, pageSize ?? 25, kind, version, status, system, gpu, from, to), http.RequestAborted)); }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return Results.StatusCode(503); }
         });
+        app.MapGet("/api/admin/diagnostics/export", async (HttpContext http, ClientDiagnosticStore store, string? kind, string? version, string? status, string? system, string? gpu, DateTimeOffset? from, DateTimeOffset? to) => {
+            if (!IsGm(http, options)) return Results.NotFound();
+            if (!IsAdmin(http)) return Results.Unauthorized();
+            http.Response.Headers.CacheControl = "no-store";
+            try {
+                var export = await store.ExportAsync(new(1, 100, kind, version, status, system, gpu, from, to), http.RequestAborted);
+                if (export is null) return Results.StatusCode(413);
+                using var memory = new MemoryStream();
+                using (var archive = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true)) {
+                    var index = new {
+                        format = "DFLegacy-client-diagnostics-export-1",
+                        generatedAt = DateTimeOffset.UtcNow,
+                        filters = new { kind, version, status, system, gpu, from, to },
+                        groups = export.Groups.Select(group => new {
+                            group.Id, group.Kind, group.ClientVersion, group.Module, group.Status,
+                            group.Occurrences, group.ReportCount, group.LastSeen, group.Evidence,
+                            reports = group.ReportIds.Select(receipt => new { receiptId = receipt, file = ExportEntry(group.Id, receipt) })
+                        })
+                    };
+                    WriteZipEntry(archive, "index.json", JsonSerializer.SerializeToUtf8Bytes(index, ExportJson));
+                    foreach (var group in export.Groups)
+                        foreach (var receipt in group.ReportIds)
+                            if (export.Reports.TryGetValue(receipt, out var body)) WriteZipEntry(archive, ExportEntry(group.Id, receipt), body);
+                }
+                return Results.File(memory.ToArray(), "application/zip", "diagnostics-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss") + ".zip");
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { return Results.StatusCode(503); }
+        });
         app.MapGet("/api/admin/diagnostics/reports/{id}", async (HttpContext http, string id, ClientDiagnosticStore store) => {
             if (!IsGm(http, options)) return Results.NotFound();
             if (!IsAdmin(http)) return Results.Unauthorized();
@@ -91,6 +119,14 @@ public static class ClientDiagnosticEndpoints
     }
     private static bool IsGm(HttpContext http, ServerOptions options) => options.WebPanels.Gm.Enabled && http.Connection.LocalPort == options.WebPanels.Gm.Port;
     private static bool IsAdmin(HttpContext http) => http.Items[AdminAccessPolicy.TokenInfoKey] is AdminTokenInfo { Role: AccountRole.Admin };
+    private static readonly JsonSerializerOptions ExportJson = new(JsonSerializerDefaults.Web);
+    private static string ExportEntry(string fingerprint, string receipt) =>
+        "reports/" + (fingerprint.Length > 12 ? fingerprint[..12] : fingerprint) + "/" + receipt + ".json";
+    private static void WriteZipEntry(ZipArchive archive, string name, byte[] body)
+    {
+        using var stream = archive.CreateEntry(name, CompressionLevel.Fastest).Open();
+        stream.Write(body);
+    }
     private static async Task<byte[]?> ReadBounded(Stream input, int maximum, CancellationToken cancellationToken)
     {
         using var output = new MemoryStream(); var buffer = new byte[8192];
