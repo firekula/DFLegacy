@@ -43,6 +43,23 @@ internal static class EngineTests
         File.WriteAllText(marker, "{");
         upgradeProgress = new();
         TestRun.Check((await engine.ValidateInstalledAsync(upgradeProgress)).CanLaunch && upgradeProgress.Count > 0, "malformed validation record falls back to complete verification");
+        // Moving an installation preserves the identities of every managed file. The recorded
+        // absolute root must not force a full re-hash: only managed content is authoritative.
+        var moveSource = Path.Combine(scratch, "engine-move-source");
+        var moveTarget = Path.Combine(scratch, "engine-move-target");
+        var moveProvider = new MemoryProvider(source, release);
+        foreach (var blob in provider.Blobs) moveProvider.Blobs[blob.Key] = blob.Value;
+        var moveEngine = new UpdateEngine(moveSource, moveProvider);
+        InstallTransaction.Apply(moveSource, await moveEngine.DownloadAsync(await moveEngine.CheckAsync()));
+        TestRun.Check((await moveEngine.ValidateInstalledAsync()).CanLaunch, "relocated fixture records a complete installation");
+        Directory.Move(moveSource, moveTarget);
+        var movedProgress = new CaptureProgress();
+        TestRun.Check((await new UpdateEngine(moveTarget, moveProvider).ValidateInstalledAsync(movedProgress)).CanLaunch
+            && movedProgress.Count == 0, "relocated installation reuses the completed record without re-hashing managed files");
+        File.WriteAllText(Path.Combine(moveTarget, "DFLegacy.Client.dll"), "tampered");
+        var tamperedProgress = new CaptureProgress();
+        TestRun.Check(!(await new UpdateEngine(moveTarget, moveProvider).ValidateInstalledAsync(tamperedProgress)).CanLaunch
+            && tamperedProgress.Count > 0, "a new path never blesses altered managed content");
         check = await engine.CheckAsync();
         TestRun.Check(!check.NeedsInstall && check.CanLaunch && !check.IsOffline, "same version fully verified on online check");
         provider.Unavailable = true;
