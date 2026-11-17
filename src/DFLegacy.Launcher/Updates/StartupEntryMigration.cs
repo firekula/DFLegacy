@@ -10,7 +10,8 @@ internal static class StartupEntryMigration
     private static readonly (string Bridge, long BridgeSequence, string Target)[] BridgeTargets =
     [
         ("v1.0.12-bridge", 17, "v1.0.12"),
-        ("v1.0.13-bridge-r2", 20, "v1.0.13-r2")
+        ("v1.0.13-bridge-r2", 20, "v1.0.13-r2"),
+        ("v1.0.14-bridge", 22, "v1.0.14")
     ];
 
     internal static bool IsBridge(Core.VerifiedRelease? release) =>

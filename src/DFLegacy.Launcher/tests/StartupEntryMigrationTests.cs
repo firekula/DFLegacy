@@ -22,7 +22,14 @@ internal static class StartupEntryMigrationTests
         throw new InvalidOperationException("Managed migration did not reach its interruption checkpoint.");
     }
 
-    internal static int Probe(string bridgePath, string targetPath)
+    internal static int Probe(string bridgePath, string targetPath) =>
+        ProbeCore(bridgePath, targetPath, "v1.0.13-bridge-r2", 20, "v1.0.13-r2", 21);
+
+    internal static int ProbeV1014(string bridgePath, string targetPath) =>
+        ProbeCore(bridgePath, targetPath, "v1.0.14-bridge", 22, "v1.0.14", 23);
+
+    private static int ProbeCore(string bridgePath, string targetPath, string bridgeTag, long bridgeSequence,
+        string targetTag, long targetSequence)
     {
         var failures = 0;
         void Check(bool condition, string message)
@@ -32,8 +39,10 @@ internal static class StartupEntryMigrationTests
         }
         var bridge = Load(bridgePath);
         var target = Load(targetPath);
-        Check(bridge.Tag == "v1.0.13-bridge-r2" && bridge.Manifest.Sequence == 20, "bridge identity is v1.0.13-bridge-r2/20");
-        Check(target.Tag == "v1.0.13-r2" && target.Manifest.Sequence == 21, "target identity is v1.0.13-r2/21");
+        Check(bridge.Tag == bridgeTag && bridge.Manifest.Sequence == bridgeSequence,
+            $"bridge identity is {bridgeTag}/{bridgeSequence}");
+        Check(target.Tag == targetTag && target.Manifest.Sequence == targetSequence,
+            $"target identity is {targetTag}/{targetSequence}");
         Check(Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(target.Manifest),
             "the target is the approved startup migration shape");
         Check(StartupEntryMigration.IsAuthorized(bridge, target),
@@ -42,9 +51,9 @@ internal static class StartupEntryMigrationTests
             "both manifests carry the same file count");
         var previous = bridge.Manifest.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
         Check(target.Manifest.Files.All(file => previous.TryGetValue(file.Path, out var old)
-            && (file.Path == BootstrapLayout.EntryName
-                ? file.Sha256 != old.Sha256
-                : file.Sha256 == old.Sha256 && file.Size == old.Size)),
+                && (file.Path == BootstrapLayout.EntryName
+                    ? file.Sha256 != old.Sha256
+                    : file.Sha256 == old.Sha256 && file.Size == old.Size)),
             "only the fixed entry differs between the bridge and the target");
         return failures == 0 ? 0 : 1;
     }
@@ -130,6 +139,31 @@ internal static class StartupEntryMigrationTests
         var receiptR2 = storeR2.ReadInstalled()!;
         check(receiptR2.Release.ManifestSha256 == finalR2.Release.ManifestSha256 && storeR2.HasValidatedReceipt(receiptR2)
             && !Core.InstallTransaction.HasPending(completedR2), "the v1.0.13-r2 entry and receipt commit atomically");
+
+        var v14Root = Path.Combine(scratch, "entry-policy-v1014");
+        var (bridgeV14, stagedV14) = Fixture(v14Root, "v1.0.14-bridge", 22, 17, "v1.0.14", 23, 17);
+        check(Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(stagedV14.Release.Manifest),
+            "the v1.0.14 target is the approved startup migration shape");
+        check(StartupEntryMigration.IsAuthorized(bridgeV14, stagedV14.Release),
+            "the v1.0.14 bridge and target permit one entry replacement");
+        check(!StartupEntryMigration.IsAuthorized(bridgeV14, stagedR2.Release)
+            && !StartupEntryMigration.IsAuthorized(bridgeR2, stagedV14.Release),
+            "the v1.0.14 pair cannot cross generations");
+        check(!StartupEntryMigration.IsAuthorized(bridgeV14, Modify(stagedV14.Release, m => m with { Sequence = 22 })),
+            "a resequenced v1.0.14 target is not the paired migration target");
+        using (var session = new V4UpdateSession(v14Root, new LauncherOptions(), new FixtureProvider(stagedV14.Release)))
+        {
+            var update = await session.CheckAsync(22, CancellationToken.None);
+            check(update?.Version == "v1.0.14" && session.RequiresDetachedInstall,
+                "V4 gives the paired v1.0.14 update to the detached helper");
+        }
+        var completedV14 = Path.Combine(scratch, "entry-success-v1014");
+        var (beforeV14, finalV14) = Fixture(completedV14, "v1.0.14-bridge", 22, 17, "v1.0.14", 23, 17);
+        Core.InstallTransaction.ApplyStartupEntryMigration(completedV14, finalV14, beforeV14.ManifestSha256);
+        var storeV14 = new Core.InstallationStore(completedV14);
+        var receiptV14 = storeV14.ReadInstalled()!;
+        check(receiptV14.Release.ManifestSha256 == finalV14.Release.ManifestSha256 && storeV14.HasValidatedReceipt(receiptV14)
+            && !Core.InstallTransaction.HasPending(completedV14), "the v1.0.14 entry and receipt commit atomically");
 
         var originalEntry = File.ReadAllBytes(Path.Combine(root, BootstrapLayout.EntryName));
         File.WriteAllText(Path.Combine(root, "Script.pvf"), "edited PVF");
