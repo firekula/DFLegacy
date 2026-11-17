@@ -46,6 +46,19 @@ DFLegacy.Launcher.Tests.exe --bootstrap-transport-tests
 dotnet run --project tests/DFLegacy.UpdateCore.Tests -c Release -- --engine
 ```
 
+## 真机复验（部分，2026-11-17 22:33）
+
+用 `74b9c04` 工作区重建 app/updater，替换到测试根 `G:\tmp\dfo-v1015-flat15`（描述符与 recovery 缓存同步），正常双击外层 `DFOLauncher.exe`：
+
+- worker 日志：`Update deferred: release v1.0.15 requires a new startup package; keeping the installed entry.`
+- update incident：`stage=independent-repair result=deferred`；
+- 随后本地 `BootstrapLayout.ValidateInstalledAsync` 拒绝交接：
+  `受管理文件或配置未通过完整校验，请修复后启动。` —— 因为本次替换的 App/Updater 字节与 `installed.json`
+  里的旧哈希不一致，本地内容**确实**不完整。这正是第二道护栏（延迟更新不放过坏本地）在工作，不是回归。
+- 因此“延迟更新 + 本地完整 → 进登录页”的成功路径**没有**在这次复验里跑通：要跑通需要一份与新二进制一致的收据
+  （重写 `installed.json` 的清单字节），属测试夹具工作。现场已还原（App `8e9428d9…`、Updater `677b5f4c…`、
+  描述符原哈希、`validated.json` 0 字节、删除临时缓存副本）。
+
 ## 未做
 
 - 用户可见的“等待新启动包”提示目前只在 launcher 日志与 `RepairOutcome.Message` 里；登录页/更新检查 UI 未改
