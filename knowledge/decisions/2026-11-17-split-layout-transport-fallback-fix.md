@@ -10,6 +10,10 @@
 - 测试根：`G:\tmp\dfo-v1015-flat15`（拆分布局；外层游戏文件 + `client\` 启动器）。
 - SDK：.NET `10.0.402`；原生预编译 `artifacts/native/ijl15/Release/{DFLegacy.Bootstrap32.exe,DFLegacy.Client.dll,ijl15.dll}` 可用。
 - 本机限制：Restart Manager 不可用（`RmStartSession` 返回 29）。`RepairClientTests` / `TransactionTests` 等依赖它的用例在本机跑不通，属环境限制，不是回归。
+  - **更正（同日）**：这句说过头了。独立 `pwsh`、`pwsh` 子进程、普通 .NET 控制台程序三种宿主执行 `RmStartSession` 都返回 0；
+    只有 `DFLegacy.Launcher.Tests.exe`（WPF 测试宿主，x64）在 `RmStartSession` 处返回 29（`ERROR_WRITE_FAULT`）。
+    因此不是“本机 RM 不可用”，而是“该测试宿主下不可用”，原因未定。依赖 RM 的测试组结果在这台机器上不可信；
+    真实启动路径不受影响（真机复验里预检正常走到了线上清单和 `RequireStableEntry`）。
 
 ## 实测错误文本（原文）
 
