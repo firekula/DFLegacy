@@ -1,9 +1,11 @@
 #include "../journal.hpp"
 #include "../layout.hpp"
 #include "../launch.hpp"
+#include "../migration.hpp"
 #include "../process.hpp"
 #include "../single_instance.hpp"
 #include <windows.h>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -15,6 +17,16 @@ static void Check(bool condition, const char* what) {
     std::fprintf(stderr, "FAIL: %s\n", what);
     std::exit(1);
 }
+
+struct CountObserver : dfo::MigrationObserver {
+    std::size_t done = 0;
+    std::size_t total = 0;
+
+    void OnProgress(std::size_t doneValue, std::size_t totalValue, const std::wstring&) override {
+        done = doneValue;
+        total = totalValue;
+    }
+};
 
 int main(int argc, char** argv) {
     namespace fs = std::filesystem;
@@ -114,6 +126,54 @@ int main(int argc, char** argv) {
     const auto missingJournal = dfo::ReadJournal(journalRoot, journalError);
     Check(!missingJournal.has_value() && journalError.empty(), "missing journal is not an error");
     fs::remove_all(journalRoot, ignored);
+
+    auto migrationRoot = fs::temp_directory_path() / ("dfo-migration-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(migrationRoot, ignored);
+    fs::create_directories(migrationRoot / "ImagePacks2");
+    fs::create_directories(migrationRoot / ".dflegacy" / "v4");
+    for (const auto* name : {"DFOLauncher.exe", "DFLegacy.Launcher.exe", "DFLegacy.Launcher.App.exe",
+                             "DFLegacy.Updater.exe", "DFLegacy.Bootstrap.ini", "DFLegacy.Chapter.json",
+                             "DNF.exe", "Script.pvf"}) {
+        std::ofstream(migrationRoot / name) << "x";
+    }
+    std::ofstream(migrationRoot / "ImagePacks2" / "a.npk") << "x";
+    std::ofstream(migrationRoot / ".dflegacy" / "v4" / "installed.json") << "{}";
+
+    CountObserver observer;
+    const auto migrated = dfo::Migrate(migrationRoot, observer);
+    Check(migrated.ok && !migrated.rolledBack && migrated.error.empty(), "migration succeeds");
+    Check(observer.total > 0 && observer.done == observer.total, "migration reports completion");
+    Check(fs::exists(migrationRoot / "DFOLauncher.exe"), "stub stays outside the client");
+    Check(!fs::exists(migrationRoot / "DFLegacy.Launcher.exe"), "entry moved out of the root");
+    Check(dfo::ClientComplete(migrationRoot / "client"), "migrated client is complete");
+    Check(!fs::exists(migrationRoot / "DFOLauncher.migrate"), "journal removed after success");
+
+    auto failureRoot = fs::temp_directory_path() / ("dfo-migration-failure-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(failureRoot, ignored);
+    fs::create_directories(failureRoot / "ImagePacks2");
+    fs::create_directories(failureRoot / ".dflegacy" / "v4");
+    for (const auto* name : {"DFOLauncher.exe", "DFLegacy.Launcher.exe", "DFLegacy.Launcher.App.exe",
+                             "DFLegacy.Updater.exe", "DFLegacy.Bootstrap.ini", "DFLegacy.Chapter.json",
+                             "DNF.exe", "Script.pvf"}) {
+        std::ofstream(failureRoot / name) << "x";
+    }
+    std::ofstream(failureRoot / "ImagePacks2" / "a.npk") << "x";
+    std::ofstream(failureRoot / ".dflegacy" / "v4" / "installed.json") << "{}";
+
+    const HANDLE lock = CreateFileW((failureRoot / "DNF.exe").c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(lock != INVALID_HANDLE_VALUE, "failure fixture locks DNF.exe");
+    CountObserver failureObserver;
+    const auto migrationFailure = dfo::Migrate(failureRoot, failureObserver);
+    CloseHandle(lock);
+    Check(!migrationFailure.ok && migrationFailure.rolledBack, "failed migration rolls back");
+    Check(fs::exists(failureRoot / "DFLegacy.Launcher.exe") && fs::exists(failureRoot / "DNF.exe"),
+          "original layout is restored");
+    Check(!fs::exists(failureRoot / "client"), "client removed after rollback");
+    Check(!fs::exists(failureRoot / "DFOLauncher.migrate"), "journal removed after rollback");
+
+    fs::remove_all(migrationRoot, ignored);
+    fs::remove_all(failureRoot, ignored);
 
     fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
