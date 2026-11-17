@@ -144,6 +144,7 @@ try
     if(args.Length==2&&args[0]=="--native-diagnostic-setting-tests") {await NativeDiagnosticLifetimeTests.Run(root,Check,Path.GetFullPath(args[1]));Console.WriteLine($"Native diagnostic setting tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-transport-tests")) { await BootstrapUpdateTests.RunTransportFallbackAsync(root,Check); Console.WriteLine($"Bootstrap transport tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if (args is ["--full-starter-migration-tests"])
     {
         await FullStarterMigrationTests.Run(root, Check);

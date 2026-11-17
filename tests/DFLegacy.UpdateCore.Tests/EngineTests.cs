@@ -48,6 +48,13 @@ internal static class EngineTests
         provider.Unavailable = true;
         check = await engine.CheckAsync();
         TestRun.Check(check.CanLaunch && check.IsOffline && check.Message.Contains("未确认线上最新版本"), "valid installed baseline allowed offline with explicit warning");
+        // A TLS failure surfaces as IOException, not HttpRequestException. Source unavailability
+        // must stay a warning: a complete trusted installation still launches offline.
+        provider.Unavailable = false; provider.TransportUnavailable = true;
+        check = await engine.CheckAsync();
+        TestRun.Check(check.CanLaunch && check.IsOffline && check.Target is null
+            && check.Message.Contains("未确认线上最新版本"), "transport-level IOException is treated as an unreachable source");
+        provider.TransportUnavailable = false;
         File.WriteAllText(Path.Combine(root, "DFLegacy.Client.dll"), "xxx");
         check = await engine.CheckAsync();
         TestRun.Check(!check.CanLaunch, "offline corrupt baseline cannot launch");
@@ -111,11 +118,13 @@ internal static class EngineTests
         public string Identity => source.Identity;
         public VerifiedRelease? Target { get; set; } = release;
         public bool Unavailable { get; set; }
+        public bool TransportUnavailable { get; set; }
         public Dictionary<string, byte[]> Blobs { get; } = new();
         public List<string> Downloads { get; } = [];
         public Task<VerifiedRelease?> FindAsync(CancellationToken token = default)
         {
             token.ThrowIfCancellationRequested();
+            if (TransportUnavailable) throw new IOException("Received an unexpected EOF or 0 bytes from the transport stream.");
             if (Unavailable) throw new HttpRequestException("fixture offline");
             return Task.FromResult(Target);
         }

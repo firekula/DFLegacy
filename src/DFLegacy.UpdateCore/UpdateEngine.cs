@@ -20,7 +20,8 @@ public sealed class UpdateEngine
         VerifiedRelease? target = null; Exception? unavailable = null;
         try { target = await provider.FindAsync(token).ConfigureAwait(false); }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch (Exception ex) when (ex is HttpRequestException or TimeoutException or OperationCanceledException)
+        // TLS teardown surfaces as IOException; an unreachable source is a warning, never a launch block.
+        catch (Exception ex) when (ex is HttpRequestException or TimeoutException or IOException or OperationCanceledException)
         { unavailable = ex; }
         using var lease = InstallationLease.Acquire(root);
         RequireNoPending();

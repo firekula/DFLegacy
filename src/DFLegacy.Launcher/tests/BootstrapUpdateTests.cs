@@ -178,6 +178,15 @@ internal static class BootstrapUpdateTests
         check(launches==1&&File.ReadAllBytes(Path.Combine(root,BootstrapLayout.AppName)).SequenceEqual(files[BootstrapLayout.AppName]),"missing UI repaired before UI handoff");
         provider.Offline=true;var offline=await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:Launch);
         check(offline.Offline&&offline.Message.Contains("未确认线上最新版本")&&launches==2,"fully verified offline startup explicitly reports freshness unknown");
+        // A source that dies inside TLS surfaces as IOException instead of HttpRequestException.
+        // The completed installation must still hand off to the login window instead of blocking startup.
+        provider.Offline=false;provider.TransportFailure=true;
+        var transportLaunches=0;
+        var transport=await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:(_,_)=>{transportLaunches++;return Task.CompletedTask;});
+        provider.TransportFailure=false;
+        check(transportLaunches==1&&transport.Offline&&transport.Message.Contains("未确认线上最新版本"),
+            "transport failure hands off the completed installation offline");
+        provider.Offline=true;
         File.WriteAllText(Path.Combine(root,BootstrapLayout.AppName),"same length?");
         try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:Launch);check(false,"offline corrupt UI must block");}catch(InvalidDataException){check(launches==2,"offline corrupt files never execute UI");}
         provider.Offline=false;await RepairClient.RunAsync(new(root),provider,validateManifest:BootstrapLayout.RequireManifest);
@@ -194,9 +203,35 @@ internal static class BootstrapUpdateTests
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{bad config");var calls=provider.FindCalls;
         try{await BootstrapUpdateClient.RunAsync(new(root,[]),provider,launch:Launch);check(false,"malformed config must not reset");}catch(System.Text.Json.JsonException){check(launches==2&&File.ReadAllText(Path.Combine(root,"launcher.json"))=="{bad config"&&provider.FindCalls==calls,"config corruption retained and no launch/discovery");}
     }
-    internal static async Task RunWindowPolicyAsync(string scratch,Action<bool,string> check)
+    // Built without RepairClient: the boot handoff must survive a source that dies inside TLS
+    // (IOException) once the installation itself is complete and locally validated.
+    internal static async Task RunTransportFallbackAsync(string scratch,Action<bool,string> check)
     {
-        var root=Path.Combine(scratch,"bootstrap-window-policy");Directory.CreateDirectory(root);
+        var root=Path.Combine(scratch,"bootstrap-transport-fallback");Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
+        string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
+        var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]="entry bytes"u8.ToArray(),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),[BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]="client dll"u8.ToArray(),["resource.bin"]="resource content"u8.ToArray()};
+        files[BootstrapLayout.DescriptorName]=Encoding.ASCII.GetBytes($"[Bootstrap]\nSchemaVersion=1\nArchitecture={BootstrapLayout.Architecture}\nLauncherSha256={Hash(files[BootstrapLayout.AppName])}\nUpdaterSha256={Hash(files[BootstrapLayout.UpdaterName])}\n");
+        var provider=new FixtureProvider(BootstrapLayout.Architecture,files);
+        var release=await provider.FindAsync()??throw new InvalidOperationException("fixture release missing");
+        // Publish exactly the fixture bytes into an offline content cache, then commit them.
+        var cache=Path.Combine(root,".dflegacy","v4","cache");Directory.CreateDirectory(cache);
+        foreach(var file in release.Manifest.Files)File.WriteAllBytes(Path.Combine(cache,file.Sha256+"-"+file.Size+".blob"),files[file.Path]);
+        Core.InstallTransaction.Apply(root,new(release,cache));
+        await BootstrapLayout.ValidateInstalledAsync(root,BootstrapLayout.Architecture);
+        check(new Core.InstallationStore(root).HasValidatedReceipt(new Core.InstallationStore(root).ReadInstalled()!),
+            "transport fallback fixture owns a complete validated installation");
+        provider.TransportFailure=true;
+        // Forget the validated receipt so the ordinary fast path cannot hide the failure,
+        // then boot the game CLI: that entry always runs full local verification first.
+        File.Delete(Path.Combine(root,".dflegacy","v4","validated.json"));
+        var launches=0;
+        var offline=await BootstrapUpdateClient.RunAsync(new(root,["--headless"]),provider,launch:(_,_)=>{launches++;return Task.CompletedTask;});
+        check(launches==1&&offline.Offline&&offline.Message.Contains("未确认线上最新版本"),
+            "transport failure hands off the completed installation offline");
+    }
+    internal static async Task RunWindowPolicyAsync(string scratch,Action<bool,string> check)
+    {        var root=Path.Combine(scratch,"bootstrap-window-policy");Directory.CreateDirectory(root);
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
         string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
         var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]="entry bytes"u8.ToArray(),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),[BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]="client dll"u8.ToArray(),["resource.bin"]="resource content"u8.ToArray()};
@@ -245,7 +280,7 @@ internal static class BootstrapUpdateTests
     private sealed class FixtureProvider:Core.IReleaseProvider
     {
         private readonly Core.VerifiedRelease release;private readonly Dictionary<string,byte[]> blobs=[];
-        internal bool Offline,InvalidManifest,ThrowOnNetwork;internal int OpenCalls,FindCalls;
+        internal bool Offline,InvalidManifest,ThrowOnNetwork,TransportFailure;internal int OpenCalls,FindCalls;
         internal Action? OnFind;
         public Core.ReleaseSource Source=>release.Source;public string Identity=>Source.Identity;
         internal FixtureProvider(string arch,Dictionary<string,byte[]> files,Core.ConfigMigration[]? migrations=null)
@@ -256,7 +291,7 @@ internal static class BootstrapUpdateTests
             var manifest=new Core.ClientManifest(4,"v0.1.8-giteatest.3",new string('b',40),arch,"normal","gitea-test",3,0,managed,[],migrations??[]);
             var bytes=Core.ManifestCodec.Serialize(manifest);release=new(source,manifest.Version,Hash(bytes),bytes);
         }
-        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;OnFind?.Invoke();if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not contact network-enabled provider.");if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
+        public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;OnFind?.Invoke();if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not contact network-enabled provider.");if(TransportFailure)throw new System.IO.IOException("Received an unexpected EOF or 0 bytes from the transport stream.");if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
         public Task<System.Net.Http.HttpResponseMessage> OpenAsync(Core.ResourcePart part,long offset,string? etag,CancellationToken token){OpenCalls++;if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not download resources.");return Task.FromResult(new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK){Content=new System.Net.Http.ByteArrayContent(blobs[part.Sha256])});}
     }
 }
