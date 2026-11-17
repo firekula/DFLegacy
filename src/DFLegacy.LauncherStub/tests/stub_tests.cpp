@@ -226,6 +226,47 @@ int main(int argc, char** argv) {
     Check(fs::exists(corruptRoot / "DFOLauncher.migrate"), "corrupt journal is kept for inspection");
     fs::remove_all(corruptRoot, ignored);
 
+    auto restoreRoot = fs::temp_directory_path() / ("dfo-restore-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(restoreRoot, ignored);
+    fs::create_directories(restoreRoot / "client" / "ImagePacks2");
+    std::ofstream(restoreRoot / "DFOLauncher.exe") << "x";
+    for (const auto* name : {"DFLegacy.Launcher.exe", "DFLegacy.Launcher.App.exe", "DFLegacy.Updater.exe",
+                             "DFLegacy.Bootstrap.ini", "DFLegacy.Chapter.json", "DNF.exe", "Script.pvf"}) {
+        std::ofstream(restoreRoot / "client" / name) << "x";
+    }
+    std::ofstream(restoreRoot / "client" / "ImagePacks2" / "a.npk") << "x";
+    CountObserver restoreObserver;
+    const auto restored = dfo::RestoreWithoutJournal(restoreRoot, restoreObserver);
+    Check(restored.ok && !restored.rolledBack, "restore succeeds");
+    Check(fs::exists(restoreRoot / "DFLegacy.Launcher.exe") && fs::exists(restoreRoot / "ImagePacks2" / "a.npk"),
+          "restored entries are back at the root");
+    Check(!fs::exists(restoreRoot / "client"), "client removed after restore");
+    Check(fs::exists(restoreRoot / "DFOLauncher.exe"), "stub survives restore");
+    fs::remove_all(restoreRoot, ignored);
+
+    auto restoreFailureRoot =
+        fs::temp_directory_path() / ("dfo-restore-failure-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(restoreFailureRoot, ignored);
+    fs::create_directories(restoreFailureRoot / "client");
+    std::ofstream(restoreFailureRoot / "DFOLauncher.exe") << "x";
+    for (const auto* name : {"DFLegacy.Launcher.exe", "DFLegacy.Launcher.App.exe", "DFLegacy.Updater.exe",
+                             "DFLegacy.Bootstrap.ini", "DFLegacy.Chapter.json", "DNF.exe", "Script.pvf"}) {
+        std::ofstream(restoreFailureRoot / "client" / name) << "x";
+    }
+    const HANDLE restoreLock = CreateFileW((restoreFailureRoot / "client" / "DNF.exe").c_str(), GENERIC_READ, 0,
+                                            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    Check(restoreLock != INVALID_HANDLE_VALUE, "restore fixture locks DNF.exe");
+    CountObserver restoreFailureObserver;
+    const auto restoreFailure = dfo::RestoreWithoutJournal(restoreFailureRoot, restoreFailureObserver);
+    CloseHandle(restoreLock);
+    Check(!restoreFailure.ok && restoreFailure.rolledBack, "restore failure rolls back into the client");
+    Check(fs::exists(restoreFailureRoot / "client" / "DFLegacy.Launcher.exe") &&
+              fs::exists(restoreFailureRoot / "client" / "DNF.exe"),
+          "client entries remain after a failed restore");
+    Check(!fs::exists(restoreFailureRoot / "DFLegacy.Launcher.exe"),
+          "nothing is left at the root after a failed restore");
+    fs::remove_all(restoreFailureRoot, ignored);
+
     fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
     return 0;

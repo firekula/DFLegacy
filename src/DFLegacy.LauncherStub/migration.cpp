@@ -131,4 +131,43 @@ Recovery RecoverIfInterrupted(const fs::path& root, std::wstring& error) {
     DeleteJournal(root);
     return Recovery::RolledBack;
 }
+
+MigrationResult RestoreWithoutJournal(const fs::path& root, MigrationObserver& observer) {
+    const auto client = root / L"client";
+    if (GetFileAttributesW(client.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        return {false, false, L"client 目录不存在。"};
+    }
+
+    std::vector<std::wstring> entries;
+    WIN32_FIND_DATAW data{};
+    const HANDLE find = FindFirstFileW((client / L"*").c_str(), &data);
+    if (find == INVALID_HANDLE_VALUE) return {false, false, L"无法枚举 client 目录。"};
+    do {
+        const std::wstring name = data.cFileName;
+        if (name == L"." || name == L"..") continue;
+        entries.push_back(name);
+    } while (FindNextFileW(find, &data));
+    FindClose(find);
+
+    std::size_t moved = 0;
+    const std::size_t total = entries.size();
+    for (const auto& name : entries) {
+        observer.OnProgress(moved, total, name);
+        if (!MoveFileW((client / name).c_str(), (root / name).c_str())) {
+            const DWORD code = GetLastError();
+            bool rollbackOk = true;
+            for (std::size_t index = moved; index > 0; --index) {
+                const auto& back = entries[index - 1];
+                if (!MoveFileW((root / back).c_str(), (client / back).c_str())) rollbackOk = false;
+            }
+            return {false, rollbackOk,
+                    ErrorText(L"恢复", name, code) +
+                        (rollbackOk ? L"" : L" 回滚不完整，请手动检查。")};
+        }
+        ++moved;
+    }
+    observer.OnProgress(total, total, L"");
+    if (!RemoveDirectoryW(client.c_str())) return {false, false, L"client 目录非空，无法完成恢复。"};
+    return {true, false, L""};
+}
 }
