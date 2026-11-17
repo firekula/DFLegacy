@@ -2,6 +2,7 @@
 #include "launch.hpp"
 #include "migration.hpp"
 #include "process.hpp"
+#include "shortcut.hpp"
 #include "single_instance.hpp"
 #include "ui.hpp"
 #include <windows.h>
@@ -129,6 +130,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 dfo::Error(instance, result.error.c_str());
                 return 1;
             }
+            dfo::RetargetShortcuts((root / L"DFLegacy.Launcher.exe").wstring(), root / L"DFOLauncher.exe");
         } else if (layout == dfo::Layout::Invalid) {
             dfo::Error(instance,
                        L"客户端不完整。请重新解压完整启动包，或检查 client\\ 是否被移动或改名。");

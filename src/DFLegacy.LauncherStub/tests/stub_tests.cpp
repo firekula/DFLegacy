@@ -3,8 +3,11 @@
 #include "../launch.hpp"
 #include "../migration.hpp"
 #include "../process.hpp"
+#include "../shortcut.hpp"
 #include "../single_instance.hpp"
 #include <windows.h>
+#include <objbase.h>
+#include <shobjidl.h>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -266,6 +269,46 @@ int main(int argc, char** argv) {
     Check(!fs::exists(restoreFailureRoot / "DFLegacy.Launcher.exe"),
           "nothing is left at the root after a failed restore");
     fs::remove_all(restoreFailureRoot, ignored);
+
+    auto shortcutRoot = fs::temp_directory_path() / ("dfo-shortcut-test-" + std::to_string(GetCurrentProcessId()));
+    fs::remove_all(shortcutRoot, ignored);
+    fs::create_directories(shortcutRoot);
+    const auto oldEntry = shortcutRoot / "DFLegacy.Launcher.exe";
+    const auto newEntry = shortcutRoot / "DFOLauncher.exe";
+    std::ofstream(oldEntry) << "x";
+    std::ofstream(newEntry) << "x";
+    const auto linkPath = shortcutRoot / "old.lnk";
+    Check(SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED)), "COM initializes");
+    {
+        IShellLinkW* link = nullptr;
+        Check(SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+                                         reinterpret_cast<void**>(&link))), "shell link creates");
+        Check(SUCCEEDED(link->SetPath(oldEntry.c_str())), "old target sets");
+        IPersistFile* persist = nullptr;
+        Check(SUCCEEDED(link->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&persist))),
+              "shell link persists");
+        Check(SUCCEEDED(persist->Save(linkPath.c_str(), TRUE)), "shortcut saves");
+        persist->Release();
+        link->Release();
+    }
+    Check(dfo::RetargetShortcutsIn(shortcutRoot, oldEntry.wstring(), newEntry) == 1, "shortcut is retargeted");
+    {
+        IShellLinkW* link = nullptr;
+        Check(SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+                                         reinterpret_cast<void**>(&link))), "shell link reopens");
+        IPersistFile* persist = nullptr;
+        Check(SUCCEEDED(link->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&persist))),
+              "reopened link persists");
+        Check(SUCCEEDED(persist->Load(linkPath.c_str(), STGM_READ)), "retargeted shortcut loads");
+        wchar_t target[32768]{};
+        WIN32_FIND_DATAW data{};
+        Check(SUCCEEDED(link->GetPath(target, 32768, &data, SLGP_RAWPATH)), "retargeted path reads");
+        Check(std::wstring(target) == newEntry.wstring(), "shortcut points to DFOLauncher");
+        persist->Release();
+        link->Release();
+    }
+    CoUninitialize();
+    fs::remove_all(shortcutRoot, ignored);
 
     fs::remove_all(processRoot, ignored);
     fs::remove_all(launchRoot, ignored);
