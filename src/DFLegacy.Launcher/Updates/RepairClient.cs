@@ -164,6 +164,7 @@ internal static class RepairClient
             return new(true,false,$"已修复并完整校验版本 {final.Version}（{settings.Source.Provider} / {settings.Source.Channel} / {settings.Source.Architecture}）。请手动启动客户端目录中的 DFLegacy.Launcher.exe。");
         }
         catch(OperationCanceledException) { report.Complete("cancelled");throw; }
+        catch(UpdateDeferredException ex) { report.Complete("deferred",ex);throw; }
         catch(Exception ex) { report.Complete("failed",ex);throw; }
     }
 

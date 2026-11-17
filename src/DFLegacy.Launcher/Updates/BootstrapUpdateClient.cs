@@ -7,6 +7,10 @@ namespace DFLegacy.Launcher.Updates;
 internal sealed record BootstrapRequest(string Directory,string[] LauncherArguments,int? WaitPid=null,long? WaitStartTicks=null);
 internal sealed class BootstrapCommandException(int exitCode):InvalidOperationException($"登录器命令已结束，退出码 {exitCode}；不会重复执行命令。");
 internal sealed class BootstrapChildStillRunningException(Exception error):InvalidOperationException("新登录器尚未确认退出；为避免重复启动，已停止自动重试。",error);
+internal sealed class UpdateDeferredException(string version):InvalidOperationException($"线上版本 {version} 需要新的启动包；本地安装保持不变。")
+{
+    internal string Version { get; }=version;
+}
 
 internal static class BootstrapUpdateClient
 {
@@ -58,10 +62,21 @@ internal static class BootstrapUpdateClient
         else
         {
             if(repairRequired is not null)await repairRequired().ConfigureAwait(false);
-            outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
-                manifest=>BootstrapLayout.RequireStableEntry(request.Directory,manifest),bootstrapSupervisor:true,
-                forceVerification:request.WaitPid is not null).ConfigureAwait(false);
-            await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
+            try
+            {
+                outcome=await RepairClient.RunAsync(new(request.Directory),provider,progress,confirmClose,token,
+                    manifest=>RequireStableEntryOrDefer(request.Directory,manifest),bootstrapSupervisor:true,
+                    forceVerification:request.WaitPid is not null).ConfigureAwait(false);
+                await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
+            }
+            catch(UpdateDeferredException deferred)
+            {
+                // The online release needs the new startup package. Keep the committed entry and
+                // hand off only after the local installation proves itself; a damaged install throws.
+                Program.WriteLauncherLog($"Update deferred: release {deferred.Version} requires a new startup package; keeping the installed entry.");
+                await BootstrapLayout.ValidateInstalledAsync(request.Directory,BootstrapLayout.Architecture,token).ConfigureAwait(false);
+                outcome=new(true,true,$"线上版本 {deferred.Version} 需要新的启动包；已保留本地安装并完成本地校验。");
+            }
         }
         token.ThrowIfCancellationRequested();
         var start=new ProcessStartInfo(Path.Combine(request.Directory,BootstrapLayout.AppName)){WorkingDirectory=request.Directory,UseShellExecute=false};
@@ -70,6 +85,10 @@ internal static class BootstrapUpdateClient
         await (launch??LaunchAndConfirmAsync)(start,token).ConfigureAwait(false);
         Program.WriteLauncherLog($"Bootstrap verified UI handoff; offline={outcome.Offline}.");
         return outcome;
+    }
+    private static void RequireStableEntryOrDefer(string root,Core.ClientManifest manifest)
+    {
+        if(!BootstrapLayout.HasStableEntry(root,manifest))throw new UpdateDeferredException(manifest.Version);
     }
     internal static async Task LaunchAndConfirmAsync(ProcessStartInfo start,CancellationToken token)
         =>await LaunchAndConfirmAsync(start,token,null).ConfigureAwait(false);

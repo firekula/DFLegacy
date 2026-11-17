@@ -230,6 +230,43 @@ internal static class BootstrapUpdateTests
         check(launches==1&&offline.Offline&&offline.Message.Contains("未确认线上最新版本"),
             "transport failure hands off the completed installation offline");
     }
+    // An online release that replaces the fixed entry needs the new startup package. It must not
+    // block a locally complete installation: defer the update, keep the committed receipt.
+    internal static async Task RunEntryDeferralAsync(string scratch,Action<bool,string> check)
+    {
+        var root=Path.Combine(scratch,"bootstrap-entry-deferral");Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
+        string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
+        Dictionary<string,byte[]> Files(string entry,string clientDll)
+        {
+            var files=new Dictionary<string,byte[]>{[BootstrapLayout.EntryName]=Encoding.UTF8.GetBytes(entry),[BootstrapLayout.AppName]="launcher app"u8.ToArray(),
+                [BootstrapLayout.UpdaterName]="updater bytes"u8.ToArray(),["DFLegacy.Client.dll"]=Encoding.UTF8.GetBytes(clientDll),["resource.bin"]="resource content"u8.ToArray()};
+            files[BootstrapLayout.DescriptorName]=Encoding.ASCII.GetBytes($"[Bootstrap]\nSchemaVersion=1\nArchitecture={BootstrapLayout.Architecture}\nLauncherSha256={Hash(files[BootstrapLayout.AppName])}\nUpdaterSha256={Hash(files[BootstrapLayout.UpdaterName])}\n");
+            return files;
+        }
+        var installedFiles=Files("entry bytes","client dll");
+        var installedProvider=new FixtureProvider(BootstrapLayout.Architecture,installedFiles);
+        var release=await installedProvider.FindAsync()??throw new InvalidOperationException("fixture release missing");
+        var cache=Path.Combine(root,".dflegacy","v4","cache");Directory.CreateDirectory(cache);
+        foreach(var file in release.Manifest.Files)File.WriteAllBytes(Path.Combine(cache,file.Sha256+"-"+file.Size+".blob"),installedFiles[file.Path]);
+        Core.InstallTransaction.Apply(root,new(release,cache));
+        await BootstrapLayout.ValidateInstalledAsync(root,BootstrapLayout.Architecture);
+        var commit=File.ReadAllBytes(Path.Combine(root,BootstrapLayout.EntryName));
+        var target=new FixtureProvider(BootstrapLayout.Architecture,Files("new fixed entry","client dll"),sequence:4,version:"v0.1.9-giteatest.4");
+        var launches=0;
+        var outcome=await BootstrapUpdateClient.RunAsync(new(root,["--headless"]),target,launch:(_,_)=>{launches++;return Task.CompletedTask;});
+        check(launches==1&&outcome.Message.Contains("启动包")&&File.ReadAllBytes(Path.Combine(root,BootstrapLayout.EntryName)).SequenceEqual(commit),
+            "an entry-changing release defers instead of blocking a verified installation");
+        check(!Core.InstallTransaction.HasPending(root)
+            && new Core.InstallationStore(root).ReadInstalled()!.Release.Manifest.Version=="v0.1.8-giteatest.3",
+            "deferred update leaves the committed receipt untouched");
+        // The deferral must never hide a damaged local installation.
+        File.WriteAllText(Path.Combine(root,"DFLegacy.Client.dll"),"tampered");
+        var hidden=0;
+        try{await BootstrapUpdateClient.RunAsync(new(root,["--headless"]),target,launch:(_,_)=>{hidden++;return Task.CompletedTask;});}
+        catch(Exception ex) when(ex is InvalidDataException or IOException){}
+        check(hidden==0,"deferred update never blesses a damaged local installation");
+    }
     internal static async Task RunWindowPolicyAsync(string scratch,Action<bool,string> check)
     {        var root=Path.Combine(scratch,"bootstrap-window-policy");Directory.CreateDirectory(root);
         File.WriteAllText(Path.Combine(root,"launcher.json"),"{\"UpdateProvider\":\"gitea\",\"UpdateChannel\":\"gitea-test\"}");
@@ -283,12 +320,12 @@ internal static class BootstrapUpdateTests
         internal bool Offline,InvalidManifest,ThrowOnNetwork,TransportFailure;internal int OpenCalls,FindCalls;
         internal Action? OnFind;
         public Core.ReleaseSource Source=>release.Source;public string Identity=>Source.Identity;
-        internal FixtureProvider(string arch,Dictionary<string,byte[]> files,Core.ConfigMigration[]? migrations=null)
+        internal FixtureProvider(string arch,Dictionary<string,byte[]> files,Core.ConfigMigration[]? migrations=null,int sequence=3,string version="v0.1.8-giteatest.3")
         {
             string Hash(byte[] b)=>Convert.ToHexStringLower(SHA256.HashData(b));
             var source=new Core.ReleaseSource("gitea","firekula/DFLegacy","gitea-test",arch,"normal");
-            var managed=files.Select(f=>{var hash=Hash(f.Value);blobs[hash]=f.Value;return new Core.ManagedFile(f.Key,f.Value.Length,hash,[new(hash,f.Value.Length,"v0.1.8-giteatest.3",hash+".bin")]);}).ToArray();
-            var manifest=new Core.ClientManifest(4,"v0.1.8-giteatest.3",new string('b',40),arch,"normal","gitea-test",3,0,managed,[],migrations??[]);
+            var managed=files.Select(f=>{var hash=Hash(f.Value);blobs[hash]=f.Value;return new Core.ManagedFile(f.Key,f.Value.Length,hash,[new(hash,f.Value.Length,version,hash+".bin")]);}).ToArray();
+            var manifest=new Core.ClientManifest(4,version,new string('b',40),arch,"normal","gitea-test",sequence,0,managed,[],migrations??[]);
             var bytes=Core.ManifestCodec.Serialize(manifest);release=new(source,manifest.Version,Hash(bytes),bytes);
         }
         public Task<Core.VerifiedRelease?> FindAsync(CancellationToken token=default){FindCalls++;OnFind?.Invoke();if(ThrowOnNetwork)throw new InvalidOperationException("Ordinary startup must not contact network-enabled provider.");if(TransportFailure)throw new System.IO.IOException("Received an unexpected EOF or 0 bytes from the transport stream.");if(Offline)throw new System.Net.Http.HttpRequestException("offline fixture");return Task.FromResult<Core.VerifiedRelease?>(InvalidManifest?release with {ManifestSha256=new string('f',64)}:release);}
