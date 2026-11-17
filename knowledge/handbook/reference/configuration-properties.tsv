@@ -1,0 +1,210 @@
+path	line	declaring_type	declaration
+src/DFLegacy.Server/ServerOptions.cs	5	ServerOptions	public AdminOptions Admin { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	6	ServerOptions	public WebPanelsOptions WebPanels { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	7	ServerOptions	public ClientDiagnosticsOptions ClientDiagnostics { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	8	ServerOptions	public ProcessOptions Processes { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	9	ServerOptions	public ListenerOptions Entrance { get; set; } = new() { Port = 8080 };
+src/DFLegacy.Server/ServerOptions.cs	10	ServerOptions	"public ListenerOptions CharacterDatagram { get; set; } = new() { Host = ""127.0.0.1"", Port = 2311 };"
+src/DFLegacy.Server/ServerOptions.cs	11	ServerOptions	public GameplayDatagramOptions GameplayDatagram { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	12	ServerOptions	public ListenerOptions GameProbe { get; set; } = new() { Port = 7001, Enabled = false };
+src/DFLegacy.Server/ServerOptions.cs	13	ServerOptions	"public string DataPath { get; set; } = ""data/state.json"";"
+src/DFLegacy.Server/ServerOptions.cs	14	ServerOptions	public bool SeedTestAccount { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	15	ServerOptions	public bool EnableTestCeraTopUp { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	16	ServerOptions	public bool ChapterTwoLocalTestPaymentsOnly { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	17	ServerOptions	public bool ChapterTwoRemote { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	18	ServerOptions	"public string ScriptPvfPath { get; set; } = ""data/Script.pvf"";"
+src/DFLegacy.Server/ServerOptions.cs	19	ServerOptions	public bool SkipUnsupportedChapterTwoCashContainers { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	21	ServerOptions	public byte ChapterTwoFreeRevivalCoinAmount { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	22	ServerOptions	"public string SkillScriptPath { get; set; } = """";"
+src/DFLegacy.Server/ServerOptions.cs	23	ServerOptions	"public string OriginalSkillScriptPath { get; set; } = """";"
+src/DFLegacy.Server/ServerOptions.cs	24	ServerOptions	public TownSyncOptions TownSync { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	25	ServerOptions	public DebugOptions Debug { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	26	ServerOptions	public ChannelOptions Channel { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	27	ServerOptions	public PvpOptions Pvp { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	28	ServerOptions	public FallbackRelayOptions FallbackRelay { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	29	ServerOptions	public DropOptions Drop { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	30	ServerOptions	public ExperienceOptions Experience { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	31	ServerOptions	public FatigueOptions Fatigue { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	32	ServerOptions	public DungeonOptions Dungeon { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	33	ServerOptions	public int MaximumPacketLength { get; set; } = 4 * 1024 * 1024;
+src/DFLegacy.Server/ServerOptions.cs	34	ServerOptions	public bool RejectBadCrc32 { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	35	ServerOptions	public bool EnablePacketTracing { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	37	ServerOptions	public bool EnableConnectionDiagnostics { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	38	ServerOptions	public int HexDumpLimit { get; set; } = 64;
+src/DFLegacy.Server/ServerOptions.cs	43	GameplayDatagramOptions	public bool Enabled { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	44	GameplayDatagramOptions	"public string Host { get; set; } = ""127.0.0.1"";"
+src/DFLegacy.Server/ServerOptions.cs	49	GameplayDatagramOptions	"public string AdvertisedHost { get; set; } = """";"
+src/DFLegacy.Server/ServerOptions.cs	51	GameplayDatagramOptions	public int PrimaryPort { get; set; } = 7002;
+src/DFLegacy.Server/ServerOptions.cs	52	GameplayDatagramOptions	public int SecondaryPort { get; set; } = 7003;
+src/DFLegacy.Server/ServerOptions.cs	53	GameplayDatagramOptions	public ushort MonsterObjectType { get; set; } = 0x0211;
+src/DFLegacy.Server/ServerOptions.cs	54	GameplayDatagramOptions	public byte SenderPartyIndex { get; set; } = 0;
+src/DFLegacy.Server/ServerOptions.cs	62	DropOptions	public bool Enabled { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	63	DropOptions	public double RatePercent { get; set; } = 100;
+src/DFLegacy.Server/ServerOptions.cs	64	DropOptions	public double EconomicRate { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	65	DropOptions	public bool ForceDrops { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	71	FatigueOptions	public bool WeekendDoubleEnabled { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	76	ExperienceOptions	public double MonsterMultiplier { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	77	ExperienceOptions	public double ClearMultiplier { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	78	ExperienceOptions	public double BlackDiamondClearBonusRate { get; set; } = 0.05;
+src/DFLegacy.Server/ServerOptions.cs	79	ExperienceOptions	public double ClearEventBonusRate { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	80	ExperienceOptions	public DateTimeOffset? ClearEventStartsAt { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	81	ExperienceOptions	public DateTimeOffset? ClearEventEndsAt { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	101	ChannelOptions	public int ServerNumber { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	102	ChannelOptions	"public string Name { get; set; } = ""Local Channel"";"
+src/DFLegacy.Server/ServerOptions.cs	103	ChannelOptions	"public string Host { get; set; } = ""127.0.0.1"";"
+src/DFLegacy.Server/ServerOptions.cs	104	ChannelOptions	public int Port { get; set; } = 7001;
+src/DFLegacy.Server/ServerOptions.cs	105	ChannelOptions	public int ChannelNumber { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	106	ChannelOptions	public bool RegionalChannelsEnabled { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	107	ChannelOptions	public int MaximumUsers { get; set; } = 100;
+src/DFLegacy.Server/ServerOptions.cs	108	ChannelOptions	public int CurrentUsers { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	115	AdminOptions	"public string Host { get; set; } = ""::"";"
+src/DFLegacy.Server/ServerOptions.cs	117	AdminOptions	public int Port { get; set; } = 8081;
+src/DFLegacy.Server/ServerOptions.cs	120	AdminOptions	public string[] Users { get; set; } = [];
+src/DFLegacy.Server/ServerOptions.cs	123	AdminOptions	public int TokenHours { get; set; } = 12;
+src/DFLegacy.Server/ServerOptions.cs	129	AdminOptions	public int LoginAccountLockSources { get; set; } = 3;
+src/DFLegacy.Server/ServerOptions.cs	132	AdminOptions	public int LoginSourceMaxAttempts { get; set; } = 30;
+src/DFLegacy.Server/ServerOptions.cs	135	AdminOptions	public int LoginLockoutMinutes { get; set; } = 5;
+src/DFLegacy.Server/ServerOptions.cs	138	AdminOptions	public int MaxTokenLifetimeHours { get; set; } = 24 * 7;
+src/DFLegacy.Server/ServerOptions.cs	143	ListenerOptions	public bool Enabled { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	144	ListenerOptions	"public string Host { get; set; } = ""127.0.0.1"";"
+src/DFLegacy.Server/ServerOptions.cs	145	ListenerOptions	public int Port { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	146	ListenerOptions	public int[] AdditionalPorts { get; set; } = [];
+src/DFLegacy.Server/ServerOptions.cs	170	TownSyncOptions	public bool Enabled { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	178	TownSyncOptions	public bool ForeignAppearanceBeforeRoster { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	181	TownSyncOptions	public TownDepartureSignal DepartureSignal { get; set; } = TownDepartureSignal.UserAreaInactive;
+src/DFLegacy.Server/ServerOptions.cs	187	TownSyncOptions	public bool SendAreaPeerTable { get; set; } = true;
+src/DFLegacy.Server/ServerOptions.cs	194	TownSyncOptions	public bool SendUserAreaForExistingMembers { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	201	TownSyncOptions	public bool RefreshRosterOnMembershipChange { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	204	TownSyncOptions	public int MaxPositionForwardsPerSecond { get; set; } = 10;
+src/DFLegacy.Server/ServerOptions.cs	214	TownSyncOptions	public string[] PrivateAreas { get; set; } = [];
+src/DFLegacy.Server/ServerOptions.cs	220	TownGhostOptions	public bool Enabled { get; set; } = false;
+src/DFLegacy.Server/ServerOptions.cs	221	TownGhostOptions	public byte TownId { get; set; } = 1;
+src/DFLegacy.Server/ServerOptions.cs	227	TownGhostOptions	public byte AreaId { get; set; } = 0;
+src/DFLegacy.Server/ServerOptions.cs	229	TownGhostOptions	"public string Name { get; set; } = ""TEST"";"
+src/DFLegacy.Server/ServerOptions.cs	230	TownGhostOptions	public int StepIntervalMs { get; set; } = 1000;
+src/DFLegacy.Server/ServerOptions.cs	233	TownGhostOptions	public int VisibleSeconds { get; set; } = 0;
+src/DFLegacy.Server/ServerOptions.cs	236	TownGhostOptions	public int HiddenSeconds { get; set; } = 0;
+src/DFLegacy.Server/ServerOptions.cs	241	TestControlOptions	public bool Enabled { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	246	DebugOptions	public TestControlOptions TestControl { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	247	DebugOptions	public TownGhostOptions TownGhost { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	248	DebugOptions	public ClientOverlayOptions ClientOverlay { get; set; } = new();
+src/DFLegacy.Server/ServerOptions.cs	253	ClientOverlayOptions	public bool Enabled { get; set; }
+src/DFLegacy.Server/ServerOptions.cs	254	ClientOverlayOptions	"public string SnapshotDirectory { get; set; } = ""debug-overlay"";"
+src/DFLegacy.Server/ServerOptions.cs	259	WebPanelsOptions	"public ListenerOptions Gm { get; set; } = new() { Host = ""0.0.0.0"", Port = 18081 };"
+src/DFLegacy.Server/ServerOptions.cs	260	WebPanelsOptions	"public ListenerOptions Player { get; set; } = new() { Host = ""0.0.0.0"", Port = 18082 };"
+src/DFLegacy.Server/ProcessOptions.cs	10	ProcessOptions	public ChannelProcessOptions Channel { get; set; } = new();
+src/DFLegacy.Server/ProcessOptions.cs	11	ProcessOptions	public GameProcessOptions Game { get; set; } = new();
+src/DFLegacy.Server/ProcessOptions.cs	32	ChannelProcessOptions	public bool Enabled { get; set; }
+src/DFLegacy.Server/ProcessOptions.cs	33	ChannelProcessOptions	public int LinkPort { get; set; } = 7004;
+src/DFLegacy.Server/ProcessOptions.cs	38	GameProcessOptions	public bool EntranceBinding { get; set; } = true;
+src/DFLegacy.Server/PvpOptions.cs	8	PvpOptions	public bool Enabled { get; set; }
+src/DFLegacy.Server/PvpOptions.cs	9	PvpOptions	public int Port { get; set; } = 7004;
+src/DFLegacy.Server/PvpOptions.cs	10	PvpOptions	public int ChannelNumber { get; set; } = 51;
+src/DFLegacy.Server/PvpOptions.cs	11	PvpOptions	"public string Name { get; set; } = ""Duel Channel"";"
+src/DFLegacy.Server/PvpOptions.cs	12	PvpOptions	"public string RelayHost { get; set; } = """";"
+src/DFLegacy.Server/PvpOptions.cs	13	PvpOptions	public uint RelayTcpPort { get; set; }
+src/DFLegacy.Server/PvpOptions.cs	14	PvpOptions	public uint RelayUdpPort { get; set; }
+src/DFLegacy.Server/FallbackRelayOptions.cs	8	FallbackRelayOptions	public bool Enabled { get; set; } = true;
+src/DFLegacy.Server/FallbackRelayOptions.cs	9	FallbackRelayOptions	"public string Host { get; set; } = """";"
+src/DFLegacy.Server/FallbackRelayOptions.cs	10	FallbackRelayOptions	"public string AdvertisedHost { get; set; } = """";"
+src/DFLegacy.Server/FallbackRelayOptions.cs	11	FallbackRelayOptions	public int TcpPort { get; set; } = 7005;
+src/DFLegacy.Server/FallbackRelayOptions.cs	12	FallbackRelayOptions	public int UdpPort { get; set; } = 7005;
+src/DFLegacy.Manager/ManagerSettings.cs	5	ManagerSettings	public bool ChapterTwoLocal { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	6	ManagerSettings	"public string AdvertisedHost { get; init; } = ""127.0.0.1"";"
+src/DFLegacy.Manager/ManagerSettings.cs	7	ManagerSettings	"public string AccountServiceUrl { get; init; } = ""http://127.0.0.1:8081"";"
+src/DFLegacy.Manager/ManagerSettings.cs	8	ManagerSettings	public bool RelayEnabled { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	9	ManagerSettings	"public string RelayPreference { get; init; } = ""ipv6"";"
+src/DFLegacy.Manager/ManagerSettings.cs	10	ManagerSettings	public bool Autostart { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	11	ManagerSettings	public bool Configured { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	16	DeploymentConfig	"public string ScriptPvfPath { get; init; } = """";"
+src/DFLegacy.Manager/ManagerSettings.cs	17	DeploymentConfig	"public string BindHost { get; init; } = ""127.0.0.1"";"
+src/DFLegacy.Manager/ManagerSettings.cs	18	DeploymentConfig	"public string AdminHost { get; init; } = ""127.0.0.1"";"
+src/DFLegacy.Manager/ManagerSettings.cs	19	DeploymentConfig	"public string AdvertisedHost { get; init; } = ""127.0.0.1"";"
+src/DFLegacy.Manager/ManagerSettings.cs	20	DeploymentConfig	"public string GameplayAdvertisedHost { get; init; } = ""127.0.0.1"";"
+src/DFLegacy.Manager/ManagerSettings.cs	21	DeploymentConfig	public int EntrancePort { get; init; } = 2311;
+src/DFLegacy.Manager/ManagerSettings.cs	22	DeploymentConfig	public int ChannelPort { get; init; } = 7001;
+src/DFLegacy.Manager/ManagerSettings.cs	23	DeploymentConfig	public bool RegionalChannelsEnabled { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	24	DeploymentConfig	public int AdditionalEntrancePort { get; init; } = 8080;
+src/DFLegacy.Manager/ManagerSettings.cs	25	DeploymentConfig	public int AdminPort { get; init; } = 8081;
+src/DFLegacy.Manager/ManagerSettings.cs	26	DeploymentConfig	"public string GmPanelHost { get; init; } = ""0.0.0.0"";"
+src/DFLegacy.Manager/ManagerSettings.cs	27	DeploymentConfig	public int GmPanelPort { get; init; } = 18081;
+src/DFLegacy.Manager/ManagerSettings.cs	28	DeploymentConfig	public bool GmPanelEnabled { get; init; } = true;
+src/DFLegacy.Manager/ManagerSettings.cs	29	DeploymentConfig	"public string PlayerPanelHost { get; init; } = ""0.0.0.0"";"
+src/DFLegacy.Manager/ManagerSettings.cs	30	DeploymentConfig	public int PlayerPanelPort { get; init; } = 18082;
+src/DFLegacy.Manager/ManagerSettings.cs	31	DeploymentConfig	public bool PlayerPanelEnabled { get; init; } = true;
+src/DFLegacy.Manager/ManagerSettings.cs	32	DeploymentConfig	public int CharacterPort { get; init; } = 2311;
+src/DFLegacy.Manager/ManagerSettings.cs	33	DeploymentConfig	public int GameplayPrimaryPort { get; init; } = 7002;
+src/DFLegacy.Manager/ManagerSettings.cs	34	DeploymentConfig	public int GameplaySecondaryPort { get; init; } = 7003;
+src/DFLegacy.Manager/ManagerSettings.cs	35	DeploymentConfig	public bool FallbackRelayEnabled { get; init; } = true;
+src/DFLegacy.Manager/ManagerSettings.cs	36	DeploymentConfig	"public string FallbackRelayAdvertisedHost { get; init; } = """";"
+src/DFLegacy.Manager/ManagerSettings.cs	37	DeploymentConfig	public int FallbackRelayTcpPort { get; init; } = 7005;
+src/DFLegacy.Manager/ManagerSettings.cs	38	DeploymentConfig	public int FallbackRelayUdpPort { get; init; } = 7005;
+src/DFLegacy.Manager/ManagerSettings.cs	39	DeploymentConfig	public bool PvpEnabled { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	40	DeploymentConfig	public int PvpPort { get; init; } = 7004;
+src/DFLegacy.Manager/ManagerSettings.cs	41	DeploymentConfig	"public string ChannelName { get; init; } = ""DFLegacy"";"
+src/DFLegacy.Manager/ManagerSettings.cs	42	DeploymentConfig	public int MaximumUsers { get; init; } = 100;
+src/DFLegacy.Manager/ManagerSettings.cs	43	DeploymentConfig	public double MonsterExperienceMultiplier { get; init; } = 1;
+src/DFLegacy.Manager/ManagerSettings.cs	44	DeploymentConfig	public double ClearExperienceMultiplier { get; init; } = 1;
+src/DFLegacy.Manager/ManagerSettings.cs	45	DeploymentConfig	public double DropRatePercent { get; init; } = 100;
+src/DFLegacy.Manager/ManagerSettings.cs	46	DeploymentConfig	public double DropEconomicRate { get; init; } = 1;
+src/DFLegacy.Manager/ManagerSettings.cs	47	DeploymentConfig	public bool ChapterTwoTestTopUpEnabled { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	48	DeploymentConfig	"public string AccountServiceUrl { get; init; } = ""http://127.0.0.1:8081"";"
+src/DFLegacy.Manager/ManagerSettings.cs	49	DeploymentConfig	public bool RelayEnabled { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	50	DeploymentConfig	"public string RelayPreference { get; init; } = ""ipv6"";"
+src/DFLegacy.Manager/ManagerSettings.cs	51	DeploymentConfig	public bool Autostart { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	66	ConfigurationSnapshot	public bool ChapterTwoLocal { get; init; }
+src/DFLegacy.Manager/ManagerSettings.cs	67	ConfigurationSnapshot	public bool ChapterTwoRemote { get; init; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	8	LauncherOptions	"public string UpdateRepository { get; set; } = ""firekula/DFLegacy"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	9	LauncherOptions	"public string UpdateProvider { get; set; } = ""github"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	10	LauncherOptions	"public string UpdateChannel { get; set; } = ""stable"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	11	LauncherOptions	public string UpdateFlavor { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	12	LauncherOptions	public string UpdateServiceUrl { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	13	LauncherOptions	public bool DisableGitHubUpdates { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	14	LauncherOptions	public bool IncludePrereleaseUpdates { get; set; } = true;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	15	LauncherOptions	public string ClientPath { get; set; } = Program.DefaultClientPath;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	16	LauncherOptions	"public string EntranceHost { get; set; } = ""127.0.0.1"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	17	LauncherOptions	public int EntrancePort { get; set; } = 2311;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	24	LauncherOptions	public int AccountServicePort { get; set; } = 8081;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	30	LauncherOptions	public string AccountServiceUrl { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	32	LauncherOptions	public List<LauncherServerProfile> Servers { get; set; } = [];
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	33	LauncherOptions	public string? SelectedServerId { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	35	LauncherOptions	public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	37	LauncherOptions	"public string Theme { get; set; } = ""auto"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	38	LauncherOptions	public string Account { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	39	LauncherOptions	public string Password { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	40	LauncherOptions	public List<LauncherAccountProfile> Accounts { get; set; } = [];
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	41	LauncherOptions	public int AccountIndex { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	42	LauncherOptions	public bool StartServer { get; set; } = true;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	43	LauncherOptions	public int D3D9Adapter { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	44	LauncherOptions	public double D3D9TimeoutSeconds { get; set; } = 30;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	45	LauncherOptions	public double D3D9RetryIntervalSeconds { get; set; } = 1;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	46	LauncherOptions	public LauncherRelayOptions Relay { get; set; } = new();
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	48	LauncherOptions	public string? ChapterTwoServerIpv4 { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	50	LauncherOptions	public string? ChapterTwoServerHost { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	52	LauncherOptions	public ChapterTwoDisplayOptions? ChapterTwoDisplay { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	53	LauncherOptions	public string? ChapterTwoRenderer { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	55	LauncherOptions	public string? ChapterTwoPostProcess { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	57	LauncherOptions	public ChapterTwoDialogueOptions? ChapterTwoDialogue { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	59	LauncherOptions	public bool ChapterTwoDebugEnabled { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	60	LauncherOptions	public bool ChapterTwoTestMuteEnabled { get; set; } = true;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	100	LauncherAccountProfile	public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	101	LauncherAccountProfile	public string Account { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	102	LauncherAccountProfile	public string Password { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	103	LauncherAccountProfile	public string? DisplayName { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	104	LauncherAccountProfile	public DateTimeOffset? CreateTime { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	105	LauncherAccountProfile	public string? OicqCode { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	106	LauncherAccountProfile	public bool RememberPassword { get; set; } = true;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	112	LauncherRelayOptions	public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	113	LauncherRelayOptions	public bool Enabled { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	114	LauncherRelayOptions	public string? TcpPorts { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	115	LauncherRelayOptions	public string? UdpPorts { get; set; }
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	116	LauncherRelayOptions	"public string Preference { get; set; } = ""ipv6"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	121	LauncherServerProfile	public string Id { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	122	LauncherServerProfile	public string Name { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	123	LauncherServerProfile	"public string Region { get; set; } = ""telecom"";"
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	124	LauncherServerProfile	public string Host { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	125	LauncherServerProfile	public int Port { get; set; } = 2311;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	126	LauncherServerProfile	public int AccountServicePort { get; set; } = 8081;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	127	LauncherServerProfile	public string AccountServiceUrl { get; set; } = string.Empty;
+src/DFLegacy.Launcher/Models/LauncherOptions.cs	129	LauncherServerProfile	public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+src/DFLegacy.Diagnostics.Core/DiagnosticSettings.cs	82	budget	public string Root { get; }

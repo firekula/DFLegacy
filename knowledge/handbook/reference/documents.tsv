@@ -1,0 +1,407 @@
+path	first_heading
+.gitea/README.md	Gitea 源码与测试
+.recon/loot-full-20261026/README.md	拾取与分配取证索引
+.recon/loot-full-20261026/client/client-contract.md	ACT1 1.0.1.9 拾取接口重核（2026-10-26）
+.recon/loot-full-20261026/ordinary/ordinary-flow.md	官服普通拾取／骰子隐藏规则完整核对
+.recon/loot-full-20261026/special/special-flow.md	官服特殊物品确认分配：完整静态流程
+.recon/onboarding.md	DFLegacy 接入说明（导航，不是文档）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/M0-denominator-report.md	M0 分母报告 —— 官服玩法面证据链工程
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/NEXT-SESSION.md	接续提示词（复制下面整段发给新会话即可）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/RESUME.md	RESUME —— 官服玩法面证据链工程（接续块）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/B0-batch-report.md	B0 批次报告 —— 官服全链路已知答案采集
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/antibot-so-intake.md	用户提供SO：只读接入与候选ABI核对
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/antibot-static-progress.md	官方容器 SO：NOTI561 静态推进
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/cipher-audit-corrections.md	Cipher 调用链审计与接续边界
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/client-business-backlog.md	客户端业务协议边界清单（本轮冻结）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/client-crypto-closure.md	客户端密码/封装总回归
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/client-crypto-scope.md	所有者补充范围裁决
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/client-packet-coverage.md	客户端面密码/封装协议覆盖报告
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/coverage-review.md	Task 4：协议字段级覆盖度盘点的**独立复核**（守门）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/coverage-summary.md	协议字段级覆盖度盘点（1171 条 opcode）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/ctea-key-static.md	Mouse CTEA key 静态来源
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/dbmw-recon-report.md	dbmw 侦察报告（第 4 部分的取证起点）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/dynamic-evidence-progress-2026-10-07.md	动态证据阶段 · 本轮进展报告（A / B / C）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/e2-login-sender-round1.md	E2 · 客户端 LOGIN 出站构造处（第一轮：入口定位，未到载荷）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/evidence-closure-signoff.md	DFLegacy Evidence Closure Signoff
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/frame-structure-nailed.md	游戏面帧结构 —— 钉证据结果（2026-10-05 晚）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/game-face-crypto.md	游戏面封包的密码层 —— 钉证据结果（2026-10-05 深夜，自主部分）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/inbound-pi-replay.md	C→S 入站 PI / CRC：更正后的离线结果
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/login-offline-closure.md	LOGIN 离线字段与尾部收尾
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/login-tail-replay.md	LOGIN 解密明文尾字段离线回放
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/mouse-password-replay.md	LOGIN mouse password / CTEA 离线复核
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/noti1-wrapper-audit.md	NOTI1 离线探索接续（未闭环）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/noti561-analysis.md	NOTI561 / Antibot_SendBufferClient 离线分析
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/noti561-closure.md	NOTI561 客户端封装收尾
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/offline-closure-report.md	DFLegacy 客户端密码/封装证据收尾账本
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/offline-coverage-final.md	离线覆盖最终边界（本轮）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/offline-deepening.md	离线取证继续推进（本轮）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/offline-master-verification.md	offline master report generated from fresh commands
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/offline-verification-progress.md	离线验证进度与剩余项
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/rewrite-decomposition.md	重写切分评估 —— 按官方实际进程拆分（2026-10-05）
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/static-analysis-vm-login-2026-10-06.md	VM LOGIN/频道与本次 opcode 静态分析
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/static-password-closure.md	游戏面密码层：可由静态分析确定的部分
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/ten-algorithm-static-progress.md	Antibot Ten* 算法静态推进
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/token-static-fields.md	CMD1 token 字段离线复核
+.superpowers/sdd/2026-10-05-gameplay-evidence-program/work/out/type19-analysis.md	NOTI561 类型19：离线解密结果与语义边界
+.superpowers/sdd/2026-10-19-s2-multiprocess-split-first-slice/progress.md	SDD ledger — plan: docs/superpowers/plans/2026-10-19-s2-multiprocess-split-first-slice.md
+ADMIN_API.md	DFLegacy 后台管理 API
+AGENTS.md	DFLegacy 项目规范
+BUILDING.md	DFLegacy 构建与发行
+CHANGELOG.md	Changelog
+CLIENT_UPDATES_V4.md	V4 客户端更新与离线资源发布
+DEPLOYING.md	DFLegacy 部署指南
+DEPLOYMENT_MANAGER.md	DFLegacy 部署管理器
+HANDOFF-2026-10-23.md	交接文档：DFLegacy 组队与进本线（2026-10-23 收盘）
+HANDOFF-2026-10-30.md	2026-10-30 当前源码、验收与交接
+HOTFIX-2026-11-09.md	2026-11-09 启动与冰心少年报告排查
+PARTY_NETWORK_DIAGNOSTICS.md	ACT1 组队黑钻与联机诊断（2026-11-06）
+README.md	DFLegacy
+STATUS.md	项目状态与接续说明
+artifacts/bootstrap-auto-repair-20261108/REPORT.md	固定入口自动修复与天空之城改动验收
+artifacts/client-update-gitea-20261108/REPORT.md	Gitea V4 热更新隔离验收 · 2026-11-08
+artifacts/client-update-v4-20261108/REPORT.md	V4 客户端更新与故障报告：本地验收及手动发布交付
+artifacts/gm-rewards-live-20261108/REPORT.md	本地 GM 邮件与胜点验收
+deploy/chapter-two/README-Launcher.md	DFLegacy 第二章 Windows x64 启动器
+deploy/chapter-two/README.md	DFLegacy 第二章 Windows 管理器
+deploy/chapter-two/remote/README.md	第二章域名部署测试版
+deploy/gitea-runners/README.md	Windows + Docker Linux Gitea Runner
+docs/acceptance/2026-11-07-pvp-gm-rewards.md	第一章决斗频道与 GM 奖励验收（2026-11-07）
+docs/acceptance/2026-11-07-pvp-team-relay.md	ACT1 组队战和擂台赛本地验收 · 2026-11-07
+docs/acceptance/2026-11-09-client-diagnostic-reporting-history.md	较早阶段的完整实施与验收记录
+docs/acceptance/2026-11-09-client-diagnostic-reporting.md	2026-11-09 自动基本故障报告：最终隔离验收
+docs/acceptance/2026-11-10-v0110-hotfix-mail.md	v0.1.10 冰心少年、跨副本排查与多附件邮件报告
+docs/acceptance/2026-11-10-v0111-forbidden-update.md	v0.1.11 天帷禁地与更新窗口验收
+docs/acceptance/2026-11-10-v019-hotfix-mail.md	v0.1.9 冰心少年、跨副本排查与多附件邮件报告
+docs/acceptance/2026-11-14-c2-imagepack-resource-coverage.md	第二章资源覆盖校正与指定目录安装
+docs/acceptance/2026-11-14-c2-native-pvf-release.md	第二章客户端原生 PVF 修复与 v1.0.3 在线更新
+docs/acceptance/2026-11-14-c2-retired-quest-slots.md	第二章已移除任务占用栏位
+docs/client-incidents.md	客户端本地事故报告
+docs/notes/pvp-team-relay-contract.md	ACT1 PvP team and relay wire evidence
+docs/releases/v0.1.10.md	v0.1.10 更新与部署
+docs/releases/v0.1.11.md	v0.1.11 客户端与天帷禁地入口修复
+docs/releases/v0.1.8.md	v0.1.8 发布与升级
+docs/releases/v0.1.9.md	v0.1.9 更新与部署
+docs/releases/v1.0.13.md	第二章 v1.0.13
+docs/superpowers/handoff/2026-10-07-s0-acceptance-platform-prompt.md	新对话提示词 · S0 本机多客户端验收平台
+docs/superpowers/handoff/2026-10-15-s0-one-command-finish-prompt.md	新对话提示词 · S0 一条命令验收（真机收尾）
+docs/superpowers/handoff/2026-10-18-s2-design-brainstorm-prompt.md	新对话提示词 · S2（多进程拆分）设计对话
+docs/superpowers/handoff/2026-10-19-s2-impl-continue-prompt.md	新对话提示词 · S2 第一刀实现续跑（从 Task 4 开始）
+docs/superpowers/handoff/2026-10-21-task-5-complete-handoff.md	Task 5 完成交接 · `DFLegacy.Channel` 新 exe / I2（2026-10-21）
+docs/superpowers/handoff/2026-10-21-task-5-continue-prompt.md	Task 5 续跑提示词（Recon 0.2.1）
+docs/superpowers/handoff/2026-10-21-task-5-handoff.md	Task 5 Handoff · Recon 0.2.1 恢复核验版
+docs/superpowers/handoff/2026-10-21-task-6-complete-handoff.md	Task 6 完成交接 · 链路客户端 + Tier 1 前半（2026-10-21）
+docs/superpowers/handoff/2026-10-21-task-7-complete-handoff.md	Task 7 完成交接 · 链路服务端 + 端到端连通（2026-10-21）
+docs/superpowers/handoff/2026-10-21-task-8-complete-handoff.md	Task 8 完成交接 · game 接入链路 + admin 计数与存活（2026-10-21）
+docs/superpowers/handoff/2026-10-22-task-11-goal-handoff.md	Task 11 目标交接 · 终局（Tier 2/Tier 3 双客户端验收）（2026-10-22）
+docs/superpowers/handoff/2026-10-22-task-9-10-complete-handoff.md	Task 9 + 10 完成交接 · I5 前半（2026-10-22）
+docs/superpowers/handoff/2026-10-22-task-9-10-goal-handoff.md	下一波目标交接 · I5 前半（Task 9 + Task 10）（2026-10-22）
+docs/superpowers/plans/2026-10-01-party-loot-card-alignment.md	组队掉落与翻牌官方对齐实施计划
+docs/superpowers/plans/2026-10-02-dungeon-reward-idempotent-commit.md	副本奖励幂等存档提交实施计划
+docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0.md	多人副本官服对齐重写 — Phase 0（证据脊柱与工具）实施计划
+docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0/alignment-inventory.md	对齐清单 — 多人副本官服对齐重写（PD-xxxx）
+docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0/client-capability.md	客户端协议面能力表（DNF.exe 1.0.1.9）
+docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0/relay-recon.md	⑤ 跨端 UDP 中继勘察（官服 `df_relay_r` / `df_stun_r`）
+docs/superpowers/plans/2026-10-02-party-official-rewrite-phase0/slices.md	切片卡 S1–S8（多人副本官服对齐重写）
+docs/superpowers/plans/2026-10-02-store-write-transaction-boundary.md	Store 统一写事务入口实施计划
+docs/superpowers/plans/2026-10-05-gameplay-evidence-program-m0-m1.md	官服玩法面证据链工程 · M0 与 M1 驱动器前置 —— 实施计划
+docs/superpowers/plans/2026-10-06-gameplay-evidence-closure.md	官服游戏面证据工程 · 收尾任务表
+docs/superpowers/plans/2026-10-07-local-multiclient-acceptance-s0.md	本机多客户端验收平台（S0）Implementation Plan
+docs/superpowers/plans/2026-10-07-protocol-field-coverage-audit.md	协议字段级覆盖度盘点 Implementation Plan
+docs/superpowers/plans/2026-10-18-protocol-map-ledger-s1.md	S1 协议地图与进度账 —— 实施计划
+docs/superpowers/plans/2026-10-19-s2-multiprocess-split-first-slice.md	S2 第一刀（入口握手族拆分）Implementation Plan
+docs/superpowers/plans/2026-10-19-s2-tier2-tier3-runbook.md	S2 Tier 2 / Tier 3 验收 runbook（2026-10-23 实测通过）
+docs/superpowers/plans/2026-10-22-b3-real-machine-runbook.md	B′ 真机执行手册：合成输入单键门（T2）与无人工 UI 验收门（T3）
+docs/superpowers/plans/2026-10-22-client-auto-input.md	客户端合成输入（B′）Implementation Plan
+docs/superpowers/plans/2026-10-28-boss-map-specification.md	Per-maze Boss Map Specification Implementation Plan
+docs/superpowers/plans/2026-10-28-countdown-coin-purchase.md	ACT1 Countdown Coin Purchase Plan
+docs/superpowers/plans/2026-10-28-debug-client-state.md	Debug Client State Implementation Plan
+docs/superpowers/plans/2026-10-28-monster-sync-diagnosis.md	ACT1 Monster Sync Diagnosis Implementation Plan
+docs/superpowers/plans/2026-10-28-party-tcp-fallback.md	ACT1 Party TCP Fallback Implementation Plan
+docs/superpowers/plans/2026-10-29-active-drop-four.md	Active Drop Four-Client Implementation Plan
+docs/superpowers/plans/2026-10-29-active-drop-rules.md	Active bag discard implementation plan
+docs/superpowers/plans/2026-10-29-debug-cross-area.md	Debug Cross-Area Navigation Implementation Plan
+docs/superpowers/plans/2026-10-29-dungeon-tooltip-cleanup.md	副本介绍超时残留修复
+docs/superpowers/plans/2026-10-29-map-right-feedback.md	Map right click feedback Implementation Plan
+docs/superpowers/plans/2026-10-29-native-input-drag.md	Native auto-input drag implementation plan
+docs/superpowers/plans/2026-10-29-native-town-route.md	Native Town Route Implementation Plan
+docs/superpowers/plans/2026-10-29-operation-capture.md	Operation capture default Implementation Plan
+docs/superpowers/plans/2026-10-29-party-dungeon-acceptance.md	同组双客户端副本验收与后续列表
+docs/superpowers/plans/2026-10-29-test-control.md	Test Control Implementation Plan
+docs/superpowers/plans/2026-10-29-town-navigation.md	ACT1 Town Navigation Implementation Plan
+docs/superpowers/plans/2026-10-29-town-return-perf.md	Town return and debug overhead Implementation Plan
+docs/superpowers/plans/2026-10-30-cross-platform-deployment-release.md	Cross-platform Deployment and Release Implementation Plan
+docs/superpowers/plans/2026-10-30-dead-observation.md	Dead test observation plan
+docs/superpowers/plans/2026-10-30-frame-profile.md	Callback timing plan
+docs/superpowers/plans/2026-10-30-gitea-runner-deployment.md	Gitea Runner deployment plan
+docs/superpowers/plans/2026-10-30-native-test-fixtures.md	Native Test Fixtures Implementation Plan
+docs/superpowers/plans/2026-10-30-player-kill.md	Player Kill Implementation Plan
+docs/superpowers/plans/2026-10-30-skill-state.md	Skill State Implementation Plan
+docs/superpowers/plans/2026-10-30-ui-state.md	UI State Implementation Plan
+docs/superpowers/plans/2026-10-30-webui-usability-single-file.md	Web UI usability and single-file release implementation plan
+docs/superpowers/plans/2026-10-31-independent-client-patch.md	Independent Client Patch Implementation Plan
+docs/superpowers/plans/2026-10-31-launcher-regions-auto-update.md	Launcher Regions and Auto Update Implementation Plan
+docs/superpowers/plans/2026-10-31-launcher-resolution-sharp-scaling.md	Launcher Resolution and Sharp Scaling Implementation Plan
+docs/superpowers/plans/2026-10-31-launcher-settings-metal.md	Launcher Classic UI Implementation Plan
+docs/superpowers/plans/2026-10-31-launcher-startup-recovery.md	Launcher startup recovery implementation plan
+docs/superpowers/plans/2026-11-01-compact-auto-update.md	Compact automatic update implementation plan
+docs/superpowers/plans/2026-11-02-account-defaults-and-sandbox-pay.md	Account defaults and sandbox grants
+docs/superpowers/plans/2026-11-02-manager-export-progress.md	Manager export progress and runtime logs
+docs/superpowers/plans/2026-11-02-panel-ports.md	Independent panel ports implementation plan
+docs/superpowers/plans/2026-11-07-pvp-gm-rewards.md	PvP Channels and GM Rewards Implementation Plan
+docs/superpowers/plans/2026-11-07-pvp-team-relay.md	ACT1 team and relay PvP implementation plan
+docs/superpowers/plans/2026-11-08-bootstrap-auto-repair.md	Bootstrap Automatic Repair Implementation Plan
+docs/superpowers/plans/2026-11-08-client-update-v4.md	Client Update V4 and Incident Reports Implementation Plan
+docs/superpowers/plans/2026-11-08-dungeon-completion-loot-gather.md	Dungeon completion and solo loot plan
+docs/superpowers/plans/2026-11-08-v4-gitea-test.md	V4 Gitea test migration plan
+docs/superpowers/plans/2026-11-09-client-diagnostic-reporting.md	客户端自动故障上报 Implementation Plan
+docs/superpowers/plans/2026-11-09-gm-mail-release.md	GM 多物品发信与热修复发布 Implementation Plan
+docs/superpowers/plans/2026-11-09-v018-release.md	v0.1.8 release plan
+docs/superpowers/plans/2026-11-10-chapter-two-cards-matrix.md	Chapter Two four-client card matrix implementation plan
+docs/superpowers/plans/2026-11-10-chapter-two-main-sync.md	Chapter Two main synchronization and test continuation
+docs/superpowers/plans/2026-11-10-chapter-two-native-card-selection.md	Bounded native card test control
+docs/superpowers/plans/2026-11-10-chapter-two-native-position.md	Chapter Two native test positioning implementation plan
+docs/superpowers/reports/2026-10-30-cross-platform-deployment-release-validation.md	跨平台部署与发行：本地交付记录
+docs/superpowers/reports/2026-10-30-gitea-runner-deployment-validation.md	Gitea Runner 接入与真实发布验收
+docs/superpowers/reports/2026-10-30-main-integration-validation.md	main 整合验证记录
+docs/superpowers/reports/2026-10-30-native-test-fixtures-validation.md	原生专用夹具验收记录
+docs/superpowers/reports/2026-10-31-launcher-execution-rulings.md	登录器执行裁定记录
+docs/superpowers/reports/2026-10-31-launcher-startup-and-npk-studio-acceptance.md	客户端启动修复与 NPK Studio 验收记录
+docs/superpowers/reports/2026-10-31-native-ui-followup-acceptance.md	防火墙处理后原生界面复测与最终交付
+docs/superpowers/reports/2026-10-31-sharp-scaling-acceptance.md	登录器分辨率与清晰平滑缩放验收
+docs/superpowers/reports/2026-10-31-webui-compact-release-validation.md	Web 管理体验与单文件发行验收
+docs/superpowers/reports/2026-11-02-payment-layout-validation.md	Payment browser and frame scaling verification
+docs/superpowers/reports/2026-11-03-warehouse-upgrade-validation.md	ACT1 warehouse Upgrade restoration validation
+docs/superpowers/specs/2026-10-01-dungeon-official-alignment-design.md	设计稿：官方副本双层对齐（2008 客户端行为 + 官服内部机制）
+docs/superpowers/specs/2026-10-02-dungeon-reward-idempotent-commit-design.md	副本奖励幂等存档提交设计
+docs/superpowers/specs/2026-10-02-party-dungeon-official-rewrite-design.md	设计稿：多人副本官服对齐重写（清单驱动 · 分片替换）
+docs/superpowers/specs/2026-10-05-gameplay-evidence-program-design.md	官服玩法面「证据链工程」设计
+docs/superpowers/specs/2026-10-07-local-multiclient-acceptance-s0-design.md	本机多客户端验收平台（S0）设计
+docs/superpowers/specs/2026-10-18-protocol-map-ledger-s1-design.md	S1 设计稿 —— 协议地图与进度账（`protocol/`）
+docs/superpowers/specs/2026-10-19-multiprocess-split-s2-design.md	S2 设计稿 · 多进程拆分（第一刀：入口握手族）
+docs/superpowers/specs/2026-10-22-client-auto-input-design.md	客户端合成输入（B′）设计稿 —— ijl15 进程内注入
+docs/superpowers/specs/2026-10-28-boss-map-specification.md	Per-maze Boss Map Specification
+docs/superpowers/specs/2026-10-28-countdown-coin-purchase.md	ACT1 Countdown Coin Purchase
+docs/superpowers/specs/2026-10-28-debug-client-state-design.md	原生客户端结构化状态
+docs/superpowers/specs/2026-10-28-monster-sync-diagnosis.md	ACT1 monster position diagnosis design
+docs/superpowers/specs/2026-10-28-party-relay-send-queue.md	ACT1 TCP relay send-queue concurrency repair
+docs/superpowers/specs/2026-10-28-party-tcp-fallback-design.md	ACT1 party TCP fallback and monster-sync investigation design
+docs/superpowers/specs/2026-10-29-active-drop-four-design.md	U04 四人主动丢弃扩展
+docs/superpowers/specs/2026-10-29-debug-cross-area.md	Debug跨区域自动移动验收
+docs/superpowers/specs/2026-10-29-debug-party-commands.md	ACT1 debug 组队接口
+docs/superpowers/specs/2026-10-29-map-right-feedback.md	大地图右键寻路与黄色双扩散反馈
+docs/superpowers/specs/2026-10-29-native-town-route-design.md	客户端城镇地图右键跨区域寻路
+docs/superpowers/specs/2026-10-29-operation-capture.md	Operation capture default
+docs/superpowers/specs/2026-10-29-test-control-design.md	隔离测试 CLI 与 debug 控制接口
+docs/superpowers/specs/2026-10-29-town-navigation-design.md	ACT1 城镇目的地与城镇地图移动
+docs/superpowers/specs/2026-10-29-town-return-perf.md	Town return navigation and debug overhead diagnosis
+docs/superpowers/specs/2026-10-30-cross-platform-deployment-release-design.md	跨平台一键部署、Web 管理与 Gitea 自动发布设计
+docs/superpowers/specs/2026-10-30-dead-observation-design.md	Dead test observation design
+docs/superpowers/specs/2026-10-30-frame-profile-design.md	Bounded debug callback timing
+docs/superpowers/specs/2026-10-30-native-test-fixtures-design.md	原生测试专用夹具
+docs/superpowers/specs/2026-10-30-player-kill-design.md	Test-only Player Death
+docs/superpowers/specs/2026-10-30-skill-state-design.md	U05 Skill Cooldown and Usability
+docs/superpowers/specs/2026-10-30-ui-state-design.md	U05 Scene2 and Registered Native Dialogs
+docs/superpowers/specs/2026-10-30-webui-usability-single-file-design.md	Web 管理体验与精简发行包
+docs/superpowers/specs/2026-10-31-independent-client-patch-design.md	独立客户端补丁、测试包与日志归档设计
+docs/superpowers/specs/2026-10-31-launcher-classic-ui-design.md	登录器原版素材界面定稿
+docs/superpowers/specs/2026-10-31-launcher-regions-auto-update-design.md	原版服务器分区与客户端自动更新
+docs/superpowers/specs/2026-10-31-launcher-resolution-sharp-scaling-design.md	登录器分辨率设置与清晰平滑缩放
+docs/superpowers/specs/2026-11-01-compact-auto-update-design.md	启动时自动更新的小进度窗
+docs/superpowers/specs/2026-11-01-social-world-design.md	ACT1 区域频道与假人玩家更新设计稿
+docs/superpowers/specs/2026-11-07-pvp-channels-gm-rewards-design.md	第一章：决斗频道、GM 胜点与全服邮件
+docs/superpowers/specs/2026-11-08-bootstrap-auto-repair-design.md	Fixed startup entry and automatic repair
+docs/superpowers/specs/2026-11-08-client-update-v4-diagnostics-design.md	客户端逐文件更新、自修复与独立故障报告
+docs/superpowers/specs/2026-11-08-dungeon-completion-loot-gather-design.md	Dungeon completion and solo loot gathering
+docs/superpowers/specs/2026-11-08-v4-gitea-test-design.md	V4 test source migration to existing Gitea
+docs/superpowers/specs/2026-11-09-client-diagnostic-reporting-design.md	客户端故障上报与 GM 后台诊断设计
+docs/superpowers/specs/2026-11-09-gm-mail-attachments-design.md	GM 多物品发信与 v0.1.9 发布设计
+docs/superpowers/specs/2026-11-10-chapter-two-cards-matrix-design.md	第二章四客户端翻牌验收条件
+docs/superpowers/specs/2026-11-10-chapter-two-native-position-design.md	第二章隔离测试定位与指定敌人清理
+knowledge/decisions/2026-10-01-pickup-and-routing-closure.md	最后一轮静态闭合：普通拾取、NOTI39 与 PVF 路由边界
+knowledge/decisions/2026-10-01-routing-static-corrections.md	静态取证勘误：普通拾取骰子不等于 Special Item Routing
+knowledge/decisions/2026-10-02-store-write-transaction.md	Store 写事务边界决策
+knowledge/decisions/2026-10-24-background-fps-motion-apply.md	双开后台降帧与队员端动作应用核查
+knowledge/decisions/2026-10-24-completed-run-motion-analysis.md	完整一轮副本：队员观察队长动作不流畅
+knowledge/decisions/2026-10-24-monster-position-sync.md	双人怪物位置修正：现有同步与官服样本核查
+knowledge/decisions/2026-10-24-party-connect-failure.md	本轮组队连接超时：服务端核查
+knowledge/decisions/2026-10-24-party-free-card-display.md	组队翻牌把其他成员的免费奖励显示成本人的奖励
+knowledge/decisions/2026-10-26-native-loot-dice.md	2026-10-26：恢复 ACT1 原生组队拾取骰子
+knowledge/decisions/2026-10-27-avatar-periods-verification.md	2026-10-27：ACT1 商城限时时装验收
+knowledge/decisions/2026-10-27-cera-gift-verification.md	2026-10-27：ACT1 普通商城实物赠送验收
+knowledge/decisions/2026-10-27-channel-return-verification.md	2026-10-27：返回频道后重入假死验收
+knowledge/decisions/2026-10-27-loot-live-verification.md	2026-10-27：洛兰双客户端拾取与调试面板实机验收
+knowledge/decisions/2026-10-27-mentor-verification.md	2026-10-27：ACT1 师徒基础关系验收
+knowledge/decisions/2026-10-27-official-loot-contract.md	官服完整拾取取证与 ACT1 物品分配接口对齐
+knowledge/decisions/2026-10-27-party-chat-gold-verification.md	2026-10-27：队伍聊天与金币均分验收
+knowledge/decisions/2026-10-27-private-store-verification.md	2026-10-27：ACT1 普通摆摊
+knowledge/decisions/2026-10-28-avatar-gift-verification.md	2026-10-28：ACT1 普通时装赠送与已选属性
+knowledge/decisions/2026-10-28-boss-map-specification-verification.md	洛兰 3×3 Boss 专用选图验收
+knowledge/decisions/2026-10-28-client-diagnostics-verification.md	ACT1诊断命令适配验收
+knowledge/decisions/2026-10-28-countdown-coin-purchase-verification.md	ACT1 倒计时复活币购买与原生复活验收
+knowledge/decisions/2026-10-28-creature-gift-final-at-publication.md	2026-10-28：ACT1 普通永久封印宠物蛋赠送（组件验收）
+knowledge/decisions/2026-10-28-creature-gift-unclaimed-at-publication.md	2026-10-28：ACT1 普通永久封印宠物蛋赠送（验收草稿）
+knowledge/decisions/2026-10-28-creature-gift-verification.md	2026-10-28：ACT1 普通永久封印宠物蛋赠送（组件验收）
+knowledge/decisions/2026-10-28-mentor-growth-verification.md	2026-10-28：ACT1 师徒在线成长与徒弟经验验收
+knowledge/decisions/2026-10-28-mentor-master-gold-verification.md	2026-10-28：ACT1 师父 MASTER GOLD 验收记录
+knowledge/decisions/2026-10-28-monster-sync-diagnosis.md	ACT1 怪物位置同步排查
+knowledge/decisions/2026-10-28-overnight-delivery.md	2026-10-28：ACT1 本轮恢复与验收索引
+knowledge/decisions/2026-10-28-party-tcp-fallback-verification.md	ACT1 组队 UDP 失败后的 TCP 回退验收
+knowledge/decisions/2026-10-28-pvp-individual-verification.md	2026-10-28：ACT1 双人个人决斗原生验收
+knowledge/decisions/2026-10-28-restoration-backlog.md	后续修复与实机验收列表
+knowledge/decisions/2026-10-28-restoration-coverage.md	2026-10-28：ACT1 有界恢复覆盖与未验范围
+knowledge/decisions/2026-10-29-active-drop-manual-verification.md	U04 用户人工验收记录
+knowledge/decisions/2026-10-29-active-drop-rules.md	副本主动丢弃：官服规则、组队可见性与金币
+knowledge/decisions/2026-10-29-debug-cross-area-verification.md	Debug 跨区域移动验收
+knowledge/decisions/2026-10-29-debug-party-commands-verification.md	原生组队操作接口与同组副本验收
+knowledge/decisions/2026-10-29-debug-town-navigation-verification.md	ACT1 城镇地图点击移动、debug 目的地与状态接口验收
+knowledge/decisions/2026-10-29-dungeon-tooltip-verification.md	副本介绍超时残留修复验收
+knowledge/decisions/2026-10-29-map-right-feedback-verification.md	城镇大地图：仅右键寻路与黄色双次扩散反馈
+knowledge/decisions/2026-10-29-native-town-route-verification.md	ACT1 客户端地图右键跨区域寻路验收
+knowledge/decisions/2026-10-29-operation-stutter-verification.md	操作时全画面停顿：隐式截屏复现与修复
+knowledge/decisions/2026-10-29-test-control-four-client-loot-verification.md	仅测试环境的 CLI 与四客户端掉落验收
+knowledge/decisions/2026-10-29-town-position-followup.md	城镇队友位置差异：六输入窗口与原版停步容差
+knowledge/decisions/2026-10-29-town-return-perf-verification.md	回城后大地图点击修复与 debug 开销观察
+knowledge/decisions/2026-10-30-active-drop-four-verification.md	2026-10-29～30：四客户端主动丢弃扩展验收
+knowledge/decisions/2026-10-30-dead-ground-removal-verification.md	U11 死亡队员地面残留修复与四端验收
+knowledge/decisions/2026-10-30-dead-member-ground-investigation.md	2026-10-30：死亡队员视角残留已拾取地面物
+knowledge/decisions/2026-10-30-dead-observation-verification.md	U05 死亡后的测试地面与库存观测
+knowledge/decisions/2026-10-30-dungeon-gate-map-target-verification.md	2026-10-30：N地图副本门前区域右键终点修复
+knowledge/decisions/2026-10-30-frame-profile-verification.md	U08 debug回调计时与卡顿边界
+knowledge/decisions/2026-10-30-native-loop-and-motion-followup.md	原生循环卡顿与首领房运动拒绝接续
+knowledge/decisions/2026-10-30-normal-delivery-verification.md	日常目录交付与四端启动检查
+knowledge/decisions/2026-10-30-overnight-restoration-report.md	夜间恢复最终报告
+knowledge/decisions/2026-10-30-overweight-verification.md	U10 超重文字协议复核
+knowledge/decisions/2026-10-30-player-kill-mp-verification.md	2026-10-30：测试玩家击杀与本地 MP 观测
+knowledge/decisions/2026-10-30-remaining-blockers-followup.md	三个剩余阻断的修复与接续
+knowledge/decisions/2026-10-30-skill-state-verification.md	2026-10-30：U05 技能冷却与施放前可用性
+knowledge/decisions/2026-10-30-skillbar-persistence-verification.md	U09 技能栏持久化与测试存档来源
+knowledge/decisions/2026-10-30-source-archive-verification.md	源码、文档与证据归档核验
+knowledge/decisions/2026-10-30-sync-followup.md	U07 城镇与怪物位置同步新鲜复测
+knowledge/decisions/2026-10-30-u05-mouse-dialog-followup.md	U05 鼠标门与八类弹窗接续验收
+knowledge/decisions/2026-10-30-u05-mp-input-dialog-verification.md	U05 队友／城镇 MP、键盘门与弹窗层级
+knowledge/decisions/2026-10-30-u05-resource-closeout.md	U05 资源数据、CLI与接续交接
+knowledge/decisions/2026-10-30-ui-state-verification.md	U05 选择副本与常用弹窗数据验收
+knowledge/decisions/2026-10-30-verification-closeout.md	验收夹具收尾与完整回归
+knowledge/decisions/2026-11-01-native-ai-companion-feasibility.md	ACT1 原生人偶战斗 AI 的复用研究
+knowledge/decisions/2026-11-01-social-world-client-feasibility.md	ACT1 区域频道与假人服务的客户端可行性研究
+knowledge/decisions/2026-11-05-chapter-two-manual-fix01.md	第二章手测问题第一轮
+knowledge/decisions/2026-11-05-chapter-two-npc-dialogue-layout.md	第二章 NPC 正文布局
+knowledge/decisions/2026-11-05-chapter-two-payment-viewport.md	第二章原生充值网页窗口
+knowledge/decisions/2026-11-05-chapter-two-quest-visibility.md	第二章任务名称与 NPC 委托列表
+knowledge/decisions/2026-11-05-chapter-two-town-map-native.md	第二章 N 键城镇地图的原生入口与标记命中
+knowledge/decisions/2026-11-06-chapter-two-warehouse.md	第二章仓库本地补丁与复测
+knowledge/decisions/2026-11-09-chapter-two-free-card-display.md	Chapter Two free-card display carryover
+knowledge/decisions/2026-11-09-chapter-two-hud-portrait-cache.md	C2 HUD portrait cache local patch — design and implementation plan
+knowledge/decisions/2026-11-09-chapter-two-main-sync.md	第二章同步主分支与适配记录
+knowledge/decisions/2026-11-09-chapter-two-native-retest.md	第二章逐项真机复测
+knowledge/decisions/2026-11-09-ice-heart.md	冰心少年：文字状态崩溃与保护目标误杀
+knowledge/decisions/2026-11-09-native-diagnostic-capture.md	Task 3 original runtime evidence — 2026-11-09
+knowledge/decisions/2026-11-10-chapter-two-continuation.md	第二章继续测试（2026-11-10）
+knowledge/decisions/2026-11-10-chapter-two-main-sync.md	第二章同步主线与继续测试（2026-11-10）
+knowledge/decisions/2026-11-10-chapter-two-performance-text-lifetime.md	第二章性能文本批次生命周期
+knowledge/decisions/2026-11-10-chapter-two-private-room-hud-portrait.md	第二章私房队友头像的离屏绘制
+knowledge/decisions/2026-11-10-chapter-two-startup-file.md	第二章新副本缺失登录文件的启动修复
+knowledge/decisions/2026-11-10-dungeon-safety-audit.md	冰心少年修复后的跨副本排查
+knowledge/decisions/2026-11-11-chapter-two-resource-loading.md	第二章资源加载与特效实例对照
+knowledge/decisions/2026-11-12-chapter-two-account-migration.md	第一章账号迁移至第二章：隔离验证
+knowledge/decisions/2026-11-12-chapter-two-background-policy.md	第二章后台策略与启动窗口事件
+knowledge/decisions/2026-11-12-chapter-two-client-parity.md	第一章到第二章的客户端逐项接入核对（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-creature-tabs.md	第二章背包宠物页点击接入（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-cursor-auto.md	第二章自动定位光标与实际输入一致性
+knowledge/decisions/2026-11-12-chapter-two-danjin-shop.md	第二章土罐商店空白：资源核对
+knowledge/decisions/2026-11-12-chapter-two-external-string-table.md	第二章可选外置文字表
+knowledge/decisions/2026-11-12-chapter-two-jar-capacity.md	第二章袖珍罐空位与负重提示
+knowledge/decisions/2026-11-12-chapter-two-legacy-containers-audit.md	第一章旧礼包检查与第二章对应情况
+knowledge/decisions/2026-11-12-chapter-two-loot-gather.md	第二章单人掉落聚拢
+knowledge/decisions/2026-11-12-chapter-two-mailbox-refresh.md	第二章首封档案邮件刷新（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-mall-creature.md	第二章商城宠物页适用性调查（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-migrated-jars.md	第二章迁移袖珍罐与开启前空格检查
+knowledge/decisions/2026-11-12-chapter-two-mouse-wheel.md	第二章原生列表鼠标滚轮（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-native-log.md	第二章原生日志明文负载与隔离归档（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-ordinary-process.md	第二章普通进程启动实施计划
+knowledge/decisions/2026-11-12-chapter-two-parity-continuation.md	第二章对照清单续补与验收
+knowledge/decisions/2026-11-12-chapter-two-recharge-scrollbar.md	第二章测试充值与装扮滑块核对（2026-11-12）
+knowledge/decisions/2026-11-12-chapter-two-shops-and-packages.md	第二章五店与旧礼包恢复
+knowledge/decisions/2026-11-12-chapter-two-type16-audio-investigation.md	第二章 Type16 通知音效调查
+knowledge/decisions/2026-11-13-chapter-transition.md	原目录跨章更新：实施与当前验收
+knowledge/decisions/2026-11-13-chapter-two-bidirectional-warehouse.md	第二章双向仓库右键
+knowledge/decisions/2026-11-13-chapter-two-checkpoint.md	第二章适配代码提交检查点
+knowledge/decisions/2026-11-13-chapter-two-commerce-retest.md	第二章摆摊与实体交易续测（2026-11-13）
+knowledge/decisions/2026-11-13-chapter-two-quick-store.md	第二章仓库快捷存入
+knowledge/decisions/2026-11-13-chapter-two-settings-and-transition-retest.md	第二章设置持久化与跨章补测
+knowledge/decisions/2026-11-13-chapter-two-store-title.md	第二章空白摊位标题提示修复
+knowledge/decisions/2026-11-14-chapter-two-domain-relay.md	第二章域名与本机中继适配
+knowledge/decisions/2026-11-14-chapter-two-pet-shop-and-panel-layout.md	第二章宠物商城和调试面板复测
+knowledge/decisions/assets/2026-10-28-creature-gift/native-row-fix1-review.md	Independent scoped native row-price fix1 review
+knowledge/decisions/assets/2026-10-28-mentor-master-gold/final-review.md	Mentor master gold — independent managed implementation review
+knowledge/decisions/assets/2026-10-28-mentor-master-gold/fix1-review.md	Mentor master gold — scoped R1 fix review
+knowledge/decisions/assets/2026-10-28-overnight-delivery/README.md	最终交付证明（限定范围）
+knowledge/decisions/assets/2026-10-28-pvp-individual/evidence-schema.md	Evidence schema and reproducibility
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-expiry-recovery-final-review.md	Expiry recovery final independent review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-expiry-recovery-review.md	Expiry recovery review — pending cancellation-observation fix
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-inflight-gap-review.md	Owned inflight capture gap: narrow independent review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-post-transition-grace-review.md	Post-transition capture grace: narrow independent review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-task2-final-review.md	Task2 final independent source review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/client-route-task2-review.md	Task2 initial independent review — uncommitted files over 9c46b915
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/native-town-idle-rounding-review.md	Native town idle coordinate rounding
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/native-town-navigation-review.md	Debug town navigation: independent static review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/town-catalog-task1-extended-final-review.md	Task1 extended geometry final review
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/town-catalog-task1-final-review.md	Task1 final independent review — c9d5d002
+knowledge/decisions/assets/2026-10-29-debug-cross-area/review/town-catalog-task1-review.md	Task1 town catalog/planner review — 5aa3cc2
+knowledge/decisions/assets/2026-10-29-map-right-feedback/native-unit/native-renderer/p2-shutdown-report.md	P2 shutdown drain check follow-up
+knowledge/decisions/assets/2026-10-29-map-right-feedback/native-unit/native-renderer/report.md	Native map feedback renderer: implementation and offline verification
+knowledge/decisions/assets/2026-10-29-map-right-feedback/native-unit/native-renderer/source-specific-hook-report.md	Source-specific hook correction
+knowledge/decisions/assets/2026-10-29-map-right-feedback/native-unit/pulse-core/report.md	Pure map-click feedback core
+knowledge/decisions/assets/2026-10-29-map-right-feedback/review/live-evidence-review.md	Offline review of right-pulse-v2 live evidence
+knowledge/decisions/assets/2026-10-29-map-right-feedback/review/source-review-p2-followup.md	Source review P2 follow-up
+knowledge/decisions/assets/2026-10-29-map-right-feedback/review/source-review-specific-followup.md	SourceSpecificBinding incremental source review
+knowledge/decisions/assets/2026-10-29-map-right-feedback/review/source-review.md	Source review — N地图右键黄色双扩散
+knowledge/decisions/assets/2026-10-29-native-town-route/review/acceptance-review.md	Native town route v2 — independent archived acceptance review
+knowledge/decisions/assets/2026-10-29-native-town-route/review/catalog-unicode-closeout.md	Native Catalog Unicode P2 closeout
+knowledge/decisions/assets/2026-10-29-native-town-route/review/consumer-review.md	Native route consumer delayed-terminal independent review
+knowledge/decisions/assets/2026-10-29-native-town-route/review/controller-io-final-review.md	Runtime independent final source verdict
+knowledge/decisions/assets/2026-10-29-native-town-route/review/hit-review.md	Right-release v2 independent review
+knowledge/decisions/assets/2026-10-29-native-town-route/review/right-hit-order-correction.md	Right-release ingress ordering correction
+knowledge/decisions/assets/2026-10-29-operation-stutter/measurement-corrections.md	Measurement corrections and scope
+knowledge/decisions/assets/2026-10-29-operation-stutter/review/operation-capture-review.md	操作工具截图默认行为：独立离线审查
+knowledge/decisions/assets/2026-10-29-town-position-followup/offline/position-contract-and-results.md	U07 位置专用离线过滤及六窗结果（2026-10-29）
+knowledge/decisions/assets/2026-10-29-town-position-followup/review/u07-evidence-review.md	U07 限定证据审查
+knowledge/decisions/assets/2026-10-29-town-return-perf/controller/report.md	Dungeon-gate departure controller fix
+knowledge/decisions/assets/2026-10-29-town-return-perf/nav/shared-report.md	Shared native after-hit canvas release
+knowledge/decisions/assets/2026-10-29-town-return-perf/perf/measurement-correction.md	
+knowledge/decisions/assets/2026-10-29-town-return-perf/review/decoder-fix/README.md	Manual U04 trace decoder format fix
+knowledge/decisions/assets/2026-10-29-town-return-perf/review/final/source-review.md	Independent narrow source review
+knowledge/decisions/assets/2026-10-29-town-return-perf/review/live-evidence-review.md	回城与性能记录离线一致性审核
+knowledge/decisions/assets/2026-10-29-town-return-perf/review/perf/perf-review.md	Debug 5E5：只读开销审查与对照方案
+knowledge/decisions/assets/2026-10-30-skill-state/cooldown-contract.md	ACT1 U05 cooldown contract — static executable evidence
+knowledge/decisions/assets/2026-10-30-skill-state/usability-contract.md	ACT1 skill usability static contract — 2026-10-30
+knowledge/decisions/assets/2026-10-30-sync-followup/native-contract.md	U07 / monster movement: next bounded diagnosis
+knowledge/decisions/assets/2026-10-30-ui-state/native-contract.md	ACT1 UI / scene2 read-only contract — 2026-10-30
+protocol/README.md	protocol/ —— 协议地图与进度账（S1）
+protocol/map/index.md	协议地图与进度账
+src/DFLegacy.ChapterTwo.Native/README.md	第二章原生客户端迁移
+src/DFLegacy.ChapterTwo.Native/ntsc-upstream/PROVENANCE.md	NTSC and CRT shader sources
+src/DFLegacy.ChapterTwo.Native/test_control/README.md	Isolated Chapter Two test control
+src/DFLegacy.Client/bootstrap-protocol.md	Native client bootstrap protocol (version 1)
+src/DFLegacy.Client/player-runtime.md	Shared player runtime and diagnostics contract
+src/DFLegacy.Ijl15/AUTO_INPUT.md	原生 auto-input 的 drag 契约
+src/DFLegacy.Ijl15/tests/loot_gather_native_contract.md	Solo loot gather native contract
+src/DFLegacy.Startup/README.md	Stable native startup entry
+tests/DFLegacy.SmokeTests/Fixtures/AvatarGift/README.md	Ordinary ACT1 avatar fixtures
+tests/DFLegacy.SmokeTests/Fixtures/CreatureGift/README.md	Creature gift fixtures
+tests/DFLegacy.SmokeTests/Fixtures/MentorGold/README.md	Mentor master gold evidence fixture
+tests/fixtures/act1-motion-horizon/README.md	ACT1 motion horizon arithmetic replay
+tests/fixtures/act1-town-navigation/README.md	Portable ACT1 town navigation scripts
+tests/fixtures/native-debug/README.md	Native exporter test fixtures
+third_party/d3d8to9/v1.15.1/LICENSE.md	
+third_party/d3d8to9/v1.15.1/README.md	Building
+third_party/detours/PROVENANCE.md	
+third_party/dgvoodoo/NOTICE.md	dgVoodoo2
+third_party/xbrz/1.9/PROVENANCE.md	xBRZ 1.9
+tools/acceptance/README.md	本机多客户端验收平台（S0）
+tools/acceptance/RUNBOOK.md	S0 真机验收 RUNBOOK（一条命令）
+tools/acceptance/standalone-client.md	Standalone client acceptance
+tools/debug/README.md	副本调试覆盖层
+tools/debug/crash_capture/README.md	单人战斗崩溃诊断包
+tools/pvf/chapter-two/README.md	Chapter Two semantic PVF port
+tools/pvf/seria-materials/README.md	v0.1.8 赛丽亚材料商店修改来源

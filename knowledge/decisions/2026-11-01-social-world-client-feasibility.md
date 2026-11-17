@@ -20,7 +20,7 @@
 
 ## 频道
 
-[静态] 两份 PVF 都含 etc/channel_info.etc。服务端 DungeonExperienceCatalog.LoadChannelBonusRates 已按服务器号、频道号和副本组解析百分比，CalculateClearExperience 将 ChannelBonus 单列相加；当前普通杀怪经验路径没有使用该加成。
+[静态] 两份 PVF 都含 etc/channel_info.etc。服务端 DungeonExperienceCatalog.LoadChannelBonusRates 已按服务器号、频道号和副本组解析百分比，CalculateClearExperience 将 ChannelBonus 单列相加；当前普通杀怪经验路径没有使用该加成。2026-11-17 核对：通关路径已通过 `GetChannelBonusRate(dungeonId, channel.Number)` 使用实际连接频道的经验；杀怪路径仍未使用。
 
 服务器 1 的原始普通区域频道包括：
 
@@ -38,6 +38,8 @@
 原表中的 north_myre 和 Alfhlyra 副本成员完全相同，不能未经交叉核验直接用作两个独立区域的最终映射。名称 sky_catle 保留原拼写，解析时不要自行改名导致匹配失败。
 
 当前 ServerOptions.Channel 是单个普通频道配置；PvpChannelConfiguration 才会追加 PvP 入口。入口协议 EntranceMetadata 支持列表，拆分进程 DFLegacy.Channel.Program 仍只发布一个普通频道。TownSessionDirectory 的 AreaKey 尚无频道维度。多频道必须同时修改会话上下文、目录隔离、经验解析和入口列表，不能只多显示几个名称。
+
+2026-11-17 更正：`Channel.RegionalChannelsEnabled` 已实现七个地区频道的入口列表和按频道读取的通关经验（提交 `df4e1b6`），因此本段“只发布一个普通频道”描述的是研究当时状态。但目录隔离仍未完成：`TownSessionDirectory` 仍无频道维度，ACT1 组队未传频道号；逐项状态见 [区域频道与假人手册](../../knowledge/handbook/social-world-and-bots.md)。
 
 ## 人偶与普通队友
 

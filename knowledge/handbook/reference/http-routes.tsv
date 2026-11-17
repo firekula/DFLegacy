@@ -1,0 +1,95 @@
+path	line	method	receiver	group_prefix	route_literal
+src/DFLegacy.Launcher/tests/ChapterTwoDiagnosticTests.cs	133	POST	host		/api/client-diagnostics/reports
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	19	GET	upstream		/account/client/guild
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	20	GET	upstream		/account/client/guild-hero.jpg
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	21	POST	upstream		/account/api/client-guild/login
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	30	GET	upstream		/account/api/client-guild/state
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	33	POST	upstream		/account/api/client-guild/logout
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	38	GET	upstream		/account/api/client-guild/old
+src/DFLegacy.Launcher/tests/ChapterTwoGuildSiteTests.cs	39	GET	upstream		/account/api/unrelated
+src/DFLegacy.Manager/ManagerApplication.cs	112	GET	app		/health
+src/DFLegacy.Manager/ManagerApplication.cs	113	GET	app		/ready
+src/DFLegacy.Manager/ManagerApplication.cs	114	GET	app		/api/setup/status
+src/DFLegacy.Manager/ManagerApplication.cs	115	POST	app		/api/setup
+src/DFLegacy.Manager/ManagerApplication.cs	121	POST	app		/api/login
+src/DFLegacy.Manager/ManagerApplication.cs	128	GET	api	/api	/session
+src/DFLegacy.Manager/ManagerApplication.cs	129	POST	api	/api	/logout
+src/DFLegacy.Manager/ManagerApplication.cs	130	GET	api	/api	/config
+src/DFLegacy.Manager/ManagerApplication.cs	131	GET	api	/api	/resources/pvf
+src/DFLegacy.Manager/ManagerApplication.cs	132	POST	api	/api	/resources/pvf
+src/DFLegacy.Manager/ManagerApplication.cs	142	PUT	api	/api	/config
+src/DFLegacy.Manager/ManagerApplication.cs	147	GET	api	/api	/status
+src/DFLegacy.Manager/ManagerApplication.cs	164	GET	api	/api	/logs
+src/DFLegacy.Manager/ManagerApplication.cs	165	POST	api	/api	/exports
+src/DFLegacy.Manager/ManagerApplication.cs	168	GET	api	/api	/exports/{id}
+src/DFLegacy.Manager/ManagerApplication.cs	169	GET	api	/api	/exports/{id}/download
+src/DFLegacy.Manager/ManagerApplication.cs	171	POST	api	/api	/server/start
+src/DFLegacy.Manager/ManagerApplication.cs	172	POST	api	/api	/server/stop
+src/DFLegacy.Manager/ManagerApplication.cs	173	POST	api	/api	/server/restart
+src/DFLegacy.Manager/ManagerApplication.cs	174	POST	api	/api	/game-admin
+src/DFLegacy.Manager/ManagerApplication.cs	175	POST	api	/api	/export/{kind}
+src/DFLegacy.Server/AdminRewardEndpoints.cs	9	POST	app		/api/admin/characters/{characterId:guid}/victory-points
+src/DFLegacy.Server/AdminRewardEndpoints.cs	18	POST	app		/api/admin/mail/broadcast/preview
+src/DFLegacy.Server/AdminRewardEndpoints.cs	33	POST	app		/api/admin/mail/broadcast/{operationId:guid}/send
+src/DFLegacy.Server/AdminRewardEndpoints.cs	44	GET	app		/api/admin/mail/broadcast/{operationId:guid}
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	10	POST	app		/api/client-diagnostics/reports
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	42	GET	app		/api/admin/diagnostics/groups
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	49	GET	app		/api/admin/diagnostics/reports/{id}
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	56	GET	app		/api/admin/diagnostics/reports/{id}/download
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	64	PATCH	app		/api/admin/diagnostics/groups/{id}
+src/DFLegacy.Server/ClientDiagnosticEndpoints.cs	80	DELETE	app		/api/admin/diagnostics/reports/{id}
+src/DFLegacy.Server/ClientGuildEndpoints.cs	47	POST	api	/api/client-guild	/session
+src/DFLegacy.Server/ClientGuildEndpoints.cs	48	POST	api	/api/client-guild	/logout
+src/DFLegacy.Server/ClientGuildEndpoints.cs	49	GET	api	/api/client-guild	/characters
+src/DFLegacy.Server/ClientGuildEndpoints.cs	50	GET	api	/api/client-guild	/characters/{characterId:guid}
+src/DFLegacy.Server/ClientGuildEndpoints.cs	51	POST	api	/api/client-guild	/characters/{characterId:guid}/announcement
+src/DFLegacy.Server/ClientGuildEndpoints.cs	52	POST	api	/api/client-guild	/characters/{characterId:guid}/invite
+src/DFLegacy.Server/ClientGuildEndpoints.cs	53	POST	api	/api/client-guild	/characters/{characterId:guid}/icon
+src/DFLegacy.Server/ClientGuildEndpoints.cs	54	POST	api	/api/client-guild	/characters/{characterId:guid}/disband
+src/DFLegacy.Server/ClientGuildEndpoints.cs	55	POST	api	/api/client-guild	/characters/{characterId:guid}/members/{targetId:guid}/rank
+src/DFLegacy.Server/ClientGuildEndpoints.cs	62	POST	api	/api/client-guild	/characters/{characterId:guid}/members/{targetId:guid}/remove
+src/DFLegacy.Server/ClientGuildEndpoints.cs	66	POST	api	/api/client-guild	/characters/{characterId:guid}/members/{targetId:guid}/transfer
+src/DFLegacy.Server/Program.cs	403	GET	app		/client
+src/DFLegacy.Server/Program.cs	404	GET	app		/client/
+src/DFLegacy.Server/Program.cs	405	GET	app		/client/client_pay
+src/DFLegacy.Server/Program.cs	406	GET	app		/client/client_diamond
+src/DFLegacy.Server/Program.cs	408	GET	app		/admin
+src/DFLegacy.Server/Program.cs	410	GET	app		/health
+src/DFLegacy.Server/Program.cs	413	GET	app		/api/status
+src/DFLegacy.Server/Program.cs	450	GET	app		/api/sessions
+src/DFLegacy.Server/Program.cs	451	GET	app		/api/packets
+src/DFLegacy.Server/Program.cs	452	GET	app		/api/accounts
+src/DFLegacy.Server/Program.cs	455	GET	app		/api/admin/characters
+src/DFLegacy.Server/Program.cs	488	GET	app		/api/admin/items
+src/DFLegacy.Server/Program.cs	538	GET	app		/api/admin/dungeons
+src/DFLegacy.Server/Program.cs	552	GET	app		/api/admin/message-types
+src/DFLegacy.Server/Program.cs	559	POST	app		/api/admin/characters/{characterId:guid}/mail
+src/DFLegacy.Server/Program.cs	599	POST	app		/api/admin/broadcast/message
+src/DFLegacy.Server/Program.cs	648	POST	app		/api/admin/broadcast/popup
+src/DFLegacy.Server/Program.cs	687	PUT	app		/api/admin/characters/{characterId:guid}/dungeons/{dungeonId:int}
+src/DFLegacy.Server/Program.cs	731	GET	app		/client/client-pay-settings.js
+src/DFLegacy.Server/Program.cs	732	POST	app		/api/client-pay/test-cera
+src/DFLegacy.Server/Program.cs	733	POST	app		/api/client-pay/test-diamond
+src/DFLegacy.Server/Program.cs	734	POST	app		/api/client-pay/cera
+src/DFLegacy.Server/Program.cs	760	POST	app		/api/client-pay/diamond
+src/DFLegacy.Server/Program.cs	793	POST	app		/api/client-pay/premium
+src/DFLegacy.Server/Program.cs	833	POST	app		/api/auth/login
+src/DFLegacy.Server/Program.cs	877	POST	app		/api/auth/logout
+src/DFLegacy.Server/Program.cs	884	GET	app		/api/accounts/{userName}/characters
+src/DFLegacy.Server/Program.cs	895	GET	app		/api/admin/users
+src/DFLegacy.Server/Program.cs	898	PUT	app		/api/admin/users/{userName}/password
+src/DFLegacy.Server/Program.cs	903	PUT	app		/api/admin/users/{userName}/ban
+src/DFLegacy.Server/Program.cs	908	DELETE	app		/api/admin/users/{userName}/ban
+src/DFLegacy.Server/Program.cs	912	DELETE	app		/api/admin/characters/{characterId:guid}
+src/DFLegacy.Server/Program.cs	928	PUT	app		/api/admin/users/{userName}/role
+src/DFLegacy.Server/Program.cs	965	PUT	app		/api/admin/users/{userName}/kind
+src/DFLegacy.Server/Program.cs	985	POST	app		/api/accounts
+src/DFLegacy.Server/Program.cs	998	PUT	app		/api/accounts/{userName}/password
+src/DFLegacy.Server/Program.cs	1020	POST	app		/api/accounts/{userName}/password/reset
+src/DFLegacy.Server/Program.cs	1055	POST	app		/api/accounts/{userName}/characters
+src/DFLegacy.Server/Program.cs	1067	PUT	app		/api/characters/{characterId:guid}/fatigue
+src/DFLegacy.Server/Program.cs	1092	GET	app		/api/characters/{characterId:guid}/mail
+src/DFLegacy.Server/Program.cs	1098	POST	app		/api/characters/{characterId:guid}/mail
+src/DFLegacy.Server/Program.cs	1117	POST	app		/api/characters/{characterId:guid}/message
+src/DFLegacy.Server/Program.cs	1175	POST	app		/api/characters/{characterId:guid}/popup
+src/DFLegacy.Server/Program.cs	1219	GET	app		/
