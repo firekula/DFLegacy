@@ -2,9 +2,13 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)][string[]] $Files,
     [string] $TimestampUrl,
-    [switch] $MachineStore
+    [switch] $MachineStore,
+    [switch] $DebugCertificate
 )
 $ErrorActionPreference = 'Stop'
+if ($DebugCertificate) {
+    Write-Warning '调试证书模式：签名不受玩家 Windows 信任，不能降低 SmartScreen/杀软告警，发行说明必须明确标注“调试签名，不受信任”。'
+}
 if (-not $TimestampUrl) {
     $TimestampUrl = if ($env:DFLEGACY_SIGN_TIMESTAMP) { $env:DFLEGACY_SIGN_TIMESTAMP } else { 'http://timestamp.digicert.com' }
 }
@@ -32,18 +36,30 @@ $signtool = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'bin') -Directory |
 if (-not $signtool) { throw '找不到 signtool.exe（Windows SDK 10）。' }
 foreach ($file in $Files) {
     if ($pfx) {
-        & $signtool sign /fd sha256 /tr $TimestampUrl /td sha256 /f $pfx /p $pfxPassword $file
+        if ($DebugCertificate) {
+            & $signtool sign /fd sha256 /f $pfx /p $pfxPassword $file
+        } else {
+            & $signtool sign /fd sha256 /tr $TimestampUrl /td sha256 /f $pfx /p $pfxPassword $file
+        }
     } else {
-        $signArgs = @('sign', '/fd', 'sha256', '/tr', $TimestampUrl, '/td', 'sha256', '/sha1', $thumbprint)
+        $signArgs = @('sign', '/fd', 'sha256')
+        if (-not $DebugCertificate) { $signArgs += @('/tr', $TimestampUrl, '/td', 'sha256') }
+        $signArgs += @('/sha1', $thumbprint)
         if ($MachineStore) { $signArgs += '/sm' }
         $signArgs += $file
         & $signtool @signArgs
     }
     if ($LASTEXITCODE -ne 0) { throw "签名失败：$file（signtool sign 退出码 $LASTEXITCODE）" }
-    & $signtool verify /pa /all $file
-    if ($LASTEXITCODE -ne 0) { throw "签名验证失败：$file（需要受信任的证书链）" }
+    if (-not $DebugCertificate) {
+        & $signtool verify /pa /all $file
+        if ($LASTEXITCODE -ne 0) { throw "签名验证失败：$file（需要受信任的证书链）" }
+    }
     $signature = Get-AuthenticodeSignature -LiteralPath $file
-    if ($signature.SignerCertificate -and $signature.SignerCertificate.Subject -notmatch 'FireKula') {
+    if (-not $signature.SignerCertificate) { throw "签名缺失：$file" }
+    if ($DebugCertificate) {
+        Write-Output "debug-signature $file status=$($signature.Status) subject=$($signature.SignerCertificate.Subject)"
+    }
+    if ($signature.SignerCertificate.Subject -notmatch 'FireKula') {
         Write-Warning "签名主体不是 FireKula：$($signature.SignerCertificate.Subject)"
     }
     $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
