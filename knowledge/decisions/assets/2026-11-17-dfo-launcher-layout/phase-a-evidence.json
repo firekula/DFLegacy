@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-17T13:03:00+08:00",
+  "source": "G:/tmp/c2r2-normal",
+  "copy": "G:/tmp/dfo-phase-a",
+  "clientVersion": "v1.0.13-r2",
+  "entrySha256Prefix": "CF16FEDC2B31",
+  "appSha256Prefix": "0C111884D0B0",
+  "updaterSha256Prefix": "FCD8E8959205",
+  "receipt": {
+    "tag": "v1.0.13-r2",
+    "manifestSha256": "3ab28d719134046b1cce38f885571b9f0555bbf921cdd17cc83474aaa234f086",
+    "validatedRoot": "G:\\tmp\\dfo-phase-a\\client"
+  },
+  "settings": {
+    "launcher.chapter2.json": {
+      "length": 467,
+      "sha256": "27009290A1AA6C1B5A1027C9BF8E5B8D9169097BB3297602596A504E970846A2"
+    },
+    "Config.ini": {
+      "length": 28,
+      "sha256": "B6416E57D3E1FD8EC296BEB2F81B8CBE785EFB325F78EB094A3EC556E47429FA"
+    },
+    ".dflegacy/chapter-two/settings/DNF_CHINA.cfg": {
+      "length": 44,
+      "sha256": "76918F2961953722CE69D59A1FEDF84AD8A3BCDA4F7A03952716D19E219975BB"
+    }
+  },
+  "login": {
+    "title": "地下城与勇士 · 第二章本机测试",
+    "version": "v1.0.13",
+    "account": "qaaaccount2"
+  },
+  "updateCheck": {
+    "stage": "v4-check",
+    "result": "verified",
+    "detail": "gitcode / V4：已确认当前版本 v1.0.13-r2；使用已完成校验的安装记录。",
+    "incident": "update-20261117-130352-707-73872-e42e6cdeb0d9423d8bc80688bedf48b1.log"
+  },
+  "launcherLog": "2026-11-17T13:03:50.2324514+08:00 Bootstrap verified UI handoff; offline=False.",
+  "package": {
+    "zip": "G:/tmp/dfo-phase-a-package.zip",
+    "size": 1553001288,
+    "sha256": "1fc03a0a3bd0185a9ac62a6643006ca45cf02e8ff1ebfae6319dbd196a6fa7f9",
+    "stubSha256": "be02017833507854a3d0af618a09712844723575d90e4a356117da2b7f01109a",
+    "verified": 787,
+    "version": "v1.0.13-r2",
+    "sequence": 21
+  },
+  "packageLogin": {
+    "validatedRoot": "G:\\tmp\\dfo-phase-a-package\\client",
+    "updateIncident": "update-20261117-130810-274-47248-5febccaf0915400c89cb7173de323379.log",
+    "updateResult": "v4-check verified"
+  },
+  "startupFailureRestore": {
+    "dialogs": 3,
+    "stubExit": 1,
+    "clientRemoved": true,
+    "entryRestored": true,
+    "journalRemoved": true
+  },
+  "unitTests": {
+    "ctest": "1/1 passed (2.53s)",
+    "packagingTests": "5/5 passed (0.96s)"
+  },
+  "companyClient": "pending user run",
+  "gameLaunch": "not re-run; local test server dependency; login page and client runtime verified"
+}
