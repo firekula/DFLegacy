@@ -199,6 +199,12 @@ public partial class App : Application
         // 校验阶段走小载入窗；只有开始下载/替换时才打开大窗口。
         var loading = new Views.LoadingWindow(); loading.Show();
         Views.UpdateOperationWindow? window = null;
+        // Close any window this process still owns before the new client starts;
+        // otherwise the old and new login windows can both be visible.
+        foreach (Window open in Application.Current.Windows)
+        {
+            if (open is not Views.LoadingWindow) open.Close();
+        }
         // The fixed entry may exit after the progress window opens. The full
         // download and the new login window have independent readiness checks.
         Updates.BootstrapUpdateClient.SignalReady();
