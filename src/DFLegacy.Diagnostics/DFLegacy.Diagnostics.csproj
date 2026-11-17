@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyTitle>DFLegacy Diagnostics</AssemblyTitle><Product>DFLegacy</Product><Company>FireKula</Company><Copyright>Copyright (C) 2026 FireKula</Copyright><VersionPrefix>1.0.14</VersionPrefix></PropertyGroup>
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><AssemblyTitle>DFLegacy Diagnostics</AssemblyTitle><Product>DFLegacy</Product><Company>FireKula</Company><Copyright>Copyright (C) 2026 FireKula</Copyright><VersionPrefix>1.0.14</VersionPrefix><Win32Resource Condition="'$(DiagnosticsWin32Resource)' != ''">$(DiagnosticsWin32Resource)</Win32Resource></PropertyGroup>
   <ItemGroup><ProjectReference Include="../DFLegacy.Diagnostics.Core/DFLegacy.Diagnostics.Core.csproj"/></ItemGroup>
 </Project>
