@@ -28,13 +28,17 @@ internal sealed class ChapterTwoDebugWindow : Window
     private bool pending,disposed;
     private OwnedPanelCursor? pointer;
     private readonly CheckBox testMute=new(){Content="测试静音（仅当前游戏）",MinWidth=185};
+    private readonly CheckBox teleport=new(){Content="右键小地图传送（仅同城镇）",MinWidth=205};
+    private readonly CheckBox invincible=new(){Content="无敌（仅调试客户端）",MinWidth=160};
+    private System.IO.MemoryMappedFiles.MemoryMappedFile? control;
+    private System.IO.MemoryMappedFiles.MemoryMappedViewAccessor? controlView;
     private readonly TextBlock audioStatus=new(){MaxWidth=390,TextWrapping=TextWrapping.Wrap};
     internal bool TestMuted=>testMute.IsChecked==true;
     internal event Action? TestMuteChanged;
     internal ChapterTwoDebugWindow(string clientDirectory,string account,string serviceUrl="http://127.0.0.2:48091")
     {
         api=new(serviceUrl:serviceUrl);
-        Title="第二章 · 物品工具";Width=740;Height=690;MinWidth=690;MinHeight=610;
+        Title="第二章 · 物品工具";Width=740;Height=730;MinWidth=690;MinHeight=650;
         WindowStyle=WindowStyle.None;AllowsTransparency=true;Background=Brushes.Transparent;
         ResizeMode=ResizeMode.NoResize;ShowInTaskbar=false;
         logDirectory=Path.Combine(clientDirectory,"Logs","DFLegacy");
@@ -65,6 +69,9 @@ internal sealed class ChapterTwoDebugWindow : Window
         var audioOptions=new LauncherAccountStore(Program.LauncherConfigPath).Load();
         testMute.IsChecked=audioOptions.ChapterTwoTestMuteEnabled;
         controls.Children.Add(Row(testMute,audioStatus));
+        controls.Children.Add(Row(teleport,invincible));
+        teleport.Click+=(_,_)=>WriteDebugFlags();
+        invincible.Click+=(_,_)=>WriteDebugFlags();
         testMute.Click+=(_,_)=>
         {
             try
@@ -149,6 +156,37 @@ internal sealed class ChapterTwoDebugWindow : Window
         finally{pending=false;if(!disposed)send.IsEnabled=api.Authenticated;}
     }
     internal void Finish(){disposed=true;pointer?.Dispose();pointer=null;api.Dispose();Close();}
+    internal void BindGame(int id)
+    {
+        controlView?.Dispose();control?.Dispose();controlView=null;control=null;
+        if(id<=0)return;
+        try
+        {
+            control=System.IO.MemoryMappedFiles.MemoryMappedFile.OpenExisting(
+                $"Local\\DFLegacy.C2.DebugControl.{id}",
+                System.IO.MemoryMappedFiles.MemoryMappedFileRights.ReadWrite);
+            controlView=control.CreateViewAccessor(0,8,
+                System.IO.MemoryMappedFiles.MemoryMappedFileAccess.ReadWrite);
+            WriteDebugFlags();
+        }
+        catch(Exception e) when(e is FileNotFoundException or IOException or UnauthorizedAccessException)
+        {
+            controlView?.Dispose();control?.Dispose();controlView=null;control=null;
+        }
+    }
+
+    private void WriteDebugFlags()
+    {
+        if(controlView is null)return;
+        try
+        {
+            controlView.Write(0,(byte)1);
+            controlView.Write(1,(byte)((teleport.IsChecked==true?1:0)|(invincible.IsChecked==true?2:0)));
+            controlView.Flush();
+        }
+        catch(IOException){}
+    }
+
     internal void AudioStatus(string text)=>audioStatus.Text=text;
 }
 
@@ -197,7 +235,7 @@ internal sealed class ChapterTwoDebugSession : IDisposable
     internal void Bind(int id)
     {
         if(gameId==id&&audio is not null)return;
-        audio?.Dispose();gameId=id;audio=ChapterTwoTestAudio.TryCreate(id);nextAudio=0;UpdateAudio();
+        audio?.Dispose();gameId=id;window.BindGame(id);audio=ChapterTwoTestAudio.TryCreate(id);nextAudio=0;UpdateAudio();
     }
     public void Dispose(){timer.Stop();audio?.Dispose();audio=null;window.Finish();}
     [DllImport("user32.dll")]private static extern short GetAsyncKeyState(int key);
