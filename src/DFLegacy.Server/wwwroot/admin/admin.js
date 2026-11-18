@@ -31,6 +31,7 @@ const viewCopy = {
   direct: ["单人通知", "向指定在线角色发送弹框或消息"],
   broadcast: ["广播通知", "向全部在线角色发送弹框或消息"],
   dungeon: ["副本权限", "设置角色可进入的 DGN 难度"],
+  settings: ["掉落设置", "任务道具爆率倍率"],
   users: ["账号管理", "管理角色、密码、封禁和账号权限"],
   diagnostics: ["客户端故障", "查看脱敏基本报告及处理状态"],
   characters: ["我的角色", "账号名下的角色列表"]
@@ -967,6 +968,8 @@ function initialize() {
         refreshUsers();
       } else if (button.dataset.view === "characters") {
         loadOwnCharacters();
+      } else if (button.dataset.view === "settings" && typeof loadQuestDropSettings === "function") {
+        loadQuestDropSettings();
       }
     });
   });

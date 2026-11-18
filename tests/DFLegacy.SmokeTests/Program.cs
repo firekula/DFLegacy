@@ -70,6 +70,19 @@ if (args is ["--shop-purchase", var shopPvf])
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args is ["--quest-drop-api"])
+{
+    var checks = 0;
+    await QuestDropApiSmokeTests.RunAsync((condition, message) =>
+    {
+        checks++;
+        Check(condition, message);
+    });
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Quest drop API smoke: {checks} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--quest-item-grant"])
 {
     var checks = 0;
@@ -787,6 +800,7 @@ await PickupRemovalSmokeTests.RunAsync(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
 NpcShopOffersSmokeTests.Run(Check);
+await QuestDropSettingsSmokeTests.RunAsync(Check);
 QuestItemGrantSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 ChapterTwoQuestVisibilitySmokeTests.Run(Check);

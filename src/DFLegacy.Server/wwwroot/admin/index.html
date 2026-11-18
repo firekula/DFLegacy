@@ -22,6 +22,7 @@
         <button class="nav-item admin-only" type="button" data-view="direct">单人通知</button>
         <button class="nav-item admin-only" type="button" data-view="broadcast">广播通知</button>
         <button class="nav-item admin-only" type="button" data-view="dungeon">副本权限</button>
+        <button class="nav-item admin-only" type="button" data-view="settings">掉落设置</button>
         <button class="nav-item admin-only" type="button" data-view="users">账号管理</button>
         <button class="nav-item admin-only" type="button" data-view="diagnostics">客户端故障</button>
         <button class="nav-item player-only" type="button" data-view="characters">我的角色</button>
@@ -82,6 +83,18 @@
           <div class="form-actions"><button id="diagnosticPrevious" class="secondary-button" type="button">上一页</button><button id="diagnosticNext" class="secondary-button" type="button">下一页</button></div>
         </section>
         <section class="surface form-layout"><h2>报告详情</h2><div id="diagnosticDetail"></div><div id="diagnosticActions" class="form-actions"></div></section>
+      </section>
+
+      <section class="view admin-only" data-view-panel="settings">
+        <form id="questDropForm" class="surface form-layout">
+          <h2>任务道具爆率</h2>
+          <p>只影响任务道具（<code>[monster reward item]</code> 与 <code>[clear reward item]</code>），不影响普通掉落。100 = 保留 PVF 原始概率；0 = 关闭；上限 1000。保存后立即生效，并写到数据目录的 <code>settings/quest-drop.json</code>。</p>
+          <div class="form-grid two-column">
+            <label class="field"><span>倍率（%）</span><input id="questDropRate" name="ratePercent" type="number" min="0" max="1000" step="1" required></label>
+          </div>
+          <p id="questDropCurrent" role="status">正在读取当前倍率…</p>
+          <div class="form-actions"><button class="primary-button" type="submit">保存倍率</button></div>
+        </form>
       </section>
 
       <section class="view active admin-only" data-view-panel="mail">
@@ -416,8 +429,10 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/admin/admin.js?v=20261110-mail-grid" defer></script>
+  <script src="/admin/admin.js?v=20261118-drop-rate" defer></script>
   <script src="/admin/admin-rewards.js?v=20261110-mail-grid" defer></script>
+  <script src="/admin/admin-settings.js?v=20261118-drop-rate" defer></script>
   <script src="/admin/admin-diagnostics.js?v=20261117-diagnostics" defer></script>
 </body>
 </html>
+

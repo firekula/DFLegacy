@@ -63,6 +63,12 @@ public sealed class DropOptions
     public double RatePercent { get; set; } = 100;
     public double EconomicRate { get; set; } = 1;
     public bool ForceDrops { get; set; }
+
+    /// <summary>
+    /// Initial quest task-item drop rate percentage (GM-adjustable at runtime and
+    /// persisted under the data directory). 100 keeps the PVF values.
+    /// </summary>
+    public int QuestItemRatePercent { get; set; } = QuestDropSettings.DefaultRatePercent;
 }
 
 public sealed class FatigueOptions

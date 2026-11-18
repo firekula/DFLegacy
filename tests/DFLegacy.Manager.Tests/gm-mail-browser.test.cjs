@@ -200,6 +200,23 @@ test("diagnostics groups render as a table with a labeled status select", async 
   assert.deepEqual(patch.body, { status: "resolved" });
 });
 
+test("drop settings view loads and saves the quest task-item rate", async () => {
+  const page = mailPage(undefined, url => url.includes("/api/admin/drop/quest-rate")
+    ? { ratePercent: 150, minimum: 0, maximum: 1000, persistent: true }
+    : {}, true);
+  const button = page.get(".nav-item").parentElement.children.find(element => element.dataset.view === "settings");
+  await button.click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(page.get("#pageTitle").textContent, "掉落设置");
+  assert.equal(page.get("#questDropRate").value, "150");
+  page.get("#questDropRate").value = "200";
+  await page.get("#questDropForm").fire("submit", { preventDefault() {} });
+  await new Promise(resolve => setImmediate(resolve));
+  const put = page.requests.find(request => request.method === "PUT" && request.url.includes("/api/admin/drop/quest-rate"));
+  assert.ok(put, "the form saves through the GM API");
+  assert.deepEqual(put.body, { ratePercent: 200 });
+});
+
 test("diagnostics query reports a disabled GM listener without inventing an endpoint", async () => {
   const page = mailPage(undefined, () => ({ gmPanelPort: null }), true, false);
   await page.get("#diagnosticFilters").fire("submit");

@@ -90,6 +90,7 @@ builder.Services.AddSingleton<JsonGameStore>();
 // TimeProvider 显式注册，便于测试注入假时钟。
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<ClientDiagnosticStore>();
+builder.Services.AddSingleton<QuestDropSettings>();
 builder.Services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<ClientDiagnosticStore>());
 builder.Services.AddSingleton<AdminAuthService>();
 builder.Services.AddSingleton<CharacterSessionRegistry>();
@@ -409,6 +410,7 @@ app.MapGet("/admin", () => Results.Redirect("/admin/index.html"));
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "dflegacy-emulator" }));
 app.MapClientDiagnostics(options);
+app.MapQuestDropSettings(options);
 
 app.MapGet("/api/status", (RuntimeState runtime, ScriptFileSystem scripts, ItemCatalog items, ChannelLinkService channelLink, FallbackRelayService fallbackRelay) => Results.Ok(new
 {
@@ -1285,3 +1287,4 @@ static async Task WriteJsonErrorAsync(HttpContext context, int statusCode, strin
     context.Response.ContentType = "application/json; charset=utf-8";
     await context.Response.WriteAsJsonAsync(new { error = message });
 }
+

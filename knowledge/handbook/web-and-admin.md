@@ -33,6 +33,7 @@ Manager 路由由 [ManagerApplication](../../src/DFLegacy.Manager/ManagerApplica
 
 - GM 邮件/奖励使用 [admin-rewards.js](../../src/DFLegacy.Server/wwwroot/admin/admin-rewards.js)，故障报告使用 [admin-diagnostics.js](../../src/DFLegacy.Server/wwwroot/admin/admin-diagnostics.js)。新增脚本还要检查独立 GM 监听的静态资源白名单。
 - 故障报告的批量导出是 GM 口的 `GET /api/admin/diagnostics/export`（同筛选参数，ZIP：`index.json` + `reports/<组>/<回执>.json`，上限 5,000 份 / 128 MiB）。命令行/agent 用 [tools/admin/diagnostics.py](../../tools/admin/diagnostics.py)，凭据只从 `DFLEGACY_GM_*` 环境变量读；它的 `export` 逐份拉取本地打 ZIP，可不升级服务端使用。改动页面或端点后按 [决策记录](../decisions/2026-11-17-gm-diagnostics-redesign.md) 的表逐项复核。
+- 任务道具爆率在 GM「掉落设置」：`GET/PUT /api/admin/drop/quest-rate`（GM 口 + Admin，0–1000，100 为 PVF 原值），持久化在数据目录 `settings/quest-drop.json`，接线在 [QuestDropSettings](../../src/DFLegacy.Server/QuestDropSettings.cs) 与 [admin-settings.js](../../src/DFLegacy.Server/wwwroot/admin/admin-settings.js)。它只缩放任务道具两类条目，不动普通掉落。验证见 [决策记录](../decisions/2026-11-18-quest-drop-rate-gm.md)。
 - 内嵌页面使用 [client-auth.js](../../src/DFLegacy.Server/wwwroot/client/client-auth.js)、[client-layout.js](../../src/DFLegacy.Server/wwwroot/client/client-layout.js) 与 `css/commen.css`。保留老浏览器兼容代码，检查实际客户端中的尺寸、滚动和点击，不只在桌面 Chrome 看效果。
 - 项目自有桌面弹窗适用根 AGENTS 的原版 DNF 风格；普通管理网页沿现有网页样式，不把 WPF 控件名强行套入 HTML。
 

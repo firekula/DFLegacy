@@ -81,6 +81,7 @@ public static class WebPanelHosting
                 || path.Equals("/admin/admin.css", StringComparison.OrdinalIgnoreCase)
                 || gm && (path.Equals("/admin/admin.js", StringComparison.OrdinalIgnoreCase)
                     || path.Equals("/admin/admin-rewards.js", StringComparison.OrdinalIgnoreCase)
+                    || path.Equals("/admin/admin-settings.js", StringComparison.OrdinalIgnoreCase)
                     || path.Equals("/admin/admin-diagnostics.js", StringComparison.OrdinalIgnoreCase))
                 || path.Equals("/health", StringComparison.OrdinalIgnoreCase);
             allowed |= HttpMethods.IsGet(context.Request.Method) && ClientGuildEndpoints.IsAssetPath(path);

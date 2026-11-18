@@ -203,6 +203,8 @@ Windows CI 从本次源码构建 `artifacts/native/ijl15`，向 Launcher 测试�
 
 在 `server.json` 的 `ClientDiagnostics` 中可设置 `Enabled`（默认 true）、`StoragePath`（空则存档同级 diagnostics 独立目录）、`RetentionDays`（最多 14）、`MaxStorageBytes`（最多 268435456）、`MaxReportCount`（最多 2000）、`MaxDeduplicationEntries`（最多 50000）、`SourcePerMinute`（5）、`SourcePerHour`（30）、`GlobalPerMinute`（10）、`GlobalPerHour`（120）。两个并发接收，上行压缩 256 KiB／展开 1 MiB、15 秒请求界限；容量不足返回 503，不通过提前删除幂等摘要腾空间。删除正文后保留 30 天去重摘要，重试返回 410，防止报告复活。诊断存储不持有游戏存档锁。
 
+任务道具爆率由 GM 后台「掉落设置」调整（`GET/PUT /api/admin/drop/quest-rate`，仅 GM 口 + Admin）：100 保留 PVF 原值，0 关闭，上限 1000，只影响任务道具、不影响普通掉落；保存后立即生效并持久化到数据目录 `settings/quest-drop.json`。`server.json` 的 `Drop.QuestItemRatePercent` 只作为首次启动默认值。详见[记录](knowledge/decisions/2026-11-18-quest-drop-rate-gm.md)。
+
 HTTP 基本 JSON 兼容现有公网入口，设置明确显示未加密；建议部署 HTTPS。HTTPS 不允许降级或忽略证书，不允许跨源重定向。自动队列按当前用户保存，100 份／32 MiB／14 天、单并发约 64 KiB/s，每次登录器运行每事件最多三次尝试；丢失响应／重启重复发送保持相同正文和事件 ID。该服务没有原始转储上传接口。
 
 ## v0.1.10 冰心少年与邮件更新

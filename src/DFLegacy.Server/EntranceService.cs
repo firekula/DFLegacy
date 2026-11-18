@@ -51,7 +51,8 @@ public sealed class EntranceService(
     ILogger<EntranceService> logger,
     FallbackRelayService? fallbackRelay = null,
     ListenerReadiness? readiness = null,
-    ChapterTwoTowerRewardPlanner? towerRewardPlanner = null) : BackgroundService
+    ChapterTwoTowerRewardPlanner? towerRewardPlanner = null,
+    QuestDropSettings? questDropSettings = null) : BackgroundService
 {
     private readonly ChapterTwoEnchanting enchanting = new(store, townDirectory, itemTradeService,
         itemCatalog, new ChapterTwoEnchantCatalog(scripts, itemCatalog), logger);
@@ -2794,6 +2795,12 @@ public sealed class EntranceService(
                     }
                 }
 
+                bool RollQuestDrop(int chancePercent) =>
+                    GameRandomSource.Shared.Next(100)
+                        < (questDropSettings is null
+                            ? chancePercent
+                            : questDropSettings.ScaleChance(chancePercent));
+
                 Task GrantMonsterQuestItemsAsync(int monsterIndex) =>
                     GrantQuestItemDropsAsync(
                         (quest, inventory) => QuestItemDropPlanner.PlanMonster(
@@ -2802,7 +2809,7 @@ public sealed class EntranceService(
                             currentDungeonDifficulty,
                             monsterIndex,
                             inventory,
-                            chance => GameRandomSource.Shared.Next(100) < chance),
+                            RollQuestDrop),
                         $"monster {monsterIndex}");
 
                 Task GrantClearQuestItemsAsync() =>
@@ -2812,7 +2819,7 @@ public sealed class EntranceService(
                             currentDungeonId,
                             currentDungeonDifficulty,
                             inventory,
-                        chance => GameRandomSource.Shared.Next(100) < chance),
+                            RollQuestDrop),
                         $"dungeon {currentDungeonId} clear");
 
                 async Task CompleteClearQuestTriggersAsync(string source)
