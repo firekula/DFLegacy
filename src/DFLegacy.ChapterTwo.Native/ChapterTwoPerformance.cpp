@@ -8,6 +8,9 @@
 #include <cstring>
 #include "ChapterTwoPerformance.h"
 #include "ChapterTwoLootGather.h"
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+#include "ChapterTwoDebugControl.h"
+#endif
 
 namespace
 {
@@ -66,6 +69,9 @@ namespace
 
     int __fastcall DrawPerformance(void* state, void*) noexcept
     {
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+        dfl::chapter_two::debug_control::Tick();
+#endif
         dfl::chapter_two::OnLootGatherFrame();
         using Original = int(__thiscall*)(void*);
         using DrawText = int(__thiscall*)(void*, int, int, int, char*);

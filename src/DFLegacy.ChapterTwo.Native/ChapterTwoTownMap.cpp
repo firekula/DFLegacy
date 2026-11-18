@@ -3,6 +3,9 @@
 #include "ChapterTwoTownMap.h"
 #include "map_click_feedback.h"
 #include "town_route_controller.h"
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+#include "ChapterTwoDebugControl.h"
+#endif
 #include <atomic>
 #include <cwchar>
 #include <memory>
@@ -505,7 +508,13 @@ namespace
             accepted = BeginRoute(player, projected, target);
         else
         {
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+            accepted = dfl::chapter_two::debug_control::TeleportEnabled()
+                && dfl::chapter_two::debug_control::TryTeleport(player.actor, target.x, target.y);
+            if (!accepted) accepted = ApplyDestination(player, target);
+#else
             accepted = ApplyDestination(player, target);
+#endif
             if (accepted) CancelRoute();
         }
         if (accepted && FeedbackEnabled)

@@ -14,6 +14,9 @@
 #include "ChapterTwoPerformanceLog.h"
 #include "ChapterTwoType16Audio.h"
 #include "ChapterTwoPanelCursor.h"
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+#include "ChapterTwoDebugControl.h"
+#endif
 #include "PerformancePanelSkinResources.h"
 
 namespace
@@ -646,6 +649,9 @@ namespace
 
 void dfl::chapter_two::StartPerformancePanel(bool timingInstalled) noexcept
 {
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+    debug_control::Start();
+#endif
     TimingInstalled = timingInstalled;
     const auto thread = CreateThread(nullptr, 0, PanelThread, GetModuleHandleW(nullptr), 0, nullptr);
     if (thread) CloseHandle(thread);

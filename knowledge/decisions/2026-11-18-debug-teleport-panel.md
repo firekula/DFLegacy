@@ -87,3 +87,26 @@ F10，不是用户指的面板。
 - 面板/无敌代码只能进调试宿主；发布宿主不链接这些入口。
 - 本轮未改任何客户端/服务端二进制；测试环境保持运行：服务端 `127.0.0.1:48091/48095`，客户端角色
   `拼音验收甲` 在艾尔文防线（城镇 1）。
+
+## 2026-11-18 20:40 F11 面板已实现并装进 v1.0.16 测试客户端
+
+![F11 物品工具实机（含两个新勾选）](assets/2026-11-18-debug-teleport-panel/f11-panel-live.png)
+
+- **面板**：F11 窗口在“测试静音”下新增「右键小地图传送（仅同城镇）」「无敌（仅调试客户端）」两个勾选；
+  实机截图见上。
+- **控制通道**：宿主在 `DFLEGACY_CH2_DEBUG_ITEMS=1` 时创建固定共享内存
+  `Local\DFLegacy.C2.DebugControl`（8 字节，首字节版本，第二字节 flags：bit0 传送、bit1 无敌）。
+  启动器用 `Checked/Unchecked` 事件写 flags；**不能用 `Click`**——UIA TogglePattern 不会触发 Click，
+  这是前几轮 flags 一直为 0 的原因。
+- **宿主实现**：新增 `ChapterTwoDebugControl.cpp/.h`，只在 `DFL_CHAPTER_TWO_DEBUG_CONTROL=ON` 时链接；
+  `StartPerformancePanel` 里 `Start()`，每帧 `DrawPerformance` 里 `Tick()` 应用无敌；同城镇右键时
+  `ChapterTwoTownMap` 先试 `TryTeleport`（校验 0x487050/0x487070/0x4f36d0/0x489bc0 签名后写轴并发布），
+  失败回退原有寻路。
+- **无敌**：移植私有 `CombatOverride` + 0x499850 SetHp 守卫；只对本地玩家、仅在勾选时生效。
+- **实机证据**：勾无敌 → flags=2；再勾传送 → 3；取消无敌 → 1；全部取消 → 0；
+  `launcher.log` 有 `Debug control write: view=True, id=97376, ...`。客户端
+  `G:\tmp\dfo-v1016-panel` 从 v1.0.15 经本地 bridge/target 装到 v1.0.16，F11 正常打开。
+- **未验证**：传送/无敌的**游戏内效果**还没点出来——发布版客户端在进入频道时仍停在“正在连接服务器”
+  （17:xx 起就存在的频道连接问题，与本面板无关）。修好频道连接后即可在游戏内验收。
+- **发布边界**：发布宿主构建**不能**打开 `DFL_CHAPTER_TWO_DEBUG_CONTROL`；只有本机调试宿主链接这些入口。
+- 调试面板 GM 账号：`localqa1`（本机 GM 口 48095 的 bootstrap admin）。

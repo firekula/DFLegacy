@@ -105,6 +105,10 @@ target_include_directories(chapter_two_presentation PUBLIC "${CMAKE_CURRENT_SOUR
 target_include_directories(chapter_two_presentation PRIVATE "${DEBUG_NATIVE}" "${IJL}" "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 target_compile_features(chapter_two_presentation PUBLIC cxx_std_17)
 target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_XBRZ DFL_CHAPTER_TWO_NTSC)
+if(DFL_CHAPTER_TWO_DEBUG_CONTROL)
+    target_sources(chapter_two_presentation PRIVATE ChapterTwoDebugControl.cpp)
+    target_compile_definitions(chapter_two_presentation PRIVATE DFL_CHAPTER_TWO_DEBUG_CONTROL)
+endif()
 target_compile_options(chapter_two_presentation PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_libraries(chapter_two_presentation PUBLIC user32 gdi32 psapi urlmon ole32 uuid bcrypt imm32 advapi32 gdiplus ws2_32 xbrz_frame)
 
