@@ -33,7 +33,7 @@ $pins = [ordered]@{
     (Join-Path $native 'DNF-rebuilt-v3-probe.exe') = '9BC32EFADD05A2FBF407C85C73AC66D221C5577E7A2234C981C3BBA0CB9A8BDB'
     (Join-Path $native 's1c2_fixed_loader-weight-55c1cb8-runA.exe') = 'B72C2C7DFF350BCE0F8E5A178740CB5BE703BC9559956951BDBBF8E573A71139'
     (Join-Path $native 'Chapter2Launcher/dnf_startup_trace.exe') = '751AA409EC440FE987AB4462EEA057BD9BB3F650BA93FC6C1498D541F55F5079'
-    $hostExe = 'BBFB487C33C208C431962C73B21EE7F67DB70E82059D2E0E99D145B55648D6E3'
+    $hostExe = '590BB98BAC7BC37C334F4AAF1698DA65BB58880B85E2AC1D1010F517F41DB2DF'
     $brokerExe = '0AA08275D9FD539B2E96DE6C2958343489ABF8C2B325405D4A334B1554725849'
     $d3d8 = '25A0CEEB85FCC4675C6F964442EECC14FEDD504EFFD39C931A627249AD4685E2'
 }
@@ -82,3 +82,4 @@ $results += Publish-Role 'app' 'app.res' 'DFLegacy.Launcher.App.exe' 'DFLegacy L
 $results += Publish-Role 'updater' 'updater.res' 'DFLegacy.Updater.exe' 'DFLegacy Client Updater'
 $results | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'roles-evidence.json') -Encoding utf8NoBOM
 Write-Output (Join-Path $output 'roles-evidence.json')
+
