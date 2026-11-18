@@ -2,6 +2,7 @@
 #include "journal.hpp"
 #include "layout.hpp"
 #include <windows.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -61,10 +62,13 @@ MigrationResult Migrate(const fs::path& root, MigrationObserver& observer) {
         return {false, false, L"client 目录已存在，请先恢复或手动处理。"};
     }
 
-    std::vector<std::wstring> entries;
+    std::vector<std::wstring> scanned;
     std::wstring error;
-    if (!Enumerate(root, entries, error)) return {false, false, error};
-    if (entries.empty()) return {false, false, L"安装目录中没有可迁移的客户端文件。"};
+    if (!Enumerate(root, scanned, error)) return {false, false, error};
+    // Only the launcher and its state move into client\; game files stay in the root.
+    std::vector<std::wstring> entries;
+    for (const auto& name : scanned) if (IsLauncherEntry(name)) entries.push_back(name);
+    if (entries.empty()) return {false, false, L"安装目录中没有可迁移的启动器文件。"};
     for (const auto& name : entries) {
         if (IsReparse(root / name)) return {false, false, L"客户端包含重解析点，拒绝迁移：" + name};
     }
@@ -130,6 +134,48 @@ Recovery RecoverIfInterrupted(const fs::path& root, std::wstring& error) {
     RemoveDirectoryW(client.c_str());
     DeleteJournal(root);
     return Recovery::RolledBack;
+}
+
+MigrationResult LiftGameFiles(const fs::path& root, MigrationObserver& observer) {
+    const auto client = root / L"client";
+    if (!IsLegacySplit(root)) return {true, false, L""};
+
+    std::vector<std::wstring> entries;
+    WIN32_FIND_DATAW data{};
+    const HANDLE find = FindFirstFileW((client / L"*").c_str(), &data);
+    if (find == INVALID_HANDLE_VALUE) return {false, false, L"无法枚举 client 目录。"};
+    do {
+        const std::wstring name = data.cFileName;
+        if (name == L"." || name == L"..") continue;
+        if (IsLauncherEntry(name)) continue;
+        entries.push_back(name);
+    } while (FindNextFileW(find, &data));
+    FindClose(find);
+    // DNF.exe moves last, so an interrupted lift is still detected and resumed next start.
+    std::stable_sort(entries.begin(), entries.end(), [](const std::wstring& left, const std::wstring& right) {
+        return left != L"DNF.exe" && right == L"DNF.exe";
+    });
+
+    std::vector<std::wstring> moved;
+    for (const auto& name : entries) {
+        observer.OnProgress(moved.size(), entries.size(), name);
+        const auto target = root / name;
+        if (GetFileAttributesW(target.c_str()) != INVALID_FILE_ATTRIBUTES) continue;
+        if (IsReparse(client / name)) return {false, false, L"客户端包含重解析点，拒绝整理：" + name};
+        if (!MoveFileW((client / name).c_str(), target.c_str())) {
+            const DWORD code = GetLastError();
+            bool rollbackOk = true;
+            for (std::size_t index = moved.size(); index > 0; --index) {
+                const auto& back = moved[index - 1];
+                if (!MoveFileW((root / back).c_str(), (client / back).c_str())) rollbackOk = false;
+            }
+            return {false, rollbackOk,
+                    ErrorText(L"移动", name, code) + (rollbackOk ? L"" : L" 回滚不完整，请手动检查。")};
+        }
+        moved.push_back(name);
+    }
+    observer.OnProgress(entries.size(), entries.size(), L"");
+    return {true, false, L""};
 }
 
 MigrationResult RestoreWithoutJournal(const fs::path& root, MigrationObserver& observer) {

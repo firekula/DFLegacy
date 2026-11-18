@@ -32,4 +32,24 @@ bool ClientComplete(const fs::path& client) {
            RegularFile(client / "DFLegacy.Updater.exe") && RegularFile(client / "DFLegacy.Bootstrap.ini") &&
            RegularFile(client / "DFLegacy.Chapter.json") && file(L"DNF.exe") && file(L"Script.pvf");
 }
+
+bool IsLauncherEntry(const std::wstring& name) {
+    static const wchar_t* const entries[] = {
+        L"DFLegacy.Launcher.exe", L"DFLegacy.Launcher.App.exe", L"DFLegacy.Updater.exe",
+        L"DFLegacy.Diagnostics.exe", L"DFLegacy.CrashCapture.exe", L"DFLegacy.Bootstrap.ini",
+        L"DFLegacy.Chapter.json", L".dflegacy"
+    };
+    for (const auto* entry : entries) {
+        if (CompareStringOrdinal(name.c_str(), static_cast<int>(name.size()), entry, -1, TRUE) == CSTR_EQUAL)
+            return true;
+    }
+    return false;
+}
+
+// An installation made by the previous single-launcher package keeps the game files
+// inside client\. Lifting them to the root restores the split layout without touching
+// the launcher binaries or their state.
+bool IsLegacySplit(const fs::path& root) {
+    return RegularFile(root / "client" / "DNF.exe") && !RegularFile(root / "DNF.exe");
+}
 }

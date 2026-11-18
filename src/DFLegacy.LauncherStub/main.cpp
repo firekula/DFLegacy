@@ -115,7 +115,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         if (layout == dfo::Layout::Legacy) {
             if (!dfo::Confirm(
                     instance,
-                    L"将把当前客户端整理到 client\\ 子文件夹，以后请统一从 DFOLauncher.exe 启动。\n\n"
+                    L"将把启动器整理到 client\\ 子文件夹，游戏文件留在外层。\n\n"
                     L"请确认客户端已关闭。是否继续？")) {
                 return 0;
             }
@@ -131,6 +131,24 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
                 return 1;
             }
             dfo::RetargetShortcuts((root / L"DFLegacy.Launcher.exe").wstring(), root / L"DFOLauncher.exe");
+        } else if (layout == dfo::Layout::Migrated && dfo::IsLegacySplit(root)) {
+            if (!dfo::Confirm(
+                    instance,
+                    L"检测到旧版单启动器布局：把游戏文件移回外层，启动器保留在 client\\。\n\n"
+                    L"请确认客户端已关闭。是否继续？")) {
+                return 0;
+            }
+            if (dfo::HasRunningClient(root, GetCurrentProcessId())) {
+                dfo::Error(instance, L"检测到客户端或游戏仍在运行，请关闭后重试。");
+                return 1;
+            }
+            const auto lifted = RunWithProgress(instance, [&](dfo::MigrationObserver& observer) {
+                return dfo::LiftGameFiles(root, observer);
+            });
+            if (!lifted.ok) {
+                dfo::Error(instance, lifted.error.c_str());
+                return 1;
+            }
         } else if (layout == dfo::Layout::Invalid) {
             dfo::Error(instance,
                        L"客户端不完整。请重新解压完整启动包，或检查 client\\ 是否被移动或改名。");

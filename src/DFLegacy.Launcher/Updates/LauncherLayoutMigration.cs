@@ -54,10 +54,8 @@ internal static class LauncherLayoutMigration
                     PathPolicy.NoLinks(path);
                     var target = Path.Combine(staging, name);
                     if (Directory.Exists(path)) Directory.Move(path, target); else File.Move(path, target);
-                    continue;
                 }
-                if (File.Exists(path)) File.Move(path, Path.Combine(staging, name));
-                else if (Directory.Exists(path)) Directory.Move(path, Path.Combine(staging, name));
+                // Game files and player configuration stay in the installation root.
             }
             Directory.Move(staging, client);
             Program.WriteLauncherLog("Launcher layout migration: client directory ready.");

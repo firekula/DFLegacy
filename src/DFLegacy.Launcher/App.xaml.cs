@@ -14,6 +14,10 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // Every entry (including the bootstrap worker and the repair tool) must resolve the
+        // split layout before it reads managed paths; the early branches below never reach
+        // the configuration that used to sit after them.
+        DFLegacy.UpdateCore.ClientLayout.Configure(AppContext.BaseDirectory);
         if(Updates.BootstrapUpdateClient.IsRequested(e.Args))
         {
             if(ChapterTwoClient.IsBundled && (e.Args.Length<2 || !CanMaintainChapter(e.Args[1]))) { Shutdown(1); return; }
