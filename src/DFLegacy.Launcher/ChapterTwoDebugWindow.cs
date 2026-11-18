@@ -171,7 +171,7 @@ internal sealed class ChapterTwoDebugWindow : Window
         try
         {
             control=System.IO.MemoryMappedFiles.MemoryMappedFile.OpenExisting(
-                $"Local\\DFLegacy.C2.DebugControl.{debugGameId}",
+                "Local\\DFLegacy.C2.DebugControl",
                 System.IO.MemoryMappedFiles.MemoryMappedFileRights.ReadWrite);
             controlView=control.CreateViewAccessor(0,8,
                 System.IO.MemoryMappedFiles.MemoryMappedFileAccess.ReadWrite);
@@ -251,3 +251,4 @@ internal sealed class ChapterTwoDebugSession : IDisposable
     [DllImport("user32.dll")]private static extern nint GetForegroundWindow();
     [DllImport("user32.dll")]private static extern uint GetWindowThreadProcessId(nint window,out uint process);
 }
+
