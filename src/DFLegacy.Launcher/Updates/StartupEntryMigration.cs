@@ -12,7 +12,7 @@ internal static class StartupEntryMigration
         ("v1.0.12-bridge", 17, "v1.0.12"),
         ("v1.0.13-bridge-r2", 20, "v1.0.13-r2"),
         ("v1.0.14-bridge", 22, "v1.0.14"),
-        ("v1.0.15-bridge", 24, "v1.0.15")
+        ("v1.0.14-bridge", 24, "v1.0.15")
     ];
 
     internal static bool IsBridge(Core.VerifiedRelease? release) =>
