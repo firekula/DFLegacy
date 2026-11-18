@@ -40,3 +40,11 @@
 
 - 本文 + `2026-11-17-split-layout-transport-fallback-fix.md`、`-receipt-reanchor.md`、`-entry-deferral.md`、`-occupancy-message.md`、`2026-11-18-split-layout-gui-verify.md`。
 - 代码：`UpdateEngine.cs`、`InstallationStore.cs`、`BootstrapLayout.cs`、`BootstrapUpdateClient.cs`、`RepairClient.cs`、`FileLockOwners.cs`。
+
+## 更新（2026-11-18 08:00）：v1.0.16 已发布并验收
+
+- 发布：GitCode `v1.0.16`，seq 26，提交 `a9bc51d`，入口不变（`8391eacc…`）；附件 6 个、匿名校验通过。
+- 干净 v1.0.14 夹具实测：迁移 → 自动更新到 v1.0.16 → 登录窗显示 v1.0.16。
+- 换根复核：改名安装目录后 13.6 s 进登录窗，`offline=True`。
+- 现场：`G:\tmp\dfo-v1016-renamed`（v1.0.16 已安装版，可继续测试）。
+- 仍待：启动包（新 stub）未重建；S1 弹窗真机验证；RM 测试宿主限制。
