@@ -8,11 +8,38 @@
 `Build-PresentationHost.ps1` 的受校验输入重建宿主、再重打启动器，才能得到带新勾选的调试客户端。
 改动线上/用户客户端或绕过宿主签名校验都不允许。
 
+## 2026-11-18 15:41 更正：F11 是启动器的「物品工具」，不是原生性能面板
+
+用户真机确认：**Ctrl+F10** 打开的是 `第二章 Debug · 性能面板`（原生，
+`ChapterTwoPerformancePanel.cpp`）；他说的「调试面板」是 **Ctrl+F11** 打开的
+`第二章 · 物品工具`（`ChapterTwoDebugWindow` / `ChapterTwoDebugSession`，WPF，运行在
+`DFLegacy.Launcher.App.exe` 进程，窗口底部写着 `Ctrl+F11 显示或隐藏`）。上面的原生面板方案因此只对应
+F10，不是用户指的面板。
+
+本轮在调试客户端复现了 F11：`ChapterTwoDebugEnabled=true` 时按 Ctrl+F11 能打开；此前打不开有两个原因：
+
+1. 旧测试客户端 `launcher.chapter2.json` 的 `ChapterTwoDebugEnabled` 是 `false`，调试会话根本没创建；
+2. F11 由 20 ms 定时器轮询 `GetAsyncKeyState` 捕获，模拟按键若短于一个轮询周期会被漏掉（真实长按正常）。
+
+**设计影响**：F11 面板在启动器进程，游戏在另一个进程（`s1c2_chapter2_host-*.exe`）。
+原方案「面板与右键小地图同进程、直接读全局勾选状态」只适用于 F10 原生面板。若把两个勾选放进 F11：
+启动器必须新增一条**进程间控制通道**把勾选状态送进游戏宿主（可沿用调试会话已有的 stdout/管道/窗口消息），
+不能在启动器里直接改宿主的全局变量；这比 F10 原生面板多一层协议与失败处理。
+
+预览（仅 UI 位置，未接线；按用户要求先看预览再实现）：
+![F11 物品工具加两个勾选的预览](assets/2026-11-18-debug-teleport-panel/f11-panel-preview.png)
+
+给用户的两个选项：
+
+- A（用户原话指向）：在 F11 物品工具里加「右键小地图传送（仅同城镇）」「无敌（调试客户端）」两个勾选，
+  并新增启动器→宿主的控制通道；
+- B（改动更小）：先在 F10 原生面板加勾选（同进程，现有位置写入/无敌代码直接可用），F11 只做状态显示。
+
 ## 现有可复用件
 
 | 能力 | 位置 | 说明 |
 | --- | --- | --- |
-| 游戏内调试面板 | `ChapterTwoPerformancePanel.cpp` | Ctrl+F10 打开「第二章 Debug · 性能面板」，目前只有关闭按钮与性能数据 |
+| 原生性能面板（F10） | `ChapterTwoPerformancePanel.cpp` | Ctrl+F10 打开「第二章 Debug · 性能面板」，目前只有关闭按钮与性能数据 |
 | 右键小地图 | `ChapterTwoTownMap.cpp` | `ApplyMapRelease` 已算出目标世界坐标；同区域走 `ApplyDestination`（寻路），跨区域走 `BeginRoute` |
 | 位置写入/发布（已验证） | `test_control/Runtime.cpp` | 原函数 `0x489bc0`（本地权威）→ 轴设置 `0x487070` → 完整发布；签名 `0x4f2fd0`；仅在 DO-NOT-SHIP 私有宿主链接 |
 | 无敌覆盖（已验证） | `test_control` + `CombatOverride` | HP/MP/四维写 1,000,000，关闭/离开恢复；仅私有宿主 |

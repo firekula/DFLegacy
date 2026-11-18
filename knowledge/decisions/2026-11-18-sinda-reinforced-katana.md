@@ -68,3 +68,35 @@ dotnet run --project tests/DFLegacy.SmokeTests/DFLegacy.SmokeTests.csproj -c Rel
   目前没有“按商店单独定价”的机制。
 - 服务端属性表不聚合装备强化（客户端自己算）；如果以后服务端做伤害权威，需要另补强化加成。
 
+## 本地真机测试环境（2026-11-18 16:00，未购买）
+
+本轮把候选 PVF 装进隔离测试客户端并跑通登录，**商店显示与购买仍待点一次**。
+
+| 项目 | 值 |
+| --- | --- |
+| 测试客户端 | `G:\tmp\dfo-v1014-sinda`（从 `G:\tmp\dfo-v1014-clean\client` 复制） |
+| 客户端 `Script.pvf` | 保持原版 `22FA7529…`，不破坏启动器的已校验安装记录 |
+| 候选 native PVF | 经调试会话私有视图加载：`.dflegacy/chapter-two/debug-items/items-22FA7529C28225A2-v2.pvf` = `C0A4039F…`，同名 `.sha256` 已写入 |
+| 启动配置 | `ChapterTwoDebugEnabled=true`、`ChapterTwoServerHost="localhost."`、账号 `localqa1` |
+| 服务端 | `DFLegacy.Server.exe --config .tmp/manual-test/server.json`，`ScriptPvfPath` 指向候选 server PVF `3157683B…` |
+| 通道密码 | 服务端必须以 `DFL_S1C2_TRIAL_CHANNEL_CIPHER=1` 启动；否则登录包解密失败（日志：`Could not recover the channel payload seed`） |
+| 任务道具爆率 | `PUT http://127.0.0.1:48095/api/admin/drop/quest-rate {"ratePercent":1000}`（1000%，已即时生效并持久化） |
+| 角色 | `拼音验收甲`（Lv60，localqa1），艾尔文防线，已接任务 444、2111，金币 18 |
+| 服务端构建 | `src/DFLegacy.Server/bin/Release/net10.0`，HEAD `d1ab3d7` 重新构建，0 警告 0 错误 |
+
+私有视图不是发布安装：`ChapterTwoDebugEnabled=true` 时启动器把该缓存作为 `DFLEGACY_CH2_DEBUG_PVF`
+传给宿主，宿主只在调试会话重定向 `Script.pvf` 的只读打开；`installed.json`、启动器与宿主签名均未改动。
+证据：运行中独占打开该文件被拒（说明宿主持有），`launcher.log` 记录
+`debug labels enabled: 13044 item scripts; private view=items-22FA7529C28225A2-v2.pvf`。
+
+同轮自动化（HEAD 重新构建后）：
+
+```text
+--quest-item-grant   4 assertions, 0 failures
+--shop-purchase (候选 server PVF)  5 assertions, 0 failures
+--quest-drop-api     9 assertions, 0 failures
+```
+
+**仍然没做的**：走到辛达打开商店（当前角色只有 18 金币，买 2100 的武士刀会失败，需要先补测试金币），
+以及墓地/副本里杀怪观察任务道具。下一步就是把这两步点完；服务端、客户端和爆率都已就绪。
+
