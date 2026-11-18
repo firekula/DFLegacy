@@ -74,4 +74,4 @@ vcvarsall x86 + TMP 指向工作区，见 `.tmp/tools/build_quickstore.bat`）�
 无敌”需要新增启动器→宿主控制通道，并把 `test_control` 的位置写入/无敌移植进生产宿主（仅调试宿主）。
 本轮没有改面板代码；原生构建链已打通（CMake/NMake），下一波可做。
 
-调试面板 GM 账号：`localqa1` / `LocalQa20261116`（本机 GM 口 48095 的 bootstrap admin）。
+调试面板 GM 账号：`localqa1`（本机 GM 口 48095 的 bootstrap admin）。密码属于本机测试配置，不写进仓库。
