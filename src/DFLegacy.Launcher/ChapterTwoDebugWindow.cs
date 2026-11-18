@@ -32,6 +32,7 @@ internal sealed class ChapterTwoDebugWindow : Window
     private readonly CheckBox invincible=new(){Content="无敌（仅调试客户端）",MinWidth=160};
     private System.IO.MemoryMappedFiles.MemoryMappedFile? control;
     private System.IO.MemoryMappedFiles.MemoryMappedViewAccessor? controlView;
+    private int debugGameId;
     private readonly TextBlock audioStatus=new(){MaxWidth=390,TextWrapping=TextWrapping.Wrap};
     internal bool TestMuted=>testMute.IsChecked==true;
     internal event Action? TestMuteChanged;
@@ -158,12 +159,19 @@ internal sealed class ChapterTwoDebugWindow : Window
     internal void Finish(){disposed=true;pointer?.Dispose();pointer=null;api.Dispose();Close();}
     internal void BindGame(int id)
     {
+        debugGameId=id;
         controlView?.Dispose();control?.Dispose();controlView=null;control=null;
         if(id<=0)return;
+        OpenControl();
+    }
+
+    private void OpenControl()
+    {
+        if(controlView is not null||debugGameId<=0)return;
         try
         {
             control=System.IO.MemoryMappedFiles.MemoryMappedFile.OpenExisting(
-                $"Local\\DFLegacy.C2.DebugControl.{id}",
+                $"Local\\DFLegacy.C2.DebugControl.{debugGameId}",
                 System.IO.MemoryMappedFiles.MemoryMappedFileRights.ReadWrite);
             controlView=control.CreateViewAccessor(0,8,
                 System.IO.MemoryMappedFiles.MemoryMappedFileAccess.ReadWrite);
@@ -177,6 +185,7 @@ internal sealed class ChapterTwoDebugWindow : Window
 
     private void WriteDebugFlags()
     {
+        if(controlView is null)OpenControl();
         if(controlView is null)return;
         try
         {
