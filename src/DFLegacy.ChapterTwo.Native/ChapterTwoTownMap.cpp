@@ -5,6 +5,7 @@
 #include "town_route_controller.h"
 #ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
 #include "ChapterTwoDebugControl.h"
+#include "ChapterTwoDebugTrace.h"
 #endif
 #include <atomic>
 #include <cwchar>
@@ -12,7 +13,14 @@
 #include <new>
 #include <process.h>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+#define TOWNMAP_TRACE(...) dfl::chapter_two::debug_trace::Write(__VA_ARGS__)
+#else
+#define TOWNMAP_TRACE(...) ((void)0)
+#endif
 
 namespace
 {
@@ -337,6 +345,8 @@ namespace
         return transport && Read<std::uint8_t>(transport + 0x1d8) != 0;
     }
 
+    bool RouteDestination = false;
+
     bool ApplyDestination(const Player& player, Point target) noexcept
     {
         if (TransportBusy(player) || !Walkable(player.definition, target) || Read<std::uint8_t>(AutoMove) > 1) return false;
@@ -344,12 +354,74 @@ namespace
         using Validate = bool (__thiscall*)(void*, std::int32_t, std::int32_t, std::int32_t*);
         using Set = void (__thiscall*)(void*, std::int32_t, std::int32_t);
         if (!reinterpret_cast<Validate>(ValidatePoint)(actor, target.x, target.y, nullptr)) return false;
+        RouteDestination = true;
         reinterpret_cast<Set>(SetDestination)(actor, target.x, target.y);
+        RouteDestination = false;
         if (Read<Address>(LocalActor) != player.actor || Read<Address>(player.actor + 0xfc) != player.map ||
             Read<std::int32_t>(player.actor + 0x278) != target.x || Read<std::int32_t>(player.actor + 0x27c) != target.y) return false;
         *reinterpret_cast<volatile std::uint8_t*>(AutoMove) = 1;
         return true;
     }
+
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+    using TownSetDestination = void (__thiscall*)(void*, std::int32_t, std::int32_t);
+    TownSetDestination OriginalTownSetDestination = nullptr;
+    volatile ULONGLONG RightTeleportUntil = 0;
+    volatile ULONGLONG PendingRightClickAt = 0;
+    bool TownSetDestinationReady = false;
+
+    // The game's right-click auto-path calls this destination method directly.
+    // In debug mode the call made just after a right-click is replaced by a
+    // same-town teleport; the map window does not have to be open.
+    void __fastcall TeleportTownDestination(void* actor, void*, std::int32_t x, std::int32_t y)
+    {
+        if (TownSetDestinationReady && !RouteDestination && GetTickCount64() <= RightTeleportUntil
+            && dfl::chapter_two::debug_control::TeleportEnabled()
+            && reinterpret_cast<Address>(actor) == Read<Address>(LocalActor)
+            && dfl::chapter_two::debug_control::TryTeleport(
+                reinterpret_cast<std::uint32_t>(actor), x, y))
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP teleport=right_click actor=%08x x=%d y=%d\n", actor, x, y);
+            return;
+        }
+        OriginalTownSetDestination(actor, x, y);
+    }
+
+    bool InstallTeleportDestinationHook() noexcept
+    {
+        const auto entry = reinterpret_cast<unsigned char*>(SetDestination);
+        constexpr unsigned char prologue[]{0x55, 0x8b, 0xec, 0x8b, 0x81, 0xf4, 0x04, 0x00, 0x00};
+        if (std::memcmp(entry, prologue, sizeof(prologue))) return false;
+
+        auto trampoline = static_cast<unsigned char*>(
+            VirtualAlloc(nullptr, 64, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+        if (!trampoline) return false;
+        std::memcpy(trampoline, prologue, sizeof(prologue));
+        trampoline[sizeof(prologue)] = 0xe9;
+        const auto continueAt = SetDestination + sizeof(prologue);
+        const auto back = static_cast<std::int32_t>(
+            continueAt - (reinterpret_cast<Address>(trampoline) + sizeof(prologue) + 5));
+        std::memcpy(trampoline + sizeof(prologue) + 1, &back, sizeof(back));
+        OriginalTownSetDestination = reinterpret_cast<TownSetDestination>(trampoline);
+
+        DWORD previous = 0;
+        if (!VirtualProtect(entry, sizeof(prologue), PAGE_EXECUTE_READWRITE, &previous))
+        {
+            VirtualFree(trampoline, 0, MEM_RELEASE);
+            return false;
+        }
+        const auto hook = static_cast<std::int32_t>(
+            reinterpret_cast<Address>(&TeleportTownDestination) - (SetDestination + 5));
+        entry[0] = 0xe9;
+        std::memcpy(entry + 1, &hook, sizeof(hook));
+        std::memset(entry + 5, 0x90, 4);
+        VirtualProtect(entry, sizeof(prologue), previous, &previous);
+        FlushInstructionCache(GetCurrentProcess(), entry, sizeof(prologue));
+        TownSetDestinationReady = true;
+        TOWNMAP_TRACE("DFL_TOWNMAP teleport_hook=installed\n");
+        return true;
+    }
+#endif
 
     bool SameRect(const Rect& left, const route::Rect& right) noexcept
     {
@@ -468,6 +540,39 @@ namespace
         __try
         {
             if (ClickFeedback.Active() && !MapPanelVisible(reinterpret_cast<Address>(owner))) ClickFeedback.Reset();
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+            const auto pending = PendingRightClickAt;
+            if (pending)
+            {
+                const auto now = GetTickCount64();
+                if (now > pending + 600)
+                {
+                    PendingRightClickAt = 0;
+                }
+                else if (now >= pending + 60)
+                {
+                    const auto actor = Read<Address>(LocalActor);
+                    if (actor && dfl::chapter_two::debug_control::TeleportEnabled())
+                    {
+                        const auto x = Read<std::int32_t>(actor + 0x278);
+                        const auto y = Read<std::int32_t>(actor + 0x27c);
+                        using Get = int(__thiscall*)(void*, int);
+                        const int currentX = reinterpret_cast<Get>(0x487070)(reinterpret_cast<void*>(actor), 0);
+                        const int currentY = reinterpret_cast<Get>(0x487070)(reinterpret_cast<void*>(actor), 1);
+                        if (x != currentX || y != currentY)
+                        {
+                            const bool teleported = dfl::chapter_two::debug_control::TryTeleport(
+                                static_cast<std::uint32_t>(actor), x, y);
+                            PendingRightClickAt = 0;
+                            if (teleported)
+                            {
+                                TOWNMAP_TRACE("DFL_TOWNMAP teleport=right_click actor=%08x x=%d y=%d\n", actor, x, y);
+                            }
+                        }
+                    }
+                }
+            }
+#endif
             AdvanceRoute();
         }
         __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
@@ -476,47 +581,84 @@ namespace
 
     void ApplyMapRelease(std::int32_t captured) noexcept
     {
+        auto reject = [captured](const char* reason) noexcept
+        {
+            (void)captured;
+            (void)reason;
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=%s captured=%d\n", reason, captured);
+        };
         if (captured < 0 || Read<std::uint32_t>(RightEvent) != 0 || Read<std::uint8_t>(RightDown) ||
-            Read<std::uint8_t>(SelectionMode) || Read<std::uint32_t>(RightCapture) != static_cast<std::uint32_t>(captured)) return;
+            Read<std::uint8_t>(SelectionMode) || Read<std::uint32_t>(RightCapture) != static_cast<std::uint32_t>(captured))
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=input captured=%d event=%u down=%u selection=%u rightCapture=%u\n",
+                captured, Read<std::uint32_t>(RightEvent), Read<std::uint8_t>(RightDown),
+                Read<std::uint8_t>(SelectionMode), Read<std::uint32_t>(RightCapture));
+            return;
+        }
         const auto input = Read<Address>(InputManager);
-        if (!input) return;
+        if (!input) { reject("no_input"); return; }
         const auto owner = Read<Address>(input + 0x1354);
-        if (!owner || Read<Address>(owner) != MapVtable) return;
+        if (!owner || Read<Address>(owner) != MapVtable) { reject("owner"); return; }
         const auto panel = Read<Address>(owner + 4), plane = Read<Address>(owner + 0x0c);
         const auto regions = Read<Address>(owner + 0x1c), npcs = Read<Address>(owner + 0x60);
         if (!panel || !plane || !regions || !npcs ||
             Read<std::int32_t>(panel + 0x0c) != captured || !Read<std::uint8_t>(panel + 0x10) ||
-            !Read<std::uint8_t>(panel + 0x11) || Read<std::uint8_t>(regions + 0x10) || Read<std::uint8_t>(npcs + 0x10)) return;
+            !Read<std::uint8_t>(panel + 0x11) || Read<std::uint8_t>(regions + 0x10) || Read<std::uint8_t>(npcs + 0x10))
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=panel panel=%08x plane=%08x regions=%08x npcs=%08x\n",
+                panel, plane, regions, npcs);
+            return;
+        }
 
         const Point view{Read<std::int32_t>(ViewX), Read<std::int32_t>(ViewY)};
         const Point mouse{Read<std::int32_t>(MouseX), Read<std::int32_t>(MouseY)};
         if (!Coordinate(view.x) || !Coordinate(view.y) || !Coordinate(mouse.x) || !Coordinate(mouse.y) ||
-            Read<std::int32_t>(plane + 4) != -view.x || Read<std::int32_t>(plane + 8) != -view.y) return;
+            Read<std::int32_t>(plane + 4) != -view.x || Read<std::int32_t>(plane + 8) != -view.y)
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=view view=%d,%d mouse=%d,%d\n", view.x, view.y, mouse.x, mouse.y);
+            return;
+        }
         const Point local{mouse.x - view.x, mouse.y - view.y};
         Player player{};
-        if (!ReadPlayer(player)) return;
+        if (!ReadPlayer(player)) { reject("player"); return; }
         Region projected{}, real{};
         if (!FindRegion(plane + 0x20, [&](const Region& region) { return Contains(region.bounds, local); }, projected) ||
             !FindRegion(WorldRegions, [&](const Region& region) { return region.town == projected.town && region.area == projected.area; }, real) ||
-            !CanClickThroughMarkers(plane, local)) return;
+            !CanClickThroughMarkers(plane, local))
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=region local=%d,%d\n", local.x, local.y);
+            return;
+        }
 
         const Point target{ProjectAxis(local.x, projected.bounds.x, projected.bounds.width, real.bounds.x, real.bounds.width),
             ProjectAxis(local.y, projected.bounds.y, projected.bounds.height, real.bounds.y, real.bounds.height)};
-        if (!Contains(real.bounds, target)) return;
+        if (!Contains(real.bounds, target))
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP reject=target local=%d,%d target=%d,%d\n", local.x, local.y, target.x, target.y);
+            return;
+        }
         bool accepted = false;
         if (projected.town != player.townId || projected.area != player.areaId)
+        {
+            TOWNMAP_TRACE("DFL_TOWNMAP route town=%d area=%d playerTown=%d playerArea=%d target=%d,%d\n",
+                projected.town, projected.area, player.townId, player.areaId, target.x, target.y);
             accepted = BeginRoute(player, projected, target);
+        }
         else
         {
 #ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
-            accepted = dfl::chapter_two::debug_control::TeleportEnabled()
+            const bool teleportEnabled = dfl::chapter_two::debug_control::TeleportEnabled();
+            accepted = teleportEnabled
                 && dfl::chapter_two::debug_control::TryTeleport(player.actor, target.x, target.y);
+            TOWNMAP_TRACE("DFL_TOWNMAP same owner=%08x actor=%08x target=%d,%d teleport=%d accepted=%d\n",
+                owner, player.actor, target.x, target.y, teleportEnabled ? 1 : 0, accepted ? 1 : 0);
             if (!accepted) accepted = ApplyDestination(player, target);
 #else
             accepted = ApplyDestination(player, target);
 #endif
             if (accepted) CancelRoute();
         }
+        TOWNMAP_TRACE("DFL_TOWNMAP result accepted=%d target=%d,%d\n", accepted ? 1 : 0, target.x, target.y);
         if (accepted && FeedbackEnabled)
         {
             ClickArea = player.area;
@@ -526,9 +668,22 @@ namespace
 
     std::int32_t __fastcall CaptureTownMapRelease(void* root, void*) noexcept
     {
-        const auto event = GetCurrentThreadId() == GameThread ? Read<std::uint32_t>(RightEvent) : 0;
+        const auto thread = GetCurrentThreadId();
+        const auto event = thread == GameThread ? Read<std::uint32_t>(RightEvent) : 0;
+        const bool rightDown = (GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
         using Original = std::int32_t (__thiscall*)(void*);
         const auto captured = reinterpret_cast<Original>(Capture)(root);
+        if (event == RightRelease || rightDown)
+        {
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+            RightTeleportUntil = GetTickCount64() + 500;
+            if (event == RightRelease) PendingRightClickAt = GetTickCount64();
+#endif
+            TOWNMAP_TRACE(
+                "DFL_TOWNMAP capture thread=%u game=%u event=%u rightDown=%u captured=%d mouse=%d,%d\n",
+                thread, GameThread, event, rightDown ? 1u : 0u, captured,
+                Read<std::int32_t>(MouseX), Read<std::int32_t>(MouseY));
+        }
         if (event == RightRelease)
         {
             __try { ApplyMapRelease(captured); }
@@ -571,7 +726,11 @@ namespace
 bool dfl::chapter_two::InstallTownMapMovement(unsigned char* image, std::size_t bytes) noexcept
 {
     static_assert(sizeof(void*) == 4);
-    if (reinterpret_cast<Address>(image) != ImageBase || bytes != ImageSize) return false;
+    if (reinterpret_cast<Address>(image) != ImageBase || bytes != ImageSize)
+    {
+        TOWNMAP_TRACE("DFL_TOWNMAP install=fail image=%p bytes=%zu\n", image, bytes);
+        return false;
+    }
     constexpr unsigned char caller[]{0x8b, 0xce, 0xe8, 0x8c, 0xfc, 0xff, 0xff, 0x8b, 0xce, 0xe8, 0xc5, 0xfa, 0xff, 0xff};
     constexpr unsigned char capture[]{0x55, 0x8b, 0xec, 0x83, 0xec, 0x08, 0x53, 0x8b, 0xd9, 0x8a, 0x43, 0x10, 0x84, 0xc0, 0x74, 0x07};
     constexpr unsigned char validate[]{0x55, 0x8b, 0xec, 0x8b, 0x45, 0x10, 0x85, 0xc0, 0x74, 0x06, 0xc7, 0x00, 0, 0, 0, 0};
@@ -580,17 +739,33 @@ bool dfl::chapter_two::InstallTownMapMovement(unsigned char* image, std::size_t 
     constexpr unsigned char update[]{0xa0, 0xb0, 0x86, 0xd5, 0, 0x84, 0xc0, 0x0f, 0x84, 0xb1, 0, 0, 0};
     constexpr unsigned char pollCaller[]{0x8b,0x8e,0x54,0x13,0,0,0xe8,0x6a,0xad,0x0f,0,0x8b,0x8e,0x80,0x12,0};
     constexpr unsigned char poll[]{0x53,0x8b,0xd9,0x8b,0x43,0x1c,0x8a,0x48,0x10,0x56,0x57,0x8d,0x7b,0x1c,0x84,0xc9};
-    if (!Matches(image, MapPollCall - 6, pollCaller) || !Matches(image, MapPoll, poll) ||
-        !Matches(image, CaptureCall - 2, caller) || !Matches(image, Capture, capture) ||
-        !Matches(image, ValidatePoint, validate) || !Matches(image, SetDestination, set) ||
-        !Matches(image, 0x8686e7, activate) || !Matches(image, 0x493e50, update) ||
-        Read<Address>(TownActorVtable + 0xac) != ValidatePoint || Read<Address>(TownActorVtable + 0x1a8) != SetDestination ||
-        Read<Address>(QuestVtable + 4) != QuestHit) return false;
+    auto check = [image](bool condition, const char* name) noexcept
+    {
+        (void)name;
+        if (!condition) TOWNMAP_TRACE("DFL_TOWNMAP install=fail check=%s\n", name);
+        return condition;
+    };
+    if (!check(Matches(image, MapPollCall - 6, pollCaller), "pollCaller") ||
+        !check(Matches(image, MapPoll, poll), "poll") ||
+        !check(Matches(image, CaptureCall - 2, caller), "captureCaller") ||
+        !check(Matches(image, Capture, capture), "capture") ||
+        !check(Matches(image, ValidatePoint, validate), "validate") ||
+        !check(Matches(image, SetDestination, set), "set") ||
+        !check(Matches(image, 0x8686e7, activate), "activate") ||
+        !check(Matches(image, 0x493e50, update), "update") ||
+        !check(Read<Address>(TownActorVtable + 0xac) == ValidatePoint, "actorValidate") ||
+        !check(Read<Address>(TownActorVtable + 0x1a8) == SetDestination, "actorSet") ||
+        !check(Read<Address>(QuestVtable + 4) == QuestHit, "questHit")) return false;
 
     GameThread = GetCurrentThreadId();
     RedirectCall(image, CaptureCall, reinterpret_cast<Address>(&CaptureTownMapRelease));
     RedirectCall(image, MapPollCall, reinterpret_cast<Address>(&PollTownMapRoute));
+#ifdef DFL_CHAPTER_TWO_DEBUG_CONTROL
+    const bool teleportHook = InstallTeleportDestinationHook();
+    TOWNMAP_TRACE("DFL_TOWNMAP teleport_hook=%d\n", teleportHook ? 1 : 0);
+#endif
     FeedbackEnabled = InstallClickFeedback(image);
     StartCatalogWorker();
+    TOWNMAP_TRACE("DFL_TOWNMAP install=ok thread=%u feedback=%d\n", GameThread, FeedbackEnabled ? 1 : 0);
     return true;
 }

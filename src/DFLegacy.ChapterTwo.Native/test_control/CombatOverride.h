@@ -15,9 +15,14 @@ struct CombatAccess {
     bool (*write)(void*, std::uint32_t, std::uint32_t) noexcept = nullptr;
 };
 
+// Debug-client combat override: the local player deals 9,999,999 damage,
+// takes no damage, and moves/attacks/casts at +100% speed. The damage and
+// defense values live in the effective stat bank; the "take no damage" half
+// is completed by the SetHp guard (BlocksHealthLoss).
 class CombatOverride {
 public:
     static constexpr std::int32_t InvincibleValue = 1000000;
+    static constexpr std::int32_t DamageValue = 9999999;
 
     bool ActiveFor(std::uint32_t actor) const noexcept
     {
@@ -36,10 +41,13 @@ public:
         Values before{};
         if (!Capture(actor, access, before)) return false;
 
-        const auto result = Change(actor, access, before, Overrides);
+        restore_ = before;
+        Values desired{};
+        if (!Desired(before, desired)) return false;
+        const auto result = Change(actor, access, before, desired);
         if (result != Result::RolledBack) {
             actor_ = actor;
-            restore_ = before;
+            applied_ = desired;
         }
         enabled_ = result == Result::Complete;
         return enabled_;
@@ -52,10 +60,14 @@ public:
 
         // Native rebuilds the effective bank after some scene and equipment
         // changes. Keep those recalculated values available for restoration.
-        for (std::size_t i = 0; i < CurrentHealthIndex; ++i) {
-            if (before[i] != Overrides[i]) restore_[i] = before[i];
+        for (std::size_t i = 0; i < before.size(); ++i) {
+            if (before[i] != applied_[i]) restore_[i] = before[i];
         }
-        return Change(actor, access, before, Overrides) == Result::Complete;
+        Values desired{};
+        if (!Desired(restore_, desired)) return false;
+        const auto result = Change(actor, access, before, desired);
+        if (result == Result::Complete) applied_ = desired;
+        return result == Result::Complete;
     }
 
     bool Disable(std::uint32_t actor, CombatAccess access) noexcept
@@ -63,9 +75,9 @@ public:
         Values before{};
         if (actor == 0 || actor != actor_ || !Capture(actor, access, before)) return false;
 
-        auto desired = restore_;
-        for (std::size_t i = 0; i < CurrentHealthIndex; ++i) {
-            if (before[i] != Overrides[i]) desired[i] = before[i];
+        Values desired = restore_;
+        for (std::size_t i = 0; i < before.size(); ++i) {
+            if (before[i] != applied_[i]) desired[i] = before[i];
         }
         if (Change(actor, access, before, desired) != Result::Complete) return false;
 
@@ -77,50 +89,74 @@ public:
 private:
     // The final effective bank is actor+0xEC4 (native vtable slot +0x33C,
     // bank index 3). Each covered stat is an int base and a float factor.
+    // The bank follows the combat-stat block order: max HP, max MP, physical
+    // attack, physical defense, magical attack, magical defense, ...
     static constexpr std::uint32_t EffectiveBank = 0xEC4;
     static constexpr std::uint32_t OneFloat = 0x3f800000;
-    static constexpr std::array Offsets{
-        EffectiveBank + 0x08, EffectiveBank + 0x10, // Max HP
-        EffectiveBank + 0x18, EffectiveBank + 0x20, // Max MP
-        EffectiveBank + 0x28, EffectiveBank + 0x30, // Strength
-        EffectiveBank + 0x38, EffectiveBank + 0x40, // Vitality
-        EffectiveBank + 0x48, EffectiveBank + 0x50, // Intelligence
-        EffectiveBank + 0x58, EffectiveBank + 0x60, // Spirit
-        0x1204u, 0x120cu                            // Current HP and MP
+
+    // Physical attack, physical defense, magical attack, magical defense,
+    // movement speed, attack speed, cast speed.
+    static constexpr std::array StatOffsets{
+        EffectiveBank + 0x28,
+        EffectiveBank + 0x38,
+        EffectiveBank + 0x48,
+        EffectiveBank + 0x58,
+        EffectiveBank + 0xD8,
+        EffectiveBank + 0xE8,
+        EffectiveBank + 0xF8
     };
-    static constexpr std::size_t CurrentHealthIndex = Offsets.size() - 2;
-    using Values = std::array<std::uint32_t, Offsets.size()>;
-    static constexpr Values Overrides{
-        InvincibleValue, OneFloat, InvincibleValue, OneFloat, InvincibleValue, OneFloat,
-        InvincibleValue, OneFloat, InvincibleValue, OneFloat, InvincibleValue, OneFloat,
-        InvincibleValue, InvincibleValue
-    };
+    static constexpr std::size_t SpeedFirst = 4;
+    static constexpr std::size_t StatCount = StatOffsets.size();
+    static constexpr std::size_t ValueCount = StatCount * 2;
+    using Values = std::array<std::uint32_t, ValueCount>;
     enum class Result { Complete, RolledBack, RollbackFailed };
+
+    static constexpr std::uint32_t OffsetFor(std::size_t index) noexcept
+    {
+        return StatOffsets[index / 2] + (index % 2 == 0 ? 0u : 8u);
+    }
 
     static bool Capture(std::uint32_t actor, CombatAccess access, Values& values) noexcept
     {
-        if (actor < 0x10000 || actor > std::numeric_limits<std::uint32_t>::max() - Offsets.back()
-            || !access.read || !access.write) {
-            return false;
-        }
+        if (actor < 0x10000 || !access.read || !access.write) return false;
 
-        for (std::size_t i = 0; i < Offsets.size(); ++i) {
-            if (!access.read(access.context, actor + Offsets[i], values[i])) return false;
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            if (!access.read(access.context, actor + OffsetFor(i), values[i])) return false;
+        }
+        return true;
+    }
+
+    static bool Desired(const Values& original, Values& desired) noexcept
+    {
+        desired = original;
+        for (std::size_t i = 0; i < ValueCount; i += 2) {
+            const auto stat = i / 2;
+            if (stat < SpeedFirst) {
+                desired[i] = static_cast<std::uint32_t>(DamageValue);
+                desired[i + 1] = OneFloat;
+                continue;
+            }
+
+            const auto base = static_cast<std::int64_t>(original[i]);
+            const auto doubled = base > std::numeric_limits<std::int32_t>::max() / 2
+                ? std::numeric_limits<std::int32_t>::max()
+                : base * 2;
+            desired[i] = static_cast<std::uint32_t>(doubled);
+            desired[i + 1] = original[i + 1];
         }
         return true;
     }
 
     static Result Change(std::uint32_t actor, CombatAccess access, const Values& before, const Values& desired) noexcept
     {
-        for (std::size_t i = 0; i < Offsets.size(); ++i) {
+        for (std::size_t i = 0; i < before.size(); ++i) {
             if (before[i] == desired[i]) continue;
-            if (access.write(access.context, actor + Offsets[i], desired[i])) continue;
+            if (access.write(access.context, actor + OffsetFor(i), desired[i])) continue;
 
             bool restored = true;
-            while (i > 0) {
-                --i;
-                if (before[i] == desired[i]) continue;
-                if (!access.write(access.context, actor + Offsets[i], before[i])) restored = false;
+            for (std::size_t j = 0; j < i; ++j) {
+                if (before[j] == desired[j]) continue;
+                if (!access.write(access.context, actor + OffsetFor(j), before[j])) restored = false;
             }
             return restored ? Result::RolledBack : Result::RollbackFailed;
         }
@@ -129,6 +165,7 @@ private:
 
     std::uint32_t actor_ = 0;
     Values restore_{};
+    Values applied_{};
     bool enabled_ = false;
 };
 
