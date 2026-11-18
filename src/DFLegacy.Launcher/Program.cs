@@ -101,7 +101,7 @@ internal static class Program
             if (args.Contains("--self-test", StringComparer.OrdinalIgnoreCase))
             {
                 ClientBootstrapInspector.ValidateForLaunch(clientPath);
-                ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
+                ClientFileIdentity.RequireSameDirectory(DFLegacy.UpdateCore.ClientLayout.GameRoot,Path.GetDirectoryName(clientPath)!);
                 var manifest=ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!);
                 StandaloneClientInstaller.EnsureHelper(manifest.DirectoryPath);
                 if(ClientIjlMigration.Inspect(clientPath).State!=IjlMigrationState.Original) throw new InvalidDataException("原版 IJL 尚未恢复，请先在登录器中确认迁移。");
@@ -166,7 +166,7 @@ internal static class Program
         return Path.GetFullPath(
             Path.IsPathRooted(path)
                 ? path
-                : Path.Combine(AppContext.BaseDirectory, path));
+                : Path.Combine(DFLegacy.UpdateCore.ClientLayout.GameRoot, path));
     }
 
     internal static void ValidateOptions(LauncherOptions options)

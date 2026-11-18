@@ -28,8 +28,14 @@ public static class PathPolicy
     {
         Validate(relative, allowConfiguration);
         var fullRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        var path = Path.GetFullPath(Path.Combine(fullRoot, relative.Replace('/', Path.DirectorySeparatorChar)));
-        if (!path.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("更新路径越界。");
+        // In the split layout the manifest's game files live in the parent directory.
+        var mapped = ClientLayout.Resolve(fullRoot, relative);
+        var path = Path.IsPathFullyQualified(mapped)
+            ? Path.GetFullPath(mapped)
+            : Path.GetFullPath(Path.Combine(fullRoot, mapped.Replace('/', Path.DirectorySeparatorChar)));
+        if (!path.StartsWith(fullRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            && !path.StartsWith(ClientLayout.GameRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("更新路径越界。");
         NoLinks(path);
         return path;
     }

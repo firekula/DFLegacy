@@ -118,7 +118,7 @@ internal static class ChapterTwoClient
     internal static void ValidateSource(string clientPath)
     {
         var root = Path.GetDirectoryName(clientPath)!;
-        ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory, root);
+        ClientFileIdentity.RequireSameDirectory(DFLegacy.UpdateCore.ClientLayout.GameRoot, root);
         VerifyFile(clientPath, "4E59EE7346D92DC3E3374E171269CBC4EE4E97807013B18306EAD160829AB7E6");
         var pvf = Path.Combine(root, "Script.pvf");
         if (!ClientLogPaths.HasLink(pvf) && File.Exists(pvf))

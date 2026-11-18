@@ -23,9 +23,13 @@ Layout Classify(const fs::path& dir) {
 }
 
 bool ClientComplete(const fs::path& client) {
+    // The split layout keeps DNF.exe/Script.pvf beside client\ instead of inside it.
+    const auto game = client.parent_path();
+    const auto file = [&](const wchar_t* name) {
+        return RegularFile(client / name) || RegularFile(game / name);
+    };
     return RegularFile(client / "DFLegacy.Launcher.exe") && RegularFile(client / "DFLegacy.Launcher.App.exe") &&
            RegularFile(client / "DFLegacy.Updater.exe") && RegularFile(client / "DFLegacy.Bootstrap.ini") &&
-           RegularFile(client / "DFLegacy.Chapter.json") && RegularFile(client / "DNF.exe") &&
-           RegularFile(client / "Script.pvf");
+           RegularFile(client / "DFLegacy.Chapter.json") && file(L"DNF.exe") && file(L"Script.pvf");
 }
 }

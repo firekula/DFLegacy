@@ -16,7 +16,9 @@ internal static class LauncherLayoutMigration
     {
         "DFLegacy.Launcher.App.exe", "DFLegacy.Updater.exe", "DFLegacy.Diagnostics.exe",
         "DFLegacy.CrashCapture.exe", "DFLegacy.Bootstrap.ini", "DFLegacy.Launcher.exe",
+        "DFLegacy.Chapter.json",
     };
+    // Game binaries, DLLs and data packs stay in the installation root.
 
     internal static bool IsFlat(string root) =>
         File.Exists(Path.Combine(root, Managed[0])) && !Directory.Exists(Path.Combine(root, ClientDirectory));
