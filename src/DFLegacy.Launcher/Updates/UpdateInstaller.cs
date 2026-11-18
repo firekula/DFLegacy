@@ -5,7 +5,12 @@ namespace DFLegacy.Launcher.Updates;
 public sealed partial class UpdateInstaller
 {
     private readonly string target;
-    public UpdateInstaller(string installationDirectory) => target=Path.TrimEndingDirectorySeparator(Path.GetFullPath(installationDirectory));
+    public UpdateInstaller(string installationDirectory)
+    {
+        target=Path.TrimEndingDirectorySeparator(Path.GetFullPath(installationDirectory));
+        // The update helper runs from a temporary copy; resolve the split layout from its target.
+        DFLegacy.UpdateCore.ClientLayout.Configure(target);
+    }
     public UpdateState? ReadState()
     {
         var path=Path.Combine(target,".dflegacy","state.json"); UpdateSafety.NoLinks(path);

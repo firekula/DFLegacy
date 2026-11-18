@@ -202,6 +202,8 @@ internal static class RepairClient
         try
         {
             var request=ParseArguments(args);
+            // The repair worker may be a temporary copy; the request names the installation.
+            Core.ClientLayout.Configure(string.IsNullOrEmpty(request.Directory)?AppContext.BaseDirectory:request.Directory);
             if(string.IsNullOrEmpty(request.Directory))
             {
                 if(quiet)throw new ArgumentException("请指定 --repair-client <客户端目录>。");

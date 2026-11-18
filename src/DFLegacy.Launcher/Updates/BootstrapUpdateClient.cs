@@ -155,6 +155,8 @@ internal static class BootstrapUpdateClient
         try
         {
             var request=ParseArguments(args);
+            // The worker is a temporary copy; only the request names the real installation.
+            Core.ClientLayout.Configure(request.Directory);
             var quiet=App.IsHeadless(request.LauncherArguments);
             Program.LogClientPath=Path.Combine(request.Directory,"DNF.exe");
             if(Core.InstallTransaction.HasPending(request.Directory)

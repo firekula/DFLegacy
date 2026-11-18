@@ -148,7 +148,7 @@ internal static class Program
         ]);
     }
 
-    internal static string LauncherConfigPath => Path.Combine(AppContext.BaseDirectory,
+    internal static string LauncherConfigPath => Path.Combine(DFLegacy.UpdateCore.ClientLayout.GameRoot,
         ChapterTwoClient.IsBundled ? "launcher.chapter2.json" : "launcher.json");
 
     internal static LauncherOptions LoadOptions()
@@ -410,7 +410,7 @@ internal static class Program
                 "StartServer 只能自动启动本机入口服务；远程地址请先手动启动服务端。");
         }
 
-        var serverPath = Path.Combine(AppContext.BaseDirectory, "DFLegacy.Server.exe");
+        var serverPath = Path.Combine(DFLegacy.UpdateCore.ClientLayout.GameRoot, "DFLegacy.Server.exe");
         if (!File.Exists(serverPath))
         {
             throw new FileNotFoundException(
@@ -420,7 +420,7 @@ internal static class Program
 
         Process.Start(new ProcessStartInfo(serverPath)
         {
-            WorkingDirectory = AppContext.BaseDirectory,
+            WorkingDirectory = DFLegacy.UpdateCore.ClientLayout.GameRoot,
             UseShellExecute = false,
             CreateNoWindow = true
         });
