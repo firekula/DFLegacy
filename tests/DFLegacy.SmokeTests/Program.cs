@@ -773,6 +773,7 @@ LootRoutingSmokeTests.Run(Check);
 await PickupRemovalSmokeTests.RunAsync(Check);
 PartyCardSelectionSmokeTests.Run(Check);
 EquipmentReinforcementSmokeTests.Run(Check);
+NpcShopOffersSmokeTests.Run(Check);
 QuestItemGrantSmokeTests.Run(Check);
 await HiddenDungeonQuestSmokeTests.RunAsync(Check);
 ChapterTwoQuestVisibilitySmokeTests.Run(Check);

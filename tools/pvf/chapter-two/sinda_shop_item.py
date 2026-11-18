@@ -1,4 +1,4 @@
-"""Add the +10 equipment strengthening deed (item 7274) to Sinda's shop.
+"""Add one stackable or equipment item to Sinda's shop.
 
 Read-only on the inputs; writes a new paired native/server Script.pvf and a
 verification report. The shop layout is 7-int rows inside one ``[sell item]``
@@ -6,9 +6,9 @@ block; the first free ``-1`` slot is replaced in place so the rest of the
 script keeps its original bytes.
 
 Usage:
-  python -B tools/pvf/chapter-two/sinda_ticket.py \
+  python -B tools/pvf/chapter-two/sinda_shop_item.py \
       --native <client Script.pvf> --server <server Script.pvf> \
-      --output <new-directory> [--item 7274] [--shop itemshop/equipmentshop2.shp]
+      --output <new-directory> --item 27600 [--shop itemshop/equipmentshop2.shp]
 """
 import argparse
 import json
@@ -21,7 +21,7 @@ from port import Archive, clean, field, list_rows, rotate, sha
 
 ITEM = 7274
 SHOP = "itemshop/equipmentshop2.shp"  # itemshop.lst 3 -> EquipmentShop2.shp, [NPC] 4 = Sinda
-STACKABLE = "stackable/stackable.lst"
+LISTS = (("stackable/stackable.lst", "stackable/"), ("equipment/equipment.lst", "equipment/"))
 
 
 def require(ok, message):
@@ -34,6 +34,20 @@ def read_archive(path):
         return Archive(path)
     except ValueError:
         return Archive(path, validate_entry_crc=False)
+
+
+def resolve_item(arc, item):
+    for list_path, prefix in LISTS:
+        rows = list_rows(arc.read(list_path))
+        name = rows.get(item)
+        if not name:
+            continue
+        path = name.lower()
+        if not path.startswith(prefix):
+            path = prefix + path
+        require(path in arc.entries, f"item {item} points at a missing script: {path}")
+        return path, list_path
+    raise ValueError(f"item {item} is not in stackable.lst or equipment.lst")
 
 
 def shop_rows(data):
@@ -125,16 +139,18 @@ def main():
         for name in server.entries:
             require(native.read(name) == server.read(name), "decoded content differs: " + name)
 
-    stack = list_rows(native.read(STACKABLE))
-    require(stack.get(args.item, "").endswith(".stk"), f"item {args.item} is not in stackable.lst")
-    item_path = stack[args.item].lower()
-    if not item_path.startswith("stackable/"):
-        item_path = "stackable/" + item_path
+    item_path, item_list = resolve_item(native, args.item)
     item_script = native.read(item_path)
     price = field(item_script, "price").strip()
     require(price.isdigit() and int(price) > 0, f"item {args.item} has no positive price")
-    require(field(item_script, "stackable type").lstrip(b"`").startswith(b"["),
-            f"item {args.item} has no stackable type")
+    if item_path.startswith("equipment/"):
+        item_kind = "equipment"
+        require(field(item_script, "equipment type").lstrip(b"`").startswith(b"["),
+                f"item {args.item} has no equipment type")
+    else:
+        item_kind = "stackable"
+        require(field(item_script, "stackable type").lstrip(b"`").startswith(b"["),
+                f"item {args.item} has no stackable type")
 
     shop_before = native.read(args.shop)
     shop_after, rows_before, rows_after = patch_shop(shop_before, args.item)
@@ -165,8 +181,10 @@ def main():
     report = {
         "item": args.item,
         "itemPath": item_path,
+        "itemList": item_list,
+        "itemKind": item_kind,
         "itemPrice": int(price),
-        "itemType": field(item_script, "stackable type").decode("cp949"),
+        "itemType": field(item_script, "equipment type" if item_kind == "equipment" else "stackable type").decode("cp949"),
         "shop": args.shop,
         "shopNpc": field(shop_after, "NPC").decode("cp949"),
         "rowsBefore": rows_before,

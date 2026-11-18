@@ -57,7 +57,11 @@ PVF 的 `.qst` 注释明确写了字段含义（`quest/value/vilmark8-1.qst` 的
 | `src/DFLegacy.Server/EntranceService.cs` | 发放后同步 `mainInventory`；更新包从计划库存投影；队友击杀信用补发任务道具 |
 | `tests/DFLegacy.SmokeTests/QuestItemGrantSmokeTests.cs` | 新增：计划库存投影、旧库存必抛、组队信用口径 |
 | `tests/DFLegacy.SmokeTests/Program.cs` | 注册该用例；新增 `--quest-item-grant` 单跑入口 |
-| `tools/pvf/chapter-two/sinda_ticket.py` | 生成辛达商店候选 PVF（只改一个 `.shp` 条目） |
+| `tools/pvf/chapter-two/sinda_shop_item.py` | 生成辛达商店候选 PVF（只改一个 `.shp` 条目；原名 `sinda_ticket.py`） |
+
+> 后续（2026-11-18）：强化券 7274 确认无使用入口，改为让辛达直接出售
+> **+10 破损武士刀（27600）**，见 [辛达出售 +10 破损武士刀](2026-11-18-sinda-reinforced-katana.md)。
+> 券的候选 PVF 保留作为证据，不再作为上架方案。
 
 实际执行（本机，2026-11-17）：
 

@@ -14167,24 +14167,26 @@ public sealed class EntranceService(
                             }
 
                             var purchasedItem = CharacterItemIdentity.Ensure(
-                                new CharacterMailAttachmentRecord(
-                                itemId,
-                                count,
-                                Durability: itemDefinition.InventoryCategory
-                                    == ItemInventoryCategory.Equipment
-                                        ? itemCatalog.GetInitialDurability(itemId)
-                                        : itemDefinition.IsEquipment
-                                            ? (ushort)1_000
-                                            : (ushort)0,
-                                SealState: CharacterItemSealing.GetInitialSealState(
-                                    itemDefinition),
-                                EquipmentQualitySeed:
-                                    itemDefinition.InventoryCategory
-                                        == ItemInventoryCategory.Equipment
-                                    && !itemDefinition.IsTitle
-                                        ? EquipmentQuality.GetNpcShopSeed(
-                                            DateTimeOffset.Now)
-                                        : null),
+                                NpcShopOffers.ApplyReinforcement(
+                                    itemId,
+                                    new CharacterMailAttachmentRecord(
+                                        itemId,
+                                        count,
+                                        Durability: itemDefinition.InventoryCategory
+                                            == ItemInventoryCategory.Equipment
+                                                ? itemCatalog.GetInitialDurability(itemId)
+                                                : itemDefinition.IsEquipment
+                                                    ? (ushort)1_000
+                                                    : (ushort)0,
+                                        SealState: CharacterItemSealing.GetInitialSealState(
+                                            itemDefinition),
+                                        EquipmentQualitySeed:
+                                            itemDefinition.InventoryCategory
+                                                == ItemInventoryCategory.Equipment
+                                            && !itemDefinition.IsTitle
+                                                ? EquipmentQuality.GetNpcShopSeed(
+                                                    DateTimeOffset.Now)
+                                                : null)),
                                 itemDefinition);
                             var plannedInventory = mainInventory.ToDictionary(
                                 pair => pair.Key,
