@@ -92,6 +92,17 @@ existing game files. The migration runs in a detached updater after the previous
 launcher and startup entry have released their files. Validate a successful
 upgrade and recovery from a break during installation before publication.
 
+## Chapter Two v1.0.14 split-layout startup update
+
+`v1.0.14-bridge` at sequence 24 keeps the v1.0.14 fixed entry and replaces only
+the managed launcher, updater, descriptor and diagnostics. `v1.0.15` at sequence
+25 replaces the fixed entry as the pair's final step; the migration therefore
+must resolve the split layout from the installation target inside the detached
+helper (`ValidateV4Inputs` configures `ClientLayout` from `plan.Target`), because
+the helper copy lives under the temporary directory while the game files sit in
+the installation root after the layout lift. Do not publish the bridge before
+the final release assets, since bridge chunks reference the final release.
+
 All installation and temporary paths must be absolute local drive paths.
 Directory components and files reject reparse points; executable, descriptor,
 lock and receipt handles also reject hard links. Held directory handles prevent
