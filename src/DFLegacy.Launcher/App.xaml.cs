@@ -14,6 +14,22 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        var worker = Updates.BootstrapUpdateClient.IsRequested(e.Args)
+            || Updates.RepairClient.IsRequested(e.Args, Environment.ProcessPath)
+            || e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal);
+        if (!worker)
+        {
+            // An installation made by the old single-launcher package keeps the game files in
+            // client\. The updated app lifts them on its first normal start, so a plain V4 update
+            // is enough and the player never has to swap the outer stub.
+            try
+            {
+                var installRoot = Updates.LauncherLayoutMigration.InstallationRoot(AppContext.BaseDirectory);
+                if (Updates.LauncherLayoutMigration.TryLift(installRoot))
+                    Program.WriteLauncherLog("Launcher layout lifted: game files moved to the installation root.");
+            }
+            catch (Exception error) { Program.ReportError("launcher-layout-lift", error); }
+        }
         // Every entry (including the bootstrap worker and the repair tool) must resolve the
         // split layout before it reads managed paths; the early branches below never reach
         // the configuration that used to sit after them.
