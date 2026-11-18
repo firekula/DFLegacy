@@ -91,6 +91,33 @@ vcvarsall x86 + TMP 指向工作区，见 `.tmp/tools/build_quickstore.bat`）�
 宿主构建开关。当前测试环境已恢复：服务端回到 `127.0.0.1`，旧宿主客户端重新登录，服务端四项修复生效，
 原生快速仓库修复**尚未部署到客户端**。
 
+### 生产宿主（AppContainer 版本）已能构建
+
+按 v1.0.15 发布时的同一输入重建生产宿主：
+
+```text
+cmake -S src/DFLegacy.ChapterTwo.Native -B .tmp/production-host-quickstore -G "Visual Studio 18 2026" -A Win32 \
+  -DCHAPTER_TWO_HOST_SOURCE=.tmp/night-root/production-host-r3/host/fixed-loader/main.cpp
+cmake --build .tmp/production-host-quickstore --config Release --target chapter_two_presentation_host
+```
+
+产物 `.tmp/production-host-quickstore/Release/chapter_two_presentation_host.exe`，
+SHA256 `590BB98B…`（v1.0.15 的是 `BBFB487C…`），说明快速仓库修复能在生产宿主模式下编译通过。
+
+### 本地更新源部署的下一步（需要改发布 pin）
+
+`.tmp/upgrade-wt/tools/release/Build-LauncherRoles.ps1` 把 v1.0.15 宿主
+`BBFB487C…` 和 broker `0AA082…` 写死为 pin，并校验仓库干净、版本取 `LauncherVersion.txt`。
+要让本地更新源装上新宿主，必须：
+
+1. 提升 LauncherVersion（例如 1.0.16-local）并更新该脚本的宿主 pin 为新哈希；
+2. 用 `Build-LauncherRoles.ps1` 重建 App/Updater/Bootstrap.ini/固定入口；
+3. 用 `.tmp/v1015-build/Build-Payload.py` 重算 manifest/chunks，`feed.py` 起本地 feed；
+4. 用 `G:\tmp\dfo-v1014-clean-check` 一类干净 v1.0.14 客户端走 `DFOLauncher.exe` 更新安装。
+
+这是发布工具链改动，不能顺手改 pin；需要用户确认版本号和允许修改发布脚本后再做。
+
+
 ## 6. F11 面板（未开始实现）
 
 
