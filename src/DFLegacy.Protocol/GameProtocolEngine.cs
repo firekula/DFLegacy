@@ -313,6 +313,9 @@ public static partial class GameProtocolEngine
     public const byte DungeonPermissionNotification = 5;
     public const byte UdpPeerInfoNotification = 11;
     public const byte MessageNotification = 12;
+    // 原始服务端的 MEGAPHONE_MSG：客户端用 CMD 17 的 type 11/12（服务器喇叭）
+    // 或 13（频道喇叭）发送，服务端扣 1 个道具后回这个 NOTI 118。
+    public const byte MegaphoneMessageNotification = 118;
     public const byte ItemListNotification = 13;
     public const byte UpdateItemListNotification = 14;
     public const byte SkillInfoNotification = 19;
@@ -1477,8 +1480,46 @@ public static partial class GameProtocolEngine
             targetAreaUserId,
             messageBytes);
 
-    public static GameServerPacket CreateCreatureScriptMessageNotification(
+    /// <summary>
+    /// NOTI 118 MEGAPHONE_MSG：type、频道号、发送者 uid、名字、正文。
+    /// 原版服务器喇叭（type 11/12）与频道喇叭（type 13）都回这一个通知。
+    /// </summary>
+    public static GameServerPacket CreateMegaphoneNotification(
         GameMessageType messageType,
+        byte channelNumber,
+        ushort senderUserId,
+        ReadOnlySpan<byte> senderName,
+        ReadOnlySpan<byte> messageBytes)
+    {
+        if (senderName.Length is < 1 or >= 0x100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(senderName));
+        }
+
+        if (messageBytes.Length is < 1 or >= 0x100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(messageBytes));
+        }
+
+        using var payload = new MemoryStream();
+        using (var writer = new BinaryWriter(payload, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write((byte)messageType);
+            writer.Write(channelNumber);
+            writer.Write(senderUserId);
+            writer.Write(checked((uint)senderName.Length));
+            writer.Write(senderName);
+            writer.Write(checked((uint)messageBytes.Length));
+            writer.Write(messageBytes);
+        }
+
+        return new GameServerPacket(
+            NotificationPacketType,
+            MegaphoneMessageNotification,
+            payload.ToArray());
+    }
+
+    public static GameServerPacket CreateCreatureScriptMessageNotification(        GameMessageType messageType,
         ushort targetAreaUserId,
         ReadOnlySpan<byte> messageBytes) =>
         CreateChatMessageNotification(

@@ -555,7 +555,11 @@ public static class CharacterInventoryPlanner
                 continue;
             }
 
-            total = AddWeight(total, MultiplyWeight(definition, item.CountOrValue));
+            // Equipment/avatar records are one unit per slot. A damaged or migrated
+            // record must never multiply a template weight by a stale CountOrValue;
+            // the client weighs one piece and would see a fraction of the server sum.
+            var units = definition.IsStackable ? item.CountOrValue : 1u;
+            total = AddWeight(total, MultiplyWeight(definition, units));
         }
 
         return total;

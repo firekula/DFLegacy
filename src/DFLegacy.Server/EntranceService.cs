@@ -569,6 +569,26 @@ public sealed class EntranceService(
                     }
                 }
 
+                async Task SendRawNotificationAsync(GameServerPacket packet)
+                {
+                    try
+                    {
+                        await packet.WriteAsync(stream, serverToken);
+                        Interlocked.Increment(ref runtimeSession.SentPackets);
+                        LogPacket("TX", runtimeSession, packet);
+                    }
+                    catch (OperationCanceledException) when (serverToken.IsCancellationRequested)
+                    {
+                    }
+                    catch (Exception exception)
+                    {
+                        logger.LogWarning(
+                            exception,
+                            "Could not send a server notification to character {CharacterId}.",
+                            activeCharacter?.Id);
+                    }
+                }
+
                 GameSkillEntry[] GetCurrentGameSkills()
                 {
                     var skills = PartyMemberDetailProjection.ProjectLearnedSkills(currentSkills);
@@ -6763,7 +6783,8 @@ public sealed class EntranceService(
                                 {
                                     pendingGuildEvents.Enqueue((recoveryCharacterId, guildId, packets, refreshCharacter));
                                     partyMembershipWake.Pulse();
-                                });
+                                }, packet => { _ = SendRawNotificationAsync(packet); },
+                                checked((byte)channel.Number));
 
                             // A displaced connection performs its final save before
                             // releasing the character lease. Reload after the claim
@@ -7719,6 +7740,118 @@ public sealed class EntranceService(
                                     activeCharacter.Id, messageRequest.MessageBytes, serverToken, echoToSoloSender);
                                 logger.LogInformation("Party chat from {CharacterName} delivered to {Recipients}: {Message}",
                                     activeCharacter.Name, recipients, chatText);
+                                continue;
+                            }
+
+                            // 喇叭：客户端用 CMD 17 发送 type 11/12（服务器喇叭，道具 36）
+                            // 或 type 13（频道喇叭，道具 37），不另发 CMD 47。服务端在这里
+                            // 校验并扣除 1 个道具，成功后回 NOTI 118；失败回 CMD 17 error 17。
+                            if (messageRequest.MessageType is (byte)GameMessageType.Type11LightCyan
+                                or (byte)GameMessageType.Type12Yellow
+                                or (byte)GameMessageType.Type13SpeakerYellow)
+                            {
+                                var channelMegaphone = messageRequest.MessageType
+                                    == (byte)GameMessageType.Type13SpeakerYellow;
+                                var requiredItemId = channelMegaphone ? (ushort)37 : (ushort)36;
+                                var megaphoneSlot = (ushort)messageRequest.SlotOrReserved;
+                                if (messageRequest.TargetOrItemSpace != 0
+                                    || !CharacterInventoryLayout.IsMainItemSlot(megaphoneSlot)
+                                    || !mainInventory.TryGetValue(megaphoneSlot, out var megaphoneItem)
+                                    || megaphoneItem.ItemId != requiredItemId
+                                    || megaphoneItem.CountOrValue == 0)
+                                {
+                                    var megaphoneError = GameProtocolEngine.CreateCommandError(
+                                        request,
+                                        errorCode: 17);
+                                    await megaphoneError.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, megaphoneError);
+                                    logger.LogWarning(
+                                        "Rejected megaphone type {MessageType} from character {CharacterId}: item-space={ItemSpace}, slot={Slot}, expected item={ExpectedItemId}.",
+                                        messageRequest.MessageType,
+                                        activeCharacter.Id,
+                                        messageRequest.TargetOrItemSpace,
+                                        megaphoneSlot,
+                                        requiredItemId);
+                                    continue;
+                                }
+
+                                var plannedMegaphoneInventory = mainInventory.ToDictionary(
+                                    pair => pair.Key,
+                                    pair => pair.Value);
+                                if (megaphoneItem.CountOrValue == 1)
+                                {
+                                    plannedMegaphoneInventory.Remove(megaphoneSlot);
+                                }
+                                else
+                                {
+                                    plannedMegaphoneInventory[megaphoneSlot] = megaphoneItem with
+                                    {
+                                        CountOrValue = megaphoneItem.CountOrValue - 1
+                                    };
+                                }
+
+                                CharacterRecord? savedMegaphone = null;
+                                try
+                                {
+                                    savedMegaphone = await store.SaveCharacterItemSpacesAsync(
+                                        accountName,
+                                        activeCharacter.Id,
+                                        currentGold,
+                                        plannedMegaphoneInventory.Values,
+                                        equippedInventory.Values,
+                                        warehouseInventory.Values,
+                                        serverToken,
+                                        avatarInventory: avatarInventory.Values,
+                                        creatureInventory: creatureInventory.Values,
+                                        expectedCharacter: activeCharacter);
+                                }
+                                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                                {
+                                    logger.LogWarning(
+                                        exception,
+                                        "Could not persist megaphone use for {CharacterId}.",
+                                        activeCharacter.Id);
+                                }
+                                if (savedMegaphone is null)
+                                {
+                                    var megaphoneError = GameProtocolEngine.CreateCommandError(
+                                        request,
+                                        errorCode: 17);
+                                    await megaphoneError.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, megaphoneError);
+                                    continue;
+                                }
+
+                                mainInventory = plannedMegaphoneInventory;
+                                activeCharacter = savedMegaphone;
+                                currentGold = savedMegaphone.Gold;
+                                var megaphoneInventoryRefresh = CreateMainInventoryPacket(
+                                    currentGold,
+                                    currentVictoryPoints,
+                                    mainInventory.Values);
+                                await megaphoneInventoryRefresh.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, megaphoneInventoryRefresh);
+
+                                var megaphonePacket = GameProtocolEngine.CreateMegaphoneNotification(
+                                    (GameMessageType)messageRequest.MessageType,
+                                    checked((byte)channel.Number),
+                                    localUserId,
+                                    ClientEncoding.GetBytes(activeCharacter.Name),
+                                    messageRequest.MessageBytes);
+                                var megaphoneRecipients = channelMegaphone
+                                    ? characterSessions.NotifyPacketChannel(
+                                        checked((byte)channel.Number), megaphonePacket)
+                                    : characterSessions.NotifyPacketAll(megaphonePacket);
+                                logger.LogInformation(
+                                    "Megaphone type {MessageType} from {CharacterName} on channel {Channel} delivered to {Recipients}: {Message}",
+                                    messageRequest.MessageType,
+                                    activeCharacter.Name,
+                                    channel.Number,
+                                    megaphoneRecipients,
+                                    chatText);
                                 continue;
                             }
 
@@ -9881,9 +10014,43 @@ public sealed class EntranceService(
                                 Interlocked.Increment(ref runtimeSession.SentPackets);
                                 LogPacket("TX", runtimeSession, error);
                                 logger.LogWarning(
-                                    "Rejected lottery item use at slot {SourceSlot}: {Failure}.",
+                                    "Rejected lottery item use at slot {SourceSlot}: {Failure}; main={MainWeight}, mainAllowance={MainAllowance}, carried={CarriedWeight}/{CarriedLimit}, level={Level}, job={Job}, heaviest={Heaviest}.",
                                     sourceSlot,
-                                    lotteryFailure);
+                                    lotteryFailure,
+                                    CharacterInventoryPlanner.CalculateWeight(
+                                        mainInventory.Values, itemCatalog),
+                                    GetInventoryWeightLimit(activeCharacter),
+                                    CharacterInventoryPlanner.CalculateCarriedWeight(
+                                        mainInventory.Values,
+                                        equippedInventory.Values,
+                                        creatureInventory.Values,
+                                        itemCatalog),
+                                    CharacterInventoryPlanner.CalculateCarriedWeightLimit(
+                                        characterStatCatalog.Get(activeCharacter).InventoryLimit,
+                                        equippedInventory.Values,
+                                        itemCatalog),
+                                    activeCharacter.Level,
+                                    activeCharacter.Job,
+                                    string.Join(
+                                        ",",
+                                        mainInventory.Values
+                                            .Select(item => new
+                                            {
+                                                item.Slot,
+                                                item.ItemId,
+                                                item.CountOrValue,
+                                                Weight = itemCatalog.TryGetDefinition(
+                                                    item.ItemId, out var definition)
+                                                    ? (long)Math.Max(0, definition.Weight ?? 0)
+                                                        * (definition.IsStackable
+                                                            ? item.CountOrValue
+                                                            : 1)
+                                                    : 0
+                                            })
+                                            .OrderByDescending(entry => entry.Weight)
+                                            .Take(5)
+                                            .Select(entry =>
+                                                $"{entry.Slot}:{entry.ItemId}x{entry.CountOrValue}={entry.Weight}")));
                                 continue;
                             }
 
@@ -9940,15 +10107,20 @@ public sealed class EntranceService(
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, lotteryReply);
 
+                            // The incremental reply consumes the jar and adds the
+                            // reward, but any earlier session/backpack drift would
+                            // survive it. A full authoritative list keeps the client
+                            // weight bar and the next weight check on the same state.
+                            var inventoryRefresh = CreateMainInventoryPacket(
+                                currentGold,
+                                currentVictoryPoints,
+                                mainInventory.Values);
+                            await inventoryRefresh.WriteAsync(stream, serverToken);
+                            Interlocked.Increment(ref runtimeSession.SentPackets);
+                            LogPacket("TX", runtimeSession, inventoryRefresh);
+
                             if (warehouseCapacityChanged || isLotteryWarehouseUpgrade)
                             {
-                                var inventoryRefresh = CreateMainInventoryPacket(
-                                    currentGold,
-                                    currentVictoryPoints,
-                                    mainInventory.Values);
-                                await inventoryRefresh.WriteAsync(stream, serverToken);
-                                Interlocked.Increment(ref runtimeSession.SentPackets);
-                                LogPacket("TX", runtimeSession, inventoryRefresh);
                                 await SendWarehouseStateAsync();
                             }
 
@@ -12547,7 +12719,7 @@ public sealed class EntranceService(
                                     request.Body,
                                     out var listType,
                                     out var requestedConsumptions)
-                                || listType != 0)
+                                || listType is not (0 or 1))
                             {
                                 logger.LogWarning(
                                     "Rejected consume-items transaction activeCharacter={HasCharacter}, body={Body}.",
@@ -12556,10 +12728,18 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 0 = main inventory, 1 = avatar bag. Worn avatars live in
+                            // item space 3 and must be unequipped first, so destroying an
+                            // avatar from its own tab is a list-1 delete like the main bag.
+                            var deletingAvatar = listType == 1;
+                            var sourceInventory = deletingAvatar
+                                ? avatarInventory
+                                : mainInventory;
+
                             // The town gold confirmation sends CMD18 for virtual
                             // slot/item 0. It destroys currency; CMD50 remains the
                             // dungeon ground-drop path, including its 1000 cap.
-                            if (requestedConsumptions.Any(entry =>
+                            if (!deletingAvatar && requestedConsumptions.Any(entry =>
                                     entry.Slot == CharacterInventoryLayout.GoldSlot
                                     || entry.ItemId == 0))
                             {
@@ -12628,7 +12808,7 @@ public sealed class EntranceService(
                             var validTransaction = true;
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
-                                if (!mainInventory.TryGetValue(
+                                if (!sourceInventory.TryGetValue(
                                         requestedConsumption.Slot,
                                         out var inventoryItem)
                                     || !IsDeletableInventoryEntry(
@@ -12702,7 +12882,7 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(mainInventory);
+                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(sourceInventory);
                             foreach (var (slot, requestedCount) in consumptionBySlot)
                             {
                                 var inventoryItem = plannedInventory[slot];
@@ -12728,11 +12908,11 @@ public sealed class EntranceService(
                                     accountName,
                                     activeCharacter.Id,
                                     currentGold,
-                                    plannedInventory.Values,
+                                    deletingAvatar ? mainInventory.Values : plannedInventory.Values,
                                     equippedInventory.Values,
                                     warehouseInventory.Values,
                                     serverToken,
-                                    avatarInventory: avatarInventory.Values);
+                                    avatarInventory: deletingAvatar ? plannedInventory.Values : avatarInventory.Values);
                             }
                             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                             {
@@ -12748,7 +12928,8 @@ public sealed class EntranceService(
                             }
 
                             activeCharacter = saved;
-                            mainInventory = plannedInventory;
+                            if (deletingAvatar) avatarInventory = plannedInventory;
+                            else mainInventory = plannedInventory;
 
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
@@ -12759,7 +12940,7 @@ public sealed class EntranceService(
                                     requestedConsumption.Slot,
                                     requestedConsumption.ItemId,
                                     requestedConsumption.RequestedCount,
-                                    mainInventory.TryGetValue(
+                                    plannedInventory.TryGetValue(
                                         requestedConsumption.Slot,
                                         out var remainingItem)
                                         ? remainingItem.CountOrValue
@@ -12773,6 +12954,17 @@ public sealed class EntranceService(
                             await deleteItemReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, deleteItemReply);
+                            if (deletingAvatar)
+                            {
+                                // The avatar tab also holds worn equipment state in a
+                                // different list; a full list-1 refresh keeps the tab
+                                // exact after a destroy without touching list 3.
+                                var avatarRefresh = CreateAvatarInventoryPacket(
+                                    avatarInventory.Values);
+                                await avatarRefresh.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, avatarRefresh);
+                            }
                             continue;
                         }
 
@@ -20166,6 +20358,9 @@ public sealed class EntranceService(
             var tail = body.AsSpan(messageOffset + (int)messageLength);
             if (!chapterTwo || messageType is not ((byte)GameMessageType.Type02LightCyan)
                     and not ((byte)GameMessageType.Type03White)
+                    and not ((byte)GameMessageType.Type11LightCyan)
+                    and not ((byte)GameMessageType.Type12Yellow)
+                    and not ((byte)GameMessageType.Type13SpeakerYellow)
                 || (body.Length - payloadOffset) % 16 != 0
                 || tail.Length >= 16 || tail.ContainsAnyExcept((byte)0))
             {

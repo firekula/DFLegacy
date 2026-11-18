@@ -93,7 +93,9 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action? victoryPointsChanged = null,
         Action<uint>? guildDissolved = null,
         Action<uint>? guildAnnouncementChanged = null,
-        Action<uint, GameServerPacket[], bool>? guildEvents = null)
+        Action<uint, GameServerPacket[], bool>? guildEvents = null,
+        Action<GameServerPacket>? packetNotification = null,
+        byte channelNumber = 0)
     {
         if (characterNo == 0)
         {
@@ -118,7 +120,9 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             victoryPointsChanged,
             guildDissolved,
             guildAnnouncementChanged,
-            guildEvents);
+            guildEvents,
+            packetNotification,
+            channelNumber);
     }
 
     private async Task<CharacterSessionLease> ClaimCoreAsync(
@@ -139,7 +143,9 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         Action? victoryPointsChanged = null,
         Action<uint>? guildDissolved = null,
         Action<uint>? guildAnnouncementChanged = null,
-        Action<uint, GameServerPacket[], bool>? guildEvents = null)
+        Action<uint, GameServerPacket[], bool>? guildEvents = null,
+        Action<GameServerPacket>? packetNotification = null,
+        byte channelNumber = 0)
     {
         var candidate = new CharacterSessionLease(
             key,
@@ -158,7 +164,9 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
             victoryPointsChanged,
             guildDissolved,
             guildAnnouncementChanged,
-            guildEvents);
+            guildEvents,
+            packetNotification,
+            channelNumber);
         while (true)
         {
             if (_activeCharacters.TryAdd(key, candidate))
@@ -448,6 +456,34 @@ public sealed class CharacterSessionRegistry(ILogger<CharacterSessionRegistry> l
         return leases.Length;
     }
 
+    /// <summary>全服喇叭：所有在线会话（跨频道）。</summary>
+    public int NotifyPacketAll(GameServerPacket packet)
+    {
+        ArgumentNullException.ThrowIfNull(packet);
+        var leases = SnapshotDistinctSessions();
+        foreach (var lease in leases)
+        {
+            lease.NotifyPacket(packet);
+        }
+
+        return leases.Length;
+    }
+
+    /// <summary>频道喇叭：只发给同一频道号的在线会话。</summary>
+    public int NotifyPacketChannel(byte channelNumber, GameServerPacket packet)
+    {
+        ArgumentNullException.ThrowIfNull(packet);
+        var leases = SnapshotDistinctSessions()
+            .Where(lease => lease.ChannelNumber == channelNumber)
+            .ToArray();
+        foreach (var lease in leases)
+        {
+            lease.NotifyPacket(packet);
+        }
+
+        return leases.Length;
+    }
+
     public bool IsOnline(Guid characterId) => FindByCharacterId(characterId) is not null;
 
     internal void NotifyGuildDissolved(Guid characterId, uint guildId) =>
@@ -503,6 +539,7 @@ public sealed class CharacterSessionLease
     private readonly Action<uint>? _guildDissolved;
     private readonly Action<uint>? _guildAnnouncementChanged;
     private readonly Action<uint, GameServerPacket[], bool>? _guildEvents;
+    private readonly Action<GameServerPacket>? _packetNotification;
     private readonly TaskCompletionSource _released =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _kickIssued;
@@ -524,7 +561,9 @@ public sealed class CharacterSessionLease
         Action? victoryPointsChanged = null,
         Action<uint>? guildDissolved = null,
         Action<uint>? guildAnnouncementChanged = null,
-        Action<uint, GameServerPacket[], bool>? guildEvents = null)
+        Action<uint, GameServerPacket[], bool>? guildEvents = null,
+        Action<GameServerPacket>? packetNotification = null,
+        byte channelNumber = 0)
     {
         Key = key;
         CharacterId = characterId;
@@ -543,11 +582,14 @@ public sealed class CharacterSessionLease
         _guildDissolved = guildDissolved;
         _guildAnnouncementChanged = guildAnnouncementChanged;
         _guildEvents = guildEvents;
+        _packetNotification = packetNotification;
+        ChannelNumber = channelNumber;
     }
 
     public Guid CharacterId { get; }
     public uint CharacterNo { get; }
     public Guid SessionId { get; }
+    public byte ChannelNumber { get; }
     public Task Released => _released.Task;
     public bool WasReplaced => Volatile.Read(ref _kickIssued) != 0;
 
@@ -605,6 +647,9 @@ public sealed class CharacterSessionLease
 
     internal void NotifyPopup(byte[] messageBytes) =>
         _popupNotification?.Invoke(messageBytes.ToArray());
+
+    internal void NotifyPacket(GameServerPacket packet) =>
+        _packetNotification?.Invoke(packet);
 
     internal void NotifyDungeonPermission(ushort dungeonId, byte maximumDifficulty) =>
         _dungeonPermission?.Invoke(dungeonId, maximumDifficulty);

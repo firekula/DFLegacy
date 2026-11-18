@@ -436,6 +436,38 @@ if (args.Contains("--town-gold-discard"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--avatar-destroy"))
+{
+    await AvatarDestroySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Avatar destroy smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--weight-accounting"))
+{
+    WeightAccountingSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Weight accounting smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--megaphone-protocol"))
+{
+    MegaphoneProtocolSmokeTests.Run(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Megaphone protocol smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
+if (args.Contains("--megaphone"))
+{
+    await MegaphoneSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Megaphone smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--quest-map"))
 {
     QuestMapSmokeTests.Run(Check);
@@ -773,6 +805,10 @@ await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await ActiveDropSmokeTests.RunAsync(Check);
 await TownGoldDiscardSmokeTests.RunAsync(Check);
+await AvatarDestroySmokeTests.RunAsync(Check);
+WeightAccountingSmokeTests.Run(Check);
+MegaphoneProtocolSmokeTests.Run(Check);
+await MegaphoneSmokeTests.RunAsync(Check);
 await SkillSlotPersistenceSmokeTests.RunAsync(Check);
 await ActiveDropFourClientSmokeTests.RunAsync(Check);
 await MentorSmokeTests.RunAsync(Check);
