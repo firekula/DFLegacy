@@ -71,8 +71,10 @@ internal sealed class ChapterTwoDebugWindow : Window
         testMute.IsChecked=audioOptions.ChapterTwoTestMuteEnabled;
         controls.Children.Add(Row(testMute,audioStatus));
         controls.Children.Add(Row(teleport,invincible));
-        teleport.Click+=(_,_)=>WriteDebugFlags();
-        invincible.Click+=(_,_)=>WriteDebugFlags();
+        teleport.Checked+=(_,_)=>WriteDebugFlags();
+        teleport.Unchecked+=(_,_)=>WriteDebugFlags();
+        invincible.Checked+=(_,_)=>WriteDebugFlags();
+        invincible.Unchecked+=(_,_)=>WriteDebugFlags();
         testMute.Click+=(_,_)=>
         {
             try
@@ -179,6 +181,7 @@ internal sealed class ChapterTwoDebugWindow : Window
         }
         catch(Exception e) when(e is FileNotFoundException or IOException or UnauthorizedAccessException)
         {
+            Program.WriteLauncherLog($"Debug control open failed: {e.GetType().Name}: {e.Message}");
             controlView?.Dispose();control?.Dispose();controlView=null;control=null;
         }
     }
@@ -186,6 +189,7 @@ internal sealed class ChapterTwoDebugWindow : Window
     private void WriteDebugFlags()
     {
         if(controlView is null)OpenControl();
+        Program.WriteLauncherLog($"Debug control write: view={controlView is not null}, id={debugGameId}, teleport={teleport.IsChecked==true}, invincible={invincible.IsChecked==true}.");
         if(controlView is null)return;
         try
         {
