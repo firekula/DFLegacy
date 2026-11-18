@@ -110,3 +110,35 @@ F10，不是用户指的面板。
   （17:xx 起就存在的频道连接问题，与本面板无关）。修好频道连接后即可在游戏内验收。
 - **发布边界**：发布宿主构建**不能**打开 `DFL_CHAPTER_TWO_DEBUG_CONTROL`；只有本机调试宿主链接这些入口。
 - 调试面板 GM 账号：`localqa1`（本机 GM 口 48095 的 bootstrap admin）。
+
+## 2026-11-18 21:00 频道连接修复 + 游戏内面板验证
+
+### 频道连接：本机调试路径已打通
+
+发布版客户端 + LAN IP `192.168.3.177` 的频道连接仍然停在“正在连接服务器”，原因是启动器的 relay/频道端口路径没有对齐。
+本机验收改用**已验证的本机调试路径**：
+
+- 服务端绑 `127.0.0.2`（`DFL_S1C2_TRIAL_CHANNEL_CIPHER=1`）；
+- 用 `Build-ChapterTwoLauncher.ps1 -LocalTest` 单独构建 `DFLegacy.Chapter2.Launcher.exe`，
+  宿主用 `host-panel/Release/chapter_two_presentation_host.exe`（含 F11 面板的普通桌面调试宿主），
+  启动代理用 **`production-broker-r3`（0AA082）**——不能用 `native-inputs` 里 53KB 的 `dnf_startup_trace.exe`，
+  那个代理会创建 AppContainer，宿主会打印 `REFUSED: requires an ordinary desktop process`。
+- 结果为：登录 → 频道选择 → 角色选择 → 赫顿玛尔城镇，服务端日志出现
+  `UDP endpoint registered for channel session ...` 与 `TX game-server ... payload=01`，频道连接成功。
+
+![进入城镇](assets/2026-11-18-debug-teleport-panel/town-in-game.png)
+
+### F11 面板游戏内验证
+
+- 城镇内 Ctrl+F11 正常打开面板；勾选两个开关后共享内存 flags=3（传送+无敌）。
+- **传送已验证**：按 `N` 打开城镇地图，右键同城镇目标点后角色**立即移动到新位置**，
+  截图对比见 [传送后](assets/2026-11-18-debug-teleport-panel/teleport-after.png)。
+  走的是调试宿主里的 `TryTeleport`（校验签名 → 写坐标 → 发布），不是原寻路。
+- **无敌**：开关和 `Tick()` 已生效（flags=2 时日志写入正常），但城镇里角色面板仍显示 14540/14540——
+  `CombatOverride` 的受保护 HP 只在战斗/地下城上下文可用；还需要进地下城挨一次伤害做最终确认。
+- 面板关闭后游戏继续正常，无崩溃。
+
+### 仍未解决
+
+- 发布版启动器（LAN IP + relay）的频道连接问题；上面只是本机调试验收路径，不是发布路径。
+- 无敌的地下城实机伤害验证。
