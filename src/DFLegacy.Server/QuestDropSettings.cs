@@ -20,6 +20,7 @@ public sealed class QuestDropSettings
     public const int MaximumRatePercent = 1000;
     public const int DefaultRatePercent = 100;
 
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly object _rateGate = new();
     private readonly SemaphoreSlim _writeGate = new(1, 1);
     private readonly string? _path;
@@ -85,7 +86,7 @@ public sealed class QuestDropSettings
             var temporary = _path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             await File.WriteAllBytesAsync(
                 temporary,
-                JsonSerializer.SerializeToUtf8Bytes(new QuestDropSettingRecord(ratePercent)),
+                JsonSerializer.SerializeToUtf8Bytes(new QuestDropSettingRecord(ratePercent), Json),
                 cancellationToken);
             File.Move(temporary, _path, overwrite: true);
             lock (_rateGate)
@@ -115,7 +116,7 @@ public sealed class QuestDropSettings
                 return null;
             }
 
-            var record = JsonSerializer.Deserialize<QuestDropSettingRecord>(File.ReadAllBytes(path));
+            var record = JsonSerializer.Deserialize<QuestDropSettingRecord>(File.ReadAllBytes(path), Json);
             return record is { RatePercent: >= MinimumRatePercent and <= MaximumRatePercent }
                 ? record.RatePercent
                 : null;
@@ -128,3 +129,4 @@ public sealed class QuestDropSettings
 
     private sealed record QuestDropSettingRecord(int RatePercent);
 }
+
