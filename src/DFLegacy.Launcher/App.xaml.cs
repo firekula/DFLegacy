@@ -25,8 +25,9 @@ public partial class App : Application
             try
             {
                 var installRoot = Updates.LauncherLayoutMigration.InstallationRoot(AppContext.BaseDirectory);
-                if (Updates.LauncherLayoutMigration.TryLift(installRoot))
-                    Program.WriteLauncherLog("Launcher layout lifted: game files moved to the installation root.");
+                var lifted = Updates.LauncherLayoutMigration.TryLift(installRoot);
+                Program.WriteLauncherLog($"Layout lift probe: base={AppContext.BaseDirectory} root={installRoot} lifted={lifted}.");
+                if (lifted) Program.WriteLauncherLog("Launcher layout lifted: game files moved to the installation root.");
             }
             catch (Exception error) { Program.ReportError("launcher-layout-lift", error); }
         }
