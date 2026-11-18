@@ -7,6 +7,8 @@ internal static class NpcShopOffersSmokeTests
         ArgumentNullException.ThrowIfNull(check);
         check(NpcShopOffers.InitialReinforcement(NpcShopOffers.ReinforcedKatanaItemId)
                   == NpcShopOffers.ReinforcedKatanaLevel
+              && NpcShopOffers.ReinforcedKatanaItemId == 27601
+              && NpcShopOffers.ReinforcedKatanaLevel == 10
               && NpcShopOffers.InitialReinforcement(1) == 0,
             "only the configured NPC shop offer starts reinforced");
 

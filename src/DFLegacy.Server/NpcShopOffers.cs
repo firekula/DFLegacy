@@ -9,13 +9,13 @@ namespace DFLegacy.Server;
 /// with <c>State = 0</c>, so an offer that is meant to arrive reinforced needs a
 /// server-side rule here.
 ///
-/// Current offer: Sinda sells the damaged katana (27600) already at +10. The
+/// Current offer: Sinda sells the worn katana (27601) already at +10. The
 /// client reads the level from the low five state bits and computes its own
 /// stats from them; the server only has to hand over the right record.
 /// </summary>
 public static class NpcShopOffers
 {
-    public const ushort ReinforcedKatanaItemId = 27600;
+    public const ushort ReinforcedKatanaItemId = 27601;
     public const byte ReinforcedKatanaLevel = 10;
 
     private static readonly IReadOnlyDictionary<ushort, byte> Reinforced =

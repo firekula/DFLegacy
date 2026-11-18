@@ -57,6 +57,19 @@ if (args is ["--chapter-two-recipe", var recipePvf])
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args is ["--shop-purchase", var shopPvf])
+{
+    var checks = 0;
+    await NpcShopPurchaseSmokeTests.RunAsync((condition, message) =>
+    {
+        checks++;
+        Check(condition, message);
+    }, shopPvf);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"NPC shop purchase smoke: {checks} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--quest-item-grant"])
 {
     var checks = 0;
