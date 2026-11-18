@@ -39,8 +39,12 @@ public sealed partial class UpdateInstaller
             return new UpdateHandoff(plan with {HelperPath=helper});
         },token);
 
-    private static void ValidateV4Inputs(UpdatePlan plan)
+    internal static void ValidateV4Inputs(UpdatePlan plan)
     {
+        // The helper is a temporary copy outside the installation, so AppContext.BaseDirectory
+        // cannot resolve a split layout. Every V4 validation path (parent and helper) must
+        // resolve managed paths from the planned target before it checks the receipt.
+        Core.ClientLayout.Configure(plan.Target);
         var install=plan.V4;
         if(plan.Update!=null || plan.Recovery!=null || install==null
             || new[]{install.Staged!=null,install.RecoveryJournalSha256!=null,install.ChapterRollbackSource!=null}.Count(value=>value)!=1

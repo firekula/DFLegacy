@@ -188,6 +188,19 @@ internal static class UpdateV4HelperTests
                     Core.ChapterTransition.RequiresExplicitUpgrade(root),"chapter helper rolls back and leaves re-upgrade on hold ("+name+")");
             }
         }
+
+        // The helper runs from a temporary copy outside the installation. V4 validation must
+        // resolve the split layout from the planned target before it reads the receipt; a
+        // bridge receipt whose game files were lifted into the install root otherwise looks
+        // corrupted to the helper while the parent accepts it.
+        var splitTarget=Path.Combine(scratch,"v4-split-target");
+        Directory.CreateDirectory(Path.Combine(splitTarget,"client"));
+        Core.ClientLayout.Configure(scratch);
+        try { UpdateInstaller.ValidateV4Inputs(new UpdatePlan(splitTarget,null,0,0,"","", "")); }
+        catch(InvalidDataException) { }
+        check(Core.ClientLayout.LauncherRoot==splitTarget,
+            "V4 validation resolves the split layout from the planned target, not the helper copy");
+        Core.ClientLayout.Configure(scratch);
     }
 
     private static async Task<int> RunChapterHandoff(string root,string parentPath,string mode,Action<bool,string> check)
