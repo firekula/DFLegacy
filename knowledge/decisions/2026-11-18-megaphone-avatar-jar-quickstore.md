@@ -66,9 +66,33 @@ Shift+右键才直接移动。现在 **count ≤ 1 直接走原生移动**（与
 测试：`chapter_two_quick_store_tests`（原镜像）126 项 0 失败；本机 NMake 构建（CMake 4.2.1 便携版 +
 vcvarsall x86 + TMP 指向工作区，见 `.tmp/tools/build_quickstore.bat`）。
 
-**未验证**：重新构建第二章宿主并装到客户端后的真机右键。
+**未验证**：重新构建第二章宿主并装到客户端后的真机右键。宿主已在本机构建成功（见下节），但启动配对受阻。
 
-## 5. F11 调试面板（未开始实现）
+## 5. 宿主重建与部署受阻（2026-11-18 17:40）
+
+本机补齐了原生构建链（便携 CMake 4.2.1 + VS 2026 x86，`.tmp/tools` 未提交），并完成：
+
+| 产物 | 说明 |
+| --- | --- |
+| `.tmp/host-build-quickstore/build/Release/chapter_two_presentation_host.exe` | 含快速仓库修复，SHA256 `B816BC0A…`；`Build-PresentationHost.ps1` 全量原生测试 0 失败（快速仓库 126 项） |
+| `.tmp/launcher-quickstore/…LocalTest…zip` | 本机测试启动器，嵌入上述宿主（`DFLegacy.Chapter2.Launcher.exe` SHA256 `1E9F43A3…`） |
+| `.tmp/launcher-quickstore-normal/…zip` | 普通启动器，同一宿主（SHA256 `A8EB6D68…`） |
+
+部署测试（客户端副本 `G:\tmp\dfo-v1014-quickstore`）失败在**启动配对**，不是宿主逻辑：
+
+- `Build-PresentationHost.ps1` 会把宿主源码里的 `confined()`（要求 capability-free AppContainer）替换成
+  `ordinaryDesktopProcess()`（要求非 AppContainer）；
+- 启动器实际用 `dnf_startup_trace.exe` 拉起宿主，trace 创建了 AppContainer，于是宿主打印
+  `REFUSED: this Chapter Two host requires an ordinary desktop process` 并以 2 退出；
+- 反过来若换回要求 AppContainer 的旧宿主，又与 trace 的模式/清单不匹配。
+
+结论：不能用 `Build-PresentationHost.ps1` 直接替换现有 V4 客户端的宿主/启动器。需要走完整的启动包/更新迁移
+流程（`Build-StartupBroker.ps1` + 启动器发布 + 已校验安装清单），或找到与 `dnf_startup_trace` 模式匹配的
+宿主构建开关。当前测试环境已恢复：服务端回到 `127.0.0.1`，旧宿主客户端重新登录，服务端四项修复生效，
+原生快速仓库修复**尚未部署到客户端**。
+
+## 6. F11 面板（未开始实现）
+
 
 已确认 F11 是启动器进程的 WPF `第二章 · 物品工具`，与 Ctrl+F10 的原生性能面板不同进程。加“右键小地图传送/
 无敌”需要新增启动器→宿主控制通道，并把 `test_control` 的位置写入/无敌移植进生产宿主（仅调试宿主）。
