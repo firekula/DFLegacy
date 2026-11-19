@@ -309,6 +309,49 @@ internal static class EquipmentReinforcementSmokeTests
                     out var materialFailure)
                 && materialFailure == EquipmentReinforcementFailure.InsufficientMaterial,
             "reinforcement rejects a missing PVF material with client error 22");
+
+        var ticketMain = CreateMainInventory(level: 0, materialCount: 10);
+        ticketMain[49] = new CharacterItemRecord(49, 7_275, 1);
+        check(EquipmentReinforcementPlanner.TryCreate(
+                    ticketMain,
+                    new Dictionary<ushort, CharacterItemRecord>(),
+                    1_000,
+                    9,
+                    1_000,
+                    49,
+                    items,
+                    catalog,
+                    new FixedDropRandomSource(0),
+                    out var ticketPlan,
+                    out var ticketFailure)
+                && ticketFailure == EquipmentReinforcementFailure.None
+                && ticketPlan.ResultCode == 0
+                && !ticketPlan.Failed
+                && ticketPlan.NewLevel == 12
+                && ticketPlan.RemainingGold == 1_000
+                && ticketPlan.MaterialRemaining == 0
+                && !ticketPlan.MainInventory.ContainsKey(49)
+                && ticketPlan.MainInventory[9].State == 12,
+            "+12 equipment ticket overrides the target to level 12 and consumes no PVF material or gold");
+
+        var stackedTicketMain = CreateMainInventory(level: 9, materialCount: 10);
+        stackedTicketMain[49] = new CharacterItemRecord(49, 7_274, 2);
+        check(EquipmentReinforcementPlanner.TryCreate(
+                    stackedTicketMain,
+                    new Dictionary<ushort, CharacterItemRecord>(),
+                    1_000,
+                    9,
+                    1_000,
+                    49,
+                    items,
+                    catalog,
+                    new FixedDropRandomSource(99_999),
+                    out var stackedTicketPlan,
+                    out _)
+                && stackedTicketPlan.NewLevel == 10
+                && stackedTicketPlan.MainInventory[49].CountOrValue == 1
+                && stackedTicketPlan.MainInventory[9].State == 10,
+            "+10 equipment ticket leaves a stacked ticket in place and still overrides the level");
         check(!EquipmentReinforcementPlanner.TryCreate(
                     CreateMainInventory(level: 0, materialCount: 10),
                     new Dictionary<ushort, CharacterItemRecord>(),
