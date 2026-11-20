@@ -198,6 +198,8 @@ if ($LASTEXITCODE) { throw 'Local verification failed' }
 
 输出为 receipt、完整 manifest、哈希命名分卷。检查 `manifest.files`、全部必需 EXE/DLL/资源、排除原因、逻辑总量/新增上传量、退役/迁移。`previous` 是同变体完整历史；`reuse` 仅复用内容，不能替代历史。遗漏旧文件必须明确 `delete` 或 `unmanage`；迁移只改支持的配置字段，不覆盖账号、地址和自定义端口。已有资源引用旧 tag 时不能删除旧 Release。
 
+完整整合包（starter/7z）的打包契约：压缩包根目录直接是游戏目录，不能带 `.tmp/...` staging 前缀；必须内置 `.dflegacy/v4/installed.json`、`.dflegacy/bootstrap/recovery.ini` 和 Updater 恢复副本（receipt 结构参考 `tools/release/chapter_package.create_starter`），否则新解压目录首次启动会被判为未受管并失败。完整包的正式外层入口是根目录 `DFOLauncher.exe`，它启动 `client\DFLegacy.Launcher.exe` 后退出；该文件不在 V4 清单内，更新不会生成或删除。v1.0.17 初次整包即因缺少这些状态而首启失败，见 [决策记录](../../knowledge/decisions/2026-11-20-v1.0.17-full-package-startup-fix.md)。
+
 远端发布前，取得本次目标仓库/标签/渠道的明确授权；只在此前未授权时请求确认，不重复请求已获授权的同一动作。先完成可审查的四变体产物和本地验证，再执行 [V4 分组发布入口](../../CLIENT_UPDATES_V4.md#发布门槛与匿名验证)：同 tag 的 x86/x64 × normal/test 一次提交，`--target-commitish` 是公开仓库已经存在的目标提交，**不是**私有构建 SHA 的别名。专用 Token 只从进程环境读取，不写请求、日志、URL 或包内。
 
 发布顺序是先上传/验证内容资源，再上传清单；支持草稿的平台最后公开。脚本拒绝改写既存 Release，失败后保留现场、审查并一般选择新 tag，不能擅自删除重发。发布后对每个 bundle 执行 `verify --remote`，它匿名回读资源；本地 verify 不证明公开用户能下载。旧 V3 桥接由原 `github_publish.py` 路径维护，不能假定 V4 自动为所有旧客户端建立桥接。

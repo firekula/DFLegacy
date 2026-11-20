@@ -412,3 +412,8 @@ knowledge/decisions/2026-11-18-sinda-reinforced-katana.md	辛达出售 +10 破�
 knowledge/decisions/2026-11-18-quest-drop-rate-gm.md	GM 后台任务道具爆率调整（2026-11-18）
 knowledge/decisions/2026-11-18-debug-teleport-panel.md	调试客户端传送/无敌面板（2026-11-18 计划与交接）
 knowledge/decisions/2026-11-18-megaphone-avatar-jar-quickstore.md	喇叭/装扮销毁/袖珍罐负重/仓库数量弹窗（2026-11-18）
+docs/releases/v1.0.17.md	第二章 v1.0.17
+docs/reports/2026-11-19-v1.0.17-full-package.md	第二章 v1.0.17 full-starter 最新完整包
+docs/reports/2026-11-20-v1.0.17-inplace-update-verification.md	第二章 v1.0.17 原地自动更新验收（1.0.16 → 1.0.17）
+docs/reports/v1.0.17-upload-commands.md	v1.0.17 上传命令（未执行）
+knowledge/decisions/2026-11-20-v1.0.17-full-package-startup-fix.md	v1.0.17 整合包首次启动失败与 r2 修复

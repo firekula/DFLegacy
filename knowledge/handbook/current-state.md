@@ -1,13 +1,13 @@
 # 当前基线与历史边界
 
-用途：开始任务时判断应该相信哪一份记录。核对日期：2026-11-19，源码基线为 v1.0.14 发布准备提交（以 `git log -1` 为准；本轮从 `8f44988` 继续）。这是本地源码身份，不代表远端仓库或线上进程的即时状态。
+用途：开始任务时判断应该相信哪一份记录。核对日期：2026-11-21，第二章发布基线为 v1.0.17（源码分支 `codex/chapter-two-full-starter-upgrade` 提交 `ff81308`；主线文档提交以 `git log -1` 为准）。这是本地源码身份，不代表远端仓库或线上进程的即时状态。
 
 ## 两条产品线
 
 | 范围 | 可核对依据 | 接手含义 |
 | --- | --- | --- |
 | 第一章 ACT1 | 根 README/CHANGELOG 的 v0.1.x 记录、[v0.1.11](../../docs/releases/v0.1.11.md) | 保留独立客户端和原生补丁链；不要用第二章二进制验收第一章 |
-| 第二章 Chapter Two | [LauncherVersion.txt](../../src/DFLegacy.Launcher/LauncherVersion.txt) 当前为 `1.0.14`；[v1.0.14](../../docs/releases/v1.0.14.md) | 原生启动入口、托管登录器、更新器统一版本；使用第二章专用启动/制包流程 |
+| 第二章 Chapter Two | 已发布 v1.0.17（分支 `ff81308`，[v1.0.17](../../docs/releases/v1.0.17.md)）；主线 `LauncherVersion.txt` 仍为 `1.0.14` | 原生启动入口、托管登录器、更新器统一版本；使用第二章专用启动/制包流程；完整包默认入口为 `DFOLauncher.exe` |
 | 共用服务端与工具 | 当前 `src`、`tests`、`tools` 实现 | 共用实现仍可能按章别选择不同规则；改动需要审视两边影响 |
 
 根 [README](../../README.md)、[STATUS](../../STATUS.md)、[10月30日交接](../../HANDOFF-2026-10-30.md) 有大量历史说明，其正文顶部日期不等于全仓库最新状态。阅读某个结论时核对章别、日期、提交、实际产物和本次任务。
@@ -41,6 +41,20 @@
 0–1000，100 为 PVF 原值，持久化在数据目录 `settings/quest-drop.json`）；只影响任务道具，不影响
 普通掉落。见 [决策记录](../decisions/2026-11-18-quest-drop-rate-gm.md)。它随下一次服务端构建发布，
 本轮未发布镜像。
+
+## 本轮 v1.0.17 发布与 r3 整包（2026-11-21）
+
+- v1.0.17 已发布：GitHub/GitCode 各 15 个资产，清单 sequence 28（`e4da14c2…`）；镜像
+  `ghcr.io/firekula/dflegacy-chapter-two:v1.0.17`（index `sha256:229653ea…`）。
+- 1.0.16 → 1.0.17 原地自动更新实测通过：5 个文件、314,978,221 字节，787/787 哈希一致；
+  固定入口仍为 `8cfbeb4c…`。见 [验收报告](../../docs/reports/2026-11-20-v1.0.17-inplace-update-verification.md)。
+- 1.0.15 及更旧不能原地升级：入口 `94441d8d…` 不等于清单要求的 `8cfbeb4c…`，手动检查也会按设计跳过；必须用完整包整目录替换。
+- 首次发布的 7z 缺少 `.dflegacy` 安装记录，干净目录首启失败；r2 修复，r3 同步包内 README
+  并把根目录 `DFOLauncher.exe` 设为正式默认入口。r3 包 SHA-256 `7423f6b7…`，
+  1,039,893,076 B。见 [修复记录](../decisions/2026-11-20-v1.0.17-full-package-startup-fix.md)、
+  [v1.0.17 说明](../../docs/releases/v1.0.17.md)。
+- r3 干净目录实测：双击 `DFOLauncher.exe` → `Verified updater completed.` → App 1.0.17
+  登录窗口；787 个受管文件校验通过。
 
 ## 本轮 v1.0.14 发布准备（2026-11-19）
 
