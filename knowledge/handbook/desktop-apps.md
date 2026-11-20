@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | `DFLegacy.Launcher` | .NET 10 Windows/WPF；[App.xaml.cs](../../src/DFLegacy.Launcher/App.xaml.cs) 的 `OnStartup` | 登录、账号窗口、服务选择、配置、启动游戏、更新 UI、生命周期协调 |
 | `DFLegacy.Launcher.exe` 固定入口 | 原生 C++；[Startup/main.cpp](../../src/DFLegacy.Startup/main.cpp) | 校验或恢复启动组件，再打开托管登录器；发行包中不能与直接构建的同名托管 exe 混淆 |
+| `DFOLauncher.exe` 外层入口 | 旧外层启动器，本仓库无源码；第二章完整包根目录附带（v1.0.15） | 完整包的正式默认双击入口；只启动 `client\DFLegacy.Launcher.exe` 后退出，不参与校验/更新；不在 V4 清单内，更新不会生成或删除 |
 | `DFLegacy.Launcher.App.exe` | 从 Launcher 项目发布的托管 UI 角色 | 由固定入口带验证参数启动，持有 App 锁并确认 ready |
 | `DFLegacy.Updater.exe` | Launcher 项目的更新器角色，不是另一个独立 csproj | 修复/V4 安装/恢复入口；同一份启动分派代码按参数、进程角色走不同分支 |
 | `DFLegacy.AccountClient` | .NET 库；[AccountServiceClient.cs](../../src/DFLegacy.AccountClient/AccountServiceClient.cs) | 账号 HTTP API 客户端和 DTO，不负责游戏 socket 登录 |
