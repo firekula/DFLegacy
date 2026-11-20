@@ -67,6 +67,62 @@ public static class EquipmentReinforcementPlanner
         }
 
         var previousLevel = (byte)(target.State & EquipmentReinforcementCatalog.MaximumLevel);
+        if (mainInventory.TryGetValue(materialSlot, out var ticket)
+            && TryGetReinforcementTicketLevel(ticket.ItemId, out var ticketLevel))
+        {
+            if (ticket.CountOrValue == 0)
+            {
+                failure = EquipmentReinforcementFailure.InsufficientMaterial;
+                return false;
+            }
+
+            var remainingTickets = ticket.CountOrValue - 1;
+            var ticketMain = mainInventory.ToDictionary(pair => pair.Key, pair => pair.Value);
+            var ticketEquipment = equipment.ToDictionary(pair => pair.Key, pair => pair.Value);
+            if (remainingTickets == 0)
+            {
+                ticketMain.Remove(materialSlot);
+            }
+            else
+            {
+                ticketMain[materialSlot] = ticket with
+                {
+                    CountOrValue = remainingTickets
+                };
+            }
+
+            var ticketTargetSpace = targetListType == 3 ? ticketEquipment : ticketMain;
+            ticketTargetSpace[targetSlot] = target with
+            {
+                State = (byte)((target.State & ~EquipmentReinforcementCatalog.MaximumLevel)
+                    | ticketLevel)
+            };
+            plan = new EquipmentReinforcementPlan(
+                ticketMain,
+                ticketEquipment,
+                currentGold,
+                targetSlot,
+                targetListType,
+                target.ItemId,
+                materialSlot,
+                remainingTickets,
+                previousLevel,
+                ticketLevel,
+                0,
+                Failed: false,
+                Destroyed: false,
+                FailureRoll: 0,
+                new EquipmentReinforcementCost(
+                    ticket.ItemId,
+                    1,
+                    0,
+                    0,
+                    0,
+                    ticketLevel));
+            failure = EquipmentReinforcementFailure.None;
+            return true;
+        }
+
         if (!reinforcementCatalog.TryGetCost(
                 previousLevel,
                 definition,
@@ -168,6 +224,20 @@ public static class EquipmentReinforcementPlanner
             cost);
         failure = EquipmentReinforcementFailure.None;
         return true;
+    }
+
+    private static bool TryGetReinforcementTicketLevel(
+        ushort itemId,
+        out byte level)
+    {
+        level = itemId switch
+        {
+            7_273 => 7,
+            7_274 => 10,
+            7_275 => 12,
+            _ => 0
+        };
+        return level != 0;
     }
 
     private static bool TryResolveTarget(

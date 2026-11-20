@@ -32,7 +32,7 @@ internal static class LaunchFlow
             await Diagnostics.AutomaticDiagnostics.FinishChapterTwoAsync();
             return;
         }
-        ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
+        ClientFileIdentity.RequireSameDirectory(DFLegacy.UpdateCore.ClientLayout.GameRoot,Path.GetDirectoryName(clientPath)!);
         using var installationLease=DFLegacy.UpdateCore.InstallationLease.Acquire(Path.GetDirectoryName(clientPath)!);
         var manifest = await Task.Run(()=>ClientPackageManifest.LoadAndValidate(Path.GetDirectoryName(clientPath)!),cancellationToken);
         ClientBootstrapInspector.ValidateForLaunch(clientPath);

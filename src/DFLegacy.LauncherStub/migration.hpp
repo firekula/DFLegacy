@@ -20,4 +20,6 @@ enum class Recovery { None, Completed, RolledBack, Failed };
 MigrationResult Migrate(const std::filesystem::path& root, MigrationObserver& observer);
 Recovery RecoverIfInterrupted(const std::filesystem::path& root, std::wstring& error);
 MigrationResult RestoreWithoutJournal(const std::filesystem::path& root, MigrationObserver& observer);
+// Moves game files out of client\ for installations made by the previous single-launcher package.
+MigrationResult LiftGameFiles(const std::filesystem::path& root, MigrationObserver& observer);
 }

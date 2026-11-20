@@ -10,7 +10,7 @@ internal static class ClientBootstrapLauncher
     internal static Task<Process> StartAsync(string clientPath,string launcherData,ClientPackageManifest manifest,CancellationToken cancellationToken,string? paymentUrl=null)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory,Path.GetDirectoryName(clientPath)!);
+        ClientFileIdentity.RequireSameDirectory(DFLegacy.UpdateCore.ClientLayout.GameRoot,Path.GetDirectoryName(clientPath)!);
         ClientFileIdentity.RequireSameDirectory(manifest.DirectoryPath,Path.GetDirectoryName(clientPath)!);
         var helper=StandaloneClientInstaller.EnsureHelper(manifest.DirectoryPath);
         return StartCoreAsync(clientPath,launcherData,manifest,cancellationToken,helper,TimeSpan.FromSeconds(25),verifyEmbedded:true,paymentUrl:paymentUrl);

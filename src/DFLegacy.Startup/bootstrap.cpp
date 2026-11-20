@@ -130,8 +130,12 @@ void Verify(const Handle& file, const std::string& expected) {
     DWORD signature = 0; ReadExact(file, &signature, sizeof(signature));
     IMAGE_FILE_HEADER header{}; ReadExact(file, &header, sizeof(header));
     WORD magic = 0; ReadExact(file, &magic, sizeof(magic));
-    Check(signature == IMAGE_NT_SIGNATURE && header.Machine == (sizeof(void*) == 8 ? IMAGE_FILE_MACHINE_AMD64 : IMAGE_FILE_MACHINE_I386) &&
-        magic == (sizeof(void*) == 8 ? IMAGE_NT_OPTIONAL_HDR64_MAGIC : IMAGE_NT_OPTIONAL_HDR32_MAGIC) &&
+    // The entry is x86 but the verified updater/app pair may be x64; accept both
+    // architectures and only require a matching optional-header magic.
+    const auto x64Image = header.Machine == IMAGE_FILE_MACHINE_AMD64;
+    const auto x86Image = header.Machine == IMAGE_FILE_MACHINE_I386;
+    Check(signature == IMAGE_NT_SIGNATURE && (x64Image || x86Image) &&
+        magic == (x64Image ? IMAGE_NT_OPTIONAL_HDR64_MAGIC : IMAGE_NT_OPTIONAL_HDR32_MAGIC) &&
         (header.Characteristics & IMAGE_FILE_EXECUTABLE_IMAGE) && !(header.Characteristics & IMAGE_FILE_DLL));
 }
 Descriptor ReadDescriptor(const fs::path& path) {
@@ -230,12 +234,20 @@ std::optional<Candidate> Primary(const fs::path& root) {
     } catch (const Failure&) { return std::nullopt; }
 }
 std::optional<Candidate> Recovery(const fs::path& state) {
-    try {
-        auto descriptor = ReadDescriptor(state / L"recovery.ini");
-        auto path = state / (descriptor.updaterSha256 + ".exe");
-        auto file = ReadFileHandle(path); Verify(file, descriptor.updaterSha256);
-        return Candidate{std::move(descriptor), std::move(path)};
-    } catch (const Failure&) { return std::nullopt; }
+    std::optional<Descriptor> descriptor;
+    try { descriptor = ReadDescriptor(state / L"recovery.ini"); }
+    catch (const Failure& failure) {
+        Log(state, (std::string("Recovery: invalid recovery.ini: ") + failure.what() + "\r\n").c_str());
+        return std::nullopt;
+    }
+    if (!descriptor) { Log(state, "Recovery: recovery.ini rejected by ParseDescriptor.\r\n"); return std::nullopt; }
+    const auto path = state / (descriptor->updaterSha256 + ".exe");
+    try { auto file = ReadFileHandle(path); Verify(file, descriptor->updaterSha256); }
+    catch (const Failure& failure) {
+        Log(state, (std::string("Recovery: updater cache rejected: ") + failure.what() + "\r\n").c_str());
+        return std::nullopt;
+    }
+    return Candidate{std::move(*descriptor), path};
 }
 class TemporaryUpdater {
     Directories parent_, owned_;
@@ -398,6 +410,8 @@ std::optional<Descriptor> ParseDescriptor(std::string_view bytes, std::string_vi
         if (end == std::string_view::npos) break;
         bytes.remove_prefix(end + 1);
     }
+    // A trailing newline after the final value produces one empty terminator line.
+    if (!lines.empty() && lines.back().empty()) lines.pop_back();
     if (lines.size() != 5 || lines[0] != "[Bootstrap]") return std::nullopt;
     std::map<std::string_view, std::string_view> keys;
     for (size_t i = 1; i < lines.size(); ++i) {
@@ -433,11 +447,93 @@ bool SuppressDialogs(const std::vector<std::wstring>& arguments) {
     }
     return false;
 }
+static bool IsFlatLayout(const fs::path& root) {
+    std::error_code ignore;
+    // A client\ managed entry (DFLegacy.Launcher.exe next to the App) is not a flat
+    // installation even though the stub itself lives one level above it.
+    if (!fs::is_regular_file(root / L"DFLegacy.Launcher.App.exe", ignore)) return false;
+    if (fs::is_directory(root / L"client", ignore)) return false;
+    // A directory named client already is the managed client root.
+    if (root.filename() == L"client" || root.parent_path().filename() == L"client") return false;
+    return true;
+}
+
 Result Run(const fs::path& input, const std::vector<std::wstring>& arguments) {
     try {
         const auto root = Absolute(input); Directories directories; directories.Tree(root);
         const auto state = root / L".dflegacy/bootstrap";
         directories.Create(root / L".dflegacy"); directories.Create(state);
+        // Migrate a flat installation before any validation/repair so the old layout
+        // never reaches the updater and the launcher stub owns the next start.
+        if (IsFlatLayout(root)) {
+            Log(state, "Launcher layout migration: starting.\r\n");
+            const auto client = root / L"client";
+            std::error_code ignore;
+            if (fs::exists(client, ignore)) throw std::runtime_error("client directory already exists");
+            fs::create_directories(client, ignore);
+            const auto launcher = [](const std::wstring& name) {
+                return name == L"DFLegacy.Launcher.exe" || name == L"DFLegacy.Launcher.App.exe"
+                    || name == L"DFLegacy.Updater.exe" || name == L"DFLegacy.Diagnostics.exe"
+                    || name == L"DFLegacy.CrashCapture.exe" || name == L"DFLegacy.Bootstrap.ini"
+                    || name == L"DFLegacy.Chapter.json";
+            };
+            std::vector<std::wstring> moved;
+            try {
+                for (const auto& entry : fs::directory_iterator(root)) {
+                    const auto name = entry.path().filename().wstring();
+                    if (name == L"client" || name == L"DFOLauncher.exe" || name == L".dflegacy") continue;
+                    // Game executables, DLLs, data packs and configuration stay in the root.
+                    if (!launcher(name)) continue;
+                    fs::rename(entry.path(), client / name);
+                    moved.push_back(name);
+                }
+                // Move the launcher state; the live lock directory stays in the root.
+                const auto oldState = root / L".dflegacy";
+                const auto newState = client / L".dflegacy";
+                fs::create_directories(newState / L"bootstrap", ignore);
+                for (const auto& child : fs::directory_iterator(oldState)) {
+                    const auto childName = child.path().filename().wstring();
+                    if (childName == L"bootstrap") continue;
+                    fs::rename(child.path(), newState / childName);
+                }
+                for (const auto& file : fs::directory_iterator(oldState / L"bootstrap")) {
+                    const auto childName = file.path().filename().wstring();
+                    if (childName == L"entry.lock" || childName == L"app.lock") continue;
+                    fs::copy_file(file.path(), newState / L"bootstrap" / childName,
+                        fs::copy_options::overwrite_existing, ignore);
+                }
+            }
+            catch (...) {
+                for (const auto& name : moved) {
+                    std::error_code rollback; fs::rename(client / name, root / name, rollback);
+                }
+                std::error_code cleanup; fs::remove_all(client, cleanup);
+                throw;
+            }
+            Log(state, "Launcher layout migration: client directory ready.\r\n");
+            { auto app = ReadFileHandle(root / L"client" / L"DFLegacy.Launcher.App.exe");
+              auto updater = ReadFileHandle(root / L"client" / L"DFLegacy.Updater.exe");
+              const Descriptor descriptor{Architecture(), Hash(app), Hash(updater)};
+              const auto bootstrap = root / L"client" / L".dflegacy" / L"bootstrap";
+              CommitRecovery(bootstrap, descriptor);
+              { const auto text = Encode(descriptor);
+                Handle ini(CreateFileW((root / L"client" / L"DFLegacy.Bootstrap.ini").c_str(), GENERIC_WRITE, 0, nullptr,
+                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+                Check(static_cast<bool>(ini));
+                WriteExact(ini, text.data(), static_cast<DWORD>(text.size()));
+                Check(FlushFileBuffers(ini.get()) != FALSE); }
+              std::error_code copyIgnore;
+              const auto copy = bootstrap / (std::wstring(descriptor.updaterSha256.begin(),
+                  descriptor.updaterSha256.end()) + L".exe");
+              fs::copy_file(root / L"client" / L"DFLegacy.Updater.exe", copy,
+                  fs::copy_options::overwrite_existing, copyIgnore); }
+            STARTUPINFO si{sizeof(si)}; PROCESS_INFORMATION pi{};
+            std::wstring command = QuoteArgument((root / L"DFOLauncher.exe").wstring());
+            if (CreateProcessW(nullptr, command.data(), nullptr, nullptr, FALSE, 0, nullptr, root.c_str(), &si, &pi)) {
+                CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
+            }
+            return {0, false, {}};
+        }
         bool busy = false; auto entryLock = Lock(state / L"entry.lock", busy);
         if (busy) return {0, true, {}};
         { auto appLock = Lock(state / L"app.lock", busy); if (busy) return {0, true, {}}; }

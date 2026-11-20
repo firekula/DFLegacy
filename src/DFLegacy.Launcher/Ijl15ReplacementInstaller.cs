@@ -10,7 +10,7 @@ internal static class Ijl15ReplacementInstaller
 
     internal static BundledIjl15 ValidateBundledReplacement()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, ReplacementFileName);
+        var path = Path.Combine(DFLegacy.UpdateCore.ClientLayout.GameRoot, ReplacementFileName);
         if (!File.Exists(path))
         {
             throw new FileNotFoundException(
@@ -135,7 +135,7 @@ internal static class Ijl15ReplacementInstaller
     {
         var targetPath = Path.Combine(clientDirectory, ConfigFileName);
         if (File.Exists(targetPath)) return;
-        var bundledPath = Path.Combine(AppContext.BaseDirectory, ConfigFileName);
+        var bundledPath = Path.Combine(DFLegacy.UpdateCore.ClientLayout.GameRoot, ConfigFileName);
         if (!File.Exists(bundledPath))
         {
             using var defaults = typeof(Ijl15ReplacementInstaller).Assembly.GetManifestResourceStream("DFLegacy.Launcher.DefaultConfig.ini")

@@ -37,7 +37,8 @@ public sealed class ChapterTwoReleaseProvider : IReleaseProvider
     public static bool IsStartupMigrationTarget(ClientManifest manifest) =>
         manifest is { Channel: "chapter-two", Version: "v1.0.12", Sequence: 18, MinimumSequence: 17 }
             or { Channel: "chapter-two", Version: "v1.0.13-r2", Sequence: 21, MinimumSequence: 17 }
-            or { Channel: "chapter-two", Version: "v1.0.14", Sequence: 23, MinimumSequence: 17 };
+            or { Channel: "chapter-two", Version: "v1.0.14", Sequence: 23, MinimumSequence: 17 }
+            or { Channel: "chapter-two", Version: "v1.0.15", Sequence: 25, MinimumSequence: 17 };
 
     public async Task<VerifiedRelease?> FindAsync(CancellationToken token = default)
     {

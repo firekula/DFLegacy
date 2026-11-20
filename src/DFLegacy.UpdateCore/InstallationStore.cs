@@ -42,7 +42,10 @@ public sealed class InstallationStore
         try
         {
             var validated = ReadJson<ValidationReceipt>(ValidationPath, MaximumReceiptBytes);
-            return validated.Schema == 1 && string.Equals(validated.Root, Root, StringComparison.OrdinalIgnoreCase)
+            // The recorded root is diagnostic only. Moving or renaming an installation keeps every
+            // managed file identity, and no other installation can match the receipt hash plus the
+            // size/timestamps of all critical files. Do not force a full re-hash for a new path.
+            return validated.Schema == 1
                 && validated.ReceiptSha256 == ReceiptHash() && validated.Files != null && validated.Files.SequenceEqual(CriticalFiles(receipt));
         }
         catch (Exception ex) when (ex is InvalidDataException or FileNotFoundException or DirectoryNotFoundException) { return false; }

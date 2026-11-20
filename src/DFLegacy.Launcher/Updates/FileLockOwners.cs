@@ -6,6 +6,8 @@ using System.Text;
 namespace DFLegacy.Launcher.Updates;
 
 internal sealed record FileLockOwner(int ProcessId,long StartFileTime,string Name,bool CanTerminate);
+// Restart Manager is best effort. When it cannot identify the holders we must never guess.
+internal sealed class ClientFilesOccupiedException(string message,Exception inner):IOException(message,inner);
 internal static class FileLockOwners
 {
     internal static IReadOnlyList<string> FindUnreadableFiles(IEnumerable<string> paths, CancellationToken token)

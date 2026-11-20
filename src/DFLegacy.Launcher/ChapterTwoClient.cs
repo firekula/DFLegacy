@@ -118,7 +118,7 @@ internal static class ChapterTwoClient
     internal static void ValidateSource(string clientPath)
     {
         var root = Path.GetDirectoryName(clientPath)!;
-        ClientFileIdentity.RequireSameDirectory(AppContext.BaseDirectory, root);
+        ClientFileIdentity.RequireSameDirectory(DFLegacy.UpdateCore.ClientLayout.GameRoot, root);
         VerifyFile(clientPath, "4E59EE7346D92DC3E3374E171269CBC4EE4E97807013B18306EAD160829AB7E6");
         var pvf = Path.Combine(root, "Script.pvf");
         if (!ClientLogPaths.HasLink(pvf) && File.Exists(pvf))
@@ -137,7 +137,8 @@ internal static class ChapterTwoClient
             "06734F9C5B23CF3BCE364890403AE1661311447CA8ADEBD1B79FCFD8E00FAB9B",
             "D0B4AC799896398BFD97A5CFCF12E8BE0A603A44A965FD5478AB8C43A99B8C9B",
             "1818F80E8DA4DC4BEF919121BBE429C5F3F7067062EDA9CB230B8A6CD2282C00",
-            "22FA7529C28225A274ECC12FFBCD704D770FFE85BC844E8D9423F2795A1E2072");
+            "22FA7529C28225A274ECC12FFBCD704D770FFE85BC844E8D9423F2795A1E2072",
+            "1C7F01DA1AAF982760EA3908FA403AEFD088E6B7116C0CA5DDCE7F33E77EA84D");
         var images = Path.Combine(root, "ImagePacks2");
         if (!Directory.Exists(images) || ClientLogPaths.HasLink(images))
             throw new InvalidDataException("请将第二章启动器放在原版 DNFS1C2 客户端目录，与 DNF.exe 和 ImagePacks2 同层。");

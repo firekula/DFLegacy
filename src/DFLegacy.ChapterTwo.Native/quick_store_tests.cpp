@@ -139,8 +139,8 @@ void Exercise(){
  Reset();Right();Check(Opened==1&&Used==0&&Sent==0&&F<unsigned>(Quantity.data(),0x48)==999,"plain right-click opens native maximum-count dialog");
 #ifndef CHAPTER_TWO_QUICK_STORE_BASELINE
  Call(0x936c8d,Quantity.data());Check(Confirmed==1&&Sent==1&&Used==0,"unchanged quantity confirmation deposits");
- Reset();F<unsigned>(Item.data(),0xb4)=1;Right();Check(Opened==1&&Sent==0&&Used==0&&F<unsigned>(Quantity.data(),0x48)==1,"plain single item opens quantity one");
- Reset();NativeStackable=false;F<unsigned>(Item.data(),0xb4)=1;Right();Check(Opened==1&&Sent==0&&Used==0,"plain equipment opens quantity one");Check(F<unsigned char>(QuantityFrame.data(),0x10)==1,"equipment native classifier allowed only owned quantity open");Call(0x936c8d,Quantity.data());Check(Sent==1,"equipment quantity confirmation moves native count one");
+ Reset();F<unsigned>(Item.data(),0xb4)=1;Right();Check(Opened==0&&Sent==1&&Used==0&&Command==19,"plain single item deposits directly without quantity prompt");
+ Reset();NativeStackable=false;F<unsigned>(Item.data(),0xb4)=1;Right();Check(Opened==0&&Sent==1&&Used==0,"plain equipment deposits directly without quantity prompt");
  Reset();Shift=true;NativeStackable=false;F<unsigned>(Item.data(),0xb4)=1;Right();Check(Opened==0&&Sent==1&&Used==0,"Shift equipment deposits directly");
  Reset();At<int>(0xdfa77c)=4;Right();Check(Used==0&&Sent==0&&Opened==0,"busy open warehouse consumes right-click without use");
  Reset();Shift=true;WeightRejected=true;Right();Check(Used==0&&Sent==0,"native weight rejection does not use item");
@@ -175,7 +175,7 @@ void Exercise(){
  Reset();Shift=true;WeightRejected=true;Call(0x902367,Storage.data());Check(Sent==0&&Used==0,"direct withdrawal retains native bag-weight rejection");
  Reset();At<unsigned>(0xd4dfc0)=124;Call(0x902367,Storage.data());Check(Sent==0&&Opened==0,"warehouse hover and other-window right-click do not transfer");
  Reset();F<int>(Storage.data(),0x48)=77;Call(0x902367,Storage.data());Check(Sent==0&&Opened==0,"scrolled slot outside unlocked capacity does not transfer");
- Reset();NativeStackable=false;F<unsigned>(Item.data(),0xb4)=1;Check(!Classifier(Quantity.data(),Item.data()),"unowned equipment quantity retains original classification");Call(0x902367,Storage.data());Check(Opened==1&&F<unsigned char>(QuantityFrame.data(),0x10)==1&&F<unsigned>(Quantity.data(),0x48)==1,"warehouse equipment opens quantity one");Call(0x936c8d,Quantity.data());Check(Sent==1,"warehouse equipment quantity confirms one");
+ Reset();NativeStackable=false;F<unsigned>(Item.data(),0xb4)=1;Check(!Classifier(Quantity.data(),Item.data()),"unowned equipment quantity retains original classification");Call(0x902367,Storage.data());Check(Opened==0&&Sent==1,"warehouse single equipment withdraws directly");
  Reset();Right();CheckAbi(0x935cb0,Quantity.data(),false);Check(Closed==1,"close detour replays original six-byte prologue");
 #endif
 }

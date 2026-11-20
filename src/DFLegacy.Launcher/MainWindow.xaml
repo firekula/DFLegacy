@@ -76,7 +76,7 @@
       <c:PixelText x:Name="PasswordHint" Canvas.Left="239" Canvas.Top="392" Width="154" Height="17" Text="请输入密码" Foreground="{StaticResource ClassicSecondary}" OutlineThickness="0" TextWrapping="NoWrap" IsHitTestVisible="False"/>
       <CheckBox x:Name="AgreeBox" Canvas.Left="232" Canvas.Top="414" IsChecked="True" Style="{StaticResource LoginAgree}" AutomationProperties.Name="同意服务条款"/>
       <Border Canvas.Left="247" Canvas.Top="411" Width="138" Height="18" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="TermsLink_Click"/>
-      <c:PixelText Canvas.Left="124" Canvas.Top="444" Width="345" Height="15" Text="抵制不良游戏，拒绝盗版游戏。注意自我保护。" FontSize="11" Foreground="#B2925D" OutlineThickness="0" TextWrapping="NoWrap"/>
+      <c:PixelText Canvas.Left="124" Canvas.Top="444" Width="345" Height="15" Text="抵制不良游戏，拒绝盗版游戏。注意自我保护。" FontSize="12" Foreground="#B2925D" OutlineThickness="1" TextWrapping="NoWrap"/>
       <c:PixelText x:Name="LauncherVersionText" Canvas.Left="473" Canvas.Top="442" Width="73" Height="18"
                    FontSize="12" Foreground="{StaticResource ClassicGold}" TextAlignment="Right"
                    TextWrapping="NoWrap" IsHitTestVisible="False"/>

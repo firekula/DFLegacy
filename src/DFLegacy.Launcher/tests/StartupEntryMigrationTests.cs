@@ -28,6 +28,9 @@ internal static class StartupEntryMigrationTests
     internal static int ProbeV1014(string bridgePath, string targetPath) =>
         ProbeCore(bridgePath, targetPath, "v1.0.14-bridge", 22, "v1.0.14", 23);
 
+    internal static int ProbeV1015(string bridgePath, string targetPath) =>
+        ProbeCore(bridgePath, targetPath, "v1.0.14-bridge", 24, "v1.0.15", 25);
+
     private static int ProbeCore(string bridgePath, string targetPath, string bridgeTag, long bridgeSequence,
         string targetTag, long targetSequence)
     {
@@ -164,6 +167,22 @@ internal static class StartupEntryMigrationTests
         var receiptV14 = storeV14.ReadInstalled()!;
         check(receiptV14.Release.ManifestSha256 == finalV14.Release.ManifestSha256 && storeV14.HasValidatedReceipt(receiptV14)
             && !Core.InstallTransaction.HasPending(completedV14), "the v1.0.14 entry and receipt commit atomically");
+
+        var v15Root = Path.Combine(scratch, "entry-policy-v1015");
+        var (bridgeV15, stagedV15) = Fixture(v15Root, "v1.0.14-bridge", 24, 17, "v1.0.15", 25, 17);
+        check(Core.ChapterTwoReleaseProvider.IsStartupMigrationTarget(stagedV15.Release.Manifest),
+            "the v1.0.15 target is the approved startup migration shape");
+        check(StartupEntryMigration.IsAuthorized(bridgeV15, stagedV15.Release),
+            "the v1.0.14-bridge/24 and v1.0.15/25 pair permit one entry replacement");
+        check(!StartupEntryMigration.IsAuthorized(bridgeV15, stagedV14.Release)
+            && !StartupEntryMigration.IsAuthorized(bridgeV14, stagedV15.Release),
+            "the v1.0.15 pair cannot cross generations");
+        using (var session = new V4UpdateSession(v15Root, new LauncherOptions(), new FixtureProvider(stagedV15.Release)))
+        {
+            var update = await session.CheckAsync(24, CancellationToken.None);
+            check(update?.Version == "v1.0.15" && session.RequiresDetachedInstall,
+                "V4 gives the paired v1.0.15 update to the detached helper");
+        }
 
         var originalEntry = File.ReadAllBytes(Path.Combine(root, BootstrapLayout.EntryName));
         File.WriteAllText(Path.Combine(root, "Script.pvf"), "edited PVF");

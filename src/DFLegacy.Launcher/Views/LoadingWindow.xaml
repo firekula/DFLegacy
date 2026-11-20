@@ -1,0 +1,14 @@
+<Window x:Class="DFLegacy.Launcher.Views.LoadingWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="载入中" Width="233" Height="108" WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+ Background="Transparent" ShowInTaskbar="False" WindowStartupLocation="CenterScreen"
+ UseLayoutRounding="True" SnapsToDevicePixels="True">
+ <Canvas Width="233" Height="108">
+  <!-- 原版 DNFchina.exe CProgressDlg 面板（RT_BITMAP 8168，233×108，洋红键已抠透明）。 -->
+  <Image Width="233" Height="108" Source="../Assets/Skin/classic-loading-panel.png" IsHitTestVisible="False"/>
+  <!-- 原版进度控件矩形 (18,72)-(216,81)：198×9，填充为 2×8 绿色渐变（RT_BITMAP 8169）。 -->
+  <Border x:Name="LoadingProgress" Canvas.Left="18" Canvas.Top="72" Height="9" Width="0" IsHitTestVisible="False">
+   <Border.Background><ImageBrush ImageSource="../Assets/Skin/classic-loading-progress.png" Stretch="Fill"/></Border.Background>
+  </Border>
+ </Canvas>
+</Window>

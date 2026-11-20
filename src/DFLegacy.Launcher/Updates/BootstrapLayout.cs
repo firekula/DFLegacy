@@ -45,12 +45,16 @@ internal static class BootstrapLayout
         }
         if(manifest.Architecture!=Architecture)throw new InvalidDataException("自动修复启动组件架构不匹配。");
     }
-    internal static void RequireStableEntry(string root,Core.ClientManifest manifest)
+    internal static bool HasStableEntry(string root,Core.ClientManifest manifest)
     {
         RequireManifest(manifest);
         var entry=manifest.Files.Single(f=>f.Path==EntryName);
-        if(!Core.FileVerifier.MatchesAsync(Core.PathPolicy.Resolve(root,EntryName),entry.Size,entry.Sha256).GetAwaiter().GetResult())
-            throw new InvalidDataException("此更新需要替换正在运行的固定入口。请使用新的完整启动包；当前入口和恢复副本已保留。");
+        return Core.FileVerifier.MatchesAsync(Core.PathPolicy.Resolve(root,EntryName),entry.Size,entry.Sha256).GetAwaiter().GetResult();
+    }
+    internal static void RequireStableEntry(string root,Core.ClientManifest manifest)
+    {
+        if(HasStableEntry(root,manifest))return;
+        throw new InvalidDataException("此更新需要替换正在运行的固定入口。请使用新的完整启动包；当前入口和恢复副本已保留。");
     }
     // This gate only reads completed evidence. It must never create a record or
     // fall back to hashing resources before the repair progress UI is available.
@@ -87,7 +91,7 @@ internal static class BootstrapLayout
         var legacy=Path.Combine(root,".dflegacy","pending.json");Core.PathPolicy.NoLinks(legacy);
         return File.Exists(legacy)||Directory.Exists(legacy)||Core.InstallTransaction.HasPending(root)||Core.ChapterTransition.HasPending(root);
     }
-    internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default)
+    internal static async Task ValidateInstalledAsync(string root,string architecture,CancellationToken token=default,IProgress<Core.UpdateProgress>? progress=null)
     {
         var settings=RepairClient.ReadSettings(new(root));
         // The v0.1.8 updater can install this UI before it knows how to write
@@ -97,7 +101,7 @@ internal static class BootstrapLayout
         var provider=V4UpdateSession.CreateProvider(http,settings.Source);
         using var owned=provider as IDisposable;
         var engine=new Core.UpdateEngine(root,provider);
-        var validation=await engine.ValidateInstalledAsync(token:token).ConfigureAwait(false);
+        var validation=await engine.ValidateInstalledAsync(progress,token).ConfigureAwait(false);
         if(!validation.CanLaunch)throw new InvalidDataException(validation.Message);
         using var lease=Core.InstallationLease.Acquire(root);
         if(HasPending(root))throw new InvalidDataException("存在未完成更新，必须恢复后才能打开登录器。");

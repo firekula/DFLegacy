@@ -71,7 +71,7 @@ LRESULT CALLBACK PromptProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
     case WM_CREATE: {
         const auto* creation = reinterpret_cast<const CREATESTRUCTW*>(lParam);
         const auto button = CreateWindowExW(0, L"BUTTON", L"确认", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            98, 137, 80, 29, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDOK)), creation->hInstance, nullptr);
+            98, 130, 80, 29, window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDOK)), creation->hInstance, nullptr);
         return button ? 0 : -1;
     }
     case WM_COMMAND:
@@ -104,14 +104,20 @@ LRESULT CALLBACK PromptProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             Gdiplus::Graphics graphics(dc);
             graphics.DrawImage(prompt->frame.image, 0, 0, Width, Height);
         } else {
-            Fill(dc, {2, 10, Width - 2, 38}, RGB(88, 26, 8));
+            // Yellow-orange title bar like the original startup prompt.
+            for (int y = 10; y < 38; ++y) {
+                const auto t = (y - 10) / 28.0;
+                Fill(dc, {2, y, Width - 2, y + 1},
+                    RGB(static_cast<int>(210 - 120 * t), static_cast<int>(160 - 100 * t), static_cast<int>(40 - 30 * t)));
+            }
             DrawTextBlock(dc, prompt ? prompt->font : nullptr, {15, 16, 110, 38}, L"提示信息");
         }
         if (prompt) {
             // Give the error text a solid panel so the original texture stays
             // readable around it and Chinese text can wrap without clipping.
-            Fill(dc, {17, 42, 269, 132}, RGB(39, 40, 31));
-            DrawTextBlock(dc, prompt->font, {24, 53, 262, 127}, prompt->message);
+            Fill(dc, {17, 42, 269, 132}, RGB(44, 46, 35));
+            // Original HintMsg.xml layout: message area (7,36,268,91).
+            DrawTextBlock(dc, prompt->font, {7, 36, 268, 91}, prompt->message);
         }
         EndPaint(window, &paint);
         return 0;
@@ -140,7 +146,9 @@ void ShowStartupPrompt(HINSTANCE instance, const wchar_t* message) noexcept {
     RECT work{};
     if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0))
         work = {0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
-    const auto window = CreateWindowExW(WS_EX_DLGMODALFRAME, WindowClass, L"提示信息", WS_POPUP | WS_CLIPCHILDREN,
+    // The prompt paints its own frame: an extra DLGMODALFRAME style shifts the
+    // client area and clips the right/bottom of the skin.
+    const auto window = CreateWindowExW(0, WindowClass, L"提示信息", WS_POPUP | WS_CLIPCHILDREN,
         work.left + (work.right - work.left - Width) / 2,
         work.top + (work.bottom - work.top - Height) / 2, Width, Height,
         nullptr, nullptr, instance, &prompt);

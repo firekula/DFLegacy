@@ -164,6 +164,7 @@ internal static class RepairClient
             return new(true,false,$"已修复并完整校验版本 {final.Version}（{settings.Source.Provider} / {settings.Source.Channel} / {settings.Source.Architecture}）。请手动启动客户端目录中的 DFLegacy.Launcher.exe。");
         }
         catch(OperationCanceledException) { report.Complete("cancelled");throw; }
+        catch(UpdateDeferredException ex) { report.Complete("deferred",ex);throw; }
         catch(Exception ex) { report.Complete("failed",ex);throw; }
     }
 
@@ -174,9 +175,18 @@ internal static class RepairClient
         return (receipt?.Release.Manifest.Files.Select(f=>Core.PathPolicy.Resolve(root,f.Path))??[])
             .Concat(new[]{"DFLegacy.Launcher.exe","DFLegacy.Launcher.App.exe","DFLegacy.Updater.exe","DFLegacy.Client.dll","DNF.exe","Script.pvf","launcher.json","launcher.chapter2.json"}.Select(f=>Path.Combine(root,f)));
     }
-    private static async Task ReleaseLocksAsync(IEnumerable<string> files,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirm,CancellationToken token)
+    internal static async Task ReleaseLocksAsync(IEnumerable<string> files,Func<IReadOnlyList<FileLockOwner>,CancellationToken,Task<bool>>? confirm,CancellationToken token,
+        Func<IReadOnlyList<string>,IReadOnlyList<FileLockOwner>>? find=null)
     {
-        var paths=files.ToArray();var owners=await Task.Run(()=>FileLockOwners.Find(paths),token).ConfigureAwait(false);
+        var paths=files.ToArray();
+        IReadOnlyList<FileLockOwner> owners;
+        try { owners=await Task.Run(()=>(find??FileLockOwners.Find)(paths),token).ConfigureAwait(false); }
+        catch(Exception ex) when(ex is System.ComponentModel.Win32Exception or IOException or InvalidOperationException)
+        {
+            // Restart Manager is best effort. Without it we cannot name the holder, so never guess.
+            throw new ClientFilesOccupiedException(
+                "无法自动识别占用客户端文件的程序。请完全退出游戏（DNF.exe 与 DFLegacy.Launcher）后重试。",ex);
+        }
         if(owners.Count==0)return;
         var names=string.Join("、",owners.Select(o=>$"{o.Name} (PID {o.ProcessId})"));
         Program.WriteLauncherLog("Repair file locks: "+names);
@@ -192,6 +202,8 @@ internal static class RepairClient
         try
         {
             var request=ParseArguments(args);
+            // The repair worker may be a temporary copy; the request names the installation.
+            Core.ClientLayout.Configure(string.IsNullOrEmpty(request.Directory)?AppContext.BaseDirectory:request.Directory);
             if(string.IsNullOrEmpty(request.Directory))
             {
                 if(quiet)throw new ArgumentException("请指定 --repair-client <客户端目录>。");

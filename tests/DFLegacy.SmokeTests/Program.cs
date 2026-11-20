@@ -83,6 +83,17 @@ if (args is ["--chapter-two-avatar-compound", var compoundPvf])
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Length == 0 || args[0] == "--chapter-two-avatar-clone")
+{
+    await ChapterTwoAvatarCloneSmokeTests.RunAsync(Check, args.ElementAtOrDefault(1));
+    if (args.Length > 0)
+    {
+        foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+        Console.WriteLine($"Chapter Two avatar clone smoke: {failures.Count} failures");
+        return failures.Count > 0 ? 1 : 0;
+    }
+}
+
 if (args.Length == 0 || args.Contains("--chapter-two-guild-progression"))
 {
     await ChapterTwoGuildProgressionSmokeTests.RunAsync(Check);

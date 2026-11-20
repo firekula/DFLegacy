@@ -115,7 +115,11 @@ bool Transfer(void* manager,void* warehouse,void* model,void* destination,int sl
  const bool stackable=Virtual<Classify>(item,0x18)(item,1);
  if(stackable){auto* kind=Virtual<Getter>(item,0xa8)(item);if(!kind||Field<int>(kind,0)==7)return true;}
  const auto key=Read<SHORT(WINAPI*)(int)>(0xaea440);
- if(!key||!(key(VK_SHIFT)&0x8000)){
+ const bool shift=key&&(key(VK_SHIFT)&0x8000);
+ // Single items have no count to choose: deposit/withdraw them directly (the same
+ // native move used by Shift+right-click). Only stacks above one open the count
+ // dialog, matching the original game's right-click behavior.
+ if(!shift&&count>1){
   pending.manager=manager;pending.warehouse=warehouse;pending.model=model;pending.destination=destination;
   pending.dialog=dialog;pending.item=item;pending.record=record;pending.vtable=Field<void*>(item,0);
   pending.slot=slot;pending.id=id;pending.count=count;pending.sourceList=withdraw?2:0;pending.destinationList=withdraw?0:2;

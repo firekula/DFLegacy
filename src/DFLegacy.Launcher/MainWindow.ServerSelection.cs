@@ -106,14 +106,12 @@ public partial class MainWindow
             if (!Current()) return;
             ApiDot.Fill = healthy ? Brushes.LimeGreen : Brushes.Gray;
             ApiText.Text = healthy ? "账号服务：可达" : "账号服务：不可达";
-            ApiText.ToolTip = target.ResolveAccountServiceUrl();
-            ServerEndpointText.ToolTip = target.Name + "\n" + target.Endpoint + "\n" + ApiText.Text + "\n" + target.ResolveAccountServiceUrl();
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)
         {
             if (!Current()) return;
-            ServerText.Text = "服务端：不可达"; ServerText.ToolTip = ex.Message;
+            ServerText.Text = "服务端：不可达";
             if (selection is not null) SetSelectedFooter(target, "不可达");
         }
     }
@@ -131,10 +129,8 @@ public partial class MainWindow
         TelecomChoices.RowDefinitions.Clear(); NetcomChoices.RowDefinitions.Clear();
         ServerDot.Fill = ApiDot.Fill = Brushes.Gray;
         ServerText.Text = "服务端：未选择"; ApiText.Text = "账号服务：未选择";
-        ApiText.ToolTip = ServerText.ToolTip = null;
-        SelectedServerText.Text = "请选择服务器"; SelectedServerText.ToolTip = null;
+        SelectedServerText.Text = "请选择服务器";
         ServerEndpointText.Text = "选择服务器后显示入口 TCP 建连耗时。";
-        ServerEndpointText.ToolTip = null;
         ServerSelectionError.Text = ""; ConfirmServerButton.IsEnabled = false;
         try
         {
@@ -147,7 +143,6 @@ public partial class MainWindow
     private void ShowServerSelectionError(string summary, Exception error)
     {
         ServerEndpointText.Text = summary;
-        ServerEndpointText.ToolTip = error.Message;
         ServerSelectionError.Text = error.Message;
     }
 
@@ -168,7 +163,7 @@ public partial class MainWindow
             var choice = choices[i];
             var button = new SkinButton { Width = 101, Height = 25, FontSize = 12, Padding = new Thickness(14, 0, 2, 0),
                 Style = (Style)FindResource("ClassicImageButton"), Content = FitServerName(choice.Name, 80), Tag = choice,
-                ToolTip = choice.Name + "\n" + choice.Endpoint, HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top };
             System.Windows.Automation.AutomationProperties.SetName(button, choice.Name);
             button.Click += ServerChoice_Click;
@@ -204,7 +199,6 @@ public partial class MainWindow
     private void SetSelectedFooter(LocalServerChoice choice, string status)
     {
         SelectedServerText.Text = FitServerName(choice.Name, 82) + "  " + status;
-        SelectedServerText.ToolTip = choice.Name + "\n" + choice.Endpoint + "\n入口 TCP 建连耗时：" + status;
     }
 
     private void ServerChoice_Click(object sender, RoutedEventArgs e)
@@ -213,10 +207,9 @@ public partial class MainWindow
         CancelServerRequests(); _serverSelection.Select(choice.Id);
         foreach (var pair in _serverButtons) SetServerArtwork(pair.Value.Button, pair.Key == choice.Id);
         ServerEndpointText.Text = choice.Endpoint;
-        ServerEndpointText.ToolTip = choice.Name + "\n" + choice.Endpoint;
         ServerSelectionError.Text = ""; ConfirmServerButton.IsEnabled = true;
         ServerDot.Fill = ApiDot.Fill = Brushes.Gray;
-        ServerText.Text = "服务端：测速中…"; ApiText.Text = "账号服务：检测中…"; ApiText.ToolTip = null;
+        ServerText.Text = "服务端：测速中…"; ApiText.Text = "账号服务：检测中…";
         SetSelectedFooter(choice, "测速中…");
         if (_refreshStatus) _ = RefreshStatusAsync();
     }

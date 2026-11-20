@@ -45,6 +45,7 @@ if (await UpdateRecoveryTests.Dispatch(args) is int recoveryExit) return recover
 if (StartupEntryMigrationTests.Dispatch(args)) return 0;
 if (args is ["--r2-manifest-probe", var bridgeManifest, var targetManifest]) return StartupEntryMigrationTests.Probe(bridgeManifest, targetManifest);
 if (args is ["--v1014-manifest-probe", var bridgeManifest14, var targetManifest14]) return StartupEntryMigrationTests.ProbeV1014(bridgeManifest14, targetManifest14);
+if (args is ["--v1015-manifest-probe", var bridgeManifest15, var targetManifest15]) return StartupEntryMigrationTests.ProbeV1015(bridgeManifest15, targetManifest15);
 if (await BootstrapManagedTests.Dispatch(args) is int bootstrapExit) return bootstrapExit;
 var failures = 0;
 var checks = 0;
@@ -143,6 +144,10 @@ try
     if(args.Length==2&&args[0]=="--native-diagnostic-setting-tests") {await NativeDiagnosticLifetimeTests.Run(root,Check,Path.GetFullPath(args[1]));Console.WriteLine($"Native diagnostic setting tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--diagnostic-update-tests")) {await UpdateControllerTests.RunDiagnosticTimeouts(root,Check);Console.WriteLine($"Diagnostic update tests: {checks} assertions, {failures} failures");return failures==0?0:1;}
     if(args.Contains("--bootstrap-update-tests")) { await BootstrapUpdateTests.Run(root,Check); Console.WriteLine($"Bootstrap update tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-transport-tests")) { await BootstrapUpdateTests.RunTransportFallbackAsync(root,Check); Console.WriteLine($"Bootstrap transport tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-entry-deferral-tests")) { await BootstrapUpdateTests.RunEntryDeferralAsync(root,Check); Console.WriteLine($"Bootstrap entry deferral tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--layout-lift-tests")) { LauncherLayoutLiftTests.Run(root,Check); Console.WriteLine($"Layout lift tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
+    if(args.Contains("--bootstrap-occupancy-tests")) { await BootstrapUpdateTests.RunOccupancyAsync(root,Check); Console.WriteLine($"Bootstrap occupancy tests: {checks} assertions, {failures} failures"); return failures==0?0:1; }
     if (args is ["--full-starter-migration-tests"])
     {
         await FullStarterMigrationTests.Run(root, Check);

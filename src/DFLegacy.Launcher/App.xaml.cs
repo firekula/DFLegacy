@@ -14,6 +14,27 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        var worker = Updates.BootstrapUpdateClient.IsRequested(e.Args)
+            || Updates.RepairClient.IsRequested(e.Args, Environment.ProcessPath)
+            || e.Args.Contains("--dflegacy-apply-update", StringComparer.Ordinal);
+        if (!worker)
+        {
+            // An installation made by the old single-launcher package keeps the game files in
+            // client\. The updated app lifts them on its first normal start, so a plain V4 update
+            // is enough and the player never has to swap the outer stub.
+            try
+            {
+                var installRoot = Updates.LauncherLayoutMigration.InstallationRoot(AppContext.BaseDirectory);
+                var lifted = Updates.LauncherLayoutMigration.TryLift(installRoot);
+                Program.WriteLauncherLog($"Layout lift probe: base={AppContext.BaseDirectory} root={installRoot} lifted={lifted}.");
+                if (lifted) Program.WriteLauncherLog("Launcher layout lifted: game files moved to the installation root.");
+            }
+            catch (Exception error) { Program.ReportError("launcher-layout-lift", error); }
+        }
+        // Every entry (including the bootstrap worker and the repair tool) must resolve the
+        // split layout before it reads managed paths; the early branches below never reach
+        // the configuration that used to sit after them.
+        DFLegacy.UpdateCore.ClientLayout.Configure(AppContext.BaseDirectory);
         if(Updates.BootstrapUpdateClient.IsRequested(e.Args))
         {
             if(ChapterTwoClient.IsBundled && (e.Args.Length<2 || !CanMaintainChapter(e.Args[1]))) { Shutdown(1); return; }
@@ -62,6 +83,9 @@ public partial class App : Application
             var entry=string.Equals(Path.GetFileName(Environment.ProcessPath),Updates.BootstrapLayout.EntryName,StringComparison.OrdinalIgnoreCase);
             var chapterRollback=DFLegacy.UpdateCore.ChapterTransition.HasPending(root);
             var v4Pending=DFLegacy.UpdateCore.InstallTransaction.HasPending(root);
+            // Migrate a flat installation into the single-launcher layout before any
+            // repair/update handling so the entry never repairs the old layout first.
+            if (chapterProbe is null && entry && await TryMigrateLayoutAsync(args)) { Shutdown(0); return; }
             if(chapterProbe!=null)
             {
                 if(!ChapterTwoClient.IsBundled || !managed || !v4Pending || chapterRollback
@@ -100,7 +124,20 @@ public partial class App : Application
                         ??throw new InvalidDataException("跨章检查缺少已提交的安装记录。");
                     Updates.BootstrapLayout.RequireReceiptLayout(root,Updates.BootstrapLayout.Architecture,receipt);
                 }
-                else await Updates.BootstrapLayout.ValidateInstalledAsync(AppContext.BaseDirectory,Updates.BootstrapLayout.Architecture);
+                else
+                {
+                    // 原版 CProgressDlg 载入窗：记录校验快时延迟 400ms 再显示，避免闪窗。
+                    var loading = new Views.LoadingWindow();
+                    try
+                    {
+                        var progress = new Progress<DFLegacy.UpdateCore.UpdateProgress>(loading.Report);
+                        var validation = Updates.BootstrapLayout.ValidateInstalledAsync(
+                            AppContext.BaseDirectory, Updates.BootstrapLayout.Architecture, progress: progress);
+                        if (await Task.WhenAny(validation, Task.Delay(400)) != validation) loading.Show();
+                        await validation;
+                    }
+                    finally { loading.Close(); }
+                }
                 BootstrapVerified=true;
                 if(managed && ChapterTwoClient.IsBundled!=Updates.BootstrapLayout.IsSecondChapter(root))
                     throw new InvalidDataException("启动器与已安装游戏的章节不匹配。");
@@ -133,6 +170,12 @@ public partial class App : Application
         }
         try
         {
+            if (chapterProbe is null && BootstrapVerified && ChapterTwoClient.IsBundled
+                && await TryMigrateLayoutAsync(args))
+            {
+                Shutdown(0);
+                return;
+            }
             if (chapterProbe is null && BootstrapVerified && ChapterTwoClient.IsBundled
                 && await TryStartFullStarterAsync(args))
             {
@@ -176,6 +219,24 @@ public partial class App : Application
         }
     }
 
+    private static async Task<bool> TryMigrateLayoutAsync(string[] args)
+    {
+        var root = AppContext.BaseDirectory;
+        if (!Updates.LauncherLayoutMigration.IsFlat(root)) return false;
+        var launcher = Path.Combine(root, "DFOLauncher.exe");
+        if (!File.Exists(launcher)) return false;
+        try
+        {
+            return await Updates.LauncherLayoutMigration.TryMigrateAsync(root, launcher, args);
+        }
+        catch (Exception error)
+        {
+            Program.ReportError("launcher-layout-migration", error);
+            ClassicMessage.Show(null, "切换单启动器目录失败，将继续使用原目录。\n" + error.Message);
+            return false;
+        }
+    }
+
     private static async Task<bool> TryStartFullStarterAsync(string[] args)
     {
         var root = AppContext.BaseDirectory;
@@ -183,14 +244,37 @@ public partial class App : Application
         if (package is null) return false;
         var options = new LauncherAccountStore(Program.LauncherConfigPath).LoadCurrent();
         using var cancel = new CancellationTokenSource();
-        using var window = new Views.UpdateOperationWindow("升级客户端", "正在准备 v1.0.13 完整启动包…", cancel.Cancel);
+        // 校验阶段走小载入窗；只有开始下载/替换时才打开大窗口。
+        var loading = new Views.LoadingWindow(); loading.Show();
+        Views.UpdateOperationWindow? window = null;
+        // Close any window this process still owns before the new client starts;
+        // otherwise the old and new login windows can both be visible.
+        foreach (Window open in Application.Current.Windows)
+        {
+            if (open is not Views.LoadingWindow) open.Close();
+        }
         // The fixed entry may exit after the progress window opens. The full
         // download and the new login window have independent readiness checks.
         Updates.BootstrapUpdateClient.SignalReady();
+        var progress = new Progress<DFLegacy.UpdateCore.UpdateProgress>(p =>
+        {
+            if (p is { Phase: "stage" })
+            {
+                if (window is null) loading.Report(p);
+                return;
+            }
+            if (window is null)
+            {
+                loading.Close();
+                window = new Views.UpdateOperationWindow("升级客户端", "正在下载完整启动包…", cancel.Cancel);
+                window.VisibleWindow.Show();
+            }
+            window.Report(p);
+        });
         try
         {
             return await Updates.FullStarterMigration.RunAsync(root, package, options.DisableGitHubUpdates, args,
-                new Progress<DFLegacy.UpdateCore.UpdateProgress>(window.Report), cancel.Token);
+                progress, cancel.Token);
         }
         catch (OperationCanceledException) when (cancel.IsCancellationRequested)
         {
@@ -199,9 +283,10 @@ public partial class App : Application
         catch (Exception error) when (Updates.FullStarterMigration.CanRestoreOldLauncher(error))
         {
             Program.ReportError("chapter-two-full-starter-migration", error);
-            ClassicMessage.Show(window.VisibleWindow, "v1.0.13 升级未完成，将继续打开原来的客户端。\n" + error.Message);
+            ClassicMessage.Show(window?.VisibleWindow, "完整启动包升级未完成，将继续打开原来的客户端。\n" + error.Message);
             return false;
         }
+        finally { loading.Close(); window?.VisibleWindow.Close(); }
     }
 
     private static bool CanMaintainChapter(string path)
