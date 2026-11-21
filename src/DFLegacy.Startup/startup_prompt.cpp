@@ -60,6 +60,18 @@ void DrawTextBlock(HDC dc, HFONT font, RECT bounds, const wchar_t* message) noex
     if (previous) SelectObject(dc, previous);
 }
 
+void DrawSkin(Gdiplus::Graphics& graphics, Gdiplus::Image* image, int x, int y, int width, int height) noexcept {
+    if (!image) return;
+    // The classic panel PNG stores its transparent corners as alpha-zero
+    // magenta pixels. Set a color key as well so a window DC without alpha
+    // compositing never paints the raw magenta.
+    Gdiplus::ImageAttributes attributes;
+    const auto magenta = Gdiplus::Color(255, 255, 0, 255);
+    attributes.SetColorKey(magenta, magenta, Gdiplus::ColorAdjustTypeDefault);
+    graphics.DrawImage(image, Gdiplus::Rect(x, y, width, height), 0, 0,
+        static_cast<INT>(image->GetWidth()), static_cast<INT>(image->GetHeight()), Gdiplus::UnitPixel, &attributes);
+}
+
 LRESULT CALLBACK PromptProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept {
     auto* prompt = reinterpret_cast<Prompt*>(GetWindowLongPtrW(window, GWLP_USERDATA));
     switch (message) {
@@ -89,7 +101,8 @@ LRESULT CALLBACK PromptProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
             Fill(item.hDC, item.rcItem, RGB(36, 39, 30));
             if (skin) {
                 Gdiplus::Graphics graphics(item.hDC);
-                graphics.DrawImage(skin, item.rcItem.left, item.rcItem.top, 80, 29);
+                DrawSkin(graphics, skin, item.rcItem.left, item.rcItem.top,
+                    item.rcItem.right - item.rcItem.left, item.rcItem.bottom - item.rcItem.top);
             } else {
                 DrawTextBlock(item.hDC, prompt->font, {0, 6, 80, 29}, L"确认");
             }
@@ -102,7 +115,7 @@ LRESULT CALLBACK PromptProc(HWND window, UINT message, WPARAM wParam, LPARAM lPa
         Fill(dc, {0, 0, Width, Height}, RGB(44, 46, 35));
         if (prompt && prompt->frame.image) {
             Gdiplus::Graphics graphics(dc);
-            graphics.DrawImage(prompt->frame.image, 0, 0, Width, Height);
+            DrawSkin(graphics, prompt->frame.image, 0, 0, Width, Height);
         } else {
             Fill(dc, {2, 10, Width - 2, 38}, RGB(88, 26, 8));
             DrawTextBlock(dc, prompt ? prompt->font : nullptr, {15, 16, 110, 38}, L"提示信息");
@@ -145,8 +158,10 @@ void ShowStartupPrompt(HINSTANCE instance, const wchar_t* message) noexcept {
         work.top + (work.bottom - work.top - Height) / 2, Width, Height,
         nullptr, nullptr, instance, &prompt);
     if (!window) return;
-    const auto shape = CreateRoundRectRgn(0, 0, Width + 1, Height + 1, 14, 14);
-    if (shape && !SetWindowRgn(window, shape, FALSE)) DeleteObject(shape);
+    // Keep the prompt rectangular. The classic panel PNG has transparent
+    // rounded corners; a window region exposes whatever the game clears to
+    // (magenta in the DirectInput failure path) and can clip the frame edge.
+    // The panel is drawn over the opaque fill instead.
     ShowWindow(window, SW_SHOW);
     SetFocus(GetDlgItem(window, IDOK));
     MSG event{};
