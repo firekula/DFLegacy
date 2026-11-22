@@ -1,5 +1,4 @@
 using System.Text;
-using System.Security.Cryptography;
 using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.DependencyInjection;
@@ -219,15 +218,8 @@ internal static class AvatarCompoundSmokeTests
         finally { directory.Delete(recursive: true); }
     }
 
-    private static byte[] EncryptChapterTwoCompound(string hex)
-    {
-        var plain = Convert.FromHexString(hex);
-        var wire = plain.ToArray();
-        using var aes = Aes.Create();
-        aes.Key = Convert.FromHexString("46494A4946474546444A44404A424758");
-        aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), PaddingMode.None);
-        return new PacketFrame(1, GameProtocolEngine.CompoundAvatarCommand, Crc32.Compute(plain), wire).Encode();
-    }
+    private static byte[] EncryptChapterTwoCompound(string hex) =>
+        NewCharacterDefaultsSmokeTests.Connection.EncodeChapterTwoCommand(GameProtocolEngine.CompoundAvatarCommand, Convert.FromHexString(hex));
 
     private static void CheckProtocolVectors(Action<bool, string> check)
     {

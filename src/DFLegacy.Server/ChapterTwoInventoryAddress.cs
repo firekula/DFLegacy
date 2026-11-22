@@ -1,15 +1,7 @@
 using System.Text.Json.Serialization;
+using DFLegacy.Protocol;
 
 namespace DFLegacy.Server;
-
-public enum InventorySection : byte
-{
-    Equipment = 0,
-    Consumable = 1,
-    Material = 2,
-    Quest = 3,
-    Avatar = 4
-}
 
 public readonly record struct InventoryAddress(
     [property: JsonRequired] InventorySection Section,

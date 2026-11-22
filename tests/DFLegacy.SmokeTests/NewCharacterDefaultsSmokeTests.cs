@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
@@ -360,6 +361,15 @@ internal static class NewCharacterDefaultsSmokeTests
             return frame.Encode();
         }
         internal async Task SendAsync(byte[] bytes) => await _peer.GetStream().WriteAsync(bytes, _stop.Token);
+
+        internal static byte[] EncodeChapterTwoCommand(byte command, byte[] plain)
+        {
+            var wire = plain.ToArray();
+            using var aes = Aes.Create();
+            aes.Key = Convert.FromHexString("46494A4946474546444A44404A424758");
+            aes.EncryptEcb(plain.AsSpan(2), wire.AsSpan(2), PaddingMode.None);
+            return new PacketFrame(1, command, Crc32.Compute(plain), wire).Encode();
+        }
 
         internal async Task EnableChapterTwoAsync(Action<GameServerPacket>? observe = null)
         {

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DFLegacy.Protocol;
 using DFLegacy.Server;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -58,6 +59,40 @@ internal static class ChapterTwoCapacitySmokeTests
             "legacy entry cannot also be extended");
     }
 
+    internal static void CheckWindows(Action<bool, string> check)
+    {
+        var packed = Convert.FromHexString("0100FFFFFF444649560101047F9698000007000000");
+        // Bytes 0..1 are the normal move sequence. Bytes 2..4 encode an invalid stock source.
+        var read = new InventoryWindowRequest(InventoryWindowOperation.Read, InventorySection.Avatar, 999_971, 7);
+        var body = read.Encode(1);
+        check(body.Length == 34 && body.AsSpan(2, 3).SequenceEqual(new byte[] {255, 255, 255}),
+            "window requests are padded C2 commands with a rejected legacy source");
+        check(InventoryWindowRequest.TryDecode(body, out var parsed) && parsed == read, "window request round trip");
+        check(body.AsSpan(5, 14).SequenceEqual(Convert.FromHexString("4446495601010423420f00070000")),
+            "window reader and native fixture have the same header bytes");
+        body[^1] = 1;
+        check(!InventoryWindowRequest.TryDecode(body, out _), "malformed padding rejected");
+        check(!InventoryWindowRequest.TryDecode(packed, out _), "malformed request length rejected");
+        var actor = new CharacterRecord(Guid.NewGuid(), "view", 0, 0, 1, 0, 0,
+            Inventory: [new(3, 1000, 1), new(9, 27000, 1), new(41, 1001, 2)],
+            AvatarInventory: [new(0, 39000, 1)])
+        {
+            ExtendedInventory = [new(new(InventorySection.Avatar, 999_998), new(0, 39001, 1)),
+                new(new(InventorySection.Material, 99_998), new(0, 3000, 4))]
+        };
+        var view = new ChapterTwoInventoryView(actor);
+        check(view.TryRead(read, out var page) && page is [{ Offset: 27, Item.ItemId: 39001 }],
+            "last avatar is projected into the final visible cell");
+        check(view.TryRead(read with { First = 999_998 }, out page) && page is [{ Offset: 0, Item.ItemId: 39001 }],
+            "partial final window never reads past capacity");
+        check(!view.TryRead(read with { First = int.MaxValue }, out _), "oversized first index rejected");
+        check(view.TryRead(read with { Section = InventorySection.Material, First = 99_967 }, out page)
+            && page is [{ Offset: 31, Item.CountOrValue: 4 }], "last material maps independently");
+        check(view.TryRead(read with { Section = InventorySection.Consumable, First = 0 }, out page)
+            && page is [{ Offset: 0, Item.ItemId: 1001 }], "quickbar and other category omitted");
+        check(view.TryRead(read with { First = 1000 }, out page) && page.Length == 0, "empty page is sparse");
+    }
+
     internal static async Task CheckStorageAsync(Action<bool, string> check)
     {
         var dir = Directory.CreateTempSubdirectory("capacity-fixture-");
@@ -108,6 +143,19 @@ internal static class ChapterTwoCapacitySmokeTests
             check(stored == item with { Slot = 0 }, "real store restart preserves original instance");
             live = (await restarted.MoveToEmptyInventorySlotAsync("capacity", actor.Id, high, last, stored))!;
             check(live.ExtendedInventory!.Single().Address == last, "last avatar slot persisted");
+            var hello = new InventoryWindowRequest(InventoryWindowOperation.Hello, InventorySection.Equipment, 0, 9);
+            var readOnly = new InventoryWindowRequest(InventoryWindowOperation.Read, InventorySection.Avatar, 999_971, 10);
+            var session = new ChapterTwoInventoryWindowSession();
+            using (var definitions = new ActiveDropItemFixture())
+            {
+                check(session.Handle(readOnly, live, definitions.Catalog) is null, "read requires negotiation");
+                var ack = session.Handle(hello, null, definitions.Catalog);
+                check(ack?.Payload is [255, 68, 70, 73, 86, 1, 0, 9, 0, 0, 0], "hello response fixed bytes");
+                var reply = session.Handle(readOnly, live, definitions.Catalog);
+                var data = reply?.Payload ?? [];
+                check(data.Length == 64 && data[28] == 1 && data[29] == 27, "one last-page item and its offset");
+                check(session.Handle(readOnly, live, definitions.Catalog) is null, "stale page request ignored");
+            }
             using (var items = new ActiveDropItemFixture())
             {
                 await using var provider = NewCharacterDefaultsSmokeTests.CreateSessionServices(opts, restarted, items.Catalog);
@@ -115,6 +163,14 @@ internal static class ChapterTwoCapacitySmokeTests
                 await using var connection = await NewCharacterDefaultsSmokeTests.Connection.CreateAsync(service, opts);
                 await connection.LoginAsync("capacity", actor.Slot, expectSelection: false, chapterTwo: true);
                 check(connection.SelectReply?.Payload is [0, ..], "legacy client cannot open a character with high slots");
+                var updateNotice = await connection.ReadAsync(0, 126);
+                check(updateNotice.Payload.Length > 8, "old client receives the update notice");
+                await connection.SendAsync(NewCharacterDefaultsSmokeTests.Connection.EncodeChapterTwoCommand(
+                    GameProtocolEngine.MoveItemSpaceCommand, hello.Encode(5)));
+                var wireAck = await connection.ReadAsync(0, InventoryWindowRequest.ReplyNotification);
+                check(wireAck.Payload is [255, 68, 70, 73, 86, 1, 0, 9, 0, 0, 0],
+                    "authenticated C2 channel negotiates without mutating an inventory");
+
             }
             var validState = await File.ReadAllTextAsync(path);
             var badState = System.Text.Json.Nodes.JsonNode.Parse(validState)!;

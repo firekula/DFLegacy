@@ -13,6 +13,7 @@ if (args is ["--c2-inventory-capacity"])
 {
     var assertions = 0;
     ChapterTwoCapacitySmokeTests.Run((result, message) => { assertions++; Check(result, message); });
+    ChapterTwoCapacitySmokeTests.CheckWindows((result, message) => { assertions++; Check(result, message); });
     await ChapterTwoCapacitySmokeTests.CheckStorageAsync((result, message) => { assertions++; Check(result, message); });
     foreach (var failure in failures) Console.Error.WriteLine(failure);
     Console.WriteLine($"Inventory capacity: {assertions} assertions, {failures.Count} failures");

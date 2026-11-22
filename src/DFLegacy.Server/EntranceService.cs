@@ -240,6 +240,7 @@ public sealed class EntranceService(
                     && remoteEndpoint is not null && IPAddress.IsLoopback(remoteEndpoint.Address)
                     && Environment.GetEnvironmentVariable("DFL_S1C2_TRIAL_CHANNEL_CIPHER") == "1"));
             var chapter2CheckConnectionAccepted = false;
+            var inventoryWindows = new ChapterTwoInventoryWindowSession();
             var freeRevivalCoinAmount = options.ChapterTwoFreeRevivalCoinAmount <= GameProtocolEngine.MaximumFreeRevivalCoinGrant
                 ? options.ChapterTwoFreeRevivalCoinAmount : (byte)0;
             var freeRevivalCoinStatusDay = 0;
@@ -6052,6 +6053,18 @@ public sealed class EntranceService(
                         disconnectReason = "rejected-crc";
                         logger.LogWarning("Rejected frame with bad CRC32 from {SessionId}", runtimeSession.Id);
                         break;
+                    }
+
+                    if (chapter2Decoded && accountUid != AccountUidRules.InvalidUid
+                        && request.ProtocolId == GameProtocolEngine.MoveItemSpaceCommand
+                        && InventoryWindowRequest.TryDecode(request.Body, out var windowRequest))
+                    {
+                        var owner = activeCharacter is { } selected && windowRequest.Operation == InventoryWindowOperation.Read
+                            ? await store.GetCharacterAsync(accountName, selected.Id, serverToken)
+                            : null;
+                        var windowReply = inventoryWindows.Handle(windowRequest, owner, itemCatalog);
+                        if (windowReply is not null) await SendTownPacketAsync(windowReply, serverToken);
+                        continue;
                     }
 
                     if (chapter2CheckConnectionAccepted && request.Type == GameProtocolEngine.CommandPacketType

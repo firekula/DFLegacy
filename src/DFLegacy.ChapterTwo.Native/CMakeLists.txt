@@ -182,6 +182,10 @@ target_compile_options(chapter_two_local_path_tests PRIVATE /W4 /WX /utf-8 /EHsc
 target_link_options(chapter_two_local_path_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)
 target_link_libraries(chapter_two_local_path_tests PRIVATE chapter_two_presentation)
 
+add_executable(chapter_two_inventory_window_tests inventory_window_tests.cpp)
+target_compile_features(chapter_two_inventory_window_tests PRIVATE cxx_std_17)
+target_compile_options(chapter_two_inventory_window_tests PRIVATE /W4 /WX /utf-8 /EHsc)
+
 add_executable(chapter_two_inventory_tab_tests inventory_tab_tests.cpp)
 target_compile_options(chapter_two_inventory_tab_tests PRIVATE /W4 /WX /utf-8 /EHsc)
 target_link_options(chapter_two_inventory_tab_tests PRIVATE /BASE:0x10000 /DYNAMICBASE:NO)

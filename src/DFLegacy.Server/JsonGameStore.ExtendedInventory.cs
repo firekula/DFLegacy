@@ -1,3 +1,5 @@
+using DFLegacy.Protocol;
+
 namespace DFLegacy.Server;
 
 public sealed partial class JsonGameStore
