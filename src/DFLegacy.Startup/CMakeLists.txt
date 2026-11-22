@@ -15,7 +15,7 @@ set(DFL_CLASSIC_SKIN "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Launcher/Assets/Sk
 set(startup_prompt_skin "${CMAKE_CURRENT_BINARY_DIR}/startup_prompt.rc")
 configure_file(startup_prompt.rc.in "${startup_prompt_skin}" @ONLY)
 set_source_files_properties("${startup_prompt_skin}" PROPERTIES OBJECT_DEPENDS
-    "${DFL_CLASSIC_SKIN}/classic-message-panel.png;${DFL_CLASSIC_SKIN}/classic-message-confirm0.png;${DFL_CLASSIC_SKIN}/classic-message-confirm2.png")
+    "${DFL_CLASSIC_SKIN}/classic-message-panel.png;${DFL_CLASSIC_SKIN}/classic-message-confirm0.png;${DFL_CLASSIC_SKIN}/classic-message-confirm1.png;${DFL_CLASSIC_SKIN}/classic-message-confirm2.png")
 set(launcher_version_file "${CMAKE_CURRENT_SOURCE_DIR}/../DFLegacy.Launcher/LauncherVersion.txt")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${launcher_version_file}")
 if(NOT DEFINED DFL_LAUNCHER_VERSION)

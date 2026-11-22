@@ -52,7 +52,7 @@ internal static class ClassicMessageTests
             }
             foreach (var key in new[] { System.Windows.Input.Key.Enter, System.Windows.Input.Key.Escape })
             {
-                var window = Create("欢迎来到阿拉德大陆。\n选择服务器，输入账号和密码，\n开始冒险。");
+                var window = Create("由于您的网络连接问题，更新文件下载失败。\n若再次自动更新失败，\n请登录官方网站下载手动安装补丁进行更新。");
                 window.Owner = owner; window.ShowActivated = false; window.ShowInTaskbar = false;
                 try
                 {
@@ -67,26 +67,45 @@ internal static class ClassicMessageTests
                     var scroll = (ScrollViewer)window.FindName("MessageScroll");
                     var label = (PixelText)window.FindName("MessageText");
                     var confirm = (SkinButton)window.FindName("ConfirmButton");
-                    check(label.Text.Contains("欢迎") && label.OutlineThickness == 1 && label.FontSize == 13,
+                    check(label.Text.Contains("网络连接") && label.OutlineThickness == 1 && label.FontSize == 12,
                         "message uses readable original monochrome outlined pixel text");
+                    check(scroll.ScrollableHeight <= 1, "the three-line reference message fits without scrolling");
                     check(AutomationProperties.GetName(confirm) == "确认" && AutomationProperties.GetName(window) == "提示信息",
                         "message and confirmation expose accessible labels");
                     check(confirm.ActualWidth == 80 && confirm.ActualHeight == 29, "original confirmation retains its full 80x29 target");
+                    var buttonOrigin = confirm.TranslatePoint(new Point(), window);
+                    var textOrigin = scroll.TranslatePoint(new Point(), window);
+                    check(Math.Abs(buttonOrigin.X + confirm.ActualWidth / 2 - window.ActualWidth / 2) <= 1
+                        && Math.Abs(buttonOrigin.Y - 125) <= 1
+                        && textOrigin.Y + scroll.ActualHeight <= buttonOrigin.Y - 6,
+                        "reference layout centers the confirmation above the lower frame and leaves a gap below the message");
                     foreach (var point in new[] { new Point(1,1), new Point(78,1), new Point(1,27), new Point(78,27), new Point(40,14) })
                     {
                         DependencyObject? hit = window.InputHitTest(confirm.TranslatePoint(point, window)) as DependencyObject;
                         while (hit is not null && !ReferenceEquals(hit, confirm)) hit = VisualTreeHelper.GetParent(hit);
                         check(ReferenceEquals(hit, confirm), "confirmation receives actual WPF hits across its entire artwork");
                     }
-                    var render = new RenderTargetBitmap(286,170,96,96,PixelFormats.Pbgra32); render.Render(window);
-                    var pixels = new byte[286 * 170 * 4]; render.CopyPixels(pixels,286 * 4,0);
-                    check(pixels[3] == 0 && pixels[(90 * 286 + 143) * 4 + 3] == 255,
-                        "actual message rendering preserves transparent corners and opaque stone interior");
-                    var evidence = Environment.GetEnvironmentVariable("DFLEGACY_MESSAGE_EVIDENCE");
-                    if (!string.IsNullOrEmpty(evidence))
+                    foreach (var dpi in new[] { 96, 120, 144 })
                     {
-                        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(render));
-                        using var file = File.Create(evidence); encoder.Save(file);
+                        int Scale(int value) => (int)Math.Round(value * dpi / 96.0);
+                        var render = new RenderTargetBitmap(Scale(286), Scale(170), dpi, dpi, PixelFormats.Pbgra32);
+                        render.Render(window);
+                        byte Alpha(int x, int y)
+                        {
+                            var pixel = new byte[4];
+                            render.CopyPixels(new Int32Rect(Scale(x), Scale(y), 1, 1), pixel, 4, 0);
+                            return pixel[3];
+                        }
+                        check(Alpha(0, 0) == 0 && Alpha(284, 1) == 0 && Alpha(1, 168) == 0 && Alpha(284, 168) == 0
+                            && Alpha(143, 2) == 255 && Alpha(143, 167) == 255
+                            && Alpha(2, 85) == 255 && Alpha(283, 85) == 255 && Alpha(143, 90) == 255,
+                            $"message preserves clear corners and the full opaque frame at {dpi} DPI");
+                        var evidence = Environment.GetEnvironmentVariable("DFLEGACY_MESSAGE_EVIDENCE");
+                        if (dpi == 96 && !string.IsNullOrEmpty(evidence))
+                        {
+                            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(render));
+                            using var file = File.Create(evidence); encoder.Save(file);
+                        }
                     }
                     Key(window, scroll, key);
                     check(!window.IsVisible, key + " closes the real message from its scroll content");
