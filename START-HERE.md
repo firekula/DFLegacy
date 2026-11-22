@@ -41,6 +41,7 @@ python --version
 | 把第一章功能/修复迁到第二章，或核对两章差异 | [章别适配](knowledge/handbook/chapter-adaptation.md) | [客户端与原生层](knowledge/handbook/client-and-native.md) |
 | 做区域频道、城镇社交、假人玩家 | [区域频道与假人](knowledge/handbook/social-world-and-bots.md) | [服务端架构](knowledge/handbook/server-architecture.md) |
 | 修原生客户端、渲染、输入、崩溃 | [客户端与原生层](knowledge/handbook/client-and-native.md) | [测试与证据](knowledge/handbook/testing-and-evidence.md) |
+| 准备第二章本地真机测试、区域通行角色或限时道具夹具 | [第二章本地真机测试](knowledge/handbook/chapter-two-local-qa.md) | [测试与证据](knowledge/handbook/testing-and-evidence.md) |
 | 改 GM、玩家中心、部署管理页面 | [Web 与管理 API](knowledge/handbook/web-and-admin.md) | [ADMIN_API.md](ADMIN_API.md) |
 | 改任务、商店、物品、贴图或 PVF | [资源与 PVF](knowledge/handbook/resources-and-pvf.md) | [工具索引](knowledge/handbook/tools-reference.md) |
 | 维护 PVFStudio/NPKStudio 的解析、编辑和写回 | [资源子项目协作](knowledge/handbook/resource-subprojects.md) | 各独立仓库的 `START-HERE.md` 与格式手册 |

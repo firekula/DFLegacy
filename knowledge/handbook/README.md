@@ -24,6 +24,7 @@
 | [工具索引](tools-reference.md) | 发布、调试、验收、资源及运行脚本的用途和副作用 |
 | [构建测试发布](build-test-release.md) | 依赖、命令、发行物和版本策略 |
 | [测试与证据](testing-and-evidence.md) | 自动化、真机矩阵、测试控制与证据边界 |
+| [第二章本地真机测试](chapter-two-local-qa.md) | 测试环境、地图通行前置、角色基线和玩法用例 |
 | [运维手册](operations.md) | 安装、部署、日志、备份、迁移、升级和恢复 |
 
 ## 可检索参考表
