@@ -12524,7 +12524,7 @@ public sealed class EntranceService(
                                     request.Body,
                                     out var listType,
                                     out var requestedConsumptions)
-                                || listType != 0)
+                                || listType is not (0 or 1))
                             {
                                 logger.LogWarning(
                                     "Rejected consume-items transaction activeCharacter={HasCharacter}, body={Body}.",
@@ -12533,10 +12533,18 @@ public sealed class EntranceService(
                                 continue;
                             }
 
+                            // 0 = main inventory, 1 = avatar bag. Worn avatars live in
+                            // item space 3 and must be unequipped first, so destroying an
+                            // avatar from its own tab is a list-1 delete like the main bag.
+                            var deletingAvatar = listType == 1;
+                            var sourceInventory = deletingAvatar
+                                ? avatarInventory
+                                : mainInventory;
+
                             // The town gold confirmation sends CMD18 for virtual
                             // slot/item 0. It destroys currency; CMD50 remains the
                             // dungeon ground-drop path, including its 1000 cap.
-                            if (requestedConsumptions.Any(entry =>
+                            if (!deletingAvatar && requestedConsumptions.Any(entry =>
                                     entry.Slot == CharacterInventoryLayout.GoldSlot
                                     || entry.ItemId == 0))
                             {
@@ -12605,7 +12613,7 @@ public sealed class EntranceService(
                             var validTransaction = true;
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
-                                if (!mainInventory.TryGetValue(
+                                if (!sourceInventory.TryGetValue(
                                         requestedConsumption.Slot,
                                         out var inventoryItem)
                                     || !IsDeletableInventoryEntry(
@@ -12679,7 +12687,7 @@ public sealed class EntranceService(
                                 continue;
                             }
 
-                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(mainInventory);
+                            var plannedInventory = new Dictionary<ushort, CharacterItemRecord>(sourceInventory);
                             foreach (var (slot, requestedCount) in consumptionBySlot)
                             {
                                 var inventoryItem = plannedInventory[slot];
@@ -12705,11 +12713,11 @@ public sealed class EntranceService(
                                     accountName,
                                     activeCharacter.Id,
                                     currentGold,
-                                    plannedInventory.Values,
+                                    deletingAvatar ? mainInventory.Values : plannedInventory.Values,
                                     equippedInventory.Values,
                                     warehouseInventory.Values,
                                     serverToken,
-                                    avatarInventory: avatarInventory.Values);
+                                    avatarInventory: deletingAvatar ? plannedInventory.Values : avatarInventory.Values);
                             }
                             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                             {
@@ -12725,7 +12733,8 @@ public sealed class EntranceService(
                             }
 
                             activeCharacter = saved;
-                            mainInventory = plannedInventory;
+                            if (deletingAvatar) avatarInventory = plannedInventory;
+                            else mainInventory = plannedInventory;
 
                             foreach (var requestedConsumption in requestedConsumptions)
                             {
@@ -12736,7 +12745,7 @@ public sealed class EntranceService(
                                     requestedConsumption.Slot,
                                     requestedConsumption.ItemId,
                                     requestedConsumption.RequestedCount,
-                                    mainInventory.TryGetValue(
+                                    plannedInventory.TryGetValue(
                                         requestedConsumption.Slot,
                                         out var remainingItem)
                                         ? remainingItem.CountOrValue
@@ -12750,6 +12759,17 @@ public sealed class EntranceService(
                             await deleteItemReply.WriteAsync(stream, serverToken);
                             Interlocked.Increment(ref runtimeSession.SentPackets);
                             LogPacket("TX", runtimeSession, deleteItemReply);
+                            if (deletingAvatar)
+                            {
+                                // The avatar tab also holds worn equipment state in a
+                                // different list; a full list-1 refresh keeps the tab
+                                // exact after a destroy without touching list 3.
+                                var avatarRefresh = CreateAvatarInventoryPacket(
+                                    avatarInventory.Values);
+                                await avatarRefresh.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, avatarRefresh);
+                            }
                             continue;
                         }
 

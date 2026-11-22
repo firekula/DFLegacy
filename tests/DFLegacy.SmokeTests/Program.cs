@@ -463,6 +463,14 @@ if (args.Contains("--active-drop"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--avatar-destroy"))
+{
+    await AvatarDestroySmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Avatar destroy smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--dungeon-map-selection") || args.Contains("--lorien-boss-map"))
 {
     DungeonMapSelectionSmokeTests.Run(Check);
@@ -733,6 +741,7 @@ await PartySmokeTests.RunAsync(Check);
 await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await ActiveDropSmokeTests.RunAsync(Check);
+await AvatarDestroySmokeTests.RunAsync(Check);
 await TownGoldDiscardSmokeTests.RunAsync(Check);
 await SkillSlotPersistenceSmokeTests.RunAsync(Check);
 await ActiveDropFourClientSmokeTests.RunAsync(Check);
