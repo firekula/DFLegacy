@@ -26,7 +26,7 @@ public sealed partial class JsonGameStore
             var item = fromLegacy
                 ? legacy?.SingleOrDefault(entry => entry.Slot == sourceSlot)
                 : overflow?.SingleOrDefault(entry => entry.Address == source)?.Item;
-            if (item is null || item != expectedItem) return null;
+            if (item is null || item != expectedItem || AvatarLifetimePolicy.IsExpired(item, AvatarNow)) return null;
             var occupied = toLegacy
                 ? legacy?.Any(entry => entry.Slot == targetSlot)
                 : overflow?.Any(entry => entry.Address == destination);
@@ -46,6 +46,7 @@ public sealed partial class JsonGameStore
                 if (!toLegacy) entries.Add(new ExtendedInventoryItem(destination, item with { Slot = 0 }));
                 updated = updated with { ExtendedInventory = entries.Count > 0 ? entries : null };
             }
+            updated = ReconcileAvatarLifetimes(updated, character);
             var committed = false;
             account.Characters[index] = updated;
             try

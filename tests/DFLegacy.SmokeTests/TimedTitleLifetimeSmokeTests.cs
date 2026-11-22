@@ -69,8 +69,35 @@ internal static class TimedTitleLifetimeSmokeTests
                 && item.AvatarExpiresAtUnixSeconds == now + 30 * 86_400L),
             "a magic-box limited title receives its deadline through the ordinary save path");
 
-        clock.Now += 30 * 86_400L + 1;
+        var upperActor = (await store.CreateCharacterAsync("timedtitle", new("HighTitle"))).Character!;
+        var upperItem = bagTimed with { InstanceId = Guid.NewGuid() };
+        var ordinary = bagPermanent with { InstanceId = Guid.NewGuid() };
+        var upperSaved = (await store.SaveCharacterItemSpacesAsync("timedtitle", upperActor.Id, 100,
+            [upperItem, ordinary], [], []))!;
+        var originalTitle = upperSaved.Inventory!.Single(i => i.InstanceId == upperItem.InstanceId);
+        var high = new InventoryAddress(InventorySection.Equipment, 99_998);
+        upperSaved = (await store.MoveToEmptyInventorySlotAsync("timedtitle", upperActor.Id,
+            new(InventorySection.Equipment, 0), high, originalTitle))!;
+        check(upperSaved.ExtendedInventory!.Single().Item.AvatarExpiresAtUnixSeconds == originalTitle.AvatarExpiresAtUnixSeconds,
+            "moving a timed title to the last equipment slot preserves the deadline");
+        var atDeadline = originalTitle.AvatarExpiresAtUnixSeconds!.Value;
+        check(AvatarLifetimePolicy.GetExpiryWait(upperSaved, atDeadline) == TimeSpan.FromSeconds(1),
+            "high-slot title wakes the expiry timer after its strict deadline");
+        var staleView = upperSaved;
+        clock.Now = atDeadline;
+        await store.SettleAvatarExpirationsAsync("timedtitle", upperActor.Id);
+        var boundary = await store.GetCharacterAsync("timedtitle", upperActor.Id);
+        check(boundary!.ExtendedInventory?.Count == 1, "high-slot item survives exact deadline");
+        clock.Now = atDeadline + 1;
         await store.SettleAvatarExpirationsAsync("timedtitle", character.Id);
+        var reopened = CreateStore();
+        await reopened.InitializeAsync();
+        var upperExpired = (await reopened.GetCharacterAsync("timedtitle", upperActor.Id))!;
+        check(upperExpired.ExtendedInventory is null && upperExpired.ExpiredAvatarInstanceIds!.Contains(upperItem.InstanceId)
+            && upperExpired.Inventory!.Any(i => i.InstanceId == ordinary.InstanceId),
+            "offline expiry removes only the upper-slot title and persists the tombstone");
+        check(AvatarLifetimePolicy.MergeForActor(staleView, upperExpired, catalog).ExtendedInventory is null,
+            "session refresh removes the stale upper-slot title");
         var expired = (await store.GetCharactersAsync("timedtitle"))[0];
         check((expired.Inventory ?? []).All(item => item.ItemId != TimedTitleItemId)
                 && (expired.Equipment ?? []).All(item => item.ItemId != TimedTitleItemId)

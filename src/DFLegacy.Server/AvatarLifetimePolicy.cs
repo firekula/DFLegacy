@@ -54,7 +54,8 @@ public static class AvatarLifetimePolicy
         }
         static IEnumerable<CharacterItemRecord> Items(CharacterRecord c) =>
             (c.Inventory ?? []).Concat(c.Equipment ?? []).Concat(c.Warehouse ?? [])
-                .Concat(c.AvatarInventory ?? []).Concat(c.CreatureInventory ?? []);
+                .Concat(c.AvatarInventory ?? []).Concat(c.CreatureInventory ?? [])
+                .Concat((c.ExtendedInventory ?? []).Select(entry => entry.Item));
         var known = Items(previous ?? candidate).Where(i => i.InstanceId != Guid.Empty && IsLifetimeTracked(i.ItemId))
             .Concat((previous?.Mailbox ?? candidate.Mailbox ?? []).Where(m => m.Attachment is not null)
                 .Select(m => FromAttachment(m.Attachment!)))
@@ -92,6 +93,20 @@ public static class AvatarLifetimePolicy
             var normalized = items.Select(Normalize).OfType<CharacterItemRecord>().ToList();
             return normalized.SequenceEqual(items) ? items : normalized;
         }
+        var extended = candidate.ExtendedInventory;
+        if (extended is { Count: > 0 })
+        {
+            List<ExtendedInventoryItem>? changed = null;
+            for (var index = 0; index < extended.Count; index++)
+            {
+                var entry = extended[index];
+                var normalized = Normalize(entry.Item);
+                if (changed is null && normalized == entry.Item) continue;
+                changed ??= extended.GetRange(0, index);
+                if (normalized is not null) changed.Add(entry with { Item = normalized });
+            }
+            if (changed is not null) extended = changed.Count > 0 ? changed : null;
+        }
         var inventory = NormalizeSpace(candidate.Inventory);
         var equipment = NormalizeSpace(candidate.Equipment);
         var warehouse = NormalizeSpace(candidate.Warehouse);
@@ -110,7 +125,7 @@ public static class AvatarLifetimePolicy
         if (expiredIds.Count > 0 && (tombstones is null || !expiredIds.SetEquals(tombstones)))
             tombstones = expiredIds.Order().ToList();
         return candidate with { Inventory = inventory, Equipment = equipment, Warehouse = warehouse,
-            AvatarInventory = avatars, CreatureInventory = creatures, Mailbox = mails,
+            AvatarInventory = avatars, CreatureInventory = creatures, Mailbox = mails, ExtendedInventory = extended,
             ExpiredAvatarInstanceIds = tombstones };
     }
 
@@ -124,6 +139,7 @@ public static class AvatarLifetimePolicy
         var items = (character.Inventory ?? []).Concat(character.Equipment ?? [])
             .Concat(character.AvatarInventory ?? []).Concat(character.Warehouse ?? [])
             .Concat(character.CreatureInventory ?? [])
+            .Concat((character.ExtendedInventory ?? []).Select(entry => entry.Item))
             .Concat((character.Mailbox ?? []).Where(m => m.Attachment is not null).Select(m => FromAttachment(m.Attachment!)))
             .Where(IsLimited).ToArray();
         if (items.Length == 0) return null;
@@ -157,6 +173,7 @@ public static class AvatarLifetimePolicy
             Equipment = MergeSpace(actor.Equipment, canonical.Equipment, IsLifetimeTracked),
             Warehouse = MergeSpace(actor.Warehouse, canonical.Warehouse, IsLifetimeTracked),
             AvatarInventory = canonical.AvatarInventory,
+            ExtendedInventory = canonical.ExtendedInventory,
             Mailbox = canonical.Mailbox,
             ExpiredAvatarInstanceIds = canonical.ExpiredAvatarInstanceIds
         };
