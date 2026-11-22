@@ -12,10 +12,22 @@ public partial class ClassicMessageWindow : Window
     internal bool Accepted { get; private set; }
     internal ClassicMessageWindow(string message, bool confirmRestart, string cancelText = "稍后") : this(message)
     {
-        if(!confirmRestart) return;
-        ConfirmButton.Margin=new Thickness(48,137,0,0); ConfirmButton.IsCancel=false;
-        laterButton=new SkinButton { Content=cancelText,Width=80,Height=29,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(158,137,0,0),Style=(Style)FindResource("ClassicButton"),IsCancel=true };
-        laterButton.Click+=(_,_)=>Close(); ((Grid)Content).Children.Add(laterButton);
+        if (!confirmRestart) return;
+        ConfirmButton.Margin = new Thickness(0, ConfirmButton.Margin.Top, 110, 0);
+        ConfirmButton.IsCancel = false;
+        laterButton = new SkinButton
+        {
+            Content = cancelText,
+            Width = 80,
+            Height = 29,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(110, ConfirmButton.Margin.Top, 0, 0),
+            Style = (Style)FindResource("ClassicButton"),
+            IsCancel = true
+        };
+        laterButton.Click += (_, _) => Close();
+        ((Grid)Content).Children.Add(laterButton);
     }
     public ClassicMessageWindow(string message)
     {

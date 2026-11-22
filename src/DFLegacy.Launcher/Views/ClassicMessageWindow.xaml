@@ -12,17 +12,18 @@
     </ResourceDictionary.MergedDictionaries></ResourceDictionary>
   </Window.Resources>
   <Grid>
-    <Image Source="../Assets/Skin/classic-message-panel.png" Stretch="None" IsHitTestVisible="False"/>
-    <ScrollViewer x:Name="MessageScroll" Margin="20,44,20,38" VerticalScrollBarVisibility="Auto"
+    <Image Source="../Assets/Skin/classic-message-panel.png" Stretch="Fill" IsHitTestVisible="False"
+           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+    <ScrollViewer x:Name="MessageScroll" Margin="16,48,16,51" VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" PanningMode="VerticalOnly"
                   AutomationProperties.Name="提示内容">
-      <StackPanel x:Name="MessageBlocks" VerticalAlignment="Center">
+      <StackPanel x:Name="MessageBlocks">
         <c:PixelText x:Name="MessageText" TextAlignment="Center" TextWrapping="Wrap"
-                     Foreground="#F4DCAF" OutlineThickness="1"/>
+                     FontSize="12" Foreground="#F4DCAF" OutlineThickness="1"/>
       </StackPanel>
     </ScrollViewer>
-    <c:SkinButton x:Name="ConfirmButton" Width="80" Height="29" HorizontalAlignment="Left"
-                  VerticalAlignment="Top" Margin="98,137,0,0" Style="{StaticResource ClassicImageButton}"
+    <c:SkinButton x:Name="ConfirmButton" Width="80" Height="29" HorizontalAlignment="Center"
+                  VerticalAlignment="Top" Margin="0,125,0,0" Style="{StaticResource ClassicImageButton}"
                   NormalSource="../Assets/Skin/classic-message-confirm0.png"
                   HoverSource="../Assets/Skin/classic-message-confirm1.png"
                   PressedSource="../Assets/Skin/classic-message-confirm2.png"

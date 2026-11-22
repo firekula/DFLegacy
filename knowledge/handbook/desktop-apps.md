@@ -97,6 +97,8 @@ DTO/结果枚举见 [AccountDtos.cs](../../src/DFLegacy.AccountClient/AccountDto
 
 功能窗口包括 `Register/Reset/Modify/AccountEdit/AccountFieldDialog/Config/Update/UpdateInstall/UpdateOperation/ChapterTransition`，都在 [Views](../../src/DFLegacy.Launcher/Views)。`ChapterTwoDebugWindow` 是第二章专用调试窗口；`ChapterTwoDebugApi/Resources/Icons` 管后端调用、私有调试 PVF 视图与图标，不能把调试资源操作混进普通安装文件改写。
 
+WPF 普通提示和原生启动失败提示共用 286×170 的石纹面板皮肤，确认按钮居中放在正文下方。WPF 保留完整正文并让长消息滚动。原生入口按所在显示器的 DPI 绘制预乘 Alpha 位图，确认按钮的命中区随之缩放。遇到皮肤加载、渲染失败或正文超出面板时，原生入口以 Windows 错误提示显示完整文案。
+
 交付前用**真实内容**检查标题、按钮、关闭操作、长文本、键盘焦点与常用系统显示缩放。可重复验收至少覆盖 100%、125%、150% 和实际目标屏幕工作区；这些比例是实用检查集，规范原文要求是“常用显示缩放”。确认模态窗口的 Enter/Esc/Tab、Owner 和返回焦点，不要只核对 XAML 能编译。
 
 版本有四种概念，不能混用：

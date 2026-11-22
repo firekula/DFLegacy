@@ -280,7 +280,7 @@ int wmain(int argc, wchar_t** argv) {
             Require(observed.size() == 1 && observed[0].result == 3, "quiet CLI failure was retried");
         }
     });
-    test("actual fixed entry uses the classic error dialog", [&] {
+    const auto checkClassicErrorDialog = [&](WPARAM closeKey) {
         Root root(++index);
         const auto target = root.path / L"DFLegacy.Launcher.exe";
         fs::copy_file(launcher, target);
@@ -329,11 +329,40 @@ int wmain(int argc, wchar_t** argv) {
         Require(lookup.dialog != nullptr, "native error did not use the classic prompt");
         Require((GetWindowLongPtrW(lookup.dialog, GWL_STYLE) & WS_CAPTION) != WS_CAPTION,
             "classic prompt has a Windows title bar");
-        Require(PostMessageW(lookup.dialog, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0) != FALSE,
-            "could not confirm classic prompt");
+        Require((GetWindowLongPtrW(lookup.dialog, GWL_EXSTYLE) & WS_EX_LAYERED) != 0,
+            "classic prompt does not composite its transparent edges");
+        const auto dpi = static_cast<int>(GetDpiForWindow(lookup.dialog));
+        Require(dpi > 0, "could not read classic prompt DPI");
+        RECT bounds{};
+        const auto previousDpi = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        const auto boundsRead = GetWindowRect(lookup.dialog, &bounds);
+        if (previousDpi) SetThreadDpiAwarenessContext(previousDpi);
+        Require(boundsRead
+            && bounds.right - bounds.left == MulDiv(286, dpi, USER_DEFAULT_SCREEN_DPI)
+            && bounds.bottom - bounds.top == MulDiv(170, dpi, USER_DEFAULT_SCREEN_DPI),
+            "classic frame is clipped or sized at the wrong DPI");
+        const auto click = [&](int y) {
+            const auto point = MAKELPARAM(MulDiv(143, dpi, USER_DEFAULT_SCREEN_DPI),
+                MulDiv(y, dpi, USER_DEFAULT_SCREEN_DPI));
+            Require(PostMessageW(lookup.dialog, WM_LBUTTONDOWN, MK_LBUTTON, point)
+                && PostMessageW(lookup.dialog, WM_LBUTTONUP, 0, point), "could not click classic prompt");
+        };
+        click(100);
+        Require(WaitForSingleObject(process.hProcess, 50) == WAIT_TIMEOUT, "message text closed the prompt");
+        if (closeKey)
+            Require(PostMessageW(lookup.dialog, WM_KEYDOWN, closeKey, 0) != FALSE, "could not send prompt key");
+        else
+            click(130);
         Require(WaitForSingleObject(process.hProcess, 3000) == WAIT_OBJECT_0, "confirming classic prompt did not close launcher");
         DWORD exitCode = 99;
         Require(GetExitCodeProcess(process.hProcess, &exitCode) && exitCode == 1, "classic prompt changed startup exit code");
+    };
+    test("actual fixed entry uses the classic error dialog and centered button", [&] {
+        checkClassicErrorDialog(0);
+    });
+    test("classic startup error closes with Enter and Escape", [&] {
+        checkClassicErrorDialog(VK_RETURN);
+        checkClassicErrorDialog(VK_ESCAPE);
     });
     test("invalid hash or machine never executes", [&] {
         Root root(++index); root.Primary(good);
