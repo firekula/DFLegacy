@@ -692,6 +692,7 @@ public sealed partial class JsonGameStore(
 
     private sealed class JsonGameStoreState
     {
+        [JsonConverter(typeof(InventoryAccountsConverter))]
         public List<AccountRecord> Accounts { get; set; } = [];
         public uint NextCharacterNo { get; set; } = 1;
         public uint NextNormalAccountUid { get; set; } = AccountUidRules.NormalUidStart;
@@ -748,6 +749,7 @@ public sealed partial class JsonGameStore(
                 if (document.RootElement.ValueKind == JsonValueKind.Array)
                 {
                     _accounts = JsonSerializer.Deserialize<List<AccountRecord>>(json) ?? [];
+                    InventoryAccountsConverter.RequireLegacy(_accounts);
                     _nextCharacterNo = 1;
                     _nextNormalAccountUid = AccountUidRules.NormalUidStart;
                     _nextTestAccountUid = 1;

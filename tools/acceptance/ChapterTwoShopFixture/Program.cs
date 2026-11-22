@@ -15,7 +15,7 @@ File.Copy(source, working);
 var sourceBytes = File.ReadAllBytes(source);
 var original = JsonNode.Parse(sourceBytes)!;
 const string account = "shopqa";
-if (original["Accounts"]!.AsArray().Any(a => (string?)a!["UserName"] == account)) throw new InvalidOperationException("Test account already exists");
+if (GameStoreAccountRows.Get(original).Any(a => (string?)a!["UserName"] == account)) throw new InvalidOperationException("Test account already exists");
 var password = Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
 var options = new ServerOptions { DataPath = working, ScriptPvfPath = pvf, SeedTestAccount = false, SkipUnsupportedChapterTwoCashContainers = true };
 var scripts = new ScriptFileSystem(options, NullLogger<ScriptFileSystem>.Instance);
@@ -67,13 +67,13 @@ foreach (var test in tests)
 var topup=await store.GrantCeraToAccountAsync(account,1_000_000);
 if(!topup.Success) throw new InvalidOperationException(topup.Error);
 var prepared = JsonNode.Parse(File.ReadAllBytes(working))!;
-var qa = prepared["Accounts"]!.AsArray().Single(a => (string?)a!["UserName"]==account)!.DeepClone();
+var qa = GameStoreAccountRows.Get(prepared).Single(a => (string?)a!["UserName"]==account)!.DeepClone();
 // Established shop fixtures must enter their prepared town rather than the
 // first-login tutorial, which overrides the normal location on the client.
 foreach(var c in qa["Characters"]!.AsArray()) c!["TutorialStarted"]=true;
 // Preserve original account records exactly. Initialization may normalize state;
 // only the freshly created account and allocated ID counters enter the candidate.
-original["Accounts"]!.AsArray().Add(qa);
+GameStoreAccountRows.Get(original).Add(qa);
 foreach(var key in new[]{"NextCharacterNo","NextNormalAccountUid","NextTestAccountUid"})
     original[key]=prepared[key]!.DeepClone();
 var json = new JsonSerializerOptions {WriteIndented=true};

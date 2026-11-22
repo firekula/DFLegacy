@@ -6576,6 +6576,23 @@ public sealed class EntranceService(
                             var slot = request.Body.Length >= 3 ? request.Body[2] : 0;
                             var character = characters.FirstOrDefault(candidate =>
                                 candidate.Slot == slot);
+                            if (character?.ExtendedInventory is { Count: > 0 })
+                            {
+                                // Only a client that understands logical inventory addresses may enter this character.
+                                var denied = GameProtocolEngine.CreateCommandError(request, errorCode: 2);
+                                await denied.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, denied);
+                                if (chapter2CheckConnectionAccepted)
+                                {
+                                    var notice = GameProtocolEngine.CreatePopupNotification(
+                                        ClientEncoding.GetBytes("此角色使用了扩展背包，请更新客户端后重新选择角色。"));
+                                    await notice.WriteAsync(stream, serverToken);
+                                    Interlocked.Increment(ref runtimeSession.SentPackets);
+                                    LogPacket("TX", runtimeSession, notice);
+                                }
+                                continue;
+                            }
                             if (character is null || (pvpProfile is not null
                                 && !pvpProfile.Allows(pvpExperienceCatalog.GetGradeForPoints(character.PvpPoints), pvpExperienceCatalog.MaximumGrade)))
                             {

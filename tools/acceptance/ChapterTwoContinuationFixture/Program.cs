@@ -25,7 +25,7 @@ var records = new List<object>();
 var accounts = new[] { "edgeqa", "peerqa" };
 foreach (var account in accounts)
 {
-    if(original["Accounts"]!.AsArray().Any(a=>(string?)a!["UserName"]==account)) throw new InvalidOperationException("Fixture account already exists.");
+    if(GameStoreAccountRows.Get(original).Any(a=>(string?)a!["UserName"]==account)) throw new InvalidOperationException("Fixture account already exists.");
     var password=Convert.ToHexString(RandomNumberGenerator.GetBytes(8));
     var created=await store.CreateAccountAsync(new(account,password,OicqCode:"112233"));
     if(!created.Created) throw new InvalidOperationException(created.Error);
@@ -68,9 +68,9 @@ foreach (var account in accounts)
 var prepared=JsonNode.Parse(File.ReadAllBytes(working))!;
 foreach(var account in accounts)
 {
-    var a=prepared["Accounts"]!.AsArray().Single(a=>(string?)a!["UserName"]==account)!.DeepClone();
+    var a=GameStoreAccountRows.Get(prepared).Single(a=>(string?)a!["UserName"]==account)!.DeepClone();
     foreach(var c in a["Characters"]!.AsArray()) c!["TutorialStarted"]=true;
-    original["Accounts"]!.AsArray().Add(a);
+    GameStoreAccountRows.Get(original).Add(a);
 }
 foreach(var key in new[]{"NextCharacterNo","NextNormalAccountUid","NextTestAccountUid"}) original[key]=prepared[key]!.DeepClone();
 if(!File.ReadAllBytes(source).SequenceEqual(originalBytes)) throw new IOException("Source changed while preparing fixture.");

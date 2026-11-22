@@ -16,7 +16,7 @@ internal static class MigrationFixture
         var scripts=new ScriptFileSystem(options,NullLogger<ScriptFileSystem>.Instance);
         var items=new ItemCatalog(scripts,NullLogger<ItemCatalog>.Instance,options);
         var store=new JsonGameStore(options,NullLogger<JsonGameStore>.Instance,itemCatalog:items);
-        var source=JsonNode.Parse(File.ReadAllText(prepared))!["Accounts"]!.Deserialize<AccountRecord[]>()!;
+        var source=GameStoreAccountRows.Get(JsonNode.Parse(File.ReadAllText(prepared))!).Deserialize<AccountRecord[]>()!;
         var before=source.Single(a=>a.UserName=="migrationqa").Characters;
         var checks=new List<object>(); var failures=0;
         void Check(bool value,string name) {checks.Add(new {Passed=value,Name=name});Console.WriteLine($"{(value?"PASS":"FAIL")} {name}");if(!value)failures++;}
@@ -118,12 +118,12 @@ internal static class MigrationFixture
             if(result.Status!=DungeonRewardLedgerStatus.Committed) throw new InvalidOperationException($"C1 gift purchase failed: {p.CommodityNo}/{result.Error}");
         }
         var final=JsonNode.Parse(File.ReadAllText(path))!;
-        foreach(var a in final["Accounts"]!.AsArray()) foreach(var c in a!["Characters"]!.AsArray()) c!["WarehouseCapacity"]=120;
+        foreach(var a in GameStoreAccountRows.Get(final)) foreach(var c in a!["Characters"]!.AsArray()) c!["WarehouseCapacity"]=120;
         // These are established level-60 migration fixtures, not new-player tutorial tests.
-        foreach(var c in final["Accounts"]!.AsArray().Single(a=>a!["UserName"]!.GetValue<string>()==account)!["Characters"]!.AsArray())
+        foreach(var c in GameStoreAccountRows.Get(final).Single(a=>a!["UserName"]!.GetValue<string>()==account)!["Characters"]!.AsArray())
             c!["TutorialStarted"]=true;
         File.WriteAllText(path,final.ToJsonString(new(){WriteIndented=true}));
-        var roster=final["Accounts"]!.AsArray().Single(x=>x!["UserName"]!.GetValue<string>()==account)!["Characters"]!.Deserialize<CharacterRecord[]>()!;
+        var roster=GameStoreAccountRows.Get(final).Single(x=>x!["UserName"]!.GetValue<string>()==account)!["Characters"]!.Deserialize<CharacterRecord[]>()!;
         var coverage=new {Account=account,Characters=roster.Select(c=>new {c.Id,c.Name,c.WarehouseCapacity,
             InventoryCount=c.Inventory?.Count,CreatureCount=c.CreatureInventory?.Count,WarehouseCount=c.Warehouse?.Count,MailCount=c.Mailbox?.Count}),
             UniqueTitlesInBags=roster.SelectMany(c=>c.Inventory??[]).Select(x=>x.ItemId).Intersect(titles.Select(x=>x.Id)).Count(),
@@ -140,7 +140,7 @@ internal static class MigrationFixture
     private static void Replace(string path,CharacterRecord replacement)
     {
         var root=JsonNode.Parse(File.ReadAllText(path))!;
-        foreach(var a in root["Accounts"]!.AsArray())
+        foreach(var a in GameStoreAccountRows.Get(root))
         {
             var characters=a!["Characters"]!.AsArray();
             for(var i=0;i<characters.Count;i++) if(characters[i]!["Id"]!.GetValue<Guid>()==replacement.Id)

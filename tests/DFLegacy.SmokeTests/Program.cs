@@ -9,6 +9,16 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 var failures = new List<string>();
 
+if (args is ["--c2-inventory-capacity"])
+{
+    var assertions = 0;
+    ChapterTwoCapacitySmokeTests.Run((result, message) => { assertions++; Check(result, message); });
+    await ChapterTwoCapacitySmokeTests.CheckStorageAsync((result, message) => { assertions++; Check(result, message); });
+    foreach (var failure in failures) Console.Error.WriteLine(failure);
+    Console.WriteLine($"Inventory capacity: {assertions} assertions, {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args is ["--chapter-two-cemetery", var cemeteryPvf])
 {
     var checks = 0;
