@@ -438,6 +438,9 @@ $configure = @(
     '    OutputDebugStringA(dfl::chapter_two::InstallQuickStore(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: warehouse quick store installed.\n"',
     '        : "DFLegacy Chapter Two: warehouse quick store signature mismatch.\n");',
+    '    OutputDebugStringA(dfl::chapter_two::InstallAvatarDiscard(base, nt->OptionalHeader.SizeOfImage)',
+    '        ? "DFLegacy Chapter Two: town avatar discard installed.\n"',
+    '        : "DFLegacy Chapter Two: town avatar discard signature mismatch.\n");',
     '    OutputDebugStringA(dfl::chapter_two::InstallCashItemUse(base, nt->OptionalHeader.SizeOfImage)',
     '        ? "DFLegacy Chapter Two: supported cash item use installed.\n"',
     '        : "DFLegacy Chapter Two: cash item use signature mismatch.\n");',
@@ -476,6 +479,7 @@ $integrated = '#include "ChapterTwoPresentation.h"' + $nl + '#include "ChapterTw
     '#include "ChapterTwoJarFeedback.h"' + $nl +
     '#include "ChapterTwoStoreTitle.h"' + $nl +
     '#include "ChapterTwoQuickStore.h"' + $nl +
+    '#include "ChapterTwoAvatarDiscard.h"' + $nl +
     '#include "ChapterTwoCashItemUse.h"' + $nl +
     '#include "ChapterTwoMallCreature.h"' + $nl +
     '#include "ChapterTwoCursorAuto.h"' + $nl +

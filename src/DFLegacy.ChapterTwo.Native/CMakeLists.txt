@@ -67,6 +67,7 @@ add_library(chapter_two_presentation STATIC
     ChapterTwoJarFeedback.cpp
     ChapterTwoStoreTitle.cpp
     ChapterTwoQuickStore.cpp
+    ChapterTwoAvatarDiscard.cpp
     ChapterTwoCashItemUse.cpp
     ChapterTwoMallCreature.cpp
     ChapterTwoCursorAuto.cpp
