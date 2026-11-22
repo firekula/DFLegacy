@@ -960,7 +960,9 @@ public sealed class EntranceService(
 
                 CharacterRecord AvatarActorSnapshot() => activeCharacter! with
                 {
+                    Inventory = mainInventory.Values.OrderBy(i => i.Slot).ToList(),
                     Equipment = equippedInventory.Values.OrderBy(i => i.Slot).ToList(),
+                    Warehouse = warehouseInventory.Values.OrderBy(i => i.Slot).ToList(),
                     AvatarInventory = avatarInventory.Values.OrderBy(i => i.Slot).ToList()
                 };
 
@@ -982,28 +984,44 @@ public sealed class EntranceService(
                             throw new IOException("Cannot safely install avatar expiration state.");
                         var installed = AvatarLifetimePolicy.MergeForActor(before, result.Character, itemCatalog);
                         activeCharacter = installed;
+                        mainInventory = (installed.Inventory ?? []).ToDictionary(i => i.Slot);
+                        warehouseInventory = (installed.Warehouse ?? []).ToDictionary(i => i.Slot);
                         avatarInventory = (installed.AvatarInventory ?? []).ToDictionary(i => i.Slot);
                         equippedInventory = (installed.Equipment ?? []).ToDictionary(i => i.Slot);
-                        var published = await avatarLifetimeRefresh.PublishAsync(before, installed, async () =>
-                        {
-                            var packet = CreateAvatarInventoryPacket(avatarInventory.Values);
-                            await packet.WriteAsync(stream, serverToken);
-                            Interlocked.Increment(ref runtimeSession.SentPackets);
-                            LogPacket("TX", runtimeSession, packet);
-                        }, async () =>
-                        {
-                            if (currentDungeonId == 0) await SendTownAppearanceAsync();
-                            else
+                        var published = await avatarLifetimeRefresh.PublishAsync(before, installed,
+                            refreshBag: async () =>
                             {
-                                await SendCurrentEquipmentStateAsync();
-                                if (dungeonInstance is { IsParty: true } instance)
-                                    await dungeonPartyService.BroadcastToMembersAsync(instance, SendTownAppearanceDetailPacket(),
-                                        installed.Id, serverToken);
-                            }
-                        }, async () => { await SendMailboxStateAsync(notifyNewMail: false); });
+                                var packet = CreateAvatarInventoryPacket(avatarInventory.Values);
+                                await packet.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, packet);
+                            },
+                            refreshMainInventory: async () =>
+                            {
+                                var packet = CreateMainInventoryPacket(
+                                    currentGold, currentVictoryPoints, mainInventory.Values);
+                                await packet.WriteAsync(stream, serverToken);
+                                Interlocked.Increment(ref runtimeSession.SentPackets);
+                                LogPacket("TX", runtimeSession, packet);
+                            },
+                            refreshWarehouse: SendWarehouseStateAsync,
+                            refreshEquipmentAndPeers: async () =>
+                            {
+                                if (currentDungeonId == 0) await SendTownAppearanceAsync();
+                                else
+                                {
+                                    await SendCurrentEquipmentStateAsync();
+                                    if (dungeonInstance is { IsParty: true } instance)
+                                        await dungeonPartyService.BroadcastToMembersAsync(instance, SendTownAppearanceDetailPacket(),
+                                            installed.Id, serverToken);
+                                }
+                            },
+                            refreshMailbox: async () => { await SendMailboxStateAsync(notifyNewMail: false); });
                         if (result.Changed || published)
-                            logger.LogInformation("Settled avatar lifetime for {CharacterId}: bag={BagBefore}->{BagAfter}, equipment={EquipmentBefore}->{EquipmentAfter}.",
-                                installed.Id, before.AvatarInventory?.Count ?? 0, avatarInventory.Count,
+                            logger.LogInformation("Settled limited item lifetime for {CharacterId}: main={MainBefore}->{MainAfter}, warehouse={WarehouseBefore}->{WarehouseAfter}, bag={BagBefore}->{BagAfter}, equipment={EquipmentBefore}->{EquipmentAfter}.",
+                                installed.Id, before.Inventory?.Count ?? 0, mainInventory.Count,
+                                before.Warehouse?.Count ?? 0, warehouseInventory.Count,
+                                before.AvatarInventory?.Count ?? 0, avatarInventory.Count,
                                 before.Equipment?.Count ?? 0, equippedInventory.Count);
                     }
                     finally { dungeonCurrencyGate.Release(); }

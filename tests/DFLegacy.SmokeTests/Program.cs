@@ -481,6 +481,14 @@ if (args.Contains("--avatar-destroy"))
     return failures.Count > 0 ? 1 : 0;
 }
 
+if (args.Contains("--timed-title"))
+{
+    await TimedTitleLifetimeSmokeTests.RunAsync(Check);
+    foreach (var failure in failures) Console.Error.WriteLine("FAIL: " + failure);
+    Console.WriteLine($"Timed title lifetime smoke: {failures.Count} failures");
+    return failures.Count > 0 ? 1 : 0;
+}
+
 if (args.Contains("--dungeon-map-selection") || args.Contains("--lorien-boss-map"))
 {
     DungeonMapSelectionSmokeTests.Run(Check);
@@ -752,6 +760,7 @@ await PartyChatSmokeTests.RunAsync(Check);
 await PartyGoldSmokeTests.RunAsync(Check);
 await ActiveDropSmokeTests.RunAsync(Check);
 await AvatarDestroySmokeTests.RunAsync(Check);
+await TimedTitleLifetimeSmokeTests.RunAsync(Check);
 await TownGoldDiscardSmokeTests.RunAsync(Check);
 await SkillSlotPersistenceSmokeTests.RunAsync(Check);
 await ActiveDropFourClientSmokeTests.RunAsync(Check);

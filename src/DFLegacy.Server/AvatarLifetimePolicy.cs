@@ -45,11 +45,17 @@ public static class AvatarLifetimePolicy
     internal static CharacterRecord NormalizeCharacter(CharacterRecord candidate, CharacterRecord? previous,
         ItemCatalog catalog, long nowUnixSeconds)
     {
-        bool IsAvatar(ushort id) => catalog.TryGetDefinition(id, out var d) && d.InventoryCategory == ItemInventoryCategory.Avatar;
+        bool IsLifetimeTracked(ushort id)
+        {
+            if (!catalog.TryGetDefinition(id, out var definition)) return false;
+            return definition.InventoryCategory == ItemInventoryCategory.Avatar
+                || (definition.InventoryCategory == ItemInventoryCategory.Equipment
+                    && definition.UsablePeriodDays is > 0);
+        }
         static IEnumerable<CharacterItemRecord> Items(CharacterRecord c) =>
             (c.Inventory ?? []).Concat(c.Equipment ?? []).Concat(c.Warehouse ?? [])
                 .Concat(c.AvatarInventory ?? []).Concat(c.CreatureInventory ?? []);
-        var known = Items(previous ?? candidate).Where(i => i.InstanceId != Guid.Empty && IsAvatar(i.ItemId))
+        var known = Items(previous ?? candidate).Where(i => i.InstanceId != Guid.Empty && IsLifetimeTracked(i.ItemId))
             .Concat((previous?.Mailbox ?? candidate.Mailbox ?? []).Where(m => m.Attachment is not null)
                 .Select(m => FromAttachment(m.Attachment!)))
             .Where(i => i.InstanceId != Guid.Empty && IsLimited(i))
@@ -58,7 +64,7 @@ public static class AvatarLifetimePolicy
 
         CharacterItemRecord? Normalize(CharacterItemRecord original)
         {
-            if (!IsAvatar(original.ItemId)) return original;
+            if (!IsLifetimeTracked(original.ItemId)) return original;
             var item = CharacterItemIdentity.Ensure(original, catalog);
             if (expiredIds.Contains(item.InstanceId)) return null;
             if (known.TryGetValue(item.InstanceId, out var canonical))
@@ -66,6 +72,16 @@ public static class AvatarLifetimePolicy
                     AvatarRemainingSeconds = canonical.AvatarRemainingSeconds };
             if (item.AvatarExpiresAtUnixSeconds is null && item.AvatarRemainingSeconds is > 0)
                 item = item with { AvatarExpiresAtUnixSeconds = checked(nowUnixSeconds + item.AvatarRemainingSeconds.Value) };
+            if (item.AvatarExpiresAtUnixSeconds is null
+                && catalog.TryGetDefinition(item.ItemId, out var definition)
+                && definition.UsablePeriodDays is > 0)
+            {
+                item = item with
+                {
+                    AvatarExpiresAtUnixSeconds = checked(
+                        nowUnixSeconds + definition.UsablePeriodDays.Value * 86_400L)
+                };
+            }
             if (!IsExpired(item, nowUnixSeconds)) return item;
             expiredIds.Add(item.InstanceId);
             return null;
@@ -83,7 +99,7 @@ public static class AvatarLifetimePolicy
         var creatures = NormalizeSpace(candidate.CreatureInventory);
         var mails = candidate.Mailbox?.Select(mail =>
         {
-            if (mail.Attachment is not { } attachment || !IsAvatar(attachment.ItemId)) return mail;
+            if (mail.Attachment is not { } attachment || !IsLifetimeTracked(attachment.ItemId)) return mail;
             var normalized = Normalize(FromAttachment(attachment));
             return mail with { Attachment = normalized is null ? null : attachment with {
                 InstanceId = normalized.InstanceId, AvatarRemainingSeconds = normalized.AvatarRemainingSeconds,
@@ -121,11 +137,28 @@ public static class AvatarLifetimePolicy
 
     public static CharacterRecord MergeForActor(CharacterRecord actor, CharacterRecord canonical, ItemCatalog catalog)
     {
-        bool IsAvatar(CharacterItemRecord i) => catalog.TryGetDefinition(i.ItemId, out var d)
-            && d.InventoryCategory == ItemInventoryCategory.Avatar;
-        var equipment = (actor.Equipment ?? []).Where(i => !IsAvatar(i))
-            .Concat((canonical.Equipment ?? []).Where(IsAvatar)).OrderBy(i => i.Slot).ToList();
-        return actor with { Equipment = equipment, AvatarInventory = canonical.AvatarInventory,
-            Mailbox = canonical.Mailbox, ExpiredAvatarInstanceIds = canonical.ExpiredAvatarInstanceIds };
+        bool IsLifetimeTracked(CharacterItemRecord item) =>
+            catalog.TryGetDefinition(item.ItemId, out var definition)
+            && (definition.InventoryCategory == ItemInventoryCategory.Avatar
+                || (definition.InventoryCategory == ItemInventoryCategory.Equipment
+                    && definition.UsablePeriodDays is > 0));
+        static List<CharacterItemRecord> MergeSpace(
+            IEnumerable<CharacterItemRecord>? actorItems,
+            IEnumerable<CharacterItemRecord>? canonicalItems,
+            Func<CharacterItemRecord, bool> isLifetimeTracked) =>
+            (actorItems ?? [])
+                .Where(item => !isLifetimeTracked(item))
+                .Concat((canonicalItems ?? []).Where(isLifetimeTracked))
+                .OrderBy(item => item.Slot)
+                .ToList();
+        return actor with
+        {
+            Inventory = MergeSpace(actor.Inventory, canonical.Inventory, IsLifetimeTracked),
+            Equipment = MergeSpace(actor.Equipment, canonical.Equipment, IsLifetimeTracked),
+            Warehouse = MergeSpace(actor.Warehouse, canonical.Warehouse, IsLifetimeTracked),
+            AvatarInventory = canonical.AvatarInventory,
+            Mailbox = canonical.Mailbox,
+            ExpiredAvatarInstanceIds = canonical.ExpiredAvatarInstanceIds
+        };
     }
 }

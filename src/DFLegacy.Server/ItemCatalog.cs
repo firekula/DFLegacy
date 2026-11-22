@@ -196,7 +196,8 @@ public sealed record ItemDefinition(
     RandomBoxDefinition? RandomBox = null,
     CeraBoosterDefinition? GiftBooster = null,
     ChapterTwoGrowthPotionDefinition? GrowthPotion = null,
-    bool IsCloneAvatar = false)
+    bool IsCloneAvatar = false,
+    int? UsablePeriodDays = null)
 {
     public bool IsEquipment => ScriptKind == ItemScriptKind.Equipment;
 
@@ -240,6 +241,8 @@ public sealed class ItemCatalog
     private static readonly Regex RarityPattern = CreateIntegerTagPattern("rarity");
     private static readonly Regex EpicRoutingPattern = CreateIntegerTagPattern("epic routing");
     private static readonly Regex ClearAvatarPattern = CreateIntegerTagPattern("clear avatar");
+    private static readonly Regex UsablePeriodPattern =
+        CreateIntegerTagPattern("usable period");
     private static readonly Regex UsableJobPattern = new(
         @"\[usable job\](?<value>.*?)\[/usable job\]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline | RegexOptions.IgnoreCase);
@@ -734,7 +737,8 @@ public sealed class ItemCatalog
                      RandomBox: RandomBoxDefinition.Parse(typeTag, text),
                      GiftBooster: ReadGiftBooster(typeTag, text, scriptPath),
                      GrowthPotion: ReadGrowthPotion(itemId, typeTag, text),
-                     IsCloneAvatar: scriptKind == ItemScriptKind.Equipment && ReadInteger(ClearAvatarPattern, text) == 1));
+                     IsCloneAvatar: scriptKind == ItemScriptKind.Equipment && ReadInteger(ClearAvatarPattern, text) == 1,
+                     UsablePeriodDays: ReadInteger(UsablePeriodPattern, text)));
         }
     }
 
